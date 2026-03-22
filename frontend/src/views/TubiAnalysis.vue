@@ -2317,7 +2317,43 @@ function updateTrendChart() {
     return
   }
 
-  // 计算统计数据（基于筛选后的数据）
+  // 按年份分组并计算平均值
+  const yearGroups = {}
+  filteredData.forEach(item => {
+    const year = parseInt(item.year)
+    if (!yearGroups[year]) {
+      yearGroups[year] = []
+    }
+    yearGroups[year].push(item)
+  })
+
+  // 构建趋势图数据：同年取平均，保留最新画作信息
+  const trendData = Object.keys(yearGroups)
+    .map(year => {
+      const items = yearGroups[year]
+      const avgPercent = items.reduce((sum, item) => sum + item.inscriptionPercent, 0) / items.length
+      // 按创建时间排序，取最新的画作
+      const latestItem = items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+      
+      return {
+        year: year,
+        inscriptionPercent: Math.round(avgPercent * 10) / 10, // 保留一位小数
+        count: items.length,
+        // 保留最新画作的详细信息
+        id: latestItem.id,
+        title: latestItem.title,
+        artist: latestItem.artist,
+        url: latestItem.url,
+        thumbnailUrl: latestItem.thumbnailUrl,
+        period: latestItem.period,
+        created_at: latestItem.created_at,
+        // 保存该年份所有画作
+        allItems: items
+      }
+    })
+    .sort((a, b) => parseInt(a.year) - parseInt(b.year))
+
+  // 计算统计数据（基于原始数据）
   const percents = filteredData.map(item => item.inscriptionPercent)
   trendStats.avgPercent = (percents.reduce((a, b) => a + b, 0) / percents.length).toFixed(1)
   trendStats.maxPercent = Math.max(...percents).toFixed(1)
@@ -2330,10 +2366,10 @@ function updateTrendChart() {
     if (!trendChart) {
       trendChart = echarts.init(trendChartRef.value)
       
-      // 添加点击事件 - 点击跳转到对应画作
+      // 添加点击事件 - 点击跳转到对应画作（最新的那幅）
       trendChart.on('click', function(params) {
         const dataIndex = params.dataIndex
-        const item = validData[dataIndex]
+        const item = trendData[dataIndex]
         if (item && item.id) {
           // 查找对应的图片数据
           const targetImage = uploadedImages.value.find(img => img.id === item.id)
@@ -2348,15 +2384,15 @@ function updateTrendChart() {
       })
     }
 
-  // 准备数据（使用筛选后的数据）
-  const xData = filteredData.map(item => {
-    // 如果有年龄信息，显示为 "年龄 (年代)" 格式
+  // 准备数据
+  const xData = trendData.map(item => {
+    // 如果有时期信息，显示为 "时期 (年代)" 格式
     if (item.period) {
       return `${item.period}\n(${item.year})`
     }
     return item.year.toString()
   })
-  const yData = filteredData.map(item => item.inscriptionPercent)
+  const yData = trendData.map(item => item.inscriptionPercent)
 
   const option = {
     tooltip: {
@@ -2367,14 +2403,23 @@ function updateTrendChart() {
       textStyle: { color: '#333' },
       formatter: function(params) {
         const dataIndex = params[0].dataIndex
-        const item = filteredData[dataIndex]
-        const thumb = item.url ? `<img src="${item.url}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />` : ''
+        const item = trendData[dataIndex]
+        // 使用缩略图
+        const thumbUrl = item.thumbnailUrl || item.url
+        const thumb = thumbUrl ? `<img src="${thumbUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />` : ''
+        
+        // 如果有多个画作，显示数量提示
+        const countTip = item.count > 1 
+          ? `<div style="color:#E6A23C;font-size:11px;margin-bottom:4px;">📚 该年份共 ${item.count} 幅作品</div>` 
+          : ''
+        
         return `
           <div style="padding:8px;cursor:pointer;">
             ${thumb}
+            ${countTip}
             <div style="font-weight:600;margin-bottom:4px;color:#6B5B95;">${item.title || '未命名'}</div>
             <div style="color:#8B7CB3;font-size:12px;margin-bottom:4px;">${item.artist || '未知作者'} · ${item.year}年</div>
-            <div style="color:#9B7ED8;font-weight:600;margin-bottom:4px;">题跋占比: ${item.inscriptionPercent}%</div>
+            <div style="color:#9B7ED8;font-weight:600;margin-bottom:4px;">平均题跋占比: ${item.inscriptionPercent}%</div>
             <div style="color:#9B7ED8;font-size:11px;border-top:1px solid #E8E3F0;padding-top:4px;margin-top:4px;">点击查看详情</div>
           </div>
         `
@@ -2467,7 +2512,7 @@ function updateTrendChart() {
     }]
   }
 
-    trendChart.setOption(option)
+    trendChart.setOption(option, true)
   })
 }
 
