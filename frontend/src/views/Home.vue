@@ -6,10 +6,10 @@
       <div class="hero-content">
         <div class="seal-mark">印</div>
         <h1 class="main-title">
-          <span class="vertical-text">书画</span>
-          <span class="vertical-text">智能分析</span>
+          <span class="vertical-text">中国画</span>
+          <span class="vertical-text">书法AI</span>
         </h1>
-        <p class="subtitle">基于人工智能的中国书画研究工具</p>
+        <p class="subtitle">基于人工智能的书画研究工具</p>
         <div class="divider"></div>
       </div>
     </div>
