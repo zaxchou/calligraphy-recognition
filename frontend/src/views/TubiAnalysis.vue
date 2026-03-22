@@ -532,13 +532,23 @@
           </el-button>
           <span class="zoom-level">{{ Math.round(previewScale * 100) }}%</span>
         </div>
-        <div class="image-preview-wrapper">
+        <div
+          class="image-preview-wrapper"
+          @mousedown="handleMouseDown"
+          @mousemove="handleMouseMove"
+          @mouseup="handleMouseUp"
+          @mouseleave="handleMouseLeave"
+        >
           <img
             :src="currentPreviewImage"
             alt="原图预览"
             class="preview-image-zoom"
-            :style="{ transform: `scale(${previewScale})` }"
+            :style="{
+              transform: `scale(${previewScale}) translate(${previewPosition.x / previewScale}px, ${previewPosition.y / previewScale}px)`,
+              cursor: previewScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+            }"
             @wheel.prevent="handleWheel"
+            draggable="false"
           />
         </div>
       </div>
@@ -1011,11 +1021,15 @@ function loadMoreGallery() {
 const imagePreviewVisible = ref(false)
 const currentPreviewImage = ref('')
 const previewScale = ref(1)
+const previewPosition = ref({ x: 0, y: 0 })
+const isDragging = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
 
 // 打开原图预览
 const openImagePreview = (imageUrl) => {
   currentPreviewImage.value = imageUrl
   previewScale.value = 1
+  previewPosition.value = { x: 0, y: 0 }
   imagePreviewVisible.value = true
 }
 
@@ -1036,6 +1050,7 @@ const zoomOut = () => {
 // 重置缩放
 const resetZoom = () => {
   previewScale.value = 1
+  previewPosition.value = { x: 0, y: 0 }
 }
 
 // 鼠标滚轮缩放
@@ -1045,6 +1060,36 @@ const handleWheel = (e) => {
   } else {
     zoomOut()
   }
+}
+
+// 鼠标拖动开始
+const handleMouseDown = (e) => {
+  if (previewScale.value <= 1) return
+  isDragging.value = true
+  dragStart.value = {
+    x: e.clientX - previewPosition.value.x,
+    y: e.clientY - previewPosition.value.y
+  }
+}
+
+// 鼠标拖动中
+const handleMouseMove = (e) => {
+  if (!isDragging.value) return
+  e.preventDefault()
+  previewPosition.value = {
+    x: e.clientX - dragStart.value.x,
+    y: e.clientY - dragStart.value.y
+  }
+}
+
+// 鼠标拖动结束
+const handleMouseUp = () => {
+  isDragging.value = false
+}
+
+// 鼠标离开容器
+const handleMouseLeave = () => {
+  isDragging.value = false
 }
 const editDialogVisible = ref(false)
 const editForm = reactive({
@@ -4064,21 +4109,23 @@ onUnmounted(() => {
 
 .image-preview-wrapper {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f5f5f5;
   border-radius: 8px;
   position: relative;
+  user-select: none;
 }
 
 .preview-image-zoom {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  transition: transform 0.2s ease;
-  cursor: grab;
+  transition: transform 0.1s ease-out;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 /* 旧的analysis-note样式（保留用于兼容） */
