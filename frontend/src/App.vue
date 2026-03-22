@@ -8,8 +8,8 @@
             <el-icon size="24"><Document /></el-icon>
           </div>
           <div class="logo-text">
-            <span class="logo-main">书画</span>
-            <span class="logo-sub">智能分析系统</span>
+            <span class="logo-main">中国画与书法</span>
+            <span class="logo-sub">AI综合分析系统</span>
           </div>
           <span class="version-tag">v1.0.1</span>
         </div>
@@ -44,7 +44,7 @@
           <span class="divider-seal">印</span>
           <span class="divider-line"></span>
         </div>
-        <p class="footer-text">书画智能分析系统 &copy; 2026</p>
+        <p class="footer-text">中国画与书法AI综合分析系统 &copy; 2026</p>
         <p class="footer-sub">作者 周豪 Zax</p>
       </div>
     </footer>
