@@ -1,7 +1,7 @@
 <template>
   <div class="recognize-page">
     <h1 class="page-title">书法字体识别</h1>
-    <p class="page-subtitle">使用 SiliconFlow AI + Kimi-K2.5 模型</p>
+    <p class="page-subtitle">使用最新AI技术提升中华传统文化实力</p>
     
     <div class="content-wrapper">
       <!-- 左侧：上传区域 -->
