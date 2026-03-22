@@ -350,8 +350,7 @@
             </div>
           </template>
           <div class="original-image-wrapper">
-            <img :src="currentImage.url" class="original-image" @click="openImagePreview(currentImage.url)" title="点击放大查看" />
-            <div class="image-hint">点击放大查看</div>
+            <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url)" title="点击放大查看" />
           </div>
         </el-card>
 
