@@ -506,15 +506,18 @@
               <el-input v-model="editForm.title" placeholder="请输入画作标题" />
             </el-form-item>
             <el-form-item label="作者姓名" class="form-item-half">
-              <el-input v-model="editForm.artist" placeholder="请输入作者姓名" />
+              <el-select v-model="editForm.artist" placeholder="请选择作者" style="width: 100%" @change="onEditArtistChange">
+                <el-option label="李鱓" value="李鱓" />
+                <el-option label="郑燮" value="郑燮" />
+              </el-select>
             </el-form-item>
           </div>
           <div class="form-row">
             <el-form-item label="创作年代" class="form-item-half">
-              <el-input v-model="editForm.year" placeholder="如：1725" />
+              <el-input v-model.number="editForm.year" placeholder="如：1725" @change="onEditYearChange" />
             </el-form-item>
             <el-form-item label="作者年龄" class="form-item-half">
-              <el-input v-model="editForm.period" placeholder="如：39岁">
+              <el-input v-model.number="editForm.age" placeholder="如：39" @change="onEditAgeChange">
                 <template #append>岁</template>
               </el-input>
             </el-form-item>
@@ -895,6 +898,29 @@ function onAgeChange(age) {
   }
 }
 
+// 编辑表单：作者变化时更新年份和年龄
+function onEditArtistChange(artist) {
+  const artistInfo = ARTISTS[artist]
+  if (artistInfo) {
+    editForm.year = artistInfo.defaultYear
+    editForm.age = calculateAge(artistInfo.defaultYear, artist)
+  }
+}
+
+// 编辑表单：年份变化时自动计算年龄
+function onEditYearChange(year) {
+  if (year && !isNaN(parseInt(year))) {
+    editForm.age = calculateAge(year, editForm.artist)
+  }
+}
+
+// 编辑表单：年龄变化时自动计算年份
+function onEditAgeChange(age) {
+  if (age && !isNaN(parseInt(age))) {
+    editForm.year = calculateYear(age, editForm.artist)
+  }
+}
+
 // 批量上传相关
 const batchUploadDialogVisible = ref(false)
 const batchFileList = ref([])
@@ -921,7 +947,7 @@ const editForm = reactive({
   title: '',
   artist: '',
   year: '',
-  period: '',
+  age: '',
   notes: '',
   analysisNote: '',
   inscriptionPercent: 0,
@@ -2390,7 +2416,7 @@ function editHistoryItem(row) {
   editForm.title = row.title || ''
   editForm.artist = row.artist || ''
   editForm.year = row.year || ''
-  editForm.period = row.period || ''
+  editForm.age = row.age || row.period || ''
   editForm.notes = row.notes || ''
   editForm.analysisNote = row.analysisNote || row.analysis_note || ''
   editForm.inscriptionPercent = row.inscriptionPercent || row.inscription_percent || 0
@@ -2406,14 +2432,14 @@ async function saveEdit() {
       title: editForm.title,
       artist: editForm.artist,
       year: editForm.year ? parseInt(editForm.year) : null,
-      period: editForm.period,
+      age: editForm.age ? parseInt(editForm.age) : null,
       notes: editForm.notes,
       analysis_note: editForm.analysisNote,
       inscription_percent: parseFloat(editForm.inscriptionPercent) || 0,
       painting_percent: parseFloat(editForm.paintingPercent) || 0,
       blank_percent: parseFloat(editForm.blankPercent) || 0
     })
-    
+
     if (response.success) {
       ElMessage.success('保存成功')
       editDialogVisible.value = false
@@ -2424,7 +2450,7 @@ async function saveEdit() {
         currentImage.value.title = editForm.title
         currentImage.value.artist = editForm.artist
         currentImage.value.year = editForm.year
-        currentImage.value.period = editForm.period
+        currentImage.value.age = editForm.age
         currentImage.value.analysisNote = editForm.analysisNote
         currentImage.value.inscriptionPercent = parseFloat(editForm.inscriptionPercent) || 0
         currentImage.value.paintingPercent = parseFloat(editForm.paintingPercent) || 0
@@ -2452,7 +2478,7 @@ function editImageInfo(item) {
   editForm.title = item.title || ''
   editForm.artist = item.artist || ''
   editForm.year = item.year || ''
-  editForm.period = item.period || ''
+  editForm.age = item.age || item.period || ''
   editForm.notes = item.notes || ''
   editForm.analysisNote = item.analysisNote || item.analysis_note || ''
   editForm.inscriptionPercent = item.inscriptionPercent || item.inscription_percent || 0
