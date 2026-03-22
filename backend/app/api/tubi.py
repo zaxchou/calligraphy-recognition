@@ -410,6 +410,14 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
         image_url = f"/static/uploads/{db_analysis.filename}"
     else:
         image_url = None
+    
+    # 构建缩略图URL
+    thumbnail_url = None
+    if db_analysis.thumbnail_path and os.path.exists(db_analysis.thumbnail_path):
+        thumbnail_filename = os.path.basename(db_analysis.thumbnail_path)
+        thumbnail_url = f"/static/thumbnails/{thumbnail_filename}"
+    elif image_url:
+        thumbnail_url = image_url
 
     return {
         "success": True,
@@ -423,6 +431,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
             "notes": db_analysis.notes,
             "filepath": db_analysis.filepath,
             "url": image_url,
+            "thumbnail_url": thumbnail_url,
             "image_width": db_analysis.image_width,
             "image_height": db_analysis.image_height,
             "width": db_analysis.image_width,
