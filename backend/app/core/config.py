@@ -1,11 +1,16 @@
 import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from dotenv import load_dotenv
 
 # 获取项目根目录
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
+
+# 加载 .env 文件
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(env_path)
 
 
 class Settings(BaseSettings):
