@@ -504,7 +504,7 @@
     <!-- 搜索结果弹窗 -->
     <el-dialog
       v-model="searchDialogVisible"
-      :title="`搜索结果 - "${searchKeyword}"`"
+      :title="'搜索结果 - ' + searchKeyword"
       width="85%"
       :close-on-click-modal="true"
       class="search-dialog-wide"
@@ -3648,17 +3648,14 @@ onUnmounted(() => {
 .modern-form :deep(.el-input__wrapper) {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  border: 1px solid #e0e0e0;
   transition: all 0.3s ease;
 }
 
 .modern-form :deep(.el-input__wrapper:hover) {
-  border-color: #667eea;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
 }
 
 .modern-form :deep(.el-input__wrapper.is-focus) {
-  border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
