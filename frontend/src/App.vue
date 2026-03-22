@@ -70,6 +70,25 @@ body {
   background: #f8f6f1;
   color: #3d3d3d;
 }
+
+/* 修复 Element Plus 输入框重复边框问题 */
+.el-input__wrapper {
+  box-shadow: none !important;
+  border: 1px solid #dcdfe6;
+  background-color: #fff;
+}
+
+.el-input__wrapper:hover {
+  border-color: #c0c4cc;
+}
+
+.el-input__wrapper.is-focus {
+  border-color: #409eff;
+}
+
+.el-input__inner {
+  box-shadow: none !important;
+}
 </style>
 
 <style scoped>
