@@ -1,0 +1,4 @@
+Image found: data/uploads/lishan.jpg
+Testing with model: Pro/moonshotai/Kimi-K2.5
+Sending request...
+Error: The read operation timed out

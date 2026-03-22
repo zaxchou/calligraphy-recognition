@@ -1,0 +1,22 @@
+Image size: 255584 bytes, base64: 340780 chars
+Testing with model: Pro/moonshotai/Kimi-K2.5
+Connecting to API...
+Sending request...
+Status: 200
+Response keys: ['id', 'object', 'created', 'model', 'choices', 'usage', 'system_fingerprint']
+
+AI Response:
+```json
+{
+    "inscription_regions": [
+        {"x1": 0.50, "y1": 0.00, "x2": 1.00, "y2": 1.00}
+    ],
+    "painting_regions": [
+        {"x1": 0.00, "y1": 0.15, "x2": 0.88, "y2": 0.98}
+    ],
+    "blank_regions": [
+        {"x1": 0.00, "y1": 0.00, "x2": 0.50, "y2": 0.15}
+    ],
+    "analysis_note": "清代李鱓茶清供图，右侧为行书长题及印章，左侧绘紫砂壶、三足炉与折扇，构图疏密有致，左上角留白与右侧密实的题跋形成对比，体现文人画诗书画印一体的特色。"
+}
+```

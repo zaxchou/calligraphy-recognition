@@ -1,0 +1,6 @@
+{
+  "model": "Pro/moonshotai/Kimi-K2.5",
+  "messages": [{"role": "user", "content": "Say hello in JSON format: {\"greeting\": \"hello\"}"}],
+  "stream": false,
+  "max_tokens": 100
+}

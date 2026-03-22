@@ -1,0 +1,15 @@
+Image found: data/uploads/lishan.jpg
+Image base64 size: 340780
+Testing with model: Pro/moonshotai/Kimi-K2.5
+Sending request with 600s timeout...
+Status: 200
+
+AI Response:
+```json
+{
+    "inscription_regions": [{"x1": 0.52, "y1": 0.02, "x2": 0.98, "y2": 0.72}],
+    "painting_regions": [{"x1": 0.02, "y1": 0.15, "x2": 0.48, "y2": 0.95}, {"x1": 0.38, "y1": 0.45, "x2": 0.90, "y2": 0.98}],
+    "blank_regions": [{"x1": 0.00, "y1": 0.00, "x2": 0.52, "y2": 0.15}, {"x1": 0.48, "y1": 0.15, "x2": 0.52, "y2": 0.45}],
+    "analysis_note": "该作品为清代李鱓《壶扇图》，左侧为煮茶器具，右下为折扇，右侧为行书题跋及印章。画面布局疏密有致，留白集中于左上及中部区域，形成虚实相生的艺术效果。"
+}
+```

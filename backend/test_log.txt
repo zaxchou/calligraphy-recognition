@@ -1,0 +1,241 @@
+Starting test...
+Model: Pro/moonshotai/Kimi-K2.5
+Sending request...
+Starting test...
+Model: Pro/moonshotai/Kimi-K2.5
+Sending request...
+Status: 200
+Response: {
+  "id": "019d0ad42d08eb1bf13b28f40e49e88d",
+  "object": "chat.completion",
+  "created": 1774003170,
+  "model": "Pro/moonshotai/Kimi-K2.5",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "```json\n{\"greeting\": \"hello\"}\n```",
+        "reasoning_content": "The user wants me to say hello in JSON format. They've provided an example: `{\"greeting\": \"hello\"}`.\n\n I should respond with valid JSON that says hello. I can either:\n 1. Use exactly what they provided: `{\"greeting\": \"hello\"}`\n 2. Use a slight variation like `{\"message\": \"hello\"}` or `{\"greeting\": \"Hello\"}`\n\n Since they specifically asked for it in the format `{\"greeting\": \"hello\"}`, I should probably use that exact format or something very similar. However, I should make sure to format it properly as a code block or just as raw JSON.\n\n The user said: \"Say hello in JSON format: {\"greeting\": \"hello\"}\"\n\n This looks like they want me to output that JSON. I'll provide the JSON as requested.\n\n Actually, looking at it again, they might be asking me to say hello using that format. So I should output:\n ```json\n {\"greeting\": \"hello\"}\n ```\n\n Or just the raw JSON. I'll provide it in a code block for clarity."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 21,
+    "completion_tokens": 235,
+    "total_tokens": 256,
+    "completion_tokens_details": {
+      "reasoning_tokens": 224
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 21
+  },
+  "system_fingerprint": ""
+}
+Content: ```json
+{"greeting": "hello"}
+```
+Status: 200
+Response: {
+  "id": "019d0ad446b18cdf9f8c1fc37b210f77",
+  "object": "chat.completion",
+  "created": 1774003177,
+  "model": "Pro/moonshotai/Kimi-K2.5",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "```json\n{\"greeting\": \"hello\"}\n```",
+        "reasoning_content": "The user is asking me to say hello in JSON format with a specific structure: {\"greeting\": \"hello\"}. This is a straightforward request where I need to provide exactly what they asked for. They want the JSON output that contains a greeting key with the value \"hello\".\n\nI should output exactly:\n{\"greeting\": \"hello\"}\n\nOr possibly formatted with indentation for readability, but since they showed it as a single line compact JSON, I'll provide it as they requested. I don't need to add any additional text or explanation unless necessary, but looking at the request, they seem to want just the JSON output.\n\nActually, looking carefully at the request: \"Say hello in JSON format: {\"greeting\": \"hello\"}\". The colon and the example suggests they want me to produce that specific JSON. I should provide just the JSON without markdown code blocks or with them? The user didn't specify, but typically JSON responses are clearer in code blocks. However, since they showed it inline, I could provide it either way. I'll provide it in a code block for clarity, or just the raw JSON.\n\nLet me check if there's any trick here. \"Say hello in JSON format\" - this is a direct request. The example shows the format they want. So I should output:\n{\"greeting\": \"hello\"}\n\nI'll provide it in a JSON code block to make it clear."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 21,
+    "completion_tokens": 289,
+    "total_tokens": 310,
+    "completion_tokens_details": {
+      "reasoning_tokens": 278
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 21
+  },
+  "system_fingerprint": ""
+}
+Content: ```json
+{"greeting": "hello"}
+```
+Image found: data/uploads/lishan.jpg
+Testing with model: Pro/moonshotai/Kimi-K2.5
+Image size: 340780 bytes (base64)
+Error: ReadTimeout: The read operation timed out
+Traceback (most recent call last):
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 136, in handle_request
+    raise exc
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+        self.READ_NUM_BYTES, timeout=timeout
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_backends\sync.py", line 126, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\zeroz\cursor code\calligraphy-recognition\backend\test_api.py", line 76, in test_api
+    response = client.post(SILICONFLOW_API_URL, headers=headers, json=payload)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 1144, in post
+    return self.request(
+           ~~~~~~~~~~~~^
+        "POST",
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
+Image found: data/uploads/lishan.jpg
+Image base64 size: 340780
+Testing with model: Pro/moonshotai/Kimi-K2.5
+Sending request with 300s timeout...
+Error: ReadTimeout: The read operation timed out
+Traceback (most recent call last):
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 136, in handle_request
+    raise exc
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_sync\http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+        self.READ_NUM_BYTES, timeout=timeout
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_backends\sync.py", line 126, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\zeroz\cursor code\calligraphy-recognition\backend\test_api.py", line 78, in test_api
+    response = client.post(SILICONFLOW_API_URL, headers=headers, json=payload)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 1144, in post
+    return self.request(
+           ~~~~~~~~~~~~^
+        "POST",
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\zeroz\AppData\Roaming\Python\Python314\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
