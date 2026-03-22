@@ -197,11 +197,12 @@
     <el-dialog
       v-model="historyDialogVisible"
       title="识别历史记录"
-      width="900px"
-      :close-on-click-modal="false"
+      width="1400px"
+      :close-on-click-modal="true"
+      class="history-dialog"
     >
       <div class="history-content">
-        <el-table :data="historyList" style="width: 100%" v-loading="historyLoading">
+        <el-table :data="historyList" style="width: 100%" v-loading="historyLoading" class="history-table">
           <el-table-column label="上传图片" width="120">
             <template #default="scope">
               <img 
@@ -235,22 +236,24 @@
               {{ formatDate(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="scope">
-              <el-button 
-                type="primary" 
-                size="small" 
-                @click="loadHistoryResult(scope.row)"
-              >
-                查看
-              </el-button>
-              <el-button 
-                type="danger" 
-                size="small" 
-                @click="deleteHistoryItem(scope.row)"
-              >
-                删除
-              </el-button>
+              <div class="action-buttons">
+                <el-button
+                  type="primary"
+                  size="default"
+                  @click="loadHistoryResult(scope.row)"
+                >
+                  查看
+                </el-button>
+                <el-button
+                  type="danger"
+                  size="default"
+                  @click="deleteHistoryItem(scope.row)"
+                >
+                  删除
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -739,9 +742,17 @@ onMounted(() => {
 }
 
 /* 历史记录样式 */
+.history-dialog :deep(.el-dialog__body) {
+  padding: 20px;
+}
+
 .history-content {
   max-height: 600px;
   overflow-y: auto;
+}
+
+.history-table {
+  width: 100%;
 }
 
 .history-image {
@@ -760,6 +771,21 @@ onMounted(() => {
 .history-character {
   font-size: 28px;
   font-family: "KaiTi", "STKaiti", serif;
+}
+
+/* 操作按钮容器 - 与题跋分析板块一致 */
+.action-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.action-buttons .el-button {
+  padding: 8px 20px;
+  font-size: 14px;
+  border-radius: 4px;
 }
 
 .history-pagination {
