@@ -42,15 +42,15 @@ env/
 .DS_Store
 Thumbs.db
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Database - 同步到GitHub时注释掉
+# *.db
+# *.sqlite
+# *.sqlite3
 
-# Uploads and data
-data/uploads/
-data/annotated/
-data/static/
+# Uploads and data - 同步到GitHub时注释掉
+# data/uploads/
+# data/annotated/
+# data/static/
 !data/.gitkeep
 
 # Logs
