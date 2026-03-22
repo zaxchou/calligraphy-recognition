@@ -9,26 +9,26 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v5
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v5
       with:
         node-version: '24'
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
-    
+
     - name: Install dependencies
       working-directory: ./frontend
       run: npm ci
-    
+
     - name: Build frontend
       working-directory: ./frontend
       run: npm run build
-    
+
     - name: Archive build artifacts
       uses: actions/upload-artifact@v6
       with:
@@ -36,26 +36,28 @@ jobs:
         path: frontend/dist
         retention-days: 7
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: frontend-dist
-        path: dist
-    
-    - name: Deploy to server via SCP
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        port: 22
-        source: "dist/*"
-        target: "/var/services/web/calligraphy-recognition"
-        strip_components: 1
-        overwrite: true
+  # 自动部署已禁用 - 需要手动部署到内网服务器
+  # 如需启用，请确保服务器有公网IP或配置Self-hosted Runner
+  # deploy:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+  #
+  #   steps:
+  #   - name: Download build artifacts
+  #     uses: actions/download-artifact@v8
+  #     with:
+  #       name: frontend-dist
+  #       path: dist
+  #
+  #   - name: Deploy to server via SCP
+  #     uses: appleboy/scp-action@v0.1.7
+  #     with:
+  #       host: ${{ secrets.SERVER_HOST }}
+  #       username: ${{ secrets.SERVER_USER }}
+  #       key: ${{ secrets.SERVER_SSH_KEY }}
+  #       port: 22
+  #       source: "dist/*"
+  #       target: "/var/services/web/calligraphy-recognition"
+  #       strip_components: 1
+  #       overwrite: true
