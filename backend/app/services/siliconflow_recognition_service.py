@@ -11,7 +11,8 @@ from app.core.config import get_settings
 settings = get_settings()
 
 # SiliconFlow API 配置
-SILICONFLOW_API_KEY = "sk-slysntfniiwizugtkyxcyokpkrnhwzuttfzosyxmwfannsdb"
+import os
+SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
 MODEL_NAME = "Pro/moonshotai/Kimi-K2.5"
 

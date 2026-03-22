@@ -10,7 +10,7 @@ import requests
 def test_deepseek_api():
     print("测试 DeepSeek API...")
     
-    api_key = "sk-c427f1f060bd44c09ad4352c39b42c21"
+    api_key = os.getenv("DEEPSEEK_API_KEY", "")
     
     features_description = """图像尺寸: 128x128
 笔画密度: 15.23%

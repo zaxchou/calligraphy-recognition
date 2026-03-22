@@ -3,7 +3,8 @@ import base64
 import json
 from typing import List, Dict, Optional, Tuple
 
-SILICONFLOW_API_KEY = "sk-slysntfniiwizugtkyxcyokpkrnhwzuttfzosyxmwfannsdb"
+import os
+SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
 
 MODEL_NAME = "Pro/moonshotai/Kimi-K2.5"

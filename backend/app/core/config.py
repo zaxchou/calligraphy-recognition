@@ -31,11 +31,11 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 70.0
     
     # DeepSeek AI 配置（已弃用，保留兼容）
-    DEEPSEEK_API_KEY: str = "sk-c427f1f060bd44c09ad4352c39b42c21"
+    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
     DEEPSEEK_ENABLED: bool = False  # 已切换到 SiliconFlow
     
     # SiliconFlow AI 配置（题跋分析和字体识别共用）
-    SILICONFLOW_API_KEY: str = "sk-slysntfniiwizugtkyxcyokpkrnhwzuttfzosyxmwfannsdb"
+    SILICONFLOW_API_KEY: str = os.getenv("SILICONFLOW_API_KEY", "")
     SILICONFLOW_MODEL: str = "Pro/moonshotai/Kimi-K2.5"
     SILICONFLOW_ENABLED: bool = True  # 是否启用 SiliconFlow AI 识别
     
