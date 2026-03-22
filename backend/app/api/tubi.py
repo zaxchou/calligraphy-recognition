@@ -8,6 +8,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 from app.core.database import get_db
+from app.core.path_utils import get_static_url, get_full_file_path, normalize_path
 from app.models.tubi_analysis import TubiAnalysis
 from app.services.siliconflow_service import (
     analyze_image_regions,
@@ -198,8 +199,8 @@ async def upload_image(
     db_analysis = TubiAnalysis(
         image_id=file_id,
         filename=file.filename,
-        filepath=filepath,
-        thumbnail_path=thumbnail_path,
+        filepath=normalize_path(filepath),
+        thumbnail_path=normalize_path(thumbnail_path) if thumbnail_path else None,
         title=title,
         artist=artist,
         year=year,
@@ -220,8 +221,8 @@ async def upload_image(
             "filename": file.filename,
             "title": title,
             "artist": artist,
-            "url": f"/static/uploads/{filename}",
-            "thumbnail_url": f"/static/thumbnails/{thumbnail_filename}",
+            "url": get_static_url(f"uploads/{filename}"),
+            "thumbnail_url": get_static_url(f"thumbnails/{thumbnail_filename}"),
             "width": width,
             "height": height
         }
@@ -251,11 +252,11 @@ async def upload_images(
             except Exception:
                 width, height = 0, 0
 
-            # 保存到数据库
+            # 保存到数据库 - 使用标准化路径
             db_analysis = TubiAnalysis(
                 image_id=file_id,
                 filename=file.filename,
-                filepath=filepath,
+                filepath=normalize_path(filepath),
                 image_width=width,
                 image_height=height,
                 status="uploaded"
@@ -267,7 +268,7 @@ async def upload_images(
             uploaded.append({
                 "id": file_id,
                 "filename": file.filename,
-                "url": f"/static/uploads/{filename}",
+                "url": get_static_url(f"uploads/{filename}"),
                 "width": width,
                 "height": height
             })
@@ -323,7 +324,7 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db)):
     annotated_path = os.path.join(ANNOTATED_DIR, annotated_filename)
     draw_annotated_image(filepath, regions, annotated_path)
 
-    # 更新数据库
+    # 更新数据库 - 使用标准化路径
     db_analysis.regions = regions
     db_analysis.inscription_percent = area_stats["inscription_percent"]
     db_analysis.painting_percent = area_stats["painting_percent"]
@@ -331,7 +332,7 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db)):
     db_analysis.heatmap_data = heatmap
     db_analysis.position_analysis = position_analysis
     db_analysis.analysis_note = result.get("analysis_note", "")
-    db_analysis.annotated_image_path = annotated_path
+    db_analysis.annotated_image_path = normalize_path(annotated_path)
     db_analysis.status = "analyzed"
     db.commit()
     db.refresh(db_analysis)
@@ -350,7 +351,7 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db)):
             "heatmap": heatmap,
             "position_analysis": position_analysis,
             "analysis_note": result.get("analysis_note", ""),
-            "annotated_image_url": f"/static/annotated/{annotated_filename}"
+            "annotated_image_url": get_static_url(f"annotated/{annotated_filename}")
         }
     }
 
@@ -402,20 +403,22 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
-    # 构建图片URL
+    # 构建图片URL - 使用跨平台路径处理
     if db_analysis.filepath:
-        actual_filename = os.path.basename(db_analysis.filepath)
-        image_url = f"/static/uploads/{actual_filename}"
+        actual_filename = os.path.basename(db_analysis.filepath.replace('/', os.sep))
+        image_url = get_static_url(f"uploads/{actual_filename}")
     elif db_analysis.filename:
-        image_url = f"/static/uploads/{db_analysis.filename}"
+        image_url = get_static_url(f"uploads/{db_analysis.filename}")
     else:
         image_url = None
-    
+
     # 构建缩略图URL
     thumbnail_url = None
-    if db_analysis.thumbnail_path and os.path.exists(db_analysis.thumbnail_path):
-        thumbnail_filename = os.path.basename(db_analysis.thumbnail_path)
-        thumbnail_url = f"/static/thumbnails/{thumbnail_filename}"
+    if db_analysis.thumbnail_path:
+        thumbnail_path_local = get_full_file_path(db_analysis.thumbnail_path, "")
+        if os.path.exists(thumbnail_path_local):
+            thumbnail_filename = os.path.basename(db_analysis.thumbnail_path.replace('/', os.sep))
+            thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
     elif image_url:
         thumbnail_url = image_url
 
@@ -444,7 +447,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
             "analysis_note": db_analysis.analysis_note,
             "status": db_analysis.status,
             "created_at": db_analysis.created_at.isoformat() if db_analysis.created_at else None,
-            "annotated_image_url": f"/static/annotated/annotated_{image_id}.jpg" if db_analysis.annotated_image_path else None
+            "annotated_image_url": get_static_url(f"annotated/annotated_{image_id}.jpg") if db_analysis.annotated_image_path else None
         }
     }
 
@@ -544,11 +547,12 @@ async def get_all_results(
     
     results = []
     for analysis in analyses:
-        # 从 filepath 提取文件名
+        # 从 filepath 提取文件名 - 使用跨平台路径处理
         if analysis.filepath:
-            actual_filename = os.path.basename(analysis.filepath)
+            actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
             # 检查文件是否实际存在
-            file_exists = os.path.exists(analysis.filepath)
+            file_path_local = get_full_file_path(analysis.filepath, "")
+            file_exists = os.path.exists(file_path_local)
         elif analysis.filename:
             actual_filename = analysis.filename
             # 检查文件是否存在于 uploads 目录
@@ -556,16 +560,24 @@ async def get_all_results(
         else:
             actual_filename = None
             file_exists = False
-        
+
         # 处理缩略图
         thumbnail_url = None
-        if analysis.thumbnail_path and os.path.exists(analysis.thumbnail_path):
-            thumbnail_filename = os.path.basename(analysis.thumbnail_path)
-            thumbnail_url = f"/static/thumbnails/{thumbnail_filename}"
+        if analysis.thumbnail_path:
+            thumbnail_path_local = get_full_file_path(analysis.thumbnail_path, "")
+            if os.path.exists(thumbnail_path_local):
+                thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
+                thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
         elif actual_filename and file_exists:
             # 如果没有缩略图，使用原图（但这样会影响性能）
-            thumbnail_url = f"/static/uploads/{actual_filename}"
-        
+            thumbnail_url = get_static_url(f"uploads/{actual_filename}")
+
+        # 检查标注图片是否存在
+        annotated_exists = False
+        if analysis.annotated_image_path:
+            annotated_path_local = get_full_file_path(analysis.annotated_image_path, "")
+            annotated_exists = os.path.exists(annotated_path_local)
+
         results.append({
             "id": analysis.image_id,
             "filename": analysis.filename,
@@ -582,9 +594,9 @@ async def get_all_results(
             "position_analysis": analysis.position_analysis,
             "status": analysis.status,
             "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
-            "url": f"/static/uploads/{actual_filename}" if actual_filename and file_exists else None,
+            "url": get_static_url(f"uploads/{actual_filename}") if actual_filename and file_exists else None,
             "thumbnail_url": thumbnail_url,
-            "annotated_image_url": f"/static/annotated/annotated_{analysis.image_id}.jpg" if analysis.annotated_image_path and os.path.exists(analysis.annotated_image_path) else None,
+            "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
             "analysis_note": analysis.analysis_note
         })
 
@@ -601,11 +613,15 @@ async def delete_image(image_id: str, db: Session = Depends(get_db)):
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
-    # 删除文件
-    if db_analysis.filepath and os.path.exists(db_analysis.filepath):
-        os.remove(db_analysis.filepath)
-    if db_analysis.annotated_image_path and os.path.exists(db_analysis.annotated_image_path):
-        os.remove(db_analysis.annotated_image_path)
+    # 删除文件 - 使用跨平台路径处理
+    if db_analysis.filepath:
+        file_path_local = get_full_file_path(db_analysis.filepath, "")
+        if os.path.exists(file_path_local):
+            os.remove(file_path_local)
+    if db_analysis.annotated_image_path:
+        annotated_path_local = get_full_file_path(db_analysis.annotated_image_path, "")
+        if os.path.exists(annotated_path_local):
+            os.remove(annotated_path_local)
 
     # 删除数据库记录
     db.delete(db_analysis)
@@ -623,25 +639,29 @@ async def clear_all_analyses(db: Session = Depends(get_db)):
     try:
         # 获取所有记录
         all_analyses = db.query(TubiAnalysis).all()
-        
-        # 删除所有关联文件
+
+        # 删除所有关联文件 - 使用跨平台路径处理
         for analysis in all_analyses:
-            if analysis.filepath and os.path.exists(analysis.filepath):
-                try:
-                    os.remove(analysis.filepath)
-                except Exception as e:
-                    print(f"删除文件失败 {analysis.filepath}: {e}")
-            
-            if analysis.annotated_image_path and os.path.exists(analysis.annotated_image_path):
-                try:
-                    os.remove(analysis.annotated_image_path)
-                except Exception as e:
-                    print(f"删除标注图失败 {analysis.annotated_image_path}: {e}")
-        
+            if analysis.filepath:
+                file_path_local = get_full_file_path(analysis.filepath, "")
+                if os.path.exists(file_path_local):
+                    try:
+                        os.remove(file_path_local)
+                    except Exception as e:
+                        print(f"删除文件失败 {file_path_local}: {e}")
+
+            if analysis.annotated_image_path:
+                annotated_path_local = get_full_file_path(analysis.annotated_image_path, "")
+                if os.path.exists(annotated_path_local):
+                    try:
+                        os.remove(annotated_path_local)
+                    except Exception as e:
+                        print(f"删除标注图失败 {annotated_path_local}: {e}")
+
         # 删除所有数据库记录
         db.query(TubiAnalysis).delete()
         db.commit()
-        
+
         return {
             "success": True,
             "message": f"已清空 {len(all_analyses)} 条分析记录",

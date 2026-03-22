@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal, engine, Base
+from app.core.path_utils import get_static_url
 from app.models.stele import Stele
 from app.models.character import Character
 from app.services.image_processor import ImageProcessor
@@ -213,12 +214,12 @@ def create_sample_characters(db: Session, stele_id: int):
         # 提取特征
         feature_vector = feature_extractor.extract(processed_img).tolist()
         
-        # 创建字符记录
+        # 创建字符记录 - 使用跨平台路径处理
         character = Character(
             stele_id=stele_id,
             character=char,
             unicode=unicode_val,
-            image_path=f"/static/characters/stele_{stele_id}/{safe_unicode}.png",
+            image_path=get_static_url(f"characters/stele_{stele_id}/{safe_unicode}.png"),
             feature_vector=feature_vector,
             stroke_count=len(char),
             bounding_box={"x": 0, "y": 0, "w": 128, "h": 128},

@@ -7,6 +7,7 @@ import uuid
 
 from app.core.database import get_db
 from app.core.config import get_settings
+from app.core.path_utils import get_static_url, get_full_file_path
 from app.services.image_processor import ImageProcessor
 from app.services.feature_extractor import SimpleFeatureExtractor
 from app.services.simple_matcher import SimpleMatcher
@@ -53,11 +54,11 @@ async def recognize_image(
         # 保存上传的图片
         upload_dir = settings.UPLOAD_DIR
         os.makedirs(upload_dir, exist_ok=True)
-        
+
         file_ext = os.path.splitext(file.filename)[1] or '.jpg'
         unique_filename = f"{uuid.uuid4()}{file_ext}"
         file_path = os.path.join(upload_dir, unique_filename)
-        
+
         with open(file_path, 'wb') as f:
             f.write(contents)
         
@@ -178,8 +179,10 @@ async def recognize_image(
             if match_result.get('best_match') and match_result['best_match'].get('stele'):
                 matched_stele_id = match_result['best_match']['stele']['id']
             
+            # 存储标准化路径到数据库（使用正斜杠）
+            from app.core.path_utils import normalize_path
             log = RecognitionLog(
-                uploaded_image_path=file_path,
+                uploaded_image_path=normalize_path(file_path),
                 recognized_character=final_character,
                 matched_stele_id=matched_stele_id,
                 similarity_score=final_confidence,
@@ -190,13 +193,13 @@ async def recognize_image(
             db.commit()
             print(f"识别记录已保存: {final_character}, 相似度: {final_confidence}")
         
-        # 组装返回结果
+        # 组装返回结果 - 使用跨平台路径处理
         result = {
             "success": True,
             "data": {
                 **match_result,
                 "processing_time_ms": processing_time,
-                "uploaded_image_url": f"/static/uploads/{unique_filename}",
+                "uploaded_image_url": get_static_url(f"uploads/{unique_filename}"),
                 "recognition_method": recognition_method,
                 "ocr_result": ocr_result,
                 "ai_result": ai_result
@@ -333,12 +336,15 @@ async def delete_recognition_history(
         if not log:
             raise HTTPException(status_code=404, detail="记录不存在")
         
-        # 删除关联的图片文件
-        if log.uploaded_image_path and os.path.exists(log.uploaded_image_path):
-            try:
-                os.remove(log.uploaded_image_path)
-            except Exception as e:
-                print(f"删除图片文件失败: {e}")
+        # 删除关联的图片文件 - 使用跨平台路径处理
+        if log.uploaded_image_path:
+            # 将存储的路径转换为本地路径
+            file_path = get_full_file_path(log.uploaded_image_path, settings.UPLOAD_DIR)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print(f"删除图片文件失败: {e}")
         
         db.delete(log)
         db.commit()

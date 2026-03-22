@@ -2,12 +2,14 @@
 像素级匹配器 - 直接比较图像像素相似度
 对于简单字形识别更准确
 """
+import os
 import numpy as np
 import cv2
 from typing import List, Dict, Tuple
 from sqlalchemy.orm import Session
 from app.models.character import Character
 from app.models.stele import Stele
+from app.core.path_utils import get_full_file_path
 
 
 class PixelMatcher:
@@ -37,13 +39,8 @@ class PixelMatcher:
             # 加载参考图像
             image_path = char.image_path
              
-            # 构建完整路径 - 数据库路径是 /static/...，对应 backend/data/static/...
-            if image_path.startswith('/static/'):
-                full_path = os.path.join(backend_dir, 'data', image_path.lstrip('/'))
-            elif image_path.startswith('data/'):
-                full_path = os.path.join(backend_dir, image_path)
-            else:
-                full_path = os.path.join(backend_dir, 'data', image_path)
+            # 使用跨平台路径处理工具构建完整路径
+            full_path = get_full_file_path(image_path, os.path.join(backend_dir, 'data'))
             
             print(f"尝试加载图像: {full_path}")
             
@@ -205,6 +202,3 @@ class PixelMatcher:
         similarity = pixel_match * 0.4 + iou * 0.5 + contour_sim * 0.1
         
         return similarity * 100  # 转换为百分比
-
-
-import os

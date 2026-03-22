@@ -1,11 +1,13 @@
 """
 增强版匹配器 - 使用多特征融合和关键点匹配
 """
+import os
 import numpy as np
 import cv2
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.character import Character
+from app.core.path_utils import get_full_file_path
 
 
 class EnhancedMatcher:
@@ -125,11 +127,10 @@ class EnhancedMatcher:
     def _load_character_image(self, image_path: str) -> Optional[np.ndarray]:
         """加载字形图像"""
         try:
-            # 构建完整路径
-            import os
+            # 使用跨平台路径处理工具构建完整路径
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            full_path = os.path.join(base_dir, 'data', image_path.lstrip('/'))
-            
+            full_path = get_full_file_path(image_path, os.path.join(base_dir, 'data'))
+
             img = cv2.imread(full_path)
             if img is None:
                 return None
