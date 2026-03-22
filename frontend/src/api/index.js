@@ -119,6 +119,11 @@ export const tubiApi = {
   getAllResults() {
     return api.get('/tubi/results')
   },
+  searchImages(keyword) {
+    return api.get('/tubi/search', {
+      params: { keyword }
+    })
+  },
   deleteImage(imageId) {
     return api.delete(`/tubi/image/${imageId}`)
   },

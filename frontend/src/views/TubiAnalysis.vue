@@ -11,8 +11,24 @@
           <div class="card-header">
             <span>作品库</span>
             <div class="header-actions">
-              <el-tag type="info" size="small">共 {{ historyList.length }} 幅作品</el-tag>
-              <el-button type="primary" size="small" @click="showUploadDialog" :icon="Plus">
+              <!-- 搜索框 -->
+              <el-input
+                v-model="searchKeyword"
+                placeholder="搜索画作..."
+                size="small"
+                clearable
+                @keyup.enter="handleSearch"
+                style="width: 180px; margin-right: 8px;"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+              </el-input>
+              <el-button type="primary" size="small" @click="handleSearch" :icon="Search">
+                搜索
+              </el-button>
+              <el-tag type="info" size="small" style="margin-left: 8px;">共 {{ historyList.length }} 幅作品</el-tag>
+              <el-button type="primary" size="small" @click="showUploadDialog" :icon="Plus" style="margin-left: 8px;">
                 添加画作
               </el-button>
             </div>
@@ -485,6 +501,78 @@
       </div>
     </el-dialog>
 
+    <!-- 搜索结果弹窗 -->
+    <el-dialog
+      v-model="searchDialogVisible"
+      :title="`搜索结果 - "${searchKeyword}"`"
+      width="85%"
+      :close-on-click-modal="true"
+      class="search-dialog-wide"
+    >
+      <div class="search-dialog-content">
+        <div v-if="searchLoading" class="search-loading">
+          <el-icon class="is-loading" size="32"><Loading /></el-icon>
+          <p>正在搜索...</p>
+        </div>
+        <div v-else-if="searchResults.length === 0" class="search-empty">
+          <el-icon size="64" color="#dcdfe6"><Search /></el-icon>
+          <p>未找到匹配「{{ searchKeyword }}」的画作</p>
+          <p class="search-tip">试试搜索：竹、梅、兰、菊、山、水、花鸟等关键词</p>
+        </div>
+        <el-table v-else :data="searchResults" style="width: 100%">
+          <el-table-column label="图片" width="100">
+            <template #default="scope">
+              <img v-if="scope.row.url" :src="scope.row.url" class="history-thumb" @click="previewHistoryImage(scope.row)" />
+              <div v-else class="history-thumb-placeholder">
+                <el-icon size="24"><Picture /></el-icon>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="title" label="标题" min-width="200">
+            <template #default="scope">
+              <div class="search-title">
+                {{ scope.row.title || '未命名' }}
+                <el-tag v-if="scope.row.title && scope.row.title.toLowerCase().includes(searchKeyword.toLowerCase())" type="success" size="small" effect="plain">标题匹配</el-tag>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="artist" label="作者" width="120">
+            <template #default="scope">
+              <div class="search-artist">
+                {{ scope.row.artist || '-' }}
+                <el-tag v-if="scope.row.artist && scope.row.artist.toLowerCase().includes(searchKeyword.toLowerCase())" type="warning" size="small" effect="plain">作者匹配</el-tag>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="题跋占比" width="100">
+            <template #default="scope">
+              <el-tag v-if="scope.row.inscriptionPercent !== undefined" type="danger">
+                {{ scope.row.inscriptionPercent }}%
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="分析时间" width="160">
+            <template #default="scope">
+              {{ formatDate(scope.row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button type="primary" size="small" @click="loadSearchResultItem(scope.row)">
+                  查看
+                </el-button>
+                <el-button type="warning" size="small" @click="editHistoryItem(scope.row)">
+                  编辑
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
+
     <!-- 图片预览对话框 -->
     <el-dialog
       v-model="previewDialogVisible"
@@ -876,7 +964,7 @@
 <script setup>
 import { ref, reactive, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import {
-  Plus, Picture, Loading, Upload, Delete, Document, Brush, FullScreen, InfoFilled, Clock, CircleCheck, Location, Edit, HomeFilled
+  Plus, Picture, Loading, Upload, Delete, Document, Brush, FullScreen, InfoFilled, Clock, CircleCheck, Location, Edit, HomeFilled, Search
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
@@ -1001,6 +1089,12 @@ let batchUploadCancelled = false
 // 历史记录相关
 const historyDialogVisible = ref(false)
 const historyList = ref([])
+
+// 搜索相关
+const searchKeyword = ref('')
+const searchDialogVisible = ref(false)
+const searchResults = ref([])
+const searchLoading = ref(false)
 const historyLoading = ref(false)
 const previewDialogVisible = ref(false)
 const previewImageUrl = ref('')
@@ -2383,6 +2477,49 @@ async function showHistoryDialog() {
   await loadHistory()
 }
 
+// 搜索画作
+async function handleSearch() {
+  if (!searchKeyword.value.trim()) {
+    ElMessage.warning('请输入搜索关键词')
+    return
+  }
+  searchDialogVisible.value = true
+  searchLoading.value = true
+  try {
+    const response = await tubiApi.searchImages(searchKeyword.value.trim())
+    if (response.success) {
+      // 转换字段名（下划线转驼峰）
+      searchResults.value = (response.data || []).map(item => ({
+        ...item,
+        inscriptionPercent: item.inscription_percent,
+        paintingPercent: item.painting_percent,
+        blankPercent: item.blank_percent,
+        annotatedImageUrl: item.annotated_image_url,
+        thumbnailUrl: item.thumbnail_url,
+        analysisNote: item.analysis_note
+      }))
+      if (searchResults.value.length === 0) {
+        ElMessage.info('未找到匹配的画作')
+      }
+    } else {
+      ElMessage.error(response.message || '搜索失败')
+      searchResults.value = []
+    }
+  } catch (error) {
+    console.error('搜索失败:', error)
+    ElMessage.error('搜索失败: ' + (error.message || '网络错误'))
+    searchResults.value = []
+  } finally {
+    searchLoading.value = false
+  }
+}
+
+// 加载搜索结果项
+async function loadSearchResultItem(row) {
+  searchDialogVisible.value = false
+  await loadHistoryItem(row)
+}
+
 // 加载历史记录
 async function loadHistory() {
   historyLoading.value = true
@@ -3110,6 +3247,62 @@ onUnmounted(() => {
 .history-dialog-content {
   max-height: 600px;
   overflow-y: auto;
+}
+
+/* 搜索结果对话框 */
+.search-dialog-wide {
+  max-width: 1400px;
+}
+
+.search-dialog-wide :deep(.el-dialog__body) {
+  padding: 20px;
+}
+
+.search-dialog-content {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.search-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #909399;
+}
+
+.search-loading p {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.search-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #909399;
+}
+
+.search-empty p {
+  margin-top: 16px;
+  font-size: 16px;
+}
+
+.search-empty .search-tip {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #c0c4cc;
+}
+
+.search-title,
+.search-artist {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .history-thumb {

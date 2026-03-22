@@ -607,6 +607,106 @@ async def get_all_results(
     }
 
 
+@router.get("/search")
+async def search_images(
+    keyword: str = None,
+    db: Session = Depends(get_db)
+):
+    """
+    搜索画作
+
+    - **keyword**: 搜索关键词（支持标题、作者、年代、备注模糊搜索）
+    """
+    try:
+        if not keyword:
+            return {
+                "success": False,
+                "message": "请输入搜索关键词",
+                "data": []
+            }
+
+        # 构建查询
+        query = db.query(TubiAnalysis)
+
+        # 关键词搜索（标题、作者、年代、备注）
+        keyword_filter = f"%{keyword}%"
+        query = query.filter(
+            (TubiAnalysis.title.ilike(keyword_filter)) |
+            (TubiAnalysis.artist.ilike(keyword_filter)) |
+            (TubiAnalysis.period.ilike(keyword_filter)) |
+            (TubiAnalysis.notes.ilike(keyword_filter)) |
+            (TubiAnalysis.analysis_note.ilike(keyword_filter))
+        )
+
+        # 按创建时间倒序
+        analyses = query.order_by(TubiAnalysis.created_at.desc()).all()
+
+        # 组装结果
+        results = []
+        for analysis in analyses:
+            # 从 filepath 提取文件名
+            if analysis.filepath:
+                actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
+                file_path_local = get_full_file_path(analysis.filepath, "")
+                file_exists = os.path.exists(file_path_local)
+            elif analysis.filename:
+                actual_filename = analysis.filename
+                file_exists = os.path.exists(os.path.join(UPLOAD_DIR, analysis.filename))
+            else:
+                actual_filename = None
+                file_exists = False
+
+            # 处理缩略图
+            thumbnail_url = None
+            if analysis.thumbnail_path:
+                thumbnail_path_local = get_full_file_path(analysis.thumbnail_path, "")
+                if os.path.exists(thumbnail_path_local):
+                    thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
+                    thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
+            elif actual_filename and file_exists:
+                thumbnail_url = get_static_url(f"uploads/{actual_filename}")
+
+            # 检查标注图片是否存在
+            annotated_exists = False
+            if analysis.annotated_image_path:
+                annotated_path_local = get_full_file_path(analysis.annotated_image_path, "")
+                annotated_exists = os.path.exists(annotated_path_local)
+
+            results.append({
+                "id": analysis.image_id,
+                "filename": analysis.filename,
+                "title": analysis.title,
+                "artist": analysis.artist,
+                "year": analysis.year,
+                "period": analysis.period,
+                "notes": analysis.notes,
+                "image_width": analysis.image_width,
+                "image_height": analysis.image_height,
+                "inscription_percent": analysis.inscription_percent,
+                "painting_percent": analysis.painting_percent,
+                "blank_percent": analysis.blank_percent,
+                "regions": analysis.regions,
+                "position_analysis": analysis.position_analysis,
+                "status": analysis.status,
+                "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
+                "url": get_static_url(f"uploads/{actual_filename}") if actual_filename and file_exists else None,
+                "thumbnail_url": thumbnail_url,
+                "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
+                "analysis_note": analysis.analysis_note
+            })
+
+        return {
+            "success": True,
+            "data": results,
+            "total": len(results)
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"搜索失败: {str(e)}")
+
+
 @router.delete("/image/{image_id}")
 async def delete_image(image_id: str, db: Session = Depends(get_db)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
