@@ -97,7 +97,14 @@
             <div class="original-image-section" v-if="result.uploaded_image_url">
               <h3>上传的原图</h3>
               <div class="original-image-wrapper">
-                <img :src="result.uploaded_image_url" alt="上传的原图" class="original-image">
+                <img
+                  :src="result.uploaded_image_url"
+                  alt="上传的原图"
+                  class="original-image"
+                  @click="openImagePreview(result.uploaded_image_url)"
+                  title="点击放大查看"
+                >
+                <div class="image-hint">点击放大查看</div>
               </div>
             </div>
 
@@ -281,6 +288,54 @@
     >
       <img :src="previewImageUrl" style="width: 100%;" />
     </el-dialog>
+
+    <!-- 原图放大查看对话框 -->
+    <el-dialog
+      v-model="imagePreviewVisible"
+      title="原图查看"
+      width="90%"
+      :close-on-click-modal="true"
+      class="image-preview-dialog"
+      destroy-on-close
+    >
+      <div class="image-preview-container">
+        <div class="image-preview-toolbar">
+          <el-button
+            type="primary"
+            size="small"
+            @click="zoomIn"
+            :disabled="previewScale >= 3"
+          >
+            放大
+          </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            @click="zoomOut"
+            :disabled="previewScale <= 0.5"
+          >
+            缩小
+          </el-button>
+          <el-button
+            type="default"
+            size="small"
+            @click="resetZoom"
+          >
+            重置
+          </el-button>
+          <span class="zoom-level">{{ Math.round(previewScale * 100) }}%</span>
+        </div>
+        <div class="image-preview-wrapper" ref="previewWrapper">
+          <img
+            :src="currentPreviewImage"
+            alt="原图预览"
+            class="preview-image-zoom"
+            :style="{ transform: `scale(${previewScale})` }"
+            @wheel.prevent="handleWheel"
+          />
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -321,6 +376,47 @@ const historyTotal = ref(0)
 // 图片预览
 const previewDialogVisible = ref(false)
 const previewImageUrl = ref('')
+
+// 原图放大预览
+const imagePreviewVisible = ref(false)
+const currentPreviewImage = ref('')
+const previewScale = ref(1)
+const previewWrapper = ref(null)
+
+// 打开原图预览
+const openImagePreview = (imageUrl) => {
+  currentPreviewImage.value = imageUrl
+  previewScale.value = 1
+  imagePreviewVisible.value = true
+}
+
+// 放大
+const zoomIn = () => {
+  if (previewScale.value < 3) {
+    previewScale.value += 0.25
+  }
+}
+
+// 缩小
+const zoomOut = () => {
+  if (previewScale.value > 0.5) {
+    previewScale.value -= 0.25
+  }
+}
+
+// 重置缩放
+const resetZoom = () => {
+  previewScale.value = 1
+}
+
+// 鼠标滚轮缩放
+const handleWheel = (e) => {
+  if (e.deltaY < 0) {
+    zoomIn()
+  } else {
+    zoomOut()
+  }
+}
 
 // 相似度颜色
 const similarityColor = computed(() => {
@@ -679,6 +775,65 @@ onMounted(() => {
   max-height: 200px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  cursor: zoom-in;
+  transition: transform 0.3s ease;
+}
+
+.original-image:hover {
+  transform: scale(1.02);
+}
+
+.image-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+}
+
+/* 原图放大预览对话框样式 */
+.image-preview-dialog :deep(.el-dialog__body) {
+  padding: 10px 20px 20px;
+}
+
+.image-preview-container {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+}
+
+.image-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e4e7ed;
+  margin-bottom: 10px;
+}
+
+.zoom-level {
+  margin-left: auto;
+  font-size: 14px;
+  color: #666;
+  font-weight: bold;
+}
+
+.image-preview-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 8px;
+  position: relative;
+}
+
+.preview-image-zoom {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+  cursor: grab;
 }
 
 .best-match h3 {
