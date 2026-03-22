@@ -3645,18 +3645,10 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
+/* 输入框样式 - 只保留圆角，不添加额外阴影 */
 .modern-form :deep(.el-input__wrapper) {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
-}
-
-.modern-form :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
-}
-
-.modern-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .modern-form :deep(.el-textarea__inner) {

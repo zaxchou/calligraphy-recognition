@@ -88,6 +88,8 @@ body {
 
 .el-input__inner {
   box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
 }
 </style>
 
