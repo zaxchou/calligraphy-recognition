@@ -11,6 +11,7 @@
             <span class="logo-main">书画</span>
             <span class="logo-sub">智能分析系统</span>
           </div>
+          <span class="version-tag">v1.0.0</span>
         </div>
         
         <nav class="main-nav">
@@ -137,6 +138,17 @@ body {
   font-size: 12px;
   color: #8b7355;
   letter-spacing: 0.05em;
+}
+
+.version-tag {
+  font-size: 10px;
+  color: #999;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 /* 导航菜单 */
