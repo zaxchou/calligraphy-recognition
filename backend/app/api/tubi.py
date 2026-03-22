@@ -20,8 +20,41 @@ router = APIRouter(prefix="/tubi", tags=["题跋分析"])
 
 UPLOAD_DIR = "data/uploads"
 ANNOTATED_DIR = "data/annotated"
+THUMBNAIL_DIR = "data/thumbnails"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(ANNOTATED_DIR, exist_ok=True)
+os.makedirs(THUMBNAIL_DIR, exist_ok=True)
+
+
+def create_thumbnail(image_path: str, thumbnail_path: str, max_size: int = 300):
+    """
+    生成缩略图
+    max_size: 缩略图最大宽高（默认300px）
+    """
+    try:
+        with Image.open(image_path) as img:
+            # 转换为RGB模式（处理RGBA等模式）
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+            
+            # 计算缩略图尺寸，保持宽高比
+            width, height = img.size
+            if width > height:
+                new_width = max_size
+                new_height = int(height * max_size / width)
+            else:
+                new_height = max_size
+                new_width = int(width * max_size / height)
+            
+            # 生成缩略图
+            img.thumbnail((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # 保存缩略图
+            img.save(thumbnail_path, 'JPEG', quality=85, optimize=True)
+            return thumbnail_path
+    except Exception as e:
+        print(f"生成缩略图失败: {e}")
+        return None
 
 
 class RegionData(BaseModel):
@@ -145,6 +178,8 @@ async def upload_image(
     ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
     filename = f"{file_id}{ext}"
     filepath = os.path.join(UPLOAD_DIR, filename)
+    thumbnail_filename = f"{file_id}_thumb.jpg"
+    thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
 
     content = await file.read()
     with open(filepath, "wb") as f:
@@ -156,11 +191,15 @@ async def upload_image(
     except Exception:
         width, height = 0, 0
 
+    # 生成缩略图
+    create_thumbnail(filepath, thumbnail_path)
+
     # 保存到数据库
     db_analysis = TubiAnalysis(
         image_id=file_id,
         filename=file.filename,
         filepath=filepath,
+        thumbnail_path=thumbnail_path,
         title=title,
         artist=artist,
         year=year,
@@ -182,6 +221,7 @@ async def upload_image(
             "title": title,
             "artist": artist,
             "url": f"/static/uploads/{filename}",
+            "thumbnail_url": f"/static/thumbnails/{thumbnail_filename}",
             "width": width,
             "height": height
         }
@@ -508,6 +548,15 @@ async def get_all_results(
             actual_filename = None
             file_exists = False
         
+        # 处理缩略图
+        thumbnail_url = None
+        if analysis.thumbnail_path and os.path.exists(analysis.thumbnail_path):
+            thumbnail_filename = os.path.basename(analysis.thumbnail_path)
+            thumbnail_url = f"/static/thumbnails/{thumbnail_filename}"
+        elif actual_filename and file_exists:
+            # 如果没有缩略图，使用原图（但这样会影响性能）
+            thumbnail_url = f"/static/uploads/{actual_filename}"
+        
         results.append({
             "id": analysis.image_id,
             "filename": analysis.filename,
@@ -525,6 +574,7 @@ async def get_all_results(
             "status": analysis.status,
             "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
             "url": f"/static/uploads/{actual_filename}" if actual_filename and file_exists else None,
+            "thumbnail_url": thumbnail_url,
             "annotated_image_url": f"/static/annotated/annotated_{analysis.image_id}.jpg" if analysis.annotated_image_path and os.path.exists(analysis.annotated_image_path) else None,
             "analysis_note": analysis.analysis_note
         })

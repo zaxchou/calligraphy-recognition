@@ -42,6 +42,9 @@ class TubiAnalysis(Base):
     # 标注图片路径
     annotated_image_path = Column(String(500), comment="标注后的图片路径")
     
+    # 缩略图路径
+    thumbnail_path = Column(String(500), comment="缩略图路径")
+    
     # 状态
     status = Column(String(20), default="uploaded", comment="状态：uploaded/analyzed/error")
     

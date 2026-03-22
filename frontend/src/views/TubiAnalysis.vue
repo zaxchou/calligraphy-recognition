@@ -26,7 +26,7 @@
             @click="loadHistoryItem(item)"
           >
             <div class="gallery-image-wrapper">
-              <img v-if="item.url" :src="item.url" class="gallery-image" loading="lazy" />
+              <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="gallery-image" loading="lazy" />
               <div v-else class="gallery-image-placeholder">
                 <el-icon size="32"><Picture /></el-icon>
               </div>
@@ -312,7 +312,7 @@
               class="history-item"
               @click="loadHistoryItem(item)"
             >
-              <img v-if="item.url" :src="item.url" class="history-item-thumb" />
+              <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="history-item-thumb" />
               <div v-else class="history-item-thumb-placeholder">
                 <el-icon size="20"><Picture /></el-icon>
               </div>
