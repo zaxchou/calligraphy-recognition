@@ -194,6 +194,9 @@
                 <el-button type="primary" size="small" @click="showUploadDialog">
                   <el-icon><Plus /></el-icon> 添加画作
                 </el-button>
+                <el-button type="info" size="small" @click="backToHome" :icon="HomeFilled">
+                  返回首页
+                </el-button>
               </div>
             </div>
           </template>
@@ -207,9 +210,11 @@
           <div v-else class="image-display">
             <!-- 画作标题信息 -->
             <div class="image-info-header" v-if="currentImage.title || currentImage.artist">
-              <h3>{{ currentImage.title || '未命名' }}</h3>
-              <p v-if="currentImage.artist">作者: {{ currentImage.artist }}</p>
-              <p v-if="currentImage.year">{{ currentImage.year }}年 {{ currentImage.period ? `(时年${currentImage.period})` : '' }}</p>
+              <div class="header-left">
+                <h3>{{ currentImage.title || '未命名' }}</h3>
+                <p v-if="currentImage.artist">作者: {{ currentImage.artist }}</p>
+                <p v-if="currentImage.year">{{ currentImage.year }}年 {{ currentImage.period ? `(时年${currentImage.period})` : '' }}</p>
+              </div>
             </div>
 
             <!-- AI分析说明 -->
@@ -282,6 +287,48 @@
                 开始AI分析
               </el-button>
             </div>
+          </div>
+        </el-card>
+
+        <!-- 作品库（移到左侧）-->
+        <el-card shadow="hover" class="history-card">
+          <template #header>
+            <div class="card-header">
+              <span>作品库</span>
+              <el-button type="primary" size="small" @click="showHistoryDialog" :icon="Clock">
+                查看全部
+              </el-button>
+            </div>
+          </template>
+          <div class="history-list" v-if="historyList.length > 0">
+            <div
+              v-for="(item, index) in historyList.slice(0, 5)"
+              :key="item.id"
+              class="history-item"
+              @click="loadHistoryItem(item)"
+            >
+              <img v-if="item.url" :src="item.url" class="history-item-thumb" />
+              <div v-else class="history-item-thumb-placeholder">
+                <el-icon size="20"><Picture /></el-icon>
+              </div>
+              <div class="history-item-info">
+                <div class="history-item-title">{{ item.title || '未命名' }}</div>
+                <div class="history-item-meta">
+                  <span v-if="item.artist">{{ item.artist }}</span>
+                  <span v-if="item.year">{{ item.year }}年</span>
+                </div>
+                <div class="history-item-stats" v-if="item.inscriptionPercent !== undefined">
+                  <el-tag size="small" type="primary">题跋 {{ item.inscriptionPercent?.toFixed(1) }}%</el-tag>
+                  <el-tag size="small" type="success">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
+                </div>
+              </div>
+            </div>
+            <div v-if="historyList.length > 5" class="history-more" @click="showHistoryDialog">
+              <el-link type="primary">查看全部 {{ historyList.length }} 条记录</el-link>
+            </div>
+          </div>
+          <div class="history-summary empty" v-else>
+            <p>暂无历史记录</p>
           </div>
         </el-card>
       </div>
@@ -368,48 +415,6 @@
                 {{ positionAnalysis.layout_description }}
               </div>
             </div>
-          </div>
-        </el-card>
-
-        <!-- 作品库（右3）-->
-        <el-card shadow="hover" class="history-card">
-          <template #header>
-            <div class="card-header">
-              <span>作品库</span>
-              <el-button type="primary" size="small" @click="showHistoryDialog" :icon="Clock">
-                查看全部
-              </el-button>
-            </div>
-          </template>
-          <div class="history-list" v-if="historyList.length > 0">
-            <div 
-              v-for="(item, index) in historyList.slice(0, 5)" 
-              :key="item.id" 
-              class="history-item"
-              @click="loadHistoryItem(item)"
-            >
-              <img v-if="item.url" :src="item.url" class="history-item-thumb" />
-              <div v-else class="history-item-thumb-placeholder">
-                <el-icon size="20"><Picture /></el-icon>
-              </div>
-              <div class="history-item-info">
-                <div class="history-item-title">{{ item.title || '未命名' }}</div>
-                <div class="history-item-meta">
-                  <span v-if="item.artist">{{ item.artist }}</span>
-                  <span v-if="item.year">{{ item.year }}年</span>
-                </div>
-                <div class="history-item-stats" v-if="item.inscriptionPercent !== undefined">
-                  <el-tag size="small" type="primary">题跋 {{ item.inscriptionPercent?.toFixed(1) }}%</el-tag>
-                  <el-tag size="small" type="success">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
-                </div>
-              </div>
-            </div>
-            <div v-if="historyList.length > 5" class="history-more" @click="showHistoryDialog">
-              <el-link type="primary">查看全部 {{ historyList.length }} 条记录</el-link>
-            </div>
-          </div>
-          <div class="history-summary empty" v-else>
-            <p>暂无历史记录</p>
           </div>
         </el-card>
       </div>
@@ -805,7 +810,7 @@
 <script setup>
 import { ref, reactive, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import {
-  Plus, Picture, Loading, Upload, Delete, Document, Brush, FullScreen, InfoFilled, Clock, CircleCheck, Location, Edit
+  Plus, Picture, Loading, Upload, Delete, Document, Brush, FullScreen, InfoFilled, Clock, CircleCheck, Location, Edit, HomeFilled
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
@@ -1084,6 +1089,37 @@ function showUploadDialog() {
   uploadForm.artist = '李鱓'
   uploadForm.year = ARTISTS['李鱓'].defaultYear
   uploadForm.age = calculateAge(ARTISTS['李鱓'].defaultYear, '李鱓')
+}
+
+// 返回首页
+function backToHome() {
+  currentImage.value = null
+  analyzeStatus.value = 'idle'
+  analysisNote.value = ''
+  positionAnalysis.value = null
+  areaStats.value = {
+    inscriptionPercent: 0,
+    paintingPercent: 0,
+    blankPercent: 0
+  }
+  // 清空图表
+  if (pieChart) {
+    pieChart.dispose()
+    pieChart = null
+  }
+  if (heatmapChart) {
+    heatmapChart.dispose()
+    heatmapChart = null
+  }
+  if (trendChart) {
+    trendChart.dispose()
+    trendChart = null
+  }
+  
+  // 返回首页后重新更新趋势图数据
+  nextTick(() => {
+    updateTrendChart()
+  })
 }
 
 // 处理文件选择
@@ -2248,6 +2284,10 @@ async function loadHistoryItem(row) {
       // 选中该图片
       selectImage(historyImage)
       historyDialogVisible.value = false
+      
+      // 滚动到页面顶部
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      
       ElMessage.success('已加载历史记录')
     } else {
       ElMessage.error(response.message || '加载失败')
@@ -2766,6 +2806,9 @@ onUnmounted(() => {
 /* 左侧面板 */
 .left-panel {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 /* 右侧面板 */
@@ -3052,6 +3095,13 @@ onUnmounted(() => {
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.image-info-header .header-left {
+  flex: 1;
 }
 
 .image-info-header h3 {
@@ -4834,6 +4884,62 @@ onUnmounted(() => {
     font-size: 20px;
   }
 
+  /* 名家对比柱状图响应式 */
+  .comparison-bars-container {
+    padding: 20px 16px;
+  }
+
+  .comparison-header {
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 0;
+  }
+
+  .artist-header {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .artist-header:last-child {
+    flex-direction: row-reverse;
+  }
+
+  .vs-divider {
+    font-size: 18px;
+    order: -1;
+  }
+
+  .comparison-bars {
+    gap: 16px;
+  }
+
+  .comparison-row {
+    gap: 12px;
+  }
+
+  .bar-track-full {
+    height: 28px;
+  }
+
+  .bar-value-text {
+    font-size: 12px;
+  }
+
+  .bar-label-center {
+    width: 80px;
+    font-size: 12px;
+  }
+
+  .layout-value {
+    font-size: 13px;
+  }
+
+  .layout-value.left-layout,
+  .layout-value.right-layout {
+    padding: 0 10px;
+  }
+
   .pie-chart {
     width: 160px;
     height: 160px;
@@ -4944,6 +5050,58 @@ onUnmounted(() => {
 
   .compare-img {
     max-height: 180px;
+  }
+
+  /* 小屏下的对比条 */
+  .comparison-bars-container {
+    padding: 16px 12px;
+  }
+
+  .comparison-header {
+    margin-bottom: 20px;
+  }
+
+  .artist-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .artist-name-section h3 {
+    font-size: 16px;
+  }
+
+  .artist-name-section .years {
+    font-size: 11px;
+  }
+
+  .comparison-bars {
+    gap: 12px;
+  }
+
+  .comparison-row {
+    gap: 8px;
+  }
+
+  .bar-track-full {
+    height: 24px;
+  }
+
+  .bar-progress.li-bar {
+    padding-left: 8px;
+  }
+
+  .bar-progress.zheng-bar {
+    padding-right: 8px;
+  }
+
+  .bar-value-text {
+    font-size: 11px;
+  }
+
+  .bar-label-center {
+    width: 60px;
+    font-size: 11px;
   }
 }
 

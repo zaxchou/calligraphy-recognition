@@ -22,8 +22,9 @@ class SiliconFlowRecognitionService:
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or SILICONFLOW_API_KEY
+        # 允许空 Key，只是不启用 AI 功能
         if not self.api_key:
-            raise ValueError("SiliconFlow API Key 未配置")
+            print("警告: SiliconFlow API Key 未配置，AI 识别功能将不可用")
     
     def recognize_character(
         self, 
