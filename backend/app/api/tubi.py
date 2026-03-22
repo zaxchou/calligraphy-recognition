@@ -520,6 +520,7 @@ async def get_all_results(
             "inscription_percent": analysis.inscription_percent,
             "painting_percent": analysis.painting_percent,
             "blank_percent": analysis.blank_percent,
+            "regions": analysis.regions,
             "position_analysis": analysis.position_analysis,
             "status": analysis.status,
             "created_at": analysis.created_at.isoformat() if analysis.created_at else None,

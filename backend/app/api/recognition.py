@@ -171,18 +171,24 @@ async def recognize_image(
         # 计算处理时间
         processing_time = int((time.time() - start_time) * 1000)
         
-        # 保存识别记录
-        if match_result['success']:
+        # 保存识别记录（只要有识别结果就保存，不管特征匹配是否成功）
+        if final_character:
+            # 获取碑帖ID
+            matched_stele_id = None
+            if match_result.get('best_match') and match_result['best_match'].get('stele'):
+                matched_stele_id = match_result['best_match']['stele']['id']
+            
             log = RecognitionLog(
                 uploaded_image_path=file_path,
-                recognized_character=match_result.get('recognized_character'),
-                matched_stele_id=match_result['best_match']['stele']['id'] if match_result['best_match'].get('stele') else None,
-                similarity_score=match_result.get('similarity'),
-                top_matches=match_result.get('top_matches'),
+                recognized_character=final_character,
+                matched_stele_id=matched_stele_id,
+                similarity_score=final_confidence,
+                top_matches=match_result.get('top_matches', []),
                 processing_time_ms=processing_time
             )
             db.add(log)
             db.commit()
+            print(f"识别记录已保存: {final_character}, 相似度: {final_confidence}")
         
         # 组装返回结果
         result = {

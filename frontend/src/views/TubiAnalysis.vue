@@ -18,15 +18,15 @@
             </div>
           </div>
         </template>
-        <div class="gallery-grid" v-if="historyList.length > 0">
-          <div 
-            v-for="item in historyList" 
-            :key="item.id" 
+        <div class="gallery-grid" v-if="displayedHistoryList.length > 0">
+          <div
+            v-for="item in displayedHistoryList"
+            :key="item.id"
             class="gallery-item"
             @click="loadHistoryItem(item)"
           >
             <div class="gallery-image-wrapper">
-              <img v-if="item.url" :src="item.url" class="gallery-image" />
+              <img v-if="item.url" :src="item.url" class="gallery-image" loading="lazy" />
               <div v-else class="gallery-image-placeholder">
                 <el-icon size="32"><Picture /></el-icon>
               </div>
@@ -50,6 +50,11 @@
               </div>
             </div>
           </div>
+        </div>
+        <div v-if="historyList.length > displayLimit" class="gallery-load-more">
+          <el-button type="primary" link @click="loadMoreGallery">
+            加载更多 ({{ historyList.length - displayLimit }} 剩余)
+          </el-button>
         </div>
         <div class="gallery-empty" v-else>
           <el-icon size="64" color="#dcdfe6"><Picture /></el-icon>
@@ -941,6 +946,17 @@ const historyList = ref([])
 const historyLoading = ref(false)
 const previewDialogVisible = ref(false)
 const previewImageUrl = ref('')
+
+// 作品库分页显示
+const displayLimit = ref(12)
+const displayedHistoryList = computed(() => {
+  return historyList.value.slice(0, displayLimit.value)
+})
+
+// 加载更多作品
+function loadMoreGallery() {
+  displayLimit.value += 12
+}
 const editDialogVisible = ref(false)
 const editForm = reactive({
   id: '',
@@ -4119,6 +4135,13 @@ onUnmounted(() => {
 .gallery-stats {
   display: flex;
   gap: 6px;
+}
+
+.gallery-load-more {
+  text-align: center;
+  padding: 20px 0;
+  border-top: 1px solid #e4e7ed;
+  margin-top: 10px;
 }
 
 .gallery-empty {
