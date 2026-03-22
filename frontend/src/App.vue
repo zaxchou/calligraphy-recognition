@@ -11,7 +11,7 @@
             <span class="logo-main">书画</span>
             <span class="logo-sub">智能分析系统</span>
           </div>
-          <span class="version-tag">v1.0.0</span>
+          <span class="version-tag">v1.0.1</span>
         </div>
         
         <nav class="main-nav">
