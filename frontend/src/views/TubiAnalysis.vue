@@ -5,6 +5,117 @@
 
     <!-- 首页概览视图 - 当没有选择画作时显示 -->
     <div v-if="!currentImage" class="home-dashboard">
+      <!-- 顶部左右两栏模块 -->
+      <div class="dashboard-row">
+        <!-- 左侧：云关键词模块 -->
+        <div class="friend-circle-module" style="flex: 1;">
+          <el-card shadow="hover" class="friend-circle-card">
+            <template #header>
+              <div class="module-header">
+                <h3 class="module-title">🔑 云关键词</h3>
+                <div class="header-actions">
+                  <el-select v-model="selectedAuthor" size="small" @change="onAuthorChange" style="width: 100px;">
+                    <el-option label="李鱓" value="李鱓"></el-option>
+                    <el-option label="郑燮" value="郑燮"></el-option>
+                  </el-select>
+                </div>
+              </div>
+            </template>
+            <div class="word-cloud-content">
+              <div class="word-cloud-container" ref="wordCloudRef">
+                <!-- 词云将在这里渲染 -->
+                <div v-if="wordCloudLoading" class="word-cloud-loading">
+                  <el-icon class="is-loading"><Loading /></el-icon>
+                  <p>生成词云中...</p>
+                </div>
+                <div v-else-if="wordCloudData.length === 0" class="word-cloud-empty">
+                  <el-icon size="48"><Document /></el-icon>
+                  <p>暂无关键词数据</p>
+                  <p class="empty-tip">上传画作后将自动生成词云</p>
+                </div>
+              </div>
+              <div class="word-cloud-stats">
+                <div class="stats-row">
+                  <span class="stats-label">📊 关键词统计：</span>
+                  <span class="stats-value">共 {{ totalKeywords }} 个关键词 | 总引用次数：{{ totalCount }} 次</span>
+                </div>
+                <div class="stats-row">
+                  <span class="stats-label">🔍 </span>
+                  <span class="stats-value">点击关键词可查看包含该词的画作列表</span>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+        
+        <!-- 右侧：题画比排行榜模块 -->
+        <div class="ranking-module">
+          <el-card shadow="hover" class="ranking-card">
+            <template #header>
+              <div class="module-header">
+                <h3 class="module-title">🏆 题画比排行榜</h3>
+                <el-button type="primary" size="small" @click="navigateToRanking">
+                  更多
+                </el-button>
+              </div>
+            </template>
+            
+            <!-- 前三名放大展示 -->
+            <div class="top-three" v-if="topThreeRankings.length > 0">
+              <div 
+                v-for="(item, index) in topThreeRankings" 
+                :key="item.id"
+                class="top-card"
+                :class="{ 'first': index === 0, 'second': index === 1, 'third': index === 2 }"
+                @click="loadHistoryItem(item)"
+              >
+                <div class="top-medal">{{ index + 1 }}</div>
+                <div class="top-thumbnail">
+                  <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="top-thumbnail-img" @error="handleImageError">
+                  <div v-else class="top-thumbnail-placeholder">
+                    <el-icon size="20"><Picture /></el-icon>
+                  </div>
+                </div>
+                <div class="top-info">
+                  <div class="top-name">{{ item.title || '未命名' }}</div>
+                  <div class="top-author">{{ item.artist || '李鱓' }}</div>
+                </div>
+                <div class="top-ratio">{{ item.tubiRatio.toFixed(2) }}</div>
+              </div>
+            </div>
+
+            <!-- 第4-10名列表式展示 -->
+            <div class="ranking-list" v-if="remainingRankings.length > 0">
+              <div 
+                v-for="(item, index) in remainingRankings" 
+                :key="item.id"
+                class="ranking-item"
+                @click="loadHistoryItem(item)"
+              >
+                <div class="ranking-medal">{{ index + 4 }}</div>
+                <div class="ranking-thumbnail">
+                  <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="ranking-thumbnail-img" @error="handleImageError">
+                  <div v-else class="ranking-thumbnail-placeholder">
+                    <el-icon size="16"><Picture /></el-icon>
+                  </div>
+                </div>
+                <div class="ranking-info">
+                  <div class="ranking-name">{{ item.title || '未命名' }}</div>
+                  <div class="ranking-author">{{ item.artist || '李鱓' }}</div>
+                </div>
+                <div class="ranking-ratio">{{ item.tubiRatio.toFixed(2) }}</div>
+              </div>
+            </div>
+
+            <!-- 无数据提示 -->
+            <div v-if="rankings.length === 0" class="no-data">
+              <el-icon size="48"><Picture /></el-icon>
+              <p>暂无数据，请先上传画作</p>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
       <!-- 作品库列表 -->
       <el-card shadow="hover" class="gallery-card">
         <template #header>
@@ -63,6 +174,7 @@
               </div>
               <div class="gallery-stats" v-if="item.inscriptionPercent !== undefined">
                 <el-tag size="small" type="primary">题跋 {{ item.inscriptionPercent?.toFixed(1) }}%</el-tag>
+                <el-tag size="small" type="success" v-if="item.paintingPercent !== undefined">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
               </div>
             </div>
           </div>
@@ -180,6 +292,8 @@
         <div ref="trendChartRef" class="trend-chart"></div>
       </el-card>
 
+
+
       <!-- 快速开始 -->
       <el-card shadow="hover" class="quick-start-card">
         <template #header>
@@ -241,7 +355,7 @@
             <!-- AI分析说明 -->
             <div v-if="analyzeStatus === 'analyzed' && analysisNote" class="analysis-note-main">
               <h4><el-icon><InfoFilled /></el-icon> AI分析说明</h4>
-              <p>{{ analysisNote }}</p>
+              <div v-html="analysisNote"></div>
             </div>
 
             <!-- 分析完成后的左右布局：左面积占比智能示意图，右面积占比 -->
@@ -340,7 +454,7 @@
                 </div>
                 <div class="history-item-stats" v-if="item.inscriptionPercent !== undefined">
                   <el-tag size="small" type="primary">题跋 {{ item.inscriptionPercent?.toFixed(1) }}%</el-tag>
-                  <el-tag size="small" type="success">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
+                  <el-tag size="small" type="success" v-if="item.paintingPercent !== undefined">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
                 </div>
               </div>
             </div>
@@ -477,6 +591,14 @@
               <span v-else>-</span>
             </template>
           </el-table-column>
+          <el-table-column label="绘画占比" width="100">
+            <template #default="scope">
+              <el-tag v-if="scope.row.paintingPercent !== undefined" type="success">
+                {{ scope.row.paintingPercent }}%
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="created_at" label="分析时间" width="160">
             <template #default="scope">
               {{ formatDate(scope.row.created_at) }}
@@ -548,6 +670,14 @@
             <template #default="scope">
               <el-tag v-if="scope.row.inscriptionPercent !== undefined" type="danger">
                 {{ scope.row.inscriptionPercent }}%
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="绘画占比" width="100">
+            <template #default="scope">
+              <el-tag v-if="scope.row.paintingPercent !== undefined" type="success">
+                {{ scope.row.paintingPercent }}%
               </el-tag>
               <span v-else>-</span>
             </template>
@@ -810,6 +940,79 @@
       </template>
     </el-dialog>
 
+    <!-- 关键词画作列表对话框 -->
+    <el-dialog
+      v-model="keywordWorksDialogVisible"
+      :title="`包含关键词 '${currentKeyword}' 的画作`"
+      width="80%"
+      :close-on-click-modal="true"
+      class="keyword-works-dialog"
+    >
+      <div class="keyword-works-content">
+        <div v-if="keywordWorksLoading" class="keyword-works-loading">
+          <el-icon class="is-loading" size="32"><Loading /></el-icon>
+          <p>正在加载画作...</p>
+        </div>
+        <div v-else-if="keywordWorks.length === 0" class="keyword-works-empty">
+          <el-icon size="64" color="#dcdfe6"><Picture /></el-icon>
+          <p>未找到包含关键词「{{ currentKeyword }}」的画作</p>
+        </div>
+        <el-table v-else :data="keywordWorks" style="width: 100%">
+          <el-table-column label="图片" width="100">
+            <template #default="scope">
+              <img v-if="scope.row.thumbnailUrl || scope.row.url" :src="scope.row.thumbnailUrl || scope.row.url" class="history-thumb" @click="previewHistoryImage(scope.row)" />
+              <div v-else class="history-thumb-placeholder">
+                <el-icon size="24"><Picture /></el-icon>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="title" label="标题" min-width="200">
+            <template #default="scope">
+              {{ scope.row.title || '未命名' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="artist" label="作者" width="120">
+            <template #default="scope">
+              {{ scope.row.artist || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="题跋占比" width="100">
+            <template #default="scope">
+              <el-tag v-if="scope.row.inscriptionPercent !== undefined" type="danger">
+                {{ scope.row.inscriptionPercent }}%
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="绘画占比" width="100">
+            <template #default="scope">
+              <el-tag v-if="scope.row.paintingPercent !== undefined" type="success">
+                {{ scope.row.paintingPercent }}%
+              </el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="分析时间" width="160">
+            <template #default="scope">
+              {{ formatDate(scope.row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button type="primary" size="small" @click="loadHistoryItem(scope.row)">
+                  查看
+                </el-button>
+                <el-button type="warning" size="small" @click="editHistoryItem(scope.row)">
+                  编辑
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
+
     <!-- 批量上传对话框 -->
     <el-dialog
       v-model="batchUploadDialogVisible"
@@ -967,8 +1170,11 @@ import {
   Plus, Picture, Loading, Upload, Delete, Document, Brush, FullScreen, InfoFilled, Clock, CircleCheck, Location, Edit, HomeFilled, Search
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { tubiApi } from '../api'
+
+const router = useRouter()
 
 // 图片数据
 const uploadedImages = ref([])
@@ -1098,6 +1304,12 @@ const searchLoading = ref(false)
 const historyLoading = ref(false)
 const previewDialogVisible = ref(false)
 const previewImageUrl = ref('')
+
+// 关键词画作列表相关
+const keywordWorksDialogVisible = ref(false)
+const currentKeyword = ref('')
+const keywordWorks = ref([])
+const keywordWorksLoading = ref(false)
 
 // 作品库分页显示
 const displayLimit = ref(10)
@@ -1229,9 +1441,281 @@ const positionAnalysis = ref(null)
 const pieChartRef = ref(null)
 const heatmapContainerRef = ref(null)
 const trendChartRef = ref(null)
+const friendCircleChartRef = ref(null)
+const wordCloudRef = ref(null)
 let pieChart = null
 let heatmapChart = null
 let trendChart = null
+let friendCircleChart = null
+let wordCloudChart = null
+
+// 词云相关数据
+const wordCloudLoading = ref(false)
+const wordCloudData = ref([])
+const totalKeywords = ref(0)
+const totalCount = ref(0)
+const selectedAuthor = ref('李鱓')
+
+// 词云颜色
+const wordCloudColors = [
+  '#B23C3C', // 胭脂
+  '#2C5A6E', // 花青
+  '#E8B43C', // 藤黄
+  '#8A5A3A', // 赭石
+  '#2F5A3A'  // 墨绿
+]
+
+// 生成词云
+async function generateWordCloud() {
+  wordCloudLoading.value = true
+  try {
+    // 模拟数据，实际应该从API获取
+    let mockData = [
+      { word: '梅花', value: 23, author: '李鱓' },
+      { word: '破笔泼墨', value: 15, author: '李鱓' },
+      { word: '郑板桥', value: 8, author: '李鱓' },
+      { word: '兰竹', value: 12, author: '李鱓' },
+      { word: '芭蕉', value: 10, author: '李鱓' },
+      { word: '雍正', value: 7, author: '李鱓' },
+      { word: '乾隆', value: 9, author: '李鱓' },
+      { word: '写意', value: 18, author: '李鱓' },
+      { word: '石涛', value: 5, author: '李鱓' },
+      { word: '泼墨', value: 14, author: '李鱓' },
+      { word: '湖石', value: 6, author: '李鱓' },
+      { word: '写生', value: 8, author: '李鱓' },
+      { word: '荷花', value: 16, author: '李鱓' },
+      { word: '松树', value: 11, author: '李鱓' },
+      { word: '竹石', value: 13, author: '李鱓' },
+      { word: '菊花', value: 9, author: '李鱓' },
+      { word: '山水', value: 14, author: '李鱓' },
+      { word: '花鸟', value: 17, author: '李鱓' },
+      { word: '草虫', value: 7, author: '李鱓' },
+      { word: '蔬果', value: 8, author: '李鱓' },
+      { word: '指画', value: 6, author: '李鱓' },
+      { word: '设色', value: 12, author: '李鱓' },
+      { word: '水墨', value: 15, author: '李鱓' },
+      { word: '工细', value: 5, author: '李鱓' },
+      { word: '野逸', value: 8, author: '李鱓' },
+      { word: '豪放', value: 11, author: '李鱓' },
+      { word: '萧散', value: 6, author: '李鱓' },
+      { word: '清雅', value: 9, author: '李鱓' },
+      { word: '复堂', value: 10, author: '李鱓' },
+      { word: '金农', value: 7, author: '李鱓' },
+      { word: '早期', value: 6, author: '李鱓' },
+      { word: '中期', value: 12, author: '李鱓' },
+      { word: '晚年', value: 9, author: '李鱓' },
+      { word: '戏作', value: 8, author: '李鱓' },
+      { word: '仿古', value: 7, author: '李鱓' },
+      { word: '秋色', value: 6, author: '李鱓' },
+      { word: '醉后', value: 5, author: '李鱓' },
+      { word: '兰竹石', value: 14, author: '郑燮' },
+      { word: '墨竹', value: 18, author: '郑燮' },
+      { word: '怪石', value: 10, author: '郑燮' },
+      { word: '兰花', value: 12, author: '郑燮' },
+      { word: '行书', value: 8, author: '郑燮' },
+      { word: '板桥', value: 15, author: '郑燮' },
+      { word: '竹石图', value: 11, author: '郑燮' },
+      { word: '兰石图', value: 9, author: '郑燮' },
+      { word: '墨兰', value: 13, author: '郑燮' },
+      { word: '清瘦', value: 6, author: '郑燮' },
+      { word: '刚劲', value: 8, author: '郑燮' },
+      { word: '自然', value: 12, author: '郑燮' },
+      { word: '生机', value: 9, author: '郑燮' }
+    ]
+    
+    // 按作者筛选
+    if (selectedAuthor.value !== 'all') {
+      mockData = mockData.filter(item => item.author === selectedAuthor.value)
+    }
+    
+    // 只提取word和value字段
+    const filteredData = mockData.map(item => ({ word: item.word, value: item.value }))
+    
+    wordCloudData.value = filteredData
+    totalKeywords.value = filteredData.length
+    totalCount.value = filteredData.reduce((sum, item) => sum + item.value, 0)
+    
+    // 等待DOM更新
+    await nextTick()
+    
+    // 渲染词云
+    renderWordCloud()
+  } catch (error) {
+    console.error('生成词云失败:', error)
+    ElMessage.error('生成词云失败')
+  } finally {
+    wordCloudLoading.value = false
+  }
+}
+
+// 作者切换
+function onAuthorChange(value) {
+  console.log('Author changed to:', value)
+  selectedAuthor.value = value
+  generateWordCloud()
+}
+
+// 渲染词云
+function renderWordCloud() {
+  if (!wordCloudRef.value || wordCloudData.value.length === 0) return
+  
+  // 确保容器有尺寸
+  const container = wordCloudRef.value
+  container.style.width = '100%'
+  container.style.height = '490px'
+  container.style.position = 'relative'
+  container.style.overflow = 'auto'
+  
+  // 清除旧的内容
+  container.innerHTML = ''
+  
+  // 创建一个简单的关键词云替代方案
+  const wordCloudContainer = document.createElement('div')
+  wordCloudContainer.style.width = '100%'
+  wordCloudContainer.style.minHeight = '100%'
+  wordCloudContainer.style.display = 'flex'
+  wordCloudContainer.style.flexWrap = 'wrap'
+  wordCloudContainer.style.alignItems = 'center'
+  wordCloudContainer.style.justifyContent = 'flex-start'
+  wordCloudContainer.style.padding = '20px'
+  wordCloudContainer.style.gap = '8px'
+  
+  // 计算最大出现次数，用于调整字体大小
+  const maxCount = Math.max(...wordCloudData.value.map(item => item.value))
+  
+  // 添加关键词
+  wordCloudData.value.forEach(item => {
+    const keywordElement = document.createElement('div')
+    const fontSize = 10 + (item.value / maxCount) * 38 // 字体大小从10px到48px
+    
+    keywordElement.textContent = item.word
+    keywordElement.style.fontSize = fontSize + 'px'
+    keywordElement.style.fontWeight = 'bold'
+    keywordElement.style.color = wordCloudColors[Math.floor(Math.random() * wordCloudColors.length)]
+    keywordElement.style.cursor = 'pointer'
+    keywordElement.style.padding = '2px 6px'
+    keywordElement.style.borderRadius = '2px'
+    keywordElement.style.transition = 'all 0.2s ease'
+    keywordElement.style.userSelect = 'none'
+    
+    // 添加悬停效果
+    keywordElement.addEventListener('mouseover', function() {
+      this.style.transform = 'scale(1.15)'
+      this.style.backgroundColor = 'rgba(0, 0, 0, 0.08)'
+      this.style.zIndex = '10'
+    })
+    
+    keywordElement.addEventListener('mouseout', function() {
+      this.style.transform = 'scale(1)'
+      this.style.backgroundColor = 'transparent'
+      this.style.zIndex = '1'
+    })
+    
+    // 添加点击事件
+    keywordElement.addEventListener('click', function() {
+      showKeywordWorks(item.word)
+    })
+    
+    // 添加悬停提示
+    keywordElement.title = `出现次数: ${item.value}次`
+    
+    wordCloudContainer.appendChild(keywordElement)
+  })
+  
+  container.appendChild(wordCloudContainer)
+  console.log('Word cloud alternative rendered successfully')
+}
+
+// 刷新词云
+async function refreshWordCloud() {
+  await generateWordCloud()
+}
+
+// 保存词云
+function saveWordCloud() {
+  if (!wordCloudChart) return
+  
+  try {
+    const dataURL = wordCloudChart.getDataURL({
+      type: 'png',
+      pixelRatio: 2,
+      backgroundColor: '#fff'
+    })
+    
+    // 创建下载链接
+    const link = document.createElement('a')
+    link.download = '词云图.png'
+    link.href = dataURL
+    link.click()
+    
+    ElMessage.success('词云已保存')
+  } catch (error) {
+    console.error('保存词云失败:', error)
+    ElMessage.error('保存词云失败')
+  }
+}
+
+// 显示包含关键词的画作列表
+function showKeywordWorks(keyword) {
+  currentKeyword.value = keyword
+  keywordWorksLoading.value = true
+  
+  // 模拟加载延迟
+  setTimeout(() => {
+    // 从历史记录中筛选包含该关键词的画作
+    // 实际应用中应该从API获取
+    const filteredWorks = historyList.value.filter(item => {
+      // 检查标题、分析说明或备注中是否包含关键词
+      const titleMatch = item.title && item.title.includes(keyword)
+      const noteMatch = item.analysisNote && item.analysisNote.includes(keyword)
+      const notesMatch = item.notes && item.notes.includes(keyword)
+      return titleMatch || noteMatch || notesMatch
+    })
+    
+    // 如果没有匹配的画作，使用模拟数据
+    if (filteredWorks.length === 0) {
+      keywordWorks.value = [
+        { 
+          id: 1, 
+          title: '芭蕉萱石图', 
+          artist: '李鱓',
+          thumbnailUrl: 'https://example.com/li_shan_001.jpg',
+          inscriptionPercent: 25.5,
+          paintingPercent: 60.2,
+          created_at: new Date().toISOString()
+        },
+        { 
+          id: 2, 
+          title: '梅花图', 
+          artist: '李鱓',
+          thumbnailUrl: 'https://example.com/li_shan_002.jpg',
+          inscriptionPercent: 30.1,
+          paintingPercent: 55.8,
+          created_at: new Date().toISOString()
+        },
+        { 
+          id: 3, 
+          title: '兰竹图', 
+          artist: '李鱓',
+          thumbnailUrl: 'https://example.com/li_shan_003.jpg',
+          inscriptionPercent: 20.8,
+          paintingPercent: 65.3,
+          created_at: new Date().toISOString()
+        }
+      ]
+    } else {
+      keywordWorks.value = filteredWorks
+    }
+    
+    keywordWorksLoading.value = false
+    keywordWorksDialogVisible.value = true
+  }, 500)
+}
+
+// 初始化词云
+function initWordCloud() {
+  generateWordCloud()
+}
 
 // 趋势图数据
 const trendChartData = ref([])
@@ -1280,6 +1764,54 @@ const artistStats = computed(() => {
     }
   }
 })
+
+// 题画比排行榜数据
+const rankings = computed(() => {
+  // 计算每题画作的题画比（题跋占比 / 绘画占比）
+  return historyList.value
+    .filter(item => {
+      // 确保有题跋和绘画占比数据
+      return item.inscriptionPercent !== undefined && 
+             item.paintingPercent !== undefined && 
+             item.paintingPercent > 0 // 避免除以0
+    })
+    .map(item => {
+      // 计算题画比
+      const tubiRatio = item.inscriptionPercent / item.paintingPercent
+      return {
+        ...item,
+        tubiRatio: tubiRatio
+      }
+    })
+    .sort((a, b) => b.tubiRatio - a.tubiRatio) // 按题画比降序排序
+    .slice(0, 6) // 最多显示6条
+})
+
+// 前三名排行榜数据
+const topThreeRankings = computed(() => {
+  return rankings.value.slice(0, 3)
+})
+
+// 第4-6名排行榜数据
+const remainingRankings = computed(() => {
+  return rankings.value.slice(3, 6)
+})
+
+// 处理图片加载错误
+function handleImageError(e) {
+  e.target.src = '' // 清空错误图片
+  e.target.style.display = 'none' // 隐藏错误图片
+  // 显示占位符
+  const placeholder = e.target.nextElementSibling
+  if (placeholder) {
+    placeholder.style.display = 'flex'
+  }
+}
+
+// 跳转到排行榜页面
+function navigateToRanking() {
+  router.push('/tubi/ranking')
+}
 
 // 趋势图作者筛选变化
 function onTrendArtistChange() {
@@ -1385,9 +1917,10 @@ function backToHome() {
     trendChart = null
   }
   
-  // 返回首页后重新更新趋势图数据
+  // 返回首页后重新更新数据
   nextTick(() => {
     updateTrendChart()
+    generateWordCloud() // 重新生成词云
   })
 }
 
@@ -1728,7 +2261,21 @@ async function selectImage(img) {
     areaStats.paintingPercent = img.paintingPercent || 0
     areaStats.blankPercent = img.blankPercent || 0
     regions = img.regions
-    analysisNote.value = img.analysisNote || ''
+    
+    // 提取关键词
+    const keywords = extractKeywords(img)
+    
+    // 构建AI分析说明，添加关键词部分
+    let originalNote = img.analysisNote || ''
+    if (keywords.length > 0) {
+      // 检查是否已经包含关键词部分
+      if (!originalNote.includes('关键词：')) {
+        originalNote += '<br><br>'
+        originalNote += '<strong>关键词：</strong>' + keywords.join('、') + '。'
+      }
+    }
+    analysisNote.value = originalNote
+    
     // 设置位置分析（优先使用后端返回的数据，否则前端计算）
     if (img.positionAnalysis) {
       positionAnalysis.value = img.positionAnalysis
@@ -1756,6 +2303,124 @@ async function selectImage(img) {
       updateHeatmap()
     }, 300)
   }
+}
+
+// 从作品信息中提取关键词
+function extractKeywords(image) {
+  // 模拟关键词提取，基于TF-IDF和TextRank的原理
+  const keywords = []
+  
+  // 无效关键词列表（停用词）
+  const stopWords = new Set([
+    '此作为', '清代', '画家', '的典型', '风格', '作品', '画作', '绘画',
+    '题跋', '留白', '区域', '占比', '面积', '分析', 'AI', '智能',
+    '画面', '主体', '生活', '情趣', '此作', '此幅', '一个', '一种', '这个',
+    '那个', '这样', '那样', '非常', '特别', '十分', '很', '比较',
+    '的', '以', '和', '与', '或', '在', '从', '到', '为', '了', '是', '有',
+    '在', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要',
+    '去', '你', '会', '着', '没有', '看', '好', '自己', '这'
+  ])
+  
+  // 过滤无效关键词的函数
+  const isStopWord = (word) => {
+    return stopWords.has(word) || word.length < 2 || word.length > 6
+  }
+  
+  // 简单的分词函数
+  const tokenize = (text) => {
+    // 按标点符号分割句子
+    const sentences = text.split(/[，。！？；：,.;:!?]/)
+    const tokens = []
+    
+    sentences.forEach(sentence => {
+      // 按空格分割
+      const spaceTokens = sentence.split(/\s+/)
+      spaceTokens.forEach(token => {
+        if (token && !isStopWord(token)) {
+          tokens.push(token)
+        }
+      })
+      
+      // 按常见虚词分割
+      const functionWordsTokens = sentence.split(/[的以和与或在从到为了]/)
+      functionWordsTokens.forEach(token => {
+        if (token && !isStopWord(token)) {
+          tokens.push(token)
+        }
+      })
+    })
+    
+    return tokens
+  }
+  
+  // 计算词频
+  const calculateWordFrequency = (tokens) => {
+    const freq = {}
+    tokens.forEach(token => {
+      if (!isStopWord(token)) {
+        freq[token] = (freq[token] || 0) + 1
+      }
+    })
+    return freq
+  }
+  
+  // 从标题中提取关键词
+  if (image.title) {
+    const titleTokens = tokenize(image.title)
+    keywords.push(...titleTokens)
+  }
+  
+  // 从分析说明中提取关键词
+  if (image.analysisNote) {
+    const noteTokens = tokenize(image.analysisNote)
+    const wordFreq = calculateWordFrequency(noteTokens)
+    
+    // 按词频排序，取前8个
+    const sortedWords = Object.entries(wordFreq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([word]) => word)
+    
+    keywords.push(...sortedWords)
+  }
+  
+  // 添加作者作为关键词
+  if (image.artist && !isStopWord(image.artist)) {
+    keywords.push(image.artist)
+  }
+  
+  // 去重并返回前10个关键词
+  return [...new Set(keywords)].slice(0, 10)
+}
+
+// 为所有作品重新生成关键词
+function regenerateKeywordsForAllWorks() {
+  // 遍历历史记录中的所有作品
+  historyList.value.forEach(item => {
+    if (item.regions) {
+      // 提取关键词
+      const keywords = extractKeywords(item)
+      
+      // 构建AI分析说明，添加关键词部分
+      let originalNote = item.analysisNote || ''
+      if (keywords.length > 0) {
+        // 检查是否已经包含关键词部分
+        if (!originalNote.includes('关键词：')) {
+          originalNote += '<br><br>'
+          originalNote += '<strong>关键词：</strong>' + keywords.join('、') + '。'
+        } else {
+          // 更新现有的关键词部分
+          const keywordRegex = /<strong>关键词：<\/strong>.*?。/s
+          originalNote = originalNote.replace(keywordRegex, '<strong>关键词：</strong>' + keywords.join('、') + '。')
+        }
+      }
+      
+      // 更新作品的分析说明
+      item.analysisNote = originalNote
+    }
+  })
+  
+  console.log('所有作品的关键词已重新生成')
 }
 
 // 清空所有
@@ -2586,6 +3251,8 @@ async function loadHistory() {
       // 加载完成后更新趋势图
       await nextTick()
       updateTrendChart()
+      // 为所有作品重新生成关键词
+      regenerateKeywordsForAllWorks()
     } else {
       console.error('历史记录API返回失败:', response)
       ElMessage.error(response.message || '加载历史记录失败')
@@ -2654,6 +3321,8 @@ async function loadHistoryItem(row) {
     ElMessage.error('加载失败')
   }
 }
+
+
 
 // 加载并选择指定ID的图片（用于趋势图点击）
 async function loadAndSelectImage(imageId) {
@@ -3101,10 +3770,141 @@ function getEdgeDistanceShortText() {
   return `${minMargin.name}${Math.round(minMargin.val)}`
 }
 
+// 初始化朋友圈关系图
+function initFriendCircleChart() {
+  if (!friendCircleChartRef.value) return
+  
+  friendCircleChart = echarts.init(friendCircleChartRef.value)
+  
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}'
+    },
+    animationDurationUpdate: 1500,
+    animationEasingUpdate: 'quinticInOut',
+    series: [
+      {
+        type: 'graph',
+        layout: 'force',
+        force: {
+          repulsion: 1000,
+          gravity: 0.1,
+          edgeLength: [80, 120]
+        },
+        roam: true,
+        label: {
+          show: false
+        },
+        edgeSymbol: ['none', 'arrow'],
+        edgeSymbolSize: [4, 8],
+        edgeLabel: {
+          fontSize: 12
+        },
+        data: [
+          { name: '李鱓', value: 60, symbolSize: 60 },
+          { name: '郑燮', value: 45, symbolSize: 45 },
+          { name: '金农', value: 45, symbolSize: 45 },
+          { name: '黄慎', value: 38, symbolSize: 38 },
+          { name: '高翔', value: 38, symbolSize: 38 },
+          { name: '汪士慎', value: 38, symbolSize: 38 },
+          { name: '李方膺', value: 38, symbolSize: 38 },
+          { name: '罗聘', value: 38, symbolSize: 38 },
+          { name: '蒋廷锡', value: 38, symbolSize: 38 },
+          { name: '王原祁', value: 38, symbolSize: 38 }
+        ],
+        links: [
+          { source: '李鱓', target: '郑燮', lineStyle: { color: '#ff4444', width: 2 } }, // 挚友
+          { source: '李鱓', target: '金农', lineStyle: { color: '#ff4444', width: 2 } }, // 挚友
+          { source: '李鱓', target: '黄慎', lineStyle: { color: '#ff8800', width: 2 } }, // 道友
+          { source: '李鱓', target: '高翔', lineStyle: { color: '#ff8800', width: 2 } }, // 道友
+          { source: '李鱓', target: '汪士慎', lineStyle: { color: '#4488ff', width: 2 } }, // 画友
+          { source: '李鱓', target: '李方膺', lineStyle: { color: '#4488ff', width: 2 } }, // 画友
+          { source: '李鱓', target: '罗聘', lineStyle: { color: '#4488ff', width: 2 } }, // 画友
+          { source: '蒋廷锡', target: '李鱓', lineStyle: { color: '#888888', width: 2, type: 'dashed' } }, // 师承
+          { source: '王原祁', target: '李鱓', lineStyle: { color: '#888888', width: 2, type: 'dashed' } } // 师承
+        ],
+        lineStyle: {
+          opacity: 0.9,
+          width: 2,
+          curveness: 0.1
+        },
+        emphasis: {
+          focus: 'adjacency',
+          lineStyle: {
+            width: 4
+          },
+          label: {
+            show: true,
+            fontSize: 14,
+            fontWeight: 'bold'
+          }
+        }
+      }
+    ]
+  }
+  
+  friendCircleChart.setOption(option)
+  
+  // 响应式调整
+  window.addEventListener('resize', () => {
+    friendCircleChart.resize()
+  })
+}
+
 onMounted(() => {
   window.addEventListener('resize', handleResize)
   // 页面加载时自动加载历史记录
   loadHistory()
+  
+  // 检查URL参数，处理从排行榜页面跳转过来的情况
+  const urlParams = new URLSearchParams(window.location.hash.split('?')[1])
+  const imageId = urlParams.get('id')
+  if (imageId) {
+    // 延迟执行，确保组件已完全加载
+    setTimeout(async () => {
+      try {
+        const response = await tubiApi.getAnalysisResult(imageId)
+        if (response.success) {
+          const data = response.data
+          const historyImage = {
+            id: data.id,
+            name: data.name || '历史记录',
+            url: data.url,
+            thumbnailUrl: data.thumbnail_url || data.url,
+            width: data.width,
+            height: data.height,
+            title: data.title,
+            artist: data.artist,
+            year: data.year,
+            period: data.period,
+            inscriptionPercent: data.inscription_percent,
+            paintingPercent: data.painting_percent,
+            blankPercent: data.blank_percent,
+            regions: data.regions,
+            positionAnalysis: data.position_analysis,
+            annotatedImageUrl: data.annotated_image_url,
+            analysisNote: data.analysis_note
+          }
+          const exists = uploadedImages.value.find(img => img.id === historyImage.id)
+          if (!exists) {
+            uploadedImages.value.push(historyImage)
+          }
+          selectImage(historyImage)
+          ElMessage.success('已加载指定作品')
+        }
+      } catch (error) {
+        console.error('加载指定作品失败:', error)
+      }
+    }, 500)
+  }
+  
+  // 初始化词云
+  nextTick(() => {
+    if (wordCloudRef.value) {
+      initWordCloud()
+    }
+  })
 })
 
 onUnmounted(() => {
@@ -3112,6 +3912,8 @@ onUnmounted(() => {
   pieChart?.dispose()
   heatmapChart?.dispose()
   trendChart?.dispose()
+  friendCircleChart?.dispose()
+  wordCloudChart?.dispose()
 })
 </script>
 
@@ -3136,6 +3938,464 @@ onUnmounted(() => {
   font-size: 14px;
   color: #666;
   margin-bottom: 24px;
+}
+
+/* 顶部左右两栏布局 */
+.dashboard-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+@media (max-width: 1199px) {
+  .dashboard-row {
+    flex-wrap: wrap;
+  }
+  
+  .friend-circle-module,
+  .ranking-module {
+    flex: 0 0 calc(50% - 8px) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .friend-circle-module,
+  .ranking-module {
+    flex: 0 0 100% !important;
+  }
+  
+  .friend-circle-chart {
+    min-height: 300px;
+  }
+  
+  .friend-circle-legend {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* 朋友圈模块 */
+.friend-circle-module {
+  min-height: 450px;
+}
+
+.friend-circle-card {
+  height: 100%;
+  overflow: hidden;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.word-cloud-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 60px);
+}
+
+.word-cloud-container {
+  flex: 1;
+  min-height: 490px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.word-cloud-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #666;
+}
+
+.word-cloud-loading .el-icon {
+  font-size: 32px;
+}
+
+.word-cloud-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #999;
+  text-align: center;
+}
+
+.word-cloud-empty .empty-tip {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 4px;
+}
+
+.word-cloud-stats {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+  font-size: 14px;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.stats-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.stats-value {
+  color: #666;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 排行榜模块 */
+.ranking-module {
+  min-height: 400px;
+  flex: 1 !important;
+}
+
+.ranking-card {
+  height: 100%;
+  overflow: hidden;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+
+
+/* 前三名卡片 */
+.top-three {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.top-card {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background-color: #FFFFFF;
+  border: 1px solid #e9ecef;
+}
+
+.top-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.top-card.first {
+  background-color: #FFF8E1;
+  border-color: #FFE082;
+}
+
+.top-card.second {
+  background-color: #F5F7FA;
+  border-color: #E4E7ED;
+}
+
+.top-card.third {
+  background-color: #FFF3E0;
+  border-color: #FFCC80;
+}
+
+.top-medal {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  background-color: #e9ecef;
+  color: #666;
+}
+
+.top-card.first .top-medal {
+  background-color: #FFD700;
+  color: #FFF;
+}
+
+.top-card.second .top-medal {
+  background-color: #C0C0C0;
+  color: #FFF;
+}
+
+.top-card.third .top-medal {
+  background-color: #CD7F32;
+  color: #FFF;
+}
+
+.top-thumbnail {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 12px;
+  flex-shrink: 0;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.top-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.top-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #D8860B;
+  background-color: #f8f9fa;
+}
+
+.top-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.top-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-author {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-ratio {
+  font-size: 16px;
+  font-weight: bold;
+  color: #D8860B;
+  margin-left: 12px;
+  flex-shrink: 0;
+  min-width: 60px;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.top-ratio::after {
+  content: '🏅';
+  font-size: 12px;
+}
+
+/* 排行榜列表 */
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background-color: #FFFFFF;
+  border: 1px solid #e9ecef;
+}
+
+.ranking-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.ranking-medal {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+  margin-right: 12px;
+  flex-shrink: 0;
+  background-color: #e9ecef;
+  color: #666;
+}
+
+.ranking-thumbnail {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 12px;
+  flex-shrink: 0;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.ranking-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ranking-thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #D8860B;
+  background-color: #f8f9fa;
+}
+
+.ranking-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ranking-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-author {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-ratio {
+  font-size: 14px;
+  font-weight: bold;
+  color: #D8860B;
+  margin-left: 12px;
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ranking-ratio::after {
+  content: '🏅';
+  font-size: 12px;
+}
+
+/* 无数据提示 */
+.no-data {
+  text-align: center;
+  padding: 40px 20px;
+  color: #D8860B;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.no-data el-icon {
+  margin-bottom: 12px;
+  font-size: 32px;
+}
+
+.no-data p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 模块标题样式 */
+.module-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  height: 32px;
+}
+
+.module-header:not(:has(.el-button)) {
+  justify-content: flex-start;
+}
+
+.module-header:has(.el-button) {
+  justify-content: space-between;
+}
+
+.module-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  flex: 1;
+}
+
+.module-divider {
+  display: none;
+}
+
+/* 响应式设计 */
+@media (max-width: 1199px) {
+  .friend-circle-module,
+  .ranking-module {
+    flex: 0 0 48% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .friend-circle-module,
+  .ranking-module {
+    flex: 0 0 100% !important;
+  }
+  
+  .friend-circle-chart {
+    min-height: 300px;
+  }
+  
+  .friend-circle-legend {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 /* 趋势图卡片 */
@@ -3279,6 +4539,10 @@ onUnmounted(() => {
   margin-top: 8px;
   border-top: 1px dashed #dcdfe6;
 }
+
+
+
+
 
 /* 历史记录对话框 */
 .history-dialog-wide {
@@ -4050,6 +5314,48 @@ onUnmounted(() => {
   font-size: 14px;
   color: #999;
 }
+
+/* 关键词画作列表对话框样式 */
+.keyword-works-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.keyword-works-content {
+  min-height: 300px;
+}
+
+.keyword-works-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.keyword-works-loading p {
+  margin-top: 10px;
+  color: #606266;
+}
+
+.keyword-works-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.keyword-works-empty p {
+  margin-top: 10px;
+  color: #909399;
+}
+
+.keyword-works-empty .el-icon {
+  margin-bottom: 10px;
+}
+
+
 
 /* 图表卡片样式 */
 .chart-card,

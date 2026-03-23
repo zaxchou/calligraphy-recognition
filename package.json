@@ -1,0 +1,21 @@
+{
+  "name": "calligraphy-recognition",
+  "version": "1.0.0",
+  "description": "基于深度学习的书法碑帖字体认证系统，用户上传书法图片，系统识别出自哪个碑帖，并显示相似度百分比。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zaxchou/calligraphy-recognition.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zaxchou/calligraphy-recognition/issues"
+  },
+  "homepage": "https://github.com/zaxchou/calligraphy-recognition#readme"
+}

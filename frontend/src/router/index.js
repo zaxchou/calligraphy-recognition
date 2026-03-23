@@ -4,6 +4,7 @@ import Recognize from '../views/Recognize.vue'
 import Steles from '../views/Steles.vue'
 import SteleDetail from '../views/SteleDetail.vue'
 import TubiAnalysis from '../views/TubiAnalysis.vue'
+import TubiRanking from '../views/TubiRanking.vue'
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: '/tubi',
     name: 'TubiAnalysis',
     component: TubiAnalysis
+  },
+  {
+    path: '/tubi/ranking',
+    name: 'TubiRanking',
+    component: TubiRanking
   }
 ]
 
