@@ -99,9 +99,20 @@ def calculate_area_stats_with_overlap_correction(
     """
     total_area = image_width * image_height
     
+    # 动态调整采样步长，根据图像大小
+    # 图像越大，采样步长越大，以提高性能
+    if image_width * image_height > 1000000:  # 1000x1000以上
+        sample_step = 8
+    elif image_width * image_height > 500000:  # 700x700以上
+        sample_step = 6
+    elif image_width * image_height > 200000:  # 450x450以上
+        sample_step = 4
+    else:
+        sample_step = 2
+    
     # 使用像素采样方法确保严格互斥
     return calculate_pixel_based_area_stats_exclusive(
-        regions, image_width, image_height, sample_step=2
+        regions, image_width, image_height, sample_step=sample_step
     )
 
 

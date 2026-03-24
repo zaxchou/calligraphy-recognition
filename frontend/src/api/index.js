@@ -96,8 +96,14 @@ export const tubiApi = {
   },
   autoAnalyze(imageId) {
     return api.post(`/tubi/auto-analyze/${imageId}`, {}, {
-      timeout: 300000 // 题跋分析可能需要5分钟
+      timeout: 60000
     })
+  },
+  getAnalyzeStatus(imageId) {
+    return api.get(`/tubi/analyze-status/${imageId}`)
+  },
+  getQueueInfo(imageId) {
+    return api.get(`/tubi/queue-info/${imageId}`)
   },
   analyzeRegions(imageId, regions) {
     return api.post('/tubi/analyze', {

@@ -92,7 +92,7 @@
                 <div class="work-title">{{ item.title || '未命名' }}</div>
               </div>
               <div class="table-col col-author">
-                <span v-if="item.artist">{{ item.artist }}</span>
+                <span v-if="item.artist">{{ item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</span>
                 <span v-else>-</span>
               </div>
               <div class="table-col col-year">
@@ -376,6 +376,21 @@ function calculateYear(age, artistName) {
   return artist.birth + parseInt(age)
 }
 
+function getDisplayAge(item) {
+  if (!item) return null
+  const computed = calculateAge(item.year, item.artist)
+  if (computed !== null && computed !== undefined && !isNaN(computed)) {
+    if (computed >= -50 && computed <= 150) return computed
+  }
+  const raw = item.age ?? item.period
+  if (raw === null || raw === undefined) return null
+  const m = String(raw).match(/\d+/)
+  if (!m) return null
+  const parsed = parseInt(m[0])
+  if (isNaN(parsed)) return null
+  return parsed
+}
+
 // 编辑表单：作者变化时更新年份和年龄
 function onEditArtistChange(artist) {
   const artistInfo = ARTISTS[artist]
@@ -405,7 +420,7 @@ function editItem(item) {
   editForm.title = item.title || ''
   editForm.artist = item.artist || ''
   editForm.year = item.year || ''
-  editForm.age = item.age || item.period || ''
+  editForm.age = getDisplayAge(item) ?? ''
   editForm.notes = item.notes || ''
   editForm.analysisNote = item.analysisNote || item.analysis_note || ''
   editForm.inscriptionPercent = item.inscriptionPercent || item.inscription_percent || 0

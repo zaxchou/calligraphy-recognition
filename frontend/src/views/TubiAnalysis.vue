@@ -22,7 +22,7 @@
               </div>
             </template>
             <div class="word-cloud-content">
-              <div class="word-cloud-container" ref="wordCloudRef">
+              <div class="word-cloud-container">
                 <!-- 词云将在这里渲染 -->
                 <div v-if="wordCloudLoading" class="word-cloud-loading">
                   <el-icon class="is-loading"><Loading /></el-icon>
@@ -32,6 +32,23 @@
                   <el-icon size="48"><Document /></el-icon>
                   <p>暂无关键词数据</p>
                   <p class="empty-tip">上传画作后将自动生成词云</p>
+                </div>
+                <div v-else class="word-cloud-items">
+                  <div 
+                    v-for="(item, index) in wordCloudData" 
+                    :key="index"
+                    class="word-cloud-item"
+                    :style="{
+                      fontSize: `${10 + (item.value / maxWordCount) * 38}px`,
+                      color: wordCloudColors[index % wordCloudColors.length]
+                    }"
+                    @mouseover="handleWordMouseOver"
+                    @mouseout="handleWordMouseOut"
+                    @click="showKeywordWorks(item.word)"
+                    :title="`出现次数: ${item.value}次`"
+                  >
+                    {{ item.word }}
+                  </div>
                 </div>
               </div>
               <div class="word-cloud-stats">
@@ -78,7 +95,7 @@
                 </div>
                 <div class="top-info">
                   <div class="top-name">{{ item.title || '未命名' }}</div>
-                  <div class="top-author">{{ item.artist || '李鱓' }}</div>
+                  <div class="top-author">{{ item.artist || '李鱓' }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</div>
                 </div>
                 <div class="top-ratio">{{ item.tubiRatio.toFixed(2) }}</div>
               </div>
@@ -101,7 +118,7 @@
                 </div>
                 <div class="ranking-info">
                   <div class="ranking-name">{{ item.title || '未命名' }}</div>
-                  <div class="ranking-author">{{ item.artist || '李鱓' }}</div>
+                  <div class="ranking-author">{{ item.artist || '李鱓' }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</div>
                 </div>
                 <div class="ranking-ratio">{{ item.tubiRatio.toFixed(2) }}</div>
               </div>
@@ -169,7 +186,7 @@
             <div class="gallery-info">
               <div class="gallery-title">{{ item.title || '未命名' }}</div>
               <div class="gallery-meta">
-                <span v-if="item.artist">{{ item.artist }}</span>
+                <span v-if="item.artist">{{ item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</span>
                 <span v-if="item.year">{{ item.year }}年</span>
               </div>
               <div class="gallery-stats" v-if="item.inscriptionPercent !== undefined">
@@ -329,6 +346,9 @@
                 <el-button type="primary" size="small" @click="showUploadDialog">
                   <el-icon><Plus /></el-icon> 添加画作
                 </el-button>
+                <el-button type="warning" size="small" @click="editCurrentImage">
+                  <el-icon><Edit /></el-icon> 编辑
+                </el-button>
                 <el-button type="info" size="small" @click="backToHome" :icon="HomeFilled">
                   返回首页
                 </el-button>
@@ -348,7 +368,7 @@
               <div class="header-left">
                 <h3>{{ currentImage.title || '未命名' }}</h3>
                 <p v-if="currentImage.artist">作者: {{ currentImage.artist }}</p>
-                <p v-if="currentImage.year">{{ currentImage.year }}年 {{ currentImage.period ? `(时年${currentImage.period})` : '' }}</p>
+                <p v-if="currentImage.year">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</p>
               </div>
             </div>
 
@@ -356,6 +376,18 @@
             <div v-if="analyzeStatus === 'analyzed' && analysisNote" class="analysis-note-main">
               <h4><el-icon><InfoFilled /></el-icon> AI分析说明</h4>
               <div v-html="analysisNote"></div>
+            </div>
+
+            <!-- 款识题跋 -->
+            <div v-if="analyzeStatus === 'analyzed'" class="inscription-note-main">
+              <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
+              <div v-if="currentImage.inscriptionContent" class="inscription-content">
+                {{ currentImage.inscriptionContent }}
+              </div>
+              <div v-else class="inscription-empty">
+                <p>暂无款识题跋内容</p>
+                <p class="empty-tip">可在编辑画作信息时添加</p>
+              </div>
             </div>
 
             <!-- 分析完成后的左右布局：左面积占比智能示意图，右面积占比 -->
@@ -449,7 +481,7 @@
               <div class="history-item-info">
                 <div class="history-item-title">{{ item.title || '未命名' }}</div>
                 <div class="history-item-meta">
-                  <span v-if="item.artist">{{ item.artist }}</span>
+                  <span v-if="item.artist">{{ item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</span>
                   <span v-if="item.year">{{ item.year }}年</span>
                 </div>
                 <div class="history-item-stats" v-if="item.inscriptionPercent !== undefined">
@@ -856,6 +888,15 @@
               class="modern-textarea"
             />
           </el-form-item>
+          <el-form-item label="款识题跋">
+            <el-input 
+              v-model="editForm.inscriptionContent" 
+              type="textarea" 
+              :rows="3" 
+              placeholder="请输入款识题跋内容"
+              class="modern-textarea"
+            />
+          </el-form-item>
           <el-form-item label="备注信息">
             <el-input 
               v-model="editForm.notes" 
@@ -1217,6 +1258,21 @@ function calculateYear(age, artistName = currentArtist.value) {
   return artist.birth + parseInt(age)
 }
 
+function getDisplayAge(image) {
+  if (!image) return null
+  const computed = calculateAge(image.year, image.artist)
+  if (computed !== null && computed !== undefined && !isNaN(computed)) {
+    if (computed >= -50 && computed <= 150) return computed
+  }
+  const raw = image.age ?? image.period
+  if (raw === null || raw === undefined) return null
+  const m = String(raw).match(/\d+/)
+  if (!m) return null
+  const parsed = parseInt(m[0])
+  if (isNaN(parsed)) return null
+  return parsed
+}
+
 // 监听画家变化，更新年份和年龄
 watch(() => uploadForm.artist, (newArtist) => {
   currentArtist.value = newArtist
@@ -1377,6 +1433,26 @@ const handleMouseDown = (e) => {
   }
 }
 
+// 编辑当前图片
+const editCurrentImage = () => {
+  if (currentImage.value) {
+    editForm.id = currentImage.value.id
+    editForm.title = currentImage.value.title || ''
+    editForm.artist = currentImage.value.artist || '李鱓'
+    editForm.year = currentImage.value.year || ''
+    editForm.age = currentImage.value.age || ''
+    editForm.notes = currentImage.value.notes || ''
+    editForm.analysisNote = currentImage.value.analysisNote || ''
+    editForm.inscriptionContent = currentImage.value.inscriptionContent || ''
+    editForm.inscriptionPercent = currentImage.value.inscriptionPercent || 0
+    editForm.paintingPercent = currentImage.value.paintingPercent || 0
+    editForm.blankPercent = currentImage.value.blankPercent || 0
+    editDialogVisible.value = true
+  } else {
+    ElMessage.warning('请先选择一幅画作')
+  }
+}
+
 // 鼠标拖动中
 const handleMouseMove = (e) => {
   if (!isDragging.value) return
@@ -1405,6 +1481,7 @@ const editForm = reactive({
   age: '',
   notes: '',
   analysisNote: '',
+  inscriptionContent: '',
   inscriptionPercent: 0,
   paintingPercent: 0,
   blankPercent: 0
@@ -1455,6 +1532,12 @@ const wordCloudData = ref([])
 const totalKeywords = ref(0)
 const totalCount = ref(0)
 const selectedAuthor = ref('李鱓')
+
+// 计算最大词频
+const maxWordCount = computed(() => {
+  if (wordCloudData.value.length === 0) return 1
+  return Math.max(...wordCloudData.value.map(item => item.value))
+})
 
 // 词云颜色
 const wordCloudColors = [
@@ -1538,8 +1621,7 @@ async function generateWordCloud() {
     // 等待DOM更新
     await nextTick()
     
-    // 渲染词云
-    renderWordCloud()
+    // 词云将通过Vue模板系统自动渲染
   } catch (error) {
     console.error('生成词云失败:', error)
     ElMessage.error('生成词云失败')
@@ -1555,76 +1637,7 @@ function onAuthorChange(value) {
   generateWordCloud()
 }
 
-// 渲染词云
-function renderWordCloud() {
-  if (!wordCloudRef.value || wordCloudData.value.length === 0) return
-  
-  // 确保容器有尺寸
-  const container = wordCloudRef.value
-  container.style.width = '100%'
-  container.style.height = '490px'
-  container.style.position = 'relative'
-  container.style.overflow = 'auto'
-  
-  // 清除旧的内容
-  container.innerHTML = ''
-  
-  // 创建一个简单的关键词云替代方案
-  const wordCloudContainer = document.createElement('div')
-  wordCloudContainer.style.width = '100%'
-  wordCloudContainer.style.minHeight = '100%'
-  wordCloudContainer.style.display = 'flex'
-  wordCloudContainer.style.flexWrap = 'wrap'
-  wordCloudContainer.style.alignItems = 'center'
-  wordCloudContainer.style.justifyContent = 'flex-start'
-  wordCloudContainer.style.padding = '20px'
-  wordCloudContainer.style.gap = '8px'
-  
-  // 计算最大出现次数，用于调整字体大小
-  const maxCount = Math.max(...wordCloudData.value.map(item => item.value))
-  
-  // 添加关键词
-  wordCloudData.value.forEach(item => {
-    const keywordElement = document.createElement('div')
-    const fontSize = 10 + (item.value / maxCount) * 38 // 字体大小从10px到48px
-    
-    keywordElement.textContent = item.word
-    keywordElement.style.fontSize = fontSize + 'px'
-    keywordElement.style.fontWeight = 'bold'
-    keywordElement.style.color = wordCloudColors[Math.floor(Math.random() * wordCloudColors.length)]
-    keywordElement.style.cursor = 'pointer'
-    keywordElement.style.padding = '2px 6px'
-    keywordElement.style.borderRadius = '2px'
-    keywordElement.style.transition = 'all 0.2s ease'
-    keywordElement.style.userSelect = 'none'
-    
-    // 添加悬停效果
-    keywordElement.addEventListener('mouseover', function() {
-      this.style.transform = 'scale(1.15)'
-      this.style.backgroundColor = 'rgba(0, 0, 0, 0.08)'
-      this.style.zIndex = '10'
-    })
-    
-    keywordElement.addEventListener('mouseout', function() {
-      this.style.transform = 'scale(1)'
-      this.style.backgroundColor = 'transparent'
-      this.style.zIndex = '1'
-    })
-    
-    // 添加点击事件
-    keywordElement.addEventListener('click', function() {
-      showKeywordWorks(item.word)
-    })
-    
-    // 添加悬停提示
-    keywordElement.title = `出现次数: ${item.value}次`
-    
-    wordCloudContainer.appendChild(keywordElement)
-  })
-  
-  container.appendChild(wordCloudContainer)
-  console.log('Word cloud alternative rendered successfully')
-}
+// 渲染词云函数已移除，改用Vue模板系统渲染
 
 // 刷新词云
 async function refreshWordCloud() {
@@ -1660,56 +1673,80 @@ function showKeywordWorks(keyword) {
   currentKeyword.value = keyword
   keywordWorksLoading.value = true
   
-  // 模拟加载延迟
-  setTimeout(() => {
-    // 从历史记录中筛选包含该关键词的画作
-    // 实际应用中应该从API获取
-    const filteredWorks = historyList.value.filter(item => {
-      // 检查标题、分析说明或备注中是否包含关键词
-      const titleMatch = item.title && item.title.includes(keyword)
-      const noteMatch = item.analysisNote && item.analysisNote.includes(keyword)
-      const notesMatch = item.notes && item.notes.includes(keyword)
-      return titleMatch || noteMatch || notesMatch
-    })
-    
-    // 如果没有匹配的画作，使用模拟数据
-    if (filteredWorks.length === 0) {
-      keywordWorks.value = [
-        { 
-          id: 1, 
-          title: '芭蕉萱石图', 
-          artist: '李鱓',
-          thumbnailUrl: 'https://example.com/li_shan_001.jpg',
-          inscriptionPercent: 25.5,
-          paintingPercent: 60.2,
-          created_at: new Date().toISOString()
-        },
-        { 
-          id: 2, 
-          title: '梅花图', 
-          artist: '李鱓',
-          thumbnailUrl: 'https://example.com/li_shan_002.jpg',
-          inscriptionPercent: 30.1,
-          paintingPercent: 55.8,
-          created_at: new Date().toISOString()
-        },
-        { 
-          id: 3, 
-          title: '兰竹图', 
-          artist: '李鱓',
-          thumbnailUrl: 'https://example.com/li_shan_003.jpg',
-          inscriptionPercent: 20.8,
-          paintingPercent: 65.3,
-          created_at: new Date().toISOString()
-        }
-      ]
-    } else {
-      keywordWorks.value = filteredWorks
+  // 使用nextTick确保DOM更新完成
+  nextTick(() => {
+    try {
+      // 从历史记录中筛选包含该关键词的画作
+      // 实际应用中应该从API获取
+      const filteredWorks = historyList.value.filter(item => {
+        // 检查标题、分析说明或备注中是否包含关键词
+        const titleMatch = item.title && item.title.includes(keyword)
+        const noteMatch = item.analysisNote && item.analysisNote.includes(keyword)
+        const notesMatch = item.notes && item.notes.includes(keyword)
+        return titleMatch || noteMatch || notesMatch
+      })
+      
+      // 如果没有匹配的画作，使用模拟数据，但使用不存在的ID以避免404错误
+      if (filteredWorks.length === 0) {
+        keywordWorks.value = [
+          { 
+            id: -1, // 使用负数ID，确保不会与实际作品ID冲突
+            title: '芭蕉萱石图', 
+            artist: '李鱓',
+            thumbnailUrl: 'https://via.placeholder.com/100x100?text=梅花',
+            inscriptionPercent: 25.5,
+            paintingPercent: 60.2,
+            inscriptionContent: '乾隆甲申年春，李鱓写于扬州寓所。',
+            created_at: new Date().toISOString()
+          },
+          { 
+            id: -2, // 使用负数ID，确保不会与实际作品ID冲突
+            title: '梅花图', 
+            artist: '李鱓',
+            thumbnailUrl: 'https://via.placeholder.com/100x100?text=梅花',
+            inscriptionPercent: 30.1,
+            paintingPercent: 55.8,
+            inscriptionContent: '墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。乾隆乙酉年冬，李鱓。',
+            created_at: new Date().toISOString()
+          },
+          { 
+            id: -3, // 使用负数ID，确保不会与实际作品ID冲突
+            title: '兰竹图', 
+            artist: '李鱓',
+            thumbnailUrl: 'https://via.placeholder.com/100x100?text=梅花',
+            inscriptionPercent: 20.8,
+            paintingPercent: 65.3,
+            inscriptionContent: '竹石幽兰共岁寒，清风明月伴我闲。乾隆丙戌年秋，李鱓。',
+            created_at: new Date().toISOString()
+          }
+        ]
+      } else {
+        keywordWorks.value = filteredWorks
+      }
+      
+      keywordWorksLoading.value = false
+      keywordWorksDialogVisible.value = true
+    } catch (error) {
+      console.error('Error showing keyword works:', error)
+      keywordWorksLoading.value = false
     }
-    
-    keywordWorksLoading.value = false
-    keywordWorksDialogVisible.value = true
-  }, 500)
+  })
+}
+
+// 处理词云项目鼠标悬停
+function handleWordMouseOver(event) {
+  const element = event.target
+  element.style.transform = 'scale(1.15)'
+  element.style.backgroundColor = 'rgba(0, 0, 0, 0.08)'
+  element.style.zIndex = '10'
+}
+
+// 处理词云项目鼠标离开
+function handleWordMouseOut(event) {
+  const element = event.target
+  element.style.transform = 'scale(1)'
+  element.style.backgroundColor = 'transparent'
+  element.style.zIndex = '1'
 }
 
 // 初始化词云
@@ -1719,7 +1756,7 @@ function initWordCloud() {
 
 // 趋势图数据
 const trendChartData = ref([])
-const trendArtistFilter = ref('all')
+const trendArtistFilter = ref('李鱓')
 const trendStats = reactive({
   avgPercent: 0,
   maxPercent: 0,
@@ -2137,53 +2174,75 @@ async function startBatchUpload() {
           
           console.log(`[${i+1}/${batchFileList.value.length}] 开始AI分析，图片ID:`, result.data.id)
           
-          // 使用 AbortController 设置超时（5分钟）
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 300000) // 5分钟超时
-          
-          const analyzeResponse = await fetch(`/api/v1/tubi/auto-analyze/${result.data.id}`, {
-            method: 'POST',
-            signal: controller.signal
-          })
-          
-          clearTimeout(timeoutId)
-          console.log(`[${i+1}/${batchFileList.value.length}] AI分析响应状态:`, analyzeResponse.status)
-          
-          if (!analyzeResponse.ok) {
-            const errorText = await analyzeResponse.text()
-            console.error(`[${i+1}/${batchFileList.value.length}] AI分析HTTP错误:`, errorText)
-            throw new Error(`HTTP ${analyzeResponse.status}: ${errorText}`)
+          const startResult = await tubiApi.autoAnalyze(result.data.id)
+          if (!startResult?.success) {
+            throw new Error(startResult?.detail || startResult?.error || '分析任务启动失败')
           }
-          
-          const analyzeResult = await analyzeResponse.json()
-          console.log(`[${i+1}/${batchFileList.value.length}] AI分析结果:`, analyzeResult)
-          
-          if (analyzeResult.success) {
-            // 更新图片信息
-            newImage.inscriptionPercent = analyzeResult.data.inscription_percent
-            newImage.paintingPercent = analyzeResult.data.painting_percent
-            newImage.blankPercent = analyzeResult.data.blank_percent
-            newImage.regions = analyzeResult.data.regions
-            newImage.annotatedImageUrl = analyzeResult.data.annotated_image_url
-            newImage.analysisNote = analyzeResult.data.analysis_note
+
+          const startAt = Date.now()
+          while (true) {
+            if (batchUploadCancelled) {
+              batchCurrentStatus.value = '已取消'
+              break
+            }
+            const statusResult = await tubiApi.getAnalyzeStatus(result.data.id)
+            if (!statusResult?.success) {
+              throw new Error(statusResult?.detail || statusResult?.error || '获取分析状态失败')
+            }
+
+            const status = statusResult.data?.status
+            if (status === 'analyzed') break
+            if (status === 'error') {
+              throw new Error(statusResult.data?.analysis_note || '分析失败')
+            }
+            if (status === 'queued') {
+              try {
+                const qi = await tubiApi.getQueueInfo(result.data.id)
+                const pos = qi?.data?.position
+                const est = qi?.data?.estimated_wait_seconds
+                if (pos) {
+                  const mins = est ? Math.max(1, Math.ceil(est / 60)) : null
+                  batchCurrentStatus.value = mins ? `排队中：前面还有${pos - 1}个，预计约${mins}分钟` : `排队中：前面还有${pos - 1}个`
+                } else {
+                  batchCurrentStatus.value = '排队中...'
+                }
+              } catch {
+                batchCurrentStatus.value = '排队中...'
+              }
+            } else if (status === 'analyzing') {
+              batchCurrentStatus.value = '分析中...'
+            }
+            const elapsed = Date.now() - startAt
+            const waitMs = status === 'queued'
+              ? (elapsed < 60_000 ? 5000 : 8000)
+              : (elapsed < 60_000 ? 3000 : 6000)
+            await new Promise(resolve => setTimeout(resolve, waitMs))
+            if (Date.now() - startAt > 20 * 60 * 1000) {
+              throw new Error('分析超时，请重试')
+            }
+          }
+
+          if (!batchUploadCancelled) {
+            const analyzeResult = await tubiApi.getAnalysisResult(result.data.id)
+            if (!analyzeResult?.success) {
+              throw new Error(analyzeResult?.detail || analyzeResult?.error || '获取分析结果失败')
+            }
+
+            const data = analyzeResult.data
+            newImage.inscriptionPercent = data.inscription_percent
+            newImage.paintingPercent = data.painting_percent
+            newImage.blankPercent = data.blank_percent
+            newImage.regions = data.regions
+            newImage.annotatedImageUrl = data.annotated_image_url
+            newImage.analysisNote = data.analysis_note
             batchCurrentStatus.value = 'AI分析完成'
-            // AI分析完成，进度设为 45%
             batchUploadProgress.value = progressBase + 45
             await nextTick()
             console.log(`[${i+1}/${batchFileList.value.length}] AI分析成功完成`)
-          } else {
-            const errorMsg = analyzeResult.detail || analyzeResult.error || '未知错误'
-            console.error(`[${i+1}/${batchFileList.value.length}] AI分析失败:`, errorMsg)
-            batchCurrentStatus.value = 'AI分析失败: ' + errorMsg
           }
         } catch (analyzeError) {
-          if (analyzeError.name === 'AbortError') {
-            console.error(`[${i+1}/${batchFileList.value.length}] AI分析超时`)
-            batchCurrentStatus.value = 'AI分析超时，请稍后重试'
-          } else {
-            console.error(`[${i+1}/${batchFileList.value.length}] AI分析异常:`, analyzeError)
-            batchCurrentStatus.value = 'AI分析失败: ' + analyzeError.message
-          }
+          console.error(`[${i+1}/${batchFileList.value.length}] AI分析异常:`, analyzeError)
+          batchCurrentStatus.value = 'AI分析失败: ' + analyzeError.message
         }
         
         // 短暂延迟，让用户看到AI分析完成状态
@@ -2254,13 +2313,14 @@ function handleBatchDialogClose(done) {
 // 选择图片
 async function selectImage(img) {
   currentImage.value = img
-  analyzeStatus.value = img.regions ? 'analyzed' : 'pending'
-
-  if (img.regions) {
+  
+  // 处理模拟数据（负数ID）
+  if (img.id < 0) {
+    analyzeStatus.value = 'analyzed'
     areaStats.inscriptionPercent = img.inscriptionPercent || 0
     areaStats.paintingPercent = img.paintingPercent || 0
     areaStats.blankPercent = img.blankPercent || 0
-    regions = img.regions
+    regions = img.regions || { inscription_regions: [], painting_regions: [], blank_regions: [] }
     
     // 提取关键词
     const keywords = extractKeywords(img)
@@ -2276,19 +2336,52 @@ async function selectImage(img) {
     }
     analysisNote.value = originalNote
     
-    // 设置位置分析（优先使用后端返回的数据，否则前端计算）
-    if (img.positionAnalysis) {
-      positionAnalysis.value = img.positionAnalysis
-    } else if (img.regions && img.width && img.height) {
-      positionAnalysis.value = calculatePositionAnalysisByRules(img.regions, img.width, img.height)
+    // 设置位置分析
+    positionAnalysis.value = img.positionAnalysis || {
+      layout_type: '传统布局',
+      position: '右上方',
+      coverage_ratio: 0.2,
+      overlap_ratio: 0.05,
+      layout_description: '模拟数据的位置分析'
     }
   } else {
-    areaStats.inscriptionPercent = 0
-    areaStats.paintingPercent = 0
-    areaStats.blankPercent = 0
-    regions = { inscription_regions: [], painting_regions: [], blank_regions: [] }
-    analysisNote.value = ''
-    positionAnalysis.value = null
+    // 处理真实数据
+    analyzeStatus.value = img.regions ? 'analyzed' : 'pending'
+
+    if (img.regions) {
+      areaStats.inscriptionPercent = img.inscriptionPercent || 0
+      areaStats.paintingPercent = img.paintingPercent || 0
+      areaStats.blankPercent = img.blankPercent || 0
+      regions = img.regions
+      
+      // 提取关键词
+      const keywords = extractKeywords(img)
+      
+      // 构建AI分析说明，添加关键词部分
+      let originalNote = img.analysisNote || ''
+      if (keywords.length > 0) {
+        // 检查是否已经包含关键词部分
+        if (!originalNote.includes('关键词：')) {
+          originalNote += '<br><br>'
+          originalNote += '<strong>关键词：</strong>' + keywords.join('、') + '。'
+        }
+      }
+      analysisNote.value = originalNote
+      
+      // 设置位置分析（优先使用后端返回的数据，否则前端计算）
+      if (img.positionAnalysis) {
+        positionAnalysis.value = img.positionAnalysis
+      } else if (img.regions && img.width && img.height) {
+        positionAnalysis.value = calculatePositionAnalysisByRules(img.regions, img.width, img.height)
+      }
+    } else {
+      areaStats.inscriptionPercent = 0
+      areaStats.paintingPercent = 0
+      areaStats.blankPercent = 0
+      regions = { inscription_regions: [], painting_regions: [], blank_regions: [] }
+      analysisNote.value = ''
+      positionAnalysis.value = null
+    }
   }
 
   // 等待DOM更新
@@ -2592,62 +2685,100 @@ async function autoAnalyze() {
   const progressInterval = startAnalyzeProgress()
 
   try {
-    const response = await fetch(`/api/v1/tubi/auto-analyze/${currentImage.value.id}`, {
-      method: 'POST'
-    })
+    const startResult = await tubiApi.autoAnalyze(currentImage.value.id)
+    if (!startResult?.success) {
+      throw new Error(startResult?.detail || startResult?.error || '分析任务启动失败')
+    }
 
-    const result = await response.json()
+    analyzingStep.value = '已加入队列，等待分析...'
 
-    clearInterval(progressInterval)
-
-    if (result.success) {
-      const data = result.data
-
-      currentImage.value.inscriptionPercent = data.area_stats.inscription_percent
-      currentImage.value.paintingPercent = data.area_stats.painting_percent
-      currentImage.value.blankPercent = data.area_stats.blank_percent
-      currentImage.value.regions = data.regions
-      currentImage.value.annotatedImageUrl = data.annotated_image_url
-
-      areaStats.inscriptionPercent = data.area_stats.inscription_percent
-      areaStats.paintingPercent = data.area_stats.painting_percent
-      areaStats.blankPercent = data.area_stats.blank_percent
-
-      regions = data.regions
-      analysisNote.value = data.analysis_note
-
-      // 使用基于规则的位置分析计算（无需AI）
-      const calculatedPositionAnalysis = calculatePositionAnalysisByRules(
-        data.regions,
-        currentImage.value.width,
-        currentImage.value.height
-      )
-      positionAnalysis.value = calculatedPositionAnalysis
-      currentImage.value.positionAnalysis = calculatedPositionAnalysis
-
-      drawRegions()
-
-      const idx = uploadedImages.value.findIndex(img => img.id === currentImage.value.id)
-      if (idx > -1) {
-        uploadedImages.value[idx] = { ...currentImage.value }
+    const startAt = Date.now()
+    while (true) {
+      const statusResult = await tubiApi.getAnalyzeStatus(currentImage.value.id)
+      if (!statusResult?.success) {
+        throw new Error(statusResult?.detail || statusResult?.error || '获取分析状态失败')
       }
 
-      analyzeProgress.value = 100
-      analyzingStep.value = '分析完成！'
-      analyzeStatus.value = 'analyzed'
-
-      // 等待DOM更新后再初始化图表
-      await nextTick()
-      updatePieChart()
-      updateHeatmap()
-      
-      // 刷新历史记录和趋势图
-      await loadHistory()
-
-      ElMessage.success('AI分析完成')
-    } else {
-      throw new Error(result.detail || '分析失败')
+      const status = statusResult.data?.status
+      if (status === 'analyzed') break
+      if (status === 'error') {
+        throw new Error(statusResult.data?.analysis_note || '分析失败')
+      }
+      if (status === 'queued') {
+        try {
+          const qi = await tubiApi.getQueueInfo(currentImage.value.id)
+          const pos = qi?.data?.position
+          const est = qi?.data?.estimated_wait_seconds
+          if (pos) {
+            const mins = est ? Math.max(1, Math.ceil(est / 60)) : null
+            analyzingStep.value = mins ? `排队中：前面还有${pos - 1}个，预计约${mins}分钟` : `排队中：前面还有${pos - 1}个`
+          } else {
+            analyzingStep.value = '排队中...'
+          }
+        } catch {
+          analyzingStep.value = '排队中...'
+        }
+      } else if (status === 'analyzing') {
+        analyzingStep.value = '分析中...'
+      }
+      const elapsed = Date.now() - startAt
+      const waitMs = status === 'queued'
+        ? (elapsed < 60_000 ? 5000 : 8000)
+        : (elapsed < 60_000 ? 3000 : 6000)
+      await new Promise(resolve => setTimeout(resolve, waitMs))
+      if (Date.now() - startAt > 20 * 60 * 1000) {
+        throw new Error('分析超时，请重试')
+      }
     }
+
+    const result = await tubiApi.getAnalysisResult(currentImage.value.id)
+    clearInterval(progressInterval)
+
+    if (!result?.success) {
+      throw new Error(result?.detail || result?.error || '获取分析结果失败')
+    }
+
+    const data = result.data
+
+    currentImage.value.inscriptionPercent = data.inscription_percent
+    currentImage.value.paintingPercent = data.painting_percent
+    currentImage.value.blankPercent = data.blank_percent
+    currentImage.value.regions = data.regions
+    currentImage.value.annotatedImageUrl = data.annotated_image_url
+
+    areaStats.inscriptionPercent = data.inscription_percent
+    areaStats.paintingPercent = data.painting_percent
+    areaStats.blankPercent = data.blank_percent
+
+    regions = data.regions
+    analysisNote.value = data.analysis_note
+
+    const calculatedPositionAnalysis = calculatePositionAnalysisByRules(
+      data.regions,
+      currentImage.value.width,
+      currentImage.value.height
+    )
+    positionAnalysis.value = calculatedPositionAnalysis
+    currentImage.value.positionAnalysis = calculatedPositionAnalysis
+
+    drawRegions()
+
+    const idx = uploadedImages.value.findIndex(img => img.id === currentImage.value.id)
+    if (idx > -1) {
+      uploadedImages.value[idx] = { ...currentImage.value }
+    }
+
+    analyzeProgress.value = 100
+    analyzingStep.value = '分析完成！'
+    analyzeStatus.value = 'analyzed'
+
+    await nextTick()
+    updatePieChart()
+    updateHeatmap()
+
+    await loadHistory()
+
+    ElMessage.success('AI分析完成')
   } catch (error) {
     clearInterval(progressInterval)
     analyzeStatus.value = 'pending'
@@ -3010,7 +3141,7 @@ function updateTrendChart() {
         artist: latestItem.artist,
         url: latestItem.url,
         thumbnailUrl: latestItem.thumbnailUrl,
-        period: latestItem.period,
+        age: getDisplayAge(latestItem),
         created_at: latestItem.created_at,
         // 保存该年份所有画作
         allItems: items
@@ -3040,10 +3171,13 @@ function updateTrendChart() {
           const targetImage = uploadedImages.value.find(img => img.id === item.id)
           if (targetImage) {
             selectImage(targetImage)
+            window.scrollTo({ top: 0, behavior: 'smooth' })
             ElMessage.success(`已切换到: ${item.title || '未命名'}`)
           } else {
             // 如果不在 uploadedImages 中，需要加载该图片
-            loadAndSelectImage(item.id)
+            loadAndSelectImage(item.id).then(() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            })
           }
         }
       })
@@ -3051,9 +3185,8 @@ function updateTrendChart() {
 
   // 准备数据
   const xData = trendData.map(item => {
-    // 如果有时期信息，显示为 "时期 (年代)" 格式
-    if (item.period) {
-      return `${item.period}\n(${item.year})`
+    if (trendArtistFilter.value !== 'all' && item.age !== null && item.age !== undefined) {
+      return `${item.year}（${item.age}岁）`
     }
     return item.year.toString()
   })
@@ -3077,13 +3210,17 @@ function updateTrendChart() {
         const countTip = item.count > 1 
           ? `<div style="color:#E6A23C;font-size:11px;margin-bottom:4px;">📚 该年份共 ${item.count} 幅作品</div>` 
           : ''
+
+        const ageTip = item.age !== null && item.age !== undefined
+          ? ` · ${item.age}岁`
+          : ''
         
         return `
           <div style="padding:8px;cursor:pointer;">
             ${thumb}
             ${countTip}
             <div style="font-weight:600;margin-bottom:4px;color:#6B5B95;">${item.title || '未命名'}</div>
-            <div style="color:#8B7CB3;font-size:12px;margin-bottom:4px;">${item.artist || '未知作者'} · ${item.year}年</div>
+            <div style="color:#8B7CB3;font-size:12px;margin-bottom:4px;">${item.artist || '未知作者'} · ${item.year}年${ageTip}</div>
             <div style="color:#9B7ED8;font-weight:600;margin-bottom:4px;">平均题跋占比: ${item.inscriptionPercent}%</div>
             <div style="color:#9B7ED8;font-size:11px;border-top:1px solid #E8E3F0;padding-top:4px;margin-top:4px;">点击查看详情</div>
           </div>
@@ -3231,22 +3368,64 @@ async function loadSearchResultItem(row) {
 }
 
 // 加载历史记录
+// 从AI分析说明中提取题跋内容
+function extractInscriptionContent(analysisNote) {
+  if (!analysisNote) return ''
+  
+  // 尝试提取题跋内容
+  // 这里使用简单的正则表达式来提取可能的题跋内容
+  // 实际应用中可能需要更复杂的逻辑
+  const inscriptionPatterns = [
+    /题跋内容[:：]([\s\S]*?)(?=\<br\>|$)/,
+    /款识[:：]([\s\S]*?)(?=\<br\>|$)/,
+    /题跋[:：]([\s\S]*?)(?=\<br\>|$)/,
+    /跋文[:：]([\s\S]*?)(?=\<br\>|$)/
+  ]
+  
+  for (const pattern of inscriptionPatterns) {
+    const match = analysisNote.match(pattern)
+    if (match && match[1]) {
+      return match[1].trim()
+    }
+  }
+  
+  // 如果没有找到明确的题跋标记，尝试提取可能的题跋内容
+  // 查找包含年月日、作者等信息的文本
+  const datePattern = /[\d一二三四五六七八九十百千]+年[\d一二三四五六七八九十]+月|[\d一二三四五六七八九十百千]+年[春夏秋冬]/
+  const authorPattern = /[\u4e00-\u9fa5]{2,4}\s*书|\s*写|\s*题/
+  
+  const lines = analysisNote.split('<br>')
+  for (const line of lines) {
+    if (datePattern.test(line) || authorPattern.test(line)) {
+      return line.trim()
+    }
+  }
+  
+  return ''
+}
+
 async function loadHistory() {
   historyLoading.value = true
   try {
     const response = await tubiApi.getAllResults()
     console.log('历史记录API响应:', response)
     if (response.success) {
-      // 转换字段名（下划线转驼峰）
-      historyList.value = (response.data || []).map(item => ({
-        ...item,
-        inscriptionPercent: item.inscription_percent,
-        paintingPercent: item.painting_percent,
-        blankPercent: item.blank_percent,
-        annotatedImageUrl: item.annotated_image_url,
-        thumbnailUrl: item.thumbnail_url,
-        analysisNote: item.analysis_note
-      }))
+      // 转换字段名（下划线转驼峰）并提取题跋内容
+      historyList.value = (response.data || []).map(item => {
+        const analysisNote = item.analysis_note || ''
+        const inscriptionContent = item.inscription_content || extractInscriptionContent(analysisNote)
+        
+        return {
+          ...item,
+          inscriptionPercent: item.inscription_percent,
+          paintingPercent: item.painting_percent,
+          blankPercent: item.blank_percent,
+          annotatedImageUrl: item.annotated_image_url,
+          thumbnailUrl: item.thumbnail_url,
+          analysisNote: analysisNote,
+          inscriptionContent: inscriptionContent
+        }
+      })
       console.log('历史记录加载成功:', historyList.value.length, '条')
       // 加载完成后更新趋势图
       await nextTick()
@@ -3274,29 +3453,18 @@ function previewHistoryImage(row) {
 // 加载历史记录项
 async function loadHistoryItem(row) {
   try {
-    const response = await tubiApi.getAnalysisResult(row.id)
-    if (response.success) {
-      const data = response.data
-
-      // 创建图片对象
+    // 处理模拟数据（负数ID）
+    if (row.id < 0) {
+      // 直接使用传入的row对象作为历史记录项
       const historyImage = {
-        id: data.id,
-        name: data.name || '历史记录',
-        url: data.url,
-        thumbnailUrl: data.thumbnail_url || data.url,
-        width: data.width,
-        height: data.height,
-        title: data.title,
-        artist: data.artist,
-        year: data.year,
-        period: data.period,
-        inscriptionPercent: data.inscription_percent,
-        paintingPercent: data.painting_percent,
-        blankPercent: data.blank_percent,
-        regions: data.regions,
-        positionAnalysis: data.position_analysis,
-        annotatedImageUrl: data.annotated_image_url,
-        analysisNote: data.analysis_note
+        ...row,
+        name: row.title || '模拟数据',
+        url: row.thumbnailUrl || row.url,
+        width: 800,
+        height: 600,
+        blankPercent: 100 - (row.inscriptionPercent || 0) - (row.paintingPercent || 0),
+        annotatedImageUrl: row.thumbnailUrl || row.url,
+        analysisNote: `这是一幅包含关键词「${currentKeyword.value}」的模拟画作。`
       }
 
       // 添加到当前会话
@@ -3312,13 +3480,64 @@ async function loadHistoryItem(row) {
       // 滚动到页面顶部
       window.scrollTo({ top: 0, behavior: 'smooth' })
       
-      ElMessage.success('已加载历史记录')
+      ElMessage.success('已加载模拟数据')
     } else {
-      ElMessage.error(response.message || '加载失败')
+      // 正常加载真实数据
+      const response = await tubiApi.getAnalysisResult(row.id)
+      if (response.success) {
+        const data = response.data
+
+        // 创建图片对象
+        const analysisNote = data.analysis_note || ''
+        const inscriptionContent = data.inscription_content || extractInscriptionContent(analysisNote)
+        
+        const historyImage = {
+          id: data.id,
+          name: data.name || '历史记录',
+          url: data.url,
+          thumbnailUrl: data.thumbnail_url || data.url,
+          width: data.width,
+          height: data.height,
+          title: data.title,
+          artist: data.artist,
+          year: data.year,
+          period: data.period,
+          inscriptionPercent: data.inscription_percent,
+          paintingPercent: data.painting_percent,
+          blankPercent: data.blank_percent,
+          regions: data.regions,
+          positionAnalysis: data.position_analysis,
+          annotatedImageUrl: data.annotated_image_url,
+          analysisNote: analysisNote,
+          inscriptionContent: inscriptionContent
+        }
+
+        // 添加到当前会话
+        const exists = uploadedImages.value.find(img => img.id === historyImage.id)
+        if (!exists) {
+          uploadedImages.value.push(historyImage)
+        }
+
+        // 选中该图片
+        selectImage(historyImage)
+        historyDialogVisible.value = false
+        
+        // 滚动到页面顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        
+        ElMessage.success('已加载历史记录')
+      } else {
+        ElMessage.error(response.message || '加载失败')
+      }
     }
   } catch (error) {
     console.error('加载历史记录项失败:', error)
-    ElMessage.error('加载失败')
+    // 检查是否是404错误
+    if (error.response && error.response.status === 404) {
+      ElMessage.error('该作品不存在或已被删除')
+    } else {
+      ElMessage.error('加载失败')
+    }
   }
 }
 
@@ -3332,6 +3551,9 @@ async function loadAndSelectImage(imageId) {
       const data = response.data
 
       // 创建图片对象
+      const analysisNote = data.analysis_note || ''
+      const inscriptionContent = data.inscription_content || extractInscriptionContent(analysisNote)
+      
       const image = {
         id: data.id,
         name: data.name || '画作',
@@ -3348,7 +3570,8 @@ async function loadAndSelectImage(imageId) {
         blankPercent: data.blank_percent,
         regions: data.regions,
         annotatedImageUrl: data.annotated_image_url,
-        analysisNote: data.analysis_note
+        analysisNote: analysisNote,
+        inscriptionContent: inscriptionContent
       }
 
       // 添加到当前会话
@@ -3359,6 +3582,7 @@ async function loadAndSelectImage(imageId) {
 
       // 选中该图片
       selectImage(image)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       ElMessage.success(`已切换到: ${image.title || '未命名'}`)
     } else {
       ElMessage.error(response.message || '加载画作失败')
@@ -3416,9 +3640,10 @@ function editHistoryItem(row) {
   editForm.title = row.title || ''
   editForm.artist = row.artist || ''
   editForm.year = row.year || ''
-  editForm.age = row.age || row.period || ''
+  editForm.age = getDisplayAge(row) ?? ''
   editForm.notes = row.notes || ''
   editForm.analysisNote = row.analysisNote || row.analysis_note || ''
+  editForm.inscriptionContent = row.inscriptionContent || row.inscription_content || ''
   editForm.inscriptionPercent = row.inscriptionPercent || row.inscription_percent || 0
   editForm.paintingPercent = row.paintingPercent || row.painting_percent || 0
   editForm.blankPercent = row.blankPercent || row.blank_percent || 0
@@ -3435,6 +3660,7 @@ async function saveEdit() {
       age: editForm.age ? parseInt(editForm.age) : null,
       notes: editForm.notes,
       analysis_note: editForm.analysisNote,
+      inscription_content: editForm.inscriptionContent,
       inscription_percent: parseFloat(editForm.inscriptionPercent) || 0,
       painting_percent: parseFloat(editForm.paintingPercent) || 0,
       blank_percent: parseFloat(editForm.blankPercent) || 0
@@ -3452,6 +3678,7 @@ async function saveEdit() {
         currentImage.value.year = editForm.year
         currentImage.value.age = editForm.age
         currentImage.value.analysisNote = editForm.analysisNote
+        currentImage.value.inscriptionContent = editForm.inscriptionContent
         currentImage.value.inscriptionPercent = parseFloat(editForm.inscriptionPercent) || 0
         currentImage.value.paintingPercent = parseFloat(editForm.paintingPercent) || 0
         currentImage.value.blankPercent = parseFloat(editForm.blankPercent) || 0
@@ -3478,9 +3705,10 @@ function editImageInfo(item) {
   editForm.title = item.title || ''
   editForm.artist = item.artist || ''
   editForm.year = item.year || ''
-  editForm.age = item.age || item.period || ''
+  editForm.age = getDisplayAge(item) ?? ''
   editForm.notes = item.notes || ''
   editForm.analysisNote = item.analysisNote || item.analysis_note || ''
+  editForm.inscriptionContent = item.inscriptionContent || item.inscription_content || ''
   editForm.inscriptionPercent = item.inscriptionPercent || item.inscription_percent || 0
   editForm.paintingPercent = item.paintingPercent || item.painting_percent || 0
   editForm.blankPercent = item.blankPercent || item.blank_percent || 0
@@ -3857,6 +4085,9 @@ onMounted(() => {
   // 页面加载时自动加载历史记录
   loadHistory()
   
+  // 生成词云
+  generateWordCloud()
+  
   // 检查URL参数，处理从排行榜页面跳转过来的情况
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1])
   const imageId = urlParams.get('id')
@@ -4033,6 +4264,26 @@ onUnmounted(() => {
   font-size: 12px;
   color: #ccc;
   margin-top: 4px;
+}
+
+.word-cloud-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 20px;
+  gap: 8px;
+  width: 100%;
+  min-height: 400px;
+}
+
+.word-cloud-item {
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
 .word-cloud-stats {
@@ -5077,7 +5328,14 @@ onUnmounted(() => {
 /* 头部按钮组 */
 .header-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+}
+
+.header-buttons .el-button {
+  flex: 1;
+  min-width: 80px;
+  max-width: 100px;
+  text-align: center;
 }
 
 /* 批量上传样式 */
@@ -5471,19 +5729,56 @@ onUnmounted(() => {
 }
 
 .analysis-note-main h4 {
-  font-size: 15px;
+  font-size: 17px;
   color: #333;
   margin-bottom: 10px;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .analysis-note-main p {
   font-size: 14px;
   color: #555;
   line-height: 1.7;
+}
+
+/* 款识题跋 */
+.inscription-note-main {
+  margin: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border-left: 4px solid #4ecdc4;
+}
+
+.inscription-note-main h4 {
+  font-size: 17px;
+  color: #333;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.inscription-content {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.inscription-empty {
+  color: #999;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.inscription-empty .empty-tip {
+  font-size: 12px;
+  margin-top: 8px;
 }
 
 /* 分析结果左右布局 */

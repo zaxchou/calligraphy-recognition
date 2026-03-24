@@ -66,3 +66,21 @@ yarn-error.log*
 # Frontend build
 dist/
 build/
+
+# Local dev artifacts
+backend/test_log.txt
+backend/check_db*.py
+backend/test_*.py
+backend/test_api_*.py
+backend/update_db.py
+backend/recover_data.py
+backend/data/*.bak
+backend/data/*.restored
+backend/data/*.db.*
+backend/data/*.temp
+calligraphy.db.temp
+auto_commit.bat
+check_db*.py
+recover_data.py
+test_*.py
+test_api_*.py

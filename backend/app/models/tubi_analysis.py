@@ -39,6 +39,9 @@ class TubiAnalysis(Base):
     # 分析说明
     analysis_note = Column(Text, comment="AI分析说明")
     
+    # 款识题跋内容
+    inscription_content = Column(Text, nullable=True, default=None, comment="款识题跋内容")
+    
     # 标注图片路径
     annotated_image_path = Column(String(500), comment="标注后的图片路径")
     

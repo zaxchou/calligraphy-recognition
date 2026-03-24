@@ -1,18 +1,37 @@
 import httpx
 import base64
 import json
+import time
 from typing import List, Dict, Optional, Tuple
+import io
+import re
+from PIL import Image
 
 import os
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
 
 MODEL_NAME = "Pro/moonshotai/Kimi-K2.5"
+MAX_RETRIES = 4
+RETRY_DELAY = 3
 
 
-def encode_image_to_base64(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
+def encode_image_to_base64(image_path: str, max_side: int = 2048, quality: int = 85) -> str:
+    with Image.open(image_path) as img:
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGB")
+        width, height = img.size
+        longest = max(width, height)
+        if longest > max_side:
+            scale = max_side / float(longest)
+            new_w = max(1, int(width * scale))
+            new_h = max(1, int(height * scale))
+            img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        data = buf.getvalue()
+        return base64.b64encode(data).decode("utf-8")
 
 
 def analyze_image_regions(image_path: str, image_width: int, image_height: int) -> Dict:
@@ -27,10 +46,27 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
             "analysis_note": "..."
         }
     """
+    print(f"开始分析图像: {image_path}")
+    print(f"图像尺寸: {image_width}x{image_height}")
+    
+    try:
+        # 检查图像文件大小
+        import os
+        file_size = os.path.getsize(image_path) / (1024 * 1024)  # MB
+        print(f"图像文件大小: {file_size:.2f} MB")
+        
+        # 限制文件大小，避免处理过大的图像
+        if file_size > 50:  # 限制为50MB
+            print("错误: 图像文件过大，超过50MB限制")
+            return {
+                "success": False,
+                "error": "图像文件过大，超过50MB限制"
+            }
+        
+        base64_image = encode_image_to_base64(image_path, max_side=2048, quality=85)
+        print(f"Base64编码完成，大小: {len(base64_image) / (1024 * 1024):.2f} MB")
 
-    base64_image = encode_image_to_base64(image_path)
-
-    prompt = f"""你是一个专业的中国画艺术分析师。请按照以下三步策略分析这幅李鱓的绘画作品：
+        prompt = f"""你是一个专业的中国画艺术分析师。请按照以下三步策略分析这幅李鱓的绘画作品：
 
 ## 三步划分策略
 
@@ -116,78 +152,109 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
 
 请只返回JSON格式数据。"""
 
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
+        payload = {
+            "model": MODEL_NAME,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
                         }
+                    ]
+                }
+            ],
+            "stream": False,
+            "max_tokens": 2048
+        }
+
+        headers = {
+            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        print("开始调用API分析图像...")
+
+        limits = httpx.Limits(max_keepalive_connections=5, max_connections=5)
+        with httpx.Client(limits=limits) as client:
+            for retry in range(MAX_RETRIES):
+                attempt_timeout = httpx.Timeout(220.0, connect=10.0, read=180.0, write=60.0)
+                delay = min(60, (2 ** retry) * RETRY_DELAY)
+                jitter = 0.5 + (time.time() % 1.0) * 0.5
+                delay = delay * jitter
+                try:
+                    response = client.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=attempt_timeout)
+                    response.raise_for_status()
+                    result = response.json()
+
+                    content = result["choices"][0]["message"]["content"]
+                    print("API调用成功，开始解析返回结果...")
+
+                    content = content.strip()
+                    if content.startswith("```json"):
+                        content = content[7:]
+                    if content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+
+                    start = content.find("{")
+                    end = content.rfind("}")
+                    if start != -1 and end != -1 and end > start:
+                        content = content[start:end + 1]
+                    content = re.sub(r",\s*([}\]])", r"\1", content)
+
+                    analysis = json.loads(content)
+                    print("JSON解析成功")
+
+                    normalized_regions = _normalize_regions(analysis, image_width, image_height)
+                    print("区域标准化完成")
+
+                    return {
+                        "success": True,
+                        "regions": normalized_regions,
+                        "analysis_note": analysis.get("analysis_note", ""),
+                        "raw_response": content
                     }
-                ]
-            }
-        ],
-        "stream": False,
-        "max_tokens": 2048
-    }
+                except httpx.HTTPStatusError as e:
+                    status = e.response.status_code
+                    retryable = status in (429, 500, 502, 503, 504)
+                    if retryable and retry < MAX_RETRIES - 1:
+                        print(f"API请求错误 {status} (重试 {retry+1}/{MAX_RETRIES})")
+                        time.sleep(delay)
+                        continue
+                    try:
+                        error_detail = e.response.json().get("error", {}).get("message", "Unknown error")
+                        return {"success": False, "error": f"API请求错误: {status} - {error_detail}"}
+                    except Exception:
+                        return {"success": False, "error": f"API请求错误: {status}"}
+                except (httpx.ConnectError, httpx.ReadError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.TimeoutException) as e:
+                    if retry < MAX_RETRIES - 1:
+                        print(f"网络/超时错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
+                        time.sleep(delay)
+                        continue
+                    return {"success": False, "error": f"网络/超时错误: {str(e)}"}
+                except json.JSONDecodeError as e:
+                    if retry < MAX_RETRIES - 1:
+                        print(f"JSON解析错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
+                        time.sleep(delay)
+                        continue
+                    return {"success": False, "error": f"JSON解析错误: {str(e)}"}
+                except Exception as e:
+                    return {"success": False, "error": f"分析失败: {str(e)}"}
 
-    headers = {
-        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    try:
-        with httpx.Client(timeout=httpx.Timeout(600.0, connect=30.0)) as client:
-            response = client.post(SILICONFLOW_API_URL, headers=headers, json=payload)
-            response.raise_for_status()
-            result = response.json()
-
-            content = result["choices"][0]["message"]["content"]
-
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
-            analysis = json.loads(content)
-
-            normalized_regions = _normalize_regions(analysis, image_width, image_height)
-
-            return {
-                "success": True,
-                "regions": normalized_regions,
-                "analysis_note": analysis.get("analysis_note", ""),
-                "raw_response": content
-            }
-
-    except httpx.TimeoutException:
-        return {
-            "success": False,
-            "error": "API请求超时，请重试"
-        }
-    except httpx.HTTPStatusError as e:
-        return {
-            "success": False,
-            "error": f"API请求错误: {e.response.status_code}"
-        }
-    except json.JSONDecodeError as e:
-        return {
-            "success": False,
-            "error": f"JSON解析错误: {str(e)}"
-        }
     except Exception as e:
+        print(f"分析失败: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "error": f"分析失败: {str(e)}"
@@ -286,66 +353,28 @@ def calculate_blank_regions(inscription_regions, painting_regions, image_width, 
     自动计算留白区域
     留白 = 整幅画 - 题跋区域 - 绘画区域
     """
-    from .polygon_utils import point_in_polygon
-    
-    blank_regions = []
-    
-    # 将题跋和绘画转换为多边形列表
-    occupied_polys = []
-    for reg in inscription_regions + painting_regions:
-        if "points" in reg and len(reg["points"]) >= 3:
-            occupied_polys.append(reg["points"])
-        elif "x1" in reg:
-            # 矩形转多边形
-            poly = [
-                {"x": reg["x1"], "y": reg["y1"]},
-                {"x": reg["x2"], "y": reg["y1"]},
-                {"x": reg["x2"], "y": reg["y2"]},
-                {"x": reg["x1"], "y": reg["y2"]}
-            ]
-            occupied_polys.append(poly)
-    
-    # 使用网格采样找到留白区域的边界点
-    grid_size = 20
-    blank_points = set()
-    
-    for y in range(0, image_height, grid_size):
-        for x in range(0, image_width, grid_size):
-            point = {"x": x, "y": y}
-            # 检查是否在题跋或绘画区域内
-            is_occupied = any(
-                point_in_polygon(point, poly) 
-                for poly in occupied_polys
-            )
-            if not is_occupied:
-                blank_points.add((x // grid_size, y // grid_size))
-    
-    # 简单的矩形留白区域（整幅画的外框减去已占用区域）
-    # 这里简化处理，返回一个大的矩形留白区域
-    # 实际应用中可以使用更复杂的算法来找到多个独立的留白区域
-    
-    # 找到留白的边界
-    if blank_points:
-        min_x = min(p[0] for p in blank_points) * grid_size
-        max_x = (max(p[0] for p in blank_points) + 1) * grid_size
-        min_y = min(p[1] for p in blank_points) * grid_size
-        max_y = (max(p[1] for p in blank_points) + 1) * grid_size
-        
-        # 限制在图像范围内
-        min_x = max(0, min_x)
-        min_y = max(0, min_y)
-        max_x = min(image_width, max_x)
-        max_y = min(image_height, max_y)
-        
-        blank_regions.append({
-            "x1": min_x,
-            "y1": min_y,
-            "x2": max_x,
-            "y2": max_y,
+    try:
+        # 简化处理：返回一个大的矩形留白区域，覆盖整个图像
+        # 这样可以避免复杂的计算，减少内存使用和计算时间
+        blank_regions = [{
+            "x1": 0,
+            "y1": 0,
+            "x2": image_width,
+            "y2": image_height,
             "type": "rectangle"
-        })
-    
-    return blank_regions
+        }]
+        
+        return blank_regions
+    except Exception as e:
+        print(f"计算留白区域时出错: {e}")
+        # 出错时返回一个默认的留白区域
+        return [{
+            "x1": 0,
+            "y1": 0,
+            "x2": image_width,
+            "y2": image_height,
+            "type": "rectangle"
+        }]
 
 
 def calculate_area_stats(regions: Dict, image_width: int, image_height: int) -> Dict:

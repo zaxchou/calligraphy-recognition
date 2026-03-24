@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
+from fastapi.responses import JSONResponse
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -7,9 +8,16 @@ import uuid
 from datetime import datetime
 from PIL import Image, ImageDraw
 
+import redis
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path
 from app.models.tubi_analysis import TubiAnalysis
+from app.models.tubi_job import TubiJob
+
+# 获取项目根目录
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.siliconflow_service import (
     analyze_image_regions,
     calculate_area_stats,
@@ -25,6 +33,22 @@ THUMBNAIL_DIR = "data/thumbnails"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(ANNOTATED_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
+
+settings = get_settings()
+_QUEUE_KEY_PENDING = "tubi:queue:pending"
+_QUEUE_KEY_PROCESSING = "tubi:queue:processing"
+
+
+def _get_redis():
+    conn = redis.Redis.from_url(
+        settings.REDIS_URL,
+        decode_responses=True,
+        socket_connect_timeout=0.2,
+        socket_timeout=0.5,
+        retry_on_timeout=False
+    )
+    conn.ping()
+    return conn
 
 
 def create_thumbnail(image_path: str, thumbnail_path: str, max_size: int = 300):
@@ -84,9 +108,11 @@ class ImageInfoRequest(BaseModel):
     title: Optional[str] = None
     artist: Optional[str] = None
     year: Optional[int] = None
+    age: Optional[int] = None
     period: Optional[str] = None
     notes: Optional[str] = None
     analysis_note: Optional[str] = None
+    inscription_content: Optional[str] = None
     inscription_percent: Optional[float] = None
     painting_percent: Optional[float] = None
     blank_percent: Optional[float] = None
@@ -100,66 +126,105 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
     留白区域 - 蓝色填充+边框
     支持多边形和矩形两种格式
     """
-    from PIL import Image
-    
-    # 打开原图
-    with Image.open(original_path) as img:
-        # 转换为RGBA模式以支持透明叠加
-        if img.mode != 'RGBA':
-            img = img.convert('RGBA')
+    try:
+        from PIL import Image, ImageDraw
+        import os
         
-        # 创建透明叠加层
-        overlay = Image.new('RGBA', img.size, (255, 255, 255, 0))
-        draw = ImageDraw.Draw(overlay)
+        # 检查文件是否存在
+        if not os.path.exists(original_path):
+            print(f"警告: 原始文件不存在: {original_path}")
+            return None
         
-        # 定义颜色和透明度
-        colors = {
-            'inscription': (255, 0, 0, 60),      # 红色半透明
-            'painting': (0, 255, 0, 60),         # 绿色半透明
-            'blank': (0, 0, 255, 60)             # 蓝色半透明
-        }
-        border_colors = {
-            'inscription': (255, 0, 0, 200),
-            'painting': (0, 255, 0, 200),
-            'blank': (0, 0, 255, 200)
-        }
-        
-        def draw_region_fast(region, fill_color, border_color):
-            """快速绘制单个区域"""
-            if "points" in region and isinstance(region["points"], list):
-                points = region["points"]
-                if len(points) >= 3:
-                    poly_points = [(int(p["x"]), int(p["y"])) for p in points]
-                    # 填充
-                    draw.polygon(poly_points, fill=fill_color)
-                    # 边框
-                    draw.polygon(poly_points, outline=border_color, width=2)
-            elif "x1" in region:
-                x1, y1 = int(region["x1"]), int(region["y1"])
-                x2, y2 = int(region["x2"]), int(region["y2"])
-                draw.rectangle([x1, y1, x2, y2], fill=fill_color)
-                draw.rectangle([x1, y1, x2, y2], outline=border_color, width=2)
-        
-        # 按优先级绘制：留白 -> 绘画 -> 题跋（题跋在最上层）
-        for region in regions.get("blank_regions", []):
-            draw_region_fast(region, colors['blank'], border_colors['blank'])
-        
-        for region in regions.get("painting_regions", []):
-            draw_region_fast(region, colors['painting'], border_colors['painting'])
-        
-        for region in regions.get("inscription_regions", []):
-            draw_region_fast(region, colors['inscription'], border_colors['inscription'])
-        
-        # 合并图层
-        result = Image.alpha_composite(img, overlay)
-        
-        # 转换为RGB保存（减小文件大小）
-        if result.mode == 'RGBA':
-            result = result.convert('RGB')
-        
-        # 使用优化参数保存
-        result.save(output_path, 'JPEG', quality=85, optimize=True)
-        return output_path
+        # 打开原图并调整大小以减少内存使用
+        max_size = 1024  # 限制最大边长为1024像素
+        with Image.open(original_path) as img:
+            # 调整图片大小
+            width, height = img.size
+            if width > max_size or height > max_size:
+                if width > height:
+                    new_width = max_size
+                    new_height = int(height * max_size / width)
+                else:
+                    new_height = max_size
+                    new_width = int(width * max_size / height)
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # 转换为RGBA模式以支持透明叠加
+            if img.mode != 'RGBA':
+                img = img.convert('RGBA')
+            
+            # 创建透明叠加层
+            overlay = Image.new('RGBA', img.size, (255, 255, 255, 0))
+            draw = ImageDraw.Draw(overlay)
+            
+            # 定义颜色和透明度
+            colors = {
+                'inscription': (255, 0, 0, 60),      # 红色半透明
+                'painting': (0, 255, 0, 60),         # 绿色半透明
+                'blank': (0, 0, 255, 60)             # 蓝色半透明
+            }
+            border_colors = {
+                'inscription': (255, 0, 0, 200),
+                'painting': (0, 255, 0, 200),
+                'blank': (0, 0, 255, 200)
+            }
+            
+            def draw_region_fast(region, fill_color, border_color):
+                """快速绘制单个区域"""
+                try:
+                    if "points" in region and isinstance(region["points"], list):
+                        points = region["points"]
+                        if len(points) >= 3:
+                            # 调整坐标以匹配调整后的图片大小
+                            scale_x = new_width / width if 'new_width' in locals() else 1
+                            scale_y = new_height / height if 'new_height' in locals() else 1
+                            poly_points = [(int(p["x"] * scale_x), int(p["y"] * scale_y)) for p in points]
+                            # 填充
+                            draw.polygon(poly_points, fill=fill_color)
+                            # 边框
+                            draw.polygon(poly_points, outline=border_color, width=2)
+                    elif "x1" in region:
+                        # 调整坐标以匹配调整后的图片大小
+                        scale_x = new_width / width if 'new_width' in locals() else 1
+                        scale_y = new_height / height if 'new_height' in locals() else 1
+                        x1, y1 = int(region["x1"] * scale_x), int(region["y1"] * scale_y)
+                        x2, y2 = int(region["x2"] * scale_x), int(region["y2"] * scale_y)
+                        draw.rectangle([x1, y1, x2, y2], fill=fill_color)
+                        draw.rectangle([x1, y1, x2, y2], outline=border_color, width=2)
+                except Exception as e:
+                    print(f"绘制区域时出错: {e}")
+            
+            # 按优先级绘制：留白 -> 绘画 -> 题跋（题跋在最上层）
+            # 限制区域数量，避免处理过多区域导致崩溃
+            max_regions = 100  # 最多处理100个区域
+            
+            for region in regions.get("blank_regions", [])[:max_regions]:
+                draw_region_fast(region, colors['blank'], border_colors['blank'])
+            
+            for region in regions.get("painting_regions", [])[:max_regions]:
+                draw_region_fast(region, colors['painting'], border_colors['painting'])
+            
+            for region in regions.get("inscription_regions", [])[:max_regions]:
+                draw_region_fast(region, colors['inscription'], border_colors['inscription'])
+            
+            # 合并图层
+            result = Image.alpha_composite(img, overlay)
+            
+            # 转换为RGB保存（减小文件大小）
+            if result.mode == 'RGBA':
+                result = result.convert('RGB')
+            
+            # 确保输出目录存在
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # 使用优化参数保存
+            result.save(output_path, 'JPEG', quality=75, optimize=True)
+            return output_path
+    except Exception as e:
+        print(f"生成标注图片失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 @router.post("/upload")
@@ -172,61 +237,82 @@ async def upload_image(
     notes: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    if file.content_type not in ["image/jpeg", "image/png", "image/bmp"]:
-        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP 格式")
-
-    file_id = str(uuid.uuid4())
-    ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
-    filename = f"{file_id}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    thumbnail_filename = f"{file_id}_thumb.jpg"
-    thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
-
-    content = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
-
     try:
-        with Image.open(filepath) as img:
-            width, height = img.size
-    except Exception:
-        width, height = 0, 0
+        print(f"开始上传文件: {file.filename}")
+        print(f"文件类型: {file.content_type}")
+        
+        if file.content_type not in ["image/jpeg", "image/png", "image/bmp"]:
+            raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP 格式")
 
-    # 生成缩略图
-    create_thumbnail(filepath, thumbnail_path)
+        file_id = str(uuid.uuid4())
+        ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+        filename = f"{file_id}{ext}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        thumbnail_filename = f"{file_id}_thumb.jpg"
+        thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
 
-    # 保存到数据库
-    db_analysis = TubiAnalysis(
-        image_id=file_id,
-        filename=file.filename,
-        filepath=normalize_path(filepath),
-        thumbnail_path=normalize_path(thumbnail_path) if thumbnail_path else None,
-        title=title,
-        artist=artist,
-        year=year,
-        period=period,
-        notes=notes,
-        image_width=width,
-        image_height=height,
-        status="uploaded"
-    )
-    db.add(db_analysis)
-    db.commit()
-    db.refresh(db_analysis)
+        print(f"保存文件到: {filepath}")
+        content = await file.read()
+        print(f"文件大小: {len(content) / (1024 * 1024):.2f} MB")
+        
+        # 限制文件大小
+        if len(content) > 50 * 1024 * 1024:  # 50MB
+            raise HTTPException(status_code=400, detail="文件大小超过50MB限制")
+            
+        with open(filepath, "wb") as f:
+            f.write(content)
 
-    return {
-        "success": True,
-        "data": {
-            "id": file_id,
-            "filename": file.filename,
-            "title": title,
-            "artist": artist,
-            "url": get_static_url(f"uploads/{filename}"),
-            "thumbnail_url": get_static_url(f"thumbnails/{thumbnail_filename}"),
-            "width": width,
-            "height": height
+        try:
+            with Image.open(filepath) as img:
+                width, height = img.size
+            print(f"图像尺寸: {width}x{height}")
+        except Exception as e:
+            print(f"读取图像尺寸失败: {e}")
+            width, height = 0, 0
+
+        # 生成缩略图
+        print("生成缩略图...")
+        create_thumbnail(filepath, thumbnail_path)
+
+        # 保存到数据库
+        print("保存到数据库...")
+        db_analysis = TubiAnalysis(
+            image_id=file_id,
+            filename=file.filename,
+            filepath=normalize_path(filepath),
+            thumbnail_path=normalize_path(thumbnail_path) if thumbnail_path else None,
+            title=title,
+            artist=artist,
+            year=year,
+            period=period,
+            notes=notes,
+            image_width=width,
+            image_height=height,
+            status="uploaded"
+        )
+        db.add(db_analysis)
+        db.commit()
+        db.refresh(db_analysis)
+
+        print(f"上传成功: {file_id}")
+        return {
+            "success": True,
+            "data": {
+                "id": file_id,
+                "filename": file.filename,
+                "title": title,
+                "artist": artist,
+                "url": get_static_url(f"uploads/{filename}"),
+                "thumbnail_url": get_static_url(f"thumbnails/{thumbnail_filename}"),
+                "width": width,
+                "height": height
+            }
         }
-    }
+    except Exception as e:
+        print(f"上传失败: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 
 
 @router.post("/upload-multiple")
@@ -235,47 +321,104 @@ async def upload_images(
     db: Session = Depends(get_db)
 ):
     uploaded = []
-    for file in files:
-        if file.content_type in ["image/jpeg", "image/png", "image/bmp"]:
+    failed = []
+    total_files = len(files)
+    
+    for i, file in enumerate(files):
+        try:
+            print(f"处理文件 {i+1}/{total_files}: {file.filename}")
+            
+            if file.content_type not in ["image/jpeg", "image/png", "image/bmp"]:
+                failed.append({
+                    "filename": file.filename,
+                    "error": "只支持 JPG、PNG、BMP 格式"
+                })
+                continue
+
             file_id = str(uuid.uuid4())
             ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
             filename = f"{file_id}{ext}"
             filepath = os.path.join(UPLOAD_DIR, filename)
+            thumbnail_filename = f"{file_id}_thumb.jpg"
+            thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
 
             content = await file.read()
+            
+            # 限制文件大小
+            if len(content) > 50 * 1024 * 1024:  # 50MB
+                failed.append({
+                    "filename": file.filename,
+                    "error": "文件大小超过50MB限制"
+                })
+                continue
+                
             with open(filepath, "wb") as f:
                 f.write(content)
 
             try:
                 with Image.open(filepath) as img:
                     width, height = img.size
-            except Exception:
+            except Exception as e:
+                print(f"读取图像尺寸失败: {e}")
                 width, height = 0, 0
 
-            # 保存到数据库 - 使用标准化路径
-            db_analysis = TubiAnalysis(
-                image_id=file_id,
-                filename=file.filename,
-                filepath=normalize_path(filepath),
-                image_width=width,
-                image_height=height,
-                status="uploaded"
-            )
-            db.add(db_analysis)
-            db.commit()
-            db.refresh(db_analysis)
+            # 生成缩略图
+            try:
+                create_thumbnail(filepath, thumbnail_path)
+            except Exception as e:
+                print(f"生成缩略图失败: {e}")
 
-            uploaded.append({
-                "id": file_id,
+            # 保存到数据库 - 使用标准化路径
+            try:
+                db_analysis = TubiAnalysis(
+                    image_id=file_id,
+                    filename=file.filename,
+                    filepath=normalize_path(filepath),
+                    thumbnail_path=normalize_path(thumbnail_path) if thumbnail_path else None,
+                    image_width=width,
+                    image_height=height,
+                    status="uploaded"
+                )
+                db.add(db_analysis)
+                db.commit()
+                db.refresh(db_analysis)
+
+                uploaded.append({
+                    "id": file_id,
+                    "filename": file.filename,
+                    "url": get_static_url(f"uploads/{filename}"),
+                    "thumbnail_url": get_static_url(f"thumbnails/{thumbnail_filename}") if thumbnail_path else None,
+                    "width": width,
+                    "height": height
+                })
+            except Exception as e:
+                print(f"保存到数据库失败: {e}")
+                failed.append({
+                    "filename": file.filename,
+                    "error": f"保存到数据库失败: {str(e)}"
+                })
+                # 尝试删除已创建的文件
+                try:
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                    if os.path.exists(thumbnail_path):
+                        os.remove(thumbnail_path)
+                except:
+                    pass
+        except Exception as e:
+            print(f"处理文件 {file.filename} 时出错: {e}")
+            failed.append({
                 "filename": file.filename,
-                "url": get_static_url(f"uploads/{filename}"),
-                "width": width,
-                "height": height
+                "error": f"处理失败: {str(e)}"
             })
 
     return {
-        "success": True,
-        "data": uploaded
+        "success": len(failed) == 0,
+        "data": uploaded,
+        "failed": failed,
+        "total": total_files,
+        "uploaded_count": len(uploaded),
+        "failed_count": len(failed)
     }
 
 
@@ -284,76 +427,38 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db)):
     """
     使用 AI 自动分析图像中的题跋、绘画、留白区域
     """
-    # 从数据库获取
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
-    filepath = db_analysis.filepath
-    width = db_analysis.image_width or 0
-    height = db_analysis.image_height or 0
+    if db_analysis.status in ["queued", "analyzing"]:
+        return JSONResponse(
+            status_code=202,
+            content={"success": True, "data": {"id": image_id, "status": db_analysis.status}}
+        )
 
-    if not filepath or not os.path.exists(filepath):
-        raise HTTPException(status_code=400, detail="图像文件不存在")
-
-    if width == 0 or height == 0:
-        try:
-            with Image.open(filepath) as img:
-                width, height = img.size
-                db_analysis.image_width = width
-                db_analysis.image_height = height
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"无法读取图像: {str(e)}")
-
-    result = analyze_image_regions(filepath, width, height)
-
-    if not result["success"]:
-        db_analysis.status = "error"
-        db.commit()
-        raise HTTPException(status_code=500, detail=result.get("error", "分析失败"))
-
-    regions = result["regions"]
-    area_stats = calculate_area_stats(regions, width, height)
-    heatmap = generate_heatmap_data(regions, width, height)
-    
-    # 分析题跋位置
-    position_analysis = analyze_inscription_position(regions, width, height)
-
-    # 生成标注图片
-    annotated_filename = f"annotated_{image_id}.jpg"
-    annotated_path = os.path.join(ANNOTATED_DIR, annotated_filename)
-    draw_annotated_image(filepath, regions, annotated_path)
-
-    # 更新数据库 - 使用标准化路径
-    db_analysis.regions = regions
-    db_analysis.inscription_percent = area_stats["inscription_percent"]
-    db_analysis.painting_percent = area_stats["painting_percent"]
-    db_analysis.blank_percent = area_stats["blank_percent"]
-    db_analysis.heatmap_data = heatmap
-    db_analysis.position_analysis = position_analysis
-    db_analysis.analysis_note = result.get("analysis_note", "")
-    db_analysis.annotated_image_path = normalize_path(annotated_path)
-    db_analysis.status = "analyzed"
+    db_analysis.status = "queued"
     db.commit()
-    db.refresh(db_analysis)
 
-    return {
-        "success": True,
-        "data": {
-            "image_id": image_id,
-            "filename": db_analysis.filename,
-            "title": db_analysis.title,
-            "artist": db_analysis.artist,
-            "image_width": width,
-            "image_height": height,
-            "regions": regions,
-            "area_stats": area_stats,
-            "heatmap": heatmap,
-            "position_analysis": position_analysis,
-            "analysis_note": result.get("analysis_note", ""),
-            "annotated_image_url": get_static_url(f"annotated/{annotated_filename}")
-        }
-    }
+    job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
+    if job:
+        job.status = "queued"
+        job.last_error = None
+    else:
+        job = TubiJob(image_id=image_id, status="queued")
+        db.add(job)
+    db.commit()
+
+    try:
+        conn = _get_redis()
+        conn.lpush(_QUEUE_KEY_PENDING, image_id)
+    except Exception:
+        pass
+
+    return JSONResponse(
+        status_code=202,
+        content={"success": True, "data": {"id": image_id, "status": "queued"}}
+    )
 
 
 @router.post("/analyze")
@@ -445,6 +550,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
             "regions": db_analysis.regions,
             "position_analysis": db_analysis.position_analysis,
             "analysis_note": db_analysis.analysis_note,
+            "inscription_content": db_analysis.inscription_content,
             "status": db_analysis.status,
             "created_at": db_analysis.created_at.isoformat() if db_analysis.created_at else None,
             "annotated_image_url": get_static_url(f"annotated/annotated_{image_id}.jpg") if db_analysis.annotated_image_path else None
@@ -463,9 +569,70 @@ async def get_analyze_status(image_id: str, db: Session = Depends(get_db)):
         "data": {
             "id": image_id,
             "status": db_analysis.status,
+            "analysis_note": db_analysis.analysis_note,
             "inscription_percent": db_analysis.inscription_percent,
             "painting_percent": db_analysis.painting_percent,
             "blank_percent": db_analysis.blank_percent
+        }
+    }
+
+
+@router.get("/queue-info/{image_id}")
+async def get_queue_info(image_id: str, db: Session = Depends(get_db)):
+    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    if not db_analysis:
+        raise HTTPException(status_code=404, detail="图像不存在")
+
+    avg_seconds_per_job = 150
+    status = db_analysis.status
+
+    if status != "queued":
+        return {
+            "success": True,
+            "data": {
+                "id": image_id,
+                "status": status,
+                "position": 0,
+                "pending_count": 0,
+                "processing_count": 0,
+                "estimated_wait_seconds": 0
+            }
+        }
+
+    job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
+    if not job or not job.created_at:
+        return {
+            "success": True,
+            "data": {
+                "id": image_id,
+                "status": status,
+                "position": None,
+                "pending_count": None,
+                "processing_count": None,
+                "estimated_wait_seconds": None
+            }
+        }
+
+    before_count = (
+        db.query(TubiJob)
+        .filter(TubiJob.status == "queued")
+        .filter(TubiJob.created_at < job.created_at)
+        .count()
+    )
+    pending_count = db.query(TubiJob).filter(TubiJob.status == "queued").count()
+    processing_count = db.query(TubiJob).filter(TubiJob.status == "processing").count()
+    position = before_count + 1
+    estimated_wait_seconds = before_count * avg_seconds_per_job
+
+    return {
+        "success": True,
+        "data": {
+            "id": image_id,
+            "status": status,
+            "position": position,
+            "pending_count": pending_count,
+            "processing_count": processing_count,
+            "estimated_wait_seconds": estimated_wait_seconds
         }
     }
 
@@ -503,12 +670,16 @@ async def update_image_info(
         db_analysis.artist = request.artist
     if request.year is not None:
         db_analysis.year = request.year
+    if request.age is not None:
+        db_analysis.period = str(request.age)
     if request.period is not None:
         db_analysis.period = request.period
     if request.notes is not None:
         db_analysis.notes = request.notes
     if request.analysis_note is not None:
         db_analysis.analysis_note = request.analysis_note
+    if request.inscription_content is not None:
+        db_analysis.inscription_content = request.inscription_content
     if request.inscription_percent is not None:
         db_analysis.inscription_percent = request.inscription_percent
     if request.painting_percent is not None:
@@ -551,7 +722,7 @@ async def get_all_results(
         if analysis.filepath:
             actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
             # 检查文件是否实际存在
-            file_path_local = get_full_file_path(analysis.filepath, "")
+            file_path_local = get_full_file_path(analysis.filepath, PROJECT_ROOT)
             file_exists = os.path.exists(file_path_local)
         elif analysis.filename:
             actual_filename = analysis.filename
@@ -564,7 +735,7 @@ async def get_all_results(
         # 处理缩略图
         thumbnail_url = None
         if analysis.thumbnail_path:
-            thumbnail_path_local = get_full_file_path(analysis.thumbnail_path, "")
+            thumbnail_path_local = get_full_file_path(analysis.thumbnail_path, PROJECT_ROOT)
             if os.path.exists(thumbnail_path_local):
                 thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
                 thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
@@ -575,7 +746,7 @@ async def get_all_results(
         # 检查标注图片是否存在
         annotated_exists = False
         if analysis.annotated_image_path:
-            annotated_path_local = get_full_file_path(analysis.annotated_image_path, "")
+            annotated_path_local = get_full_file_path(analysis.annotated_image_path, PROJECT_ROOT)
             annotated_exists = os.path.exists(annotated_path_local)
 
         results.append({
@@ -597,7 +768,8 @@ async def get_all_results(
             "url": get_static_url(f"uploads/{actual_filename}") if actual_filename and file_exists else None,
             "thumbnail_url": thumbnail_url,
             "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
-            "analysis_note": analysis.analysis_note
+            "analysis_note": analysis.analysis_note,
+            "inscription_content": analysis.inscription_content
         })
 
     return {
@@ -647,7 +819,7 @@ async def search_images(
             # 从 filepath 提取文件名
             if analysis.filepath:
                 actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
-                file_path_local = get_full_file_path(analysis.filepath, "")
+                file_path_local = get_full_file_path(analysis.filepath, PROJECT_ROOT)
                 file_exists = os.path.exists(file_path_local)
             elif analysis.filename:
                 actual_filename = analysis.filename
@@ -659,7 +831,7 @@ async def search_images(
             # 处理缩略图
             thumbnail_url = None
             if analysis.thumbnail_path:
-                thumbnail_path_local = get_full_file_path(analysis.thumbnail_path, "")
+                thumbnail_path_local = get_full_file_path(analysis.thumbnail_path, PROJECT_ROOT)
                 if os.path.exists(thumbnail_path_local):
                     thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
                     thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
@@ -669,7 +841,7 @@ async def search_images(
             # 检查标注图片是否存在
             annotated_exists = False
             if analysis.annotated_image_path:
-                annotated_path_local = get_full_file_path(analysis.annotated_image_path, "")
+                annotated_path_local = get_full_file_path(analysis.annotated_image_path, PROJECT_ROOT)
                 annotated_exists = os.path.exists(annotated_path_local)
 
             results.append({
@@ -692,7 +864,8 @@ async def search_images(
                 "url": get_static_url(f"uploads/{actual_filename}") if actual_filename and file_exists else None,
                 "thumbnail_url": thumbnail_url,
                 "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
-                "analysis_note": analysis.analysis_note
+                "analysis_note": analysis.analysis_note,
+                "inscription_content": analysis.inscription_content
             })
 
         return {
@@ -715,11 +888,11 @@ async def delete_image(image_id: str, db: Session = Depends(get_db)):
 
     # 删除文件 - 使用跨平台路径处理
     if db_analysis.filepath:
-        file_path_local = get_full_file_path(db_analysis.filepath, "")
+        file_path_local = get_full_file_path(db_analysis.filepath, PROJECT_ROOT)
         if os.path.exists(file_path_local):
             os.remove(file_path_local)
     if db_analysis.annotated_image_path:
-        annotated_path_local = get_full_file_path(db_analysis.annotated_image_path, "")
+        annotated_path_local = get_full_file_path(db_analysis.annotated_image_path, PROJECT_ROOT)
         if os.path.exists(annotated_path_local):
             os.remove(annotated_path_local)
 
@@ -743,7 +916,7 @@ async def clear_all_analyses(db: Session = Depends(get_db)):
         # 删除所有关联文件 - 使用跨平台路径处理
         for analysis in all_analyses:
             if analysis.filepath:
-                file_path_local = get_full_file_path(analysis.filepath, "")
+                file_path_local = get_full_file_path(analysis.filepath, PROJECT_ROOT)
                 if os.path.exists(file_path_local):
                     try:
                         os.remove(file_path_local)
@@ -751,7 +924,7 @@ async def clear_all_analyses(db: Session = Depends(get_db)):
                         print(f"删除文件失败 {file_path_local}: {e}")
 
             if analysis.annotated_image_path:
-                annotated_path_local = get_full_file_path(analysis.annotated_image_path, "")
+                annotated_path_local = get_full_file_path(analysis.annotated_image_path, PROJECT_ROOT)
                 if os.path.exists(annotated_path_local):
                     try:
                         os.remove(annotated_path_local)
