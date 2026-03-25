@@ -3,5 +3,6 @@ uvicorn[standard]
 sqlalchemy
 python-multipart
 pillow
+PyMuPDF
 opencv-python
 numpy

@@ -7,11 +7,10 @@ import io
 import re
 from PIL import Image
 
-import os
-SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
-SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
+from app.core.config import get_settings
 
-MODEL_NAME = "Pro/moonshotai/Kimi-K2.5"
+settings = get_settings()
+_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
 MAX_RETRIES = 4
 RETRY_DELAY = 3
 
@@ -153,7 +152,7 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
 请只返回JSON格式数据。"""
 
         payload = {
-            "model": MODEL_NAME,
+            "model": settings.SILICONFLOW_MODEL,
             "messages": [
                 {
                     "role": "user",
@@ -175,81 +174,110 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
             "max_tokens": 2048
         }
 
-        headers = {
-            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
         print("开始调用API分析图像...")
 
-        limits = httpx.Limits(max_keepalive_connections=5, max_connections=5)
-        with httpx.Client(limits=limits) as client:
-            for retry in range(MAX_RETRIES):
-                attempt_timeout = httpx.Timeout(220.0, connect=10.0, read=180.0, write=60.0)
-                delay = min(60, (2 ** retry) * RETRY_DELAY)
-                jitter = 0.5 + (time.time() % 1.0) * 0.5
-                delay = delay * jitter
-                try:
-                    response = client.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=attempt_timeout)
-                    response.raise_for_status()
-                    result = response.json()
+        def build_chat_url(base_url: str) -> str:
+            base = (base_url or "").rstrip("/")
+            if base.endswith("/chat/completions"):
+                return base
+            return f"{base}/chat/completions"
 
-                    content = result["choices"][0]["message"]["content"]
-                    print("API调用成功，开始解析返回结果...")
+        def call_provider(provider: str, base_url: str, api_key: str, model: str) -> Dict:
+            url = build_chat_url(base_url)
+            print(f"当前使用AI供应商: {provider}")
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            provider_payload = dict(payload)
+            provider_payload["model"] = model
 
-                    content = content.strip()
-                    if content.startswith("```json"):
-                        content = content[7:]
-                    if content.startswith("```"):
-                        content = content[3:]
-                    if content.endswith("```"):
-                        content = content[:-3]
-                    content = content.strip()
-
-                    start = content.find("{")
-                    end = content.rfind("}")
-                    if start != -1 and end != -1 and end > start:
-                        content = content[start:end + 1]
-                    content = re.sub(r",\s*([}\]])", r"\1", content)
-
-                    analysis = json.loads(content)
-                    print("JSON解析成功")
-
-                    normalized_regions = _normalize_regions(analysis, image_width, image_height)
-                    print("区域标准化完成")
-
-                    return {
-                        "success": True,
-                        "regions": normalized_regions,
-                        "analysis_note": analysis.get("analysis_note", ""),
-                        "raw_response": content
-                    }
-                except httpx.HTTPStatusError as e:
-                    status = e.response.status_code
-                    retryable = status in (429, 500, 502, 503, 504)
-                    if retryable and retry < MAX_RETRIES - 1:
-                        print(f"API请求错误 {status} (重试 {retry+1}/{MAX_RETRIES})")
-                        time.sleep(delay)
-                        continue
+            limits = httpx.Limits(max_keepalive_connections=5, max_connections=5)
+            with httpx.Client(limits=limits) as client:
+                for retry in range(MAX_RETRIES):
+                    attempt_timeout = httpx.Timeout(220.0, connect=10.0, read=180.0, write=60.0)
+                    delay = min(60, (2 ** retry) * RETRY_DELAY)
+                    jitter = 0.5 + (time.time() % 1.0) * 0.5
+                    delay = delay * jitter
                     try:
-                        error_detail = e.response.json().get("error", {}).get("message", "Unknown error")
-                        return {"success": False, "error": f"API请求错误: {status} - {error_detail}"}
-                    except Exception:
-                        return {"success": False, "error": f"API请求错误: {status}"}
-                except (httpx.ConnectError, httpx.ReadError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.TimeoutException) as e:
-                    if retry < MAX_RETRIES - 1:
-                        print(f"网络/超时错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
-                        time.sleep(delay)
-                        continue
-                    return {"success": False, "error": f"网络/超时错误: {str(e)}"}
-                except json.JSONDecodeError as e:
-                    if retry < MAX_RETRIES - 1:
-                        print(f"JSON解析错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
-                        time.sleep(delay)
-                        continue
-                    return {"success": False, "error": f"JSON解析错误: {str(e)}"}
-                except Exception as e:
-                    return {"success": False, "error": f"分析失败: {str(e)}"}
+                        response = client.post(url, headers=headers, json=provider_payload, timeout=attempt_timeout)
+                        response.raise_for_status()
+                        result = response.json()
+
+                        content = result["choices"][0]["message"]["content"]
+                        print("API调用成功，开始解析返回结果...")
+
+                        content = content.strip()
+                        if content.startswith("```json"):
+                            content = content[7:]
+                        if content.startswith("```"):
+                            content = content[3:]
+                        if content.endswith("```"):
+                            content = content[:-3]
+                        content = content.strip()
+
+                        start = content.find("{")
+                        end = content.rfind("}")
+                        if start != -1 and end != -1 and end > start:
+                            content = content[start:end + 1]
+                        content = re.sub(r",\s*([}\]])", r"\1", content)
+
+                        analysis = json.loads(content)
+                        print("JSON解析成功")
+
+                        normalized_regions = _normalize_regions(analysis, image_width, image_height)
+                        print("区域标准化完成")
+
+                        return {
+                            "success": True,
+                            "provider": provider,
+                            "regions": normalized_regions,
+                            "analysis_note": analysis.get("analysis_note", ""),
+                            "raw_response": content
+                        }
+                    except httpx.HTTPStatusError as e:
+                        status = e.response.status_code
+                        retryable = status in (429, 500, 502, 503, 504)
+                        if retryable and retry < MAX_RETRIES - 1:
+                            print(f"API请求错误 {status} (重试 {retry+1}/{MAX_RETRIES})")
+                            time.sleep(delay)
+                            continue
+                        try:
+                            error_detail = e.response.json().get("error", {}).get("message", "Unknown error")
+                            return {"success": False, "error": f"API请求错误: {status} - {error_detail}"}
+                        except Exception:
+                            return {"success": False, "error": f"API请求错误: {status}"}
+                    except (httpx.ConnectError, httpx.ReadError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.TimeoutException) as e:
+                        if retry < MAX_RETRIES - 1:
+                            print(f"网络/超时错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
+                            time.sleep(delay)
+                            continue
+                        return {"success": False, "error": f"网络/超时错误: {str(e)}"}
+                    except json.JSONDecodeError as e:
+                        if retry < MAX_RETRIES - 1:
+                            print(f"JSON解析错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
+                            time.sleep(delay)
+                            continue
+                        return {"success": False, "error": f"JSON解析错误: {str(e)}"}
+                    except Exception as e:
+                        return {"success": False, "error": f"分析失败: {str(e)}"}
+
+        tried = []
+        last_error = None
+        if settings.QWEN_ENABLED and settings.QWEN_API_KEY and settings.QWEN_BASE_URL:
+            tried.append("qwen")
+            result = call_provider("qwen", settings.QWEN_BASE_URL, settings.QWEN_API_KEY, settings.QWEN_MODEL)
+            if result.get("success"):
+                return result
+            last_error = result.get("error") or last_error
+
+        if settings.SILICONFLOW_ENABLED and settings.SILICONFLOW_API_KEY:
+            tried.append("siliconflow")
+            result = call_provider("siliconflow", _SILICONFLOW_BASE_URL, settings.SILICONFLOW_API_KEY, settings.SILICONFLOW_MODEL)
+            if result.get("success"):
+                return result
+            last_error = result.get("error") or last_error
+
+        tried_text = " -> ".join(tried) if tried else "none"
+        suffix = f": {last_error}" if last_error else ""
+        return {"success": False, "error": f"无可用AI供应商或调用失败 ({tried_text}){suffix}"}
 
     except Exception as e:
         print(f"分析失败: {e}")

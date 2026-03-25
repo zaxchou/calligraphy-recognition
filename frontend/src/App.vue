@@ -18,13 +18,16 @@
           <router-link to="/" class="nav-item" :class="{ active: $route.path === '/' }">
             <span class="nav-text">首页</span>
           </router-link>
-          <router-link to="/tubi" class="nav-item" :class="{ active: $route.path === '/tubi' }">
+          <router-link to="/tubi" class="nav-item" :class="{ active: $route.path.startsWith('/tubi') }">
             <span class="nav-text">题跋分析</span>
           </router-link>
-          <router-link to="/recognize" class="nav-item" :class="{ active: $route.path === '/recognize' }">
+          <router-link to="/recognize" class="nav-item" :class="{ active: $route.path.startsWith('/recognize') }">
             <span class="nav-text">字体识别</span>
           </router-link>
-          <router-link to="/steles" class="nav-item" :class="{ active: $route.path === '/steles' }">
+          <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }">
+            <span class="nav-text">潘天寿教你构图</span>
+          </router-link>
+          <router-link to="/steles" class="nav-item" :class="{ active: $route.path.startsWith('/steles') }">
             <span class="nav-text">碑帖库</span>
           </router-link>
         </nav>

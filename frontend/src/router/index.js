@@ -5,6 +5,8 @@ import Steles from '../views/Steles.vue'
 import SteleDetail from '../views/SteleDetail.vue'
 import TubiAnalysis from '../views/TubiAnalysis.vue'
 import TubiRanking from '../views/TubiRanking.vue'
+import CompositionAnalyze from '../modules/pantianshou-composition/pages/CompositionAnalyze.vue'
+import CompositionKnowledge from '../modules/pantianshou-composition/pages/CompositionKnowledge.vue'
 
 const routes = [
   {
@@ -36,6 +38,16 @@ const routes = [
     path: '/tubi/ranking',
     name: 'TubiRanking',
     component: TubiRanking
+  },
+  {
+    path: '/composition',
+    name: 'CompositionAnalyze',
+    component: CompositionAnalyze
+  },
+  {
+    path: '/composition/knowledge',
+    name: 'CompositionKnowledge',
+    component: CompositionKnowledge
   }
 ]
 

@@ -135,6 +135,12 @@ export const tubiApi = {
   },
   updateImageInfo(imageId, data) {
     return api.put(`/tubi/image-info/${imageId}`, data)
+  },
+  getWordCloud(params = {}) {
+    return api.get('/tubi/wordcloud', { params })
+  },
+  getWordCloudArtists() {
+    return api.get('/tubi/wordcloud/artists')
   }
 }
 

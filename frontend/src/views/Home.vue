@@ -11,6 +11,9 @@
         </h1>
         <p class="subtitle">基于人工智能的书画研究工具</p>
         <div class="divider"></div>
+        <div class="hero-actions">
+          <el-button type="primary" @click="$router.push('/composition/knowledge')">构图知识库训练</el-button>
+        </div>
       </div>
     </div>
 
@@ -65,6 +68,27 @@
             <el-icon><ArrowRight /></el-icon>
           </div>
           <div class="card-seal secondary">识别</div>
+        </div>
+
+        <div class="feature-card" @click="$router.push('/composition/knowledge')">
+          <div class="card-icon">
+            <div class="icon-circle">
+              <el-icon size="32"><Collection /></el-icon>
+            </div>
+          </div>
+          <div class="card-content">
+            <h3 class="card-title">构图知识库训练</h3>
+            <p class="card-desc">导入《潘天寿构图问题》规则与附图样本，持续学习迭代</p>
+            <div class="card-features">
+              <span class="feature-tag">规则入库</span>
+              <span class="feature-tag">附图样本</span>
+              <span class="feature-tag">对比评分</span>
+            </div>
+          </div>
+          <div class="card-arrow">
+            <el-icon><ArrowRight /></el-icon>
+          </div>
+          <div class="card-seal">入库</div>
         </div>
       </div>
     </div>
@@ -167,7 +191,7 @@
 </template>
 
 <script setup>
-import { DataAnalysis, Camera, ArrowRight, Document } from '@element-plus/icons-vue'
+import { DataAnalysis, Camera, ArrowRight, Document, Collection } from '@element-plus/icons-vue'
 </script>
 
 <style scoped>
@@ -265,6 +289,10 @@ import { DataAnalysis, Camera, ArrowRight, Document } from '@element-plus/icons-
   height: 2px;
   background: linear-gradient(90deg, transparent, #8b7355, transparent);
   margin: 30px auto 0;
+}
+
+.hero-actions {
+  margin-top: 18px;
 }
 
 /* 区块通用样式 */

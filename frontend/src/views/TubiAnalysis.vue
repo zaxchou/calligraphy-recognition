@@ -15,8 +15,13 @@
                 <h3 class="module-title">🔑 云关键词</h3>
                 <div class="header-actions">
                   <el-select v-model="selectedAuthor" size="small" @change="onAuthorChange" style="width: 100px;">
-                    <el-option label="李鱓" value="李鱓"></el-option>
-                    <el-option label="郑燮" value="郑燮"></el-option>
+                    <el-option label="全部" value="all"></el-option>
+                    <el-option
+                      v-for="artist in wordCloudArtists"
+                      :key="artist.name"
+                      :label="artist.name"
+                      :value="artist.name"
+                    />
                   </el-select>
                 </div>
               </div>
@@ -39,7 +44,7 @@
                     :key="index"
                     class="word-cloud-item"
                     :style="{
-                      fontSize: `${10 + (item.value / maxWordCount) * 38}px`,
+                      fontSize: `${wordFontSize(item.value)}px`,
                       color: wordCloudColors[index % wordCloudColors.length]
                     }"
                     @mouseover="handleWordMouseOver"
@@ -243,18 +248,32 @@
               <div class="bar-side left-side">
                 <div class="bar-track-full">
                   <div class="bar-bg"></div>
-                  <div class="bar-progress li-bar" :style="{ width: calculateBarWidthPercent(artistStats.liShan.count, artistStats.zhengXie.count, 'left') }">
-                    <span class="bar-value-text">{{ artistStats.liShan.count }}幅</span>
+                  <div class="bar-progress li-bar" :style="{ width: percentWidth(artistStats.liShan.countPercent) }">
+                    <span v-if="shouldLabelInside(artistStats.liShan.countPercent)" class="bar-value-text">{{ artistStats.liShan.count }}</span>
                   </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.liShan.countPercent)"
+                    class="bar-value-text bar-value-text-outside left-outside"
+                    :style="outsideLabelStyle(artistStats.liShan.countPercent, 'left')"
+                  >
+                    {{ artistStats.liShan.count }}
+                  </span>
                 </div>
               </div>
               <div class="bar-label-center">画作数量</div>
               <div class="bar-side right-side">
                 <div class="bar-track-full">
                   <div class="bar-bg"></div>
-                  <div class="bar-progress zheng-bar" :style="{ width: calculateBarWidthPercent(artistStats.liShan.count, artistStats.zhengXie.count, 'right') }">
-                    <span class="bar-value-text">{{ artistStats.zhengXie.count }}幅</span>
+                  <div class="bar-progress zheng-bar" :style="{ width: percentWidth(artistStats.zhengXie.countPercent) }">
+                    <span v-if="shouldLabelInside(artistStats.zhengXie.countPercent)" class="bar-value-text">{{ artistStats.zhengXie.count }}</span>
                   </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.zhengXie.countPercent)"
+                    class="bar-value-text bar-value-text-outside right-outside"
+                    :style="outsideLabelStyle(artistStats.zhengXie.countPercent, 'right')"
+                  >
+                    {{ artistStats.zhengXie.count }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -264,27 +283,139 @@
               <div class="bar-side left-side">
                 <div class="bar-track-full">
                   <div class="bar-bg"></div>
-                  <div class="bar-progress li-bar" :style="{ width: calculatePercentBarWidthPercent(artistStats.liShan.avgPercent, artistStats.zhengXie.avgPercent, 'left') }">
-                    <span class="bar-value-text">{{ artistStats.liShan.avgPercent }}%</span>
+                  <div class="bar-progress li-bar" :style="{ width: percentWidth(artistStats.liShan.avgInscription) }">
+                    <span v-if="shouldLabelInside(artistStats.liShan.avgInscription)" class="bar-value-text">{{ artistStats.liShan.avgInscription.toFixed(1) }}%</span>
                   </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.liShan.avgInscription)"
+                    class="bar-value-text bar-value-text-outside left-outside"
+                    :style="outsideLabelStyle(artistStats.liShan.avgInscription, 'left')"
+                  >
+                    {{ artistStats.liShan.avgInscription.toFixed(1) }}%
+                  </span>
                 </div>
               </div>
               <div class="bar-label-center">平均题跋占比</div>
               <div class="bar-side right-side">
                 <div class="bar-track-full">
                   <div class="bar-bg"></div>
-                  <div class="bar-progress zheng-bar" :style="{ width: calculatePercentBarWidthPercent(artistStats.liShan.avgPercent, artistStats.zhengXie.avgPercent, 'right') }">
-                    <span class="bar-value-text">{{ artistStats.zhengXie.avgPercent }}%</span>
+                  <div class="bar-progress zheng-bar" :style="{ width: percentWidth(artistStats.zhengXie.avgInscription) }">
+                    <span v-if="shouldLabelInside(artistStats.zhengXie.avgInscription)" class="bar-value-text">{{ artistStats.zhengXie.avgInscription.toFixed(1) }}%</span>
                   </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.zhengXie.avgInscription)"
+                    class="bar-value-text bar-value-text-outside right-outside"
+                    :style="outsideLabelStyle(artistStats.zhengXie.avgInscription, 'right')"
+                  >
+                    {{ artistStats.zhengXie.avgInscription.toFixed(1) }}%
+                  </span>
                 </div>
               </div>
             </div>
 
-            <!-- 偏爱形式 -->
-            <div class="comparison-row layout-row">
-              <div class="layout-value left-layout">{{ artistStats.liShan.favoriteLayout }}</div>
-              <div class="bar-label-center">偏爱形式</div>
-              <div class="layout-value right-layout">{{ artistStats.zhengXie.favoriteLayout }}</div>
+            <!-- 平均画比 -->
+            <div class="comparison-row">
+              <div class="bar-side left-side">
+                <div class="bar-track-full">
+                  <div class="bar-bg"></div>
+                  <div class="bar-progress li-bar" :style="{ width: percentWidth(artistStats.liShan.avgPainting) }">
+                    <span v-if="shouldLabelInside(artistStats.liShan.avgPainting)" class="bar-value-text">{{ artistStats.liShan.avgPainting.toFixed(1) }}%</span>
+                  </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.liShan.avgPainting)"
+                    class="bar-value-text bar-value-text-outside left-outside"
+                    :style="outsideLabelStyle(artistStats.liShan.avgPainting, 'left')"
+                  >
+                    {{ artistStats.liShan.avgPainting.toFixed(1) }}%
+                  </span>
+                </div>
+              </div>
+              <div class="bar-label-center">平均画比</div>
+              <div class="bar-side right-side">
+                <div class="bar-track-full">
+                  <div class="bar-bg"></div>
+                  <div class="bar-progress zheng-bar" :style="{ width: percentWidth(artistStats.zhengXie.avgPainting) }">
+                    <span v-if="shouldLabelInside(artistStats.zhengXie.avgPainting)" class="bar-value-text">{{ artistStats.zhengXie.avgPainting.toFixed(1) }}%</span>
+                  </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.zhengXie.avgPainting)"
+                    class="bar-value-text bar-value-text-outside right-outside"
+                    :style="outsideLabelStyle(artistStats.zhengXie.avgPainting, 'right')"
+                  >
+                    {{ artistStats.zhengXie.avgPainting.toFixed(1) }}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 平均留白比 -->
+            <div class="comparison-row">
+              <div class="bar-side left-side">
+                <div class="bar-track-full">
+                  <div class="bar-bg"></div>
+                  <div class="bar-progress li-bar" :style="{ width: percentWidth(artistStats.liShan.avgBlank) }">
+                    <span v-if="shouldLabelInside(artistStats.liShan.avgBlank)" class="bar-value-text">{{ artistStats.liShan.avgBlank.toFixed(1) }}%</span>
+                  </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.liShan.avgBlank)"
+                    class="bar-value-text bar-value-text-outside left-outside"
+                    :style="outsideLabelStyle(artistStats.liShan.avgBlank, 'left')"
+                  >
+                    {{ artistStats.liShan.avgBlank.toFixed(1) }}%
+                  </span>
+                </div>
+              </div>
+              <div class="bar-label-center">平均留白比</div>
+              <div class="bar-side right-side">
+                <div class="bar-track-full">
+                  <div class="bar-bg"></div>
+                  <div class="bar-progress zheng-bar" :style="{ width: percentWidth(artistStats.zhengXie.avgBlank) }">
+                    <span v-if="shouldLabelInside(artistStats.zhengXie.avgBlank)" class="bar-value-text">{{ artistStats.zhengXie.avgBlank.toFixed(1) }}%</span>
+                  </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.zhengXie.avgBlank)"
+                    class="bar-value-text bar-value-text-outside right-outside"
+                    :style="outsideLabelStyle(artistStats.zhengXie.avgBlank, 'right')"
+                  >
+                    {{ artistStats.zhengXie.avgBlank.toFixed(1) }}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 边角式数/总数 -->
+            <div class="comparison-row">
+              <div class="bar-side left-side">
+                <div class="bar-track-full">
+                  <div class="bar-bg"></div>
+                  <div class="bar-progress li-bar" :style="{ width: percentWidth(artistStats.liShan.cornerPercent) }">
+                    <span v-if="shouldLabelInside(artistStats.liShan.cornerPercent)" class="bar-value-text">{{ artistStats.liShan.cornerDisplay }}</span>
+                  </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.liShan.cornerPercent)"
+                    class="bar-value-text bar-value-text-outside left-outside"
+                    :style="outsideLabelStyle(artistStats.liShan.cornerPercent, 'left')"
+                  >
+                    {{ artistStats.liShan.cornerDisplay }}
+                  </span>
+                </div>
+              </div>
+              <div class="bar-label-center">边角式数/总数</div>
+              <div class="bar-side right-side">
+                <div class="bar-track-full">
+                  <div class="bar-bg"></div>
+                  <div class="bar-progress zheng-bar" :style="{ width: percentWidth(artistStats.zhengXie.cornerPercent) }">
+                    <span v-if="shouldLabelInside(artistStats.zhengXie.cornerPercent)" class="bar-value-text">{{ artistStats.zhengXie.cornerDisplay }}</span>
+                  </div>
+                  <span
+                    v-if="!shouldLabelInside(artistStats.zhengXie.cornerPercent)"
+                    class="bar-value-text bar-value-text-outside right-outside"
+                    :style="outsideLabelStyle(artistStats.zhengXie.cornerPercent, 'right')"
+                  >
+                    {{ artistStats.zhengXie.cornerDisplay }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -819,10 +950,16 @@
               <el-input v-model="editForm.title" placeholder="请输入画作标题" />
             </el-form-item>
             <el-form-item label="作者姓名" class="form-item-half">
-              <el-select v-model="editForm.artist" placeholder="请选择作者" style="width: 100%" @change="onEditArtistChange">
+              <el-select v-model="editForm.artistChoice" placeholder="请选择作者" style="width: 100%" @change="onEditArtistChange">
                 <el-option label="李鱓" value="李鱓" />
                 <el-option label="郑燮" value="郑燮" />
+                <el-option label="其他" value="other" />
               </el-select>
+            </el-form-item>
+          </div>
+          <div v-if="editForm.artistChoice === 'other'" class="form-row">
+            <el-form-item label="作者姓名（其他）">
+              <el-input v-model="editForm.artistCustom" placeholder="请输入作者姓名" />
             </el-form-item>
           </div>
           <div class="form-row">
@@ -954,10 +1091,16 @@
               <el-input v-model="uploadForm.title" placeholder="请输入画作标题" />
             </el-form-item>
             <el-form-item label="作者姓名" class="form-item-half">
-              <el-select v-model="uploadForm.artist" placeholder="请选择作者" style="width: 100%">
+              <el-select v-model="uploadForm.artistChoice" placeholder="请选择作者" style="width: 100%">
                 <el-option label="李鱓" value="李鱓" />
                 <el-option label="郑燮" value="郑燮" />
+                <el-option label="其他" value="other" />
               </el-select>
+            </el-form-item>
+          </div>
+          <div v-if="uploadForm.artistChoice === 'other'" class="form-row">
+            <el-form-item label="作者姓名（其他）">
+              <el-input v-model="uploadForm.artistCustom" placeholder="请输入作者姓名" />
             </el-form-item>
           </div>
           <div class="form-row">
@@ -1237,9 +1380,17 @@ const currentArtist = ref('李鱓')
 const uploadDialogVisible = ref(false)
 const uploadForm = reactive({
   title: '',
-  artist: '李鱓',
+  artistChoice: '李鱓',
+  artistCustom: '',
   year: ARTISTS['李鱓'].defaultYear,
   age: null
+})
+
+const uploadArtist = computed(() => {
+  if (uploadForm.artistChoice === 'other') {
+    return (uploadForm.artistCustom || '').trim()
+  }
+  return uploadForm.artistChoice
 })
 
 // 根据画家和年份计算年龄
@@ -1274,7 +1425,7 @@ function getDisplayAge(image) {
 }
 
 // 监听画家变化，更新年份和年龄
-watch(() => uploadForm.artist, (newArtist) => {
+watch(() => uploadArtist.value, (newArtist) => {
   currentArtist.value = newArtist
   const artist = ARTISTS[newArtist]
   if (artist) {
@@ -1285,52 +1436,53 @@ watch(() => uploadForm.artist, (newArtist) => {
 
 // 监听年份变化，自动计算年龄
 watch(() => uploadForm.year, (newYear) => {
-  if (newYear) {
-    uploadForm.age = calculateAge(newYear, uploadForm.artist)
+  if (newYear && ARTISTS[uploadArtist.value]) {
+    uploadForm.age = calculateAge(newYear, uploadArtist.value)
   }
 })
 
 // 监听年龄变化，自动计算年份
 watch(() => uploadForm.age, (newAge) => {
-  if (newAge) {
-    uploadForm.year = calculateYear(newAge, uploadForm.artist)
+  if (newAge && ARTISTS[uploadArtist.value]) {
+    uploadForm.year = calculateYear(newAge, uploadArtist.value)
   }
 })
 
 // 年份变化时自动计算年龄
 function onYearChange(year) {
-  if (year && !isNaN(parseInt(year))) {
-    uploadForm.age = calculateAge(year, uploadForm.artist)
+  if (year && !isNaN(parseInt(year)) && ARTISTS[uploadArtist.value]) {
+    uploadForm.age = calculateAge(year, uploadArtist.value)
   }
 }
 
 // 年龄变化时自动计算年份
 function onAgeChange(age) {
-  if (age && !isNaN(parseInt(age))) {
-    uploadForm.year = calculateYear(age, uploadForm.artist)
+  if (age && !isNaN(parseInt(age)) && ARTISTS[uploadArtist.value]) {
+    uploadForm.year = calculateYear(age, uploadArtist.value)
   }
 }
 
 // 编辑表单：作者变化时更新年份和年龄
-function onEditArtistChange(artist) {
-  const artistInfo = ARTISTS[artist]
+function onEditArtistChange(artistChoice) {
+  if (artistChoice === 'other') return
+  const artistInfo = ARTISTS[artistChoice]
   if (artistInfo) {
     editForm.year = artistInfo.defaultYear
-    editForm.age = calculateAge(artistInfo.defaultYear, artist)
+    editForm.age = calculateAge(artistInfo.defaultYear, artistChoice)
   }
 }
 
 // 编辑表单：年份变化时自动计算年龄
 function onEditYearChange(year) {
-  if (year && !isNaN(parseInt(year))) {
-    editForm.age = calculateAge(year, editForm.artist)
+  if (year && !isNaN(parseInt(year)) && ARTISTS[editArtist.value]) {
+    editForm.age = calculateAge(year, editArtist.value)
   }
 }
 
 // 编辑表单：年龄变化时自动计算年份
 function onEditAgeChange(age) {
-  if (age && !isNaN(parseInt(age))) {
-    editForm.year = calculateYear(age, editForm.artist)
+  if (age && !isNaN(parseInt(age)) && ARTISTS[editArtist.value]) {
+    editForm.year = calculateYear(age, editArtist.value)
   }
 }
 
@@ -1438,7 +1590,14 @@ const editCurrentImage = () => {
   if (currentImage.value) {
     editForm.id = currentImage.value.id
     editForm.title = currentImage.value.title || ''
-    editForm.artist = currentImage.value.artist || '李鱓'
+    const existingArtist = currentImage.value.artist || '李鱓'
+    if (existingArtist === '李鱓' || existingArtist === '郑燮') {
+      editForm.artistChoice = existingArtist
+      editForm.artistCustom = ''
+    } else {
+      editForm.artistChoice = 'other'
+      editForm.artistCustom = existingArtist
+    }
     editForm.year = currentImage.value.year || ''
     editForm.age = currentImage.value.age || ''
     editForm.notes = currentImage.value.notes || ''
@@ -1476,7 +1635,8 @@ const editDialogVisible = ref(false)
 const editForm = reactive({
   id: '',
   title: '',
-  artist: '',
+  artistChoice: '',
+  artistCustom: '',
   year: '',
   age: '',
   notes: '',
@@ -1487,6 +1647,13 @@ const editForm = reactive({
   blankPercent: 0
 })
 let tempFile = null
+
+const editArtist = computed(() => {
+  if (editForm.artistChoice === 'other') {
+    return (editForm.artistCustom || '').trim()
+  }
+  return editForm.artistChoice
+})
 
 // 分析状态
 const analyzeStatus = ref('pending')
@@ -1521,6 +1688,7 @@ const trendChartRef = ref(null)
 const friendCircleChartRef = ref(null)
 const wordCloudRef = ref(null)
 let pieChart = null
+let pieChartUpdateRaf = 0
 let heatmapChart = null
 let trendChart = null
 let friendCircleChart = null
@@ -1531,13 +1699,47 @@ const wordCloudLoading = ref(false)
 const wordCloudData = ref([])
 const totalKeywords = ref(0)
 const totalCount = ref(0)
-const selectedAuthor = ref('李鱓')
+const selectedAuthor = ref('all')
+const wordCloudArtists = ref([])
+const wordCloudArtistAliases = computed(() => {
+  const a = wordCloudArtists.value.find(x => x.name === selectedAuthor.value)
+  return a?.aliases || []
+})
+
+async function loadWordCloudArtists() {
+  try {
+    const response = await tubiApi.getWordCloudArtists()
+    if (response?.success) {
+      wordCloudArtists.value = response.data || []
+      if (selectedAuthor.value !== 'all' && !wordCloudArtists.value.some(x => x.name === selectedAuthor.value)) {
+        selectedAuthor.value = 'all'
+      }
+      if (selectedAuthor.value === 'all' && wordCloudArtists.value.length > 0) {
+        selectedAuthor.value = wordCloudArtists.value[0].name
+      }
+    }
+  } catch (error) {
+    console.error('加载词云作者失败:', error)
+  }
+}
 
 // 计算最大词频
 const maxWordCount = computed(() => {
   if (wordCloudData.value.length === 0) return 1
   return Math.max(...wordCloudData.value.map(item => item.value))
 })
+
+function wordFontSize(value) {
+  const minFont = 18
+  const maxFont = 40
+  const v = Number(value)
+  if (!Number.isFinite(v) || v <= 0) return minFont
+  const max = Number(maxWordCount.value) || 0
+  if (max <= 0) return minFont
+  const ratio = Math.log1p(v) / Math.log1p(max)
+  const out = minFont + ratio * (maxFont - minFont)
+  return Math.round(out)
+}
 
 // 词云颜色
 const wordCloudColors = [
@@ -1552,76 +1754,28 @@ const wordCloudColors = [
 async function generateWordCloud() {
   wordCloudLoading.value = true
   try {
-    // 模拟数据，实际应该从API获取
-    let mockData = [
-      { word: '梅花', value: 23, author: '李鱓' },
-      { word: '破笔泼墨', value: 15, author: '李鱓' },
-      { word: '郑板桥', value: 8, author: '李鱓' },
-      { word: '兰竹', value: 12, author: '李鱓' },
-      { word: '芭蕉', value: 10, author: '李鱓' },
-      { word: '雍正', value: 7, author: '李鱓' },
-      { word: '乾隆', value: 9, author: '李鱓' },
-      { word: '写意', value: 18, author: '李鱓' },
-      { word: '石涛', value: 5, author: '李鱓' },
-      { word: '泼墨', value: 14, author: '李鱓' },
-      { word: '湖石', value: 6, author: '李鱓' },
-      { word: '写生', value: 8, author: '李鱓' },
-      { word: '荷花', value: 16, author: '李鱓' },
-      { word: '松树', value: 11, author: '李鱓' },
-      { word: '竹石', value: 13, author: '李鱓' },
-      { word: '菊花', value: 9, author: '李鱓' },
-      { word: '山水', value: 14, author: '李鱓' },
-      { word: '花鸟', value: 17, author: '李鱓' },
-      { word: '草虫', value: 7, author: '李鱓' },
-      { word: '蔬果', value: 8, author: '李鱓' },
-      { word: '指画', value: 6, author: '李鱓' },
-      { word: '设色', value: 12, author: '李鱓' },
-      { word: '水墨', value: 15, author: '李鱓' },
-      { word: '工细', value: 5, author: '李鱓' },
-      { word: '野逸', value: 8, author: '李鱓' },
-      { word: '豪放', value: 11, author: '李鱓' },
-      { word: '萧散', value: 6, author: '李鱓' },
-      { word: '清雅', value: 9, author: '李鱓' },
-      { word: '复堂', value: 10, author: '李鱓' },
-      { word: '金农', value: 7, author: '李鱓' },
-      { word: '早期', value: 6, author: '李鱓' },
-      { word: '中期', value: 12, author: '李鱓' },
-      { word: '晚年', value: 9, author: '李鱓' },
-      { word: '戏作', value: 8, author: '李鱓' },
-      { word: '仿古', value: 7, author: '李鱓' },
-      { word: '秋色', value: 6, author: '李鱓' },
-      { word: '醉后', value: 5, author: '李鱓' },
-      { word: '兰竹石', value: 14, author: '郑燮' },
-      { word: '墨竹', value: 18, author: '郑燮' },
-      { word: '怪石', value: 10, author: '郑燮' },
-      { word: '兰花', value: 12, author: '郑燮' },
-      { word: '行书', value: 8, author: '郑燮' },
-      { word: '板桥', value: 15, author: '郑燮' },
-      { word: '竹石图', value: 11, author: '郑燮' },
-      { word: '兰石图', value: 9, author: '郑燮' },
-      { word: '墨兰', value: 13, author: '郑燮' },
-      { word: '清瘦', value: 6, author: '郑燮' },
-      { word: '刚劲', value: 8, author: '郑燮' },
-      { word: '自然', value: 12, author: '郑燮' },
-      { word: '生机', value: 9, author: '郑燮' }
-    ]
-    
-    // 按作者筛选
-    if (selectedAuthor.value !== 'all') {
-      mockData = mockData.filter(item => item.author === selectedAuthor.value)
+    const response = await tubiApi.getWordCloud({
+      artist: selectedAuthor.value,
+      top_k: 40
+    })
+
+    if (!response?.success) {
+      wordCloudData.value = []
+      totalKeywords.value = 0
+      totalCount.value = 0
+      return
     }
-    
-    // 只提取word和value字段
-    const filteredData = mockData.map(item => ({ word: item.word, value: item.value }))
-    
-    wordCloudData.value = filteredData
-    totalKeywords.value = filteredData.length
-    totalCount.value = filteredData.reduce((sum, item) => sum + item.value, 0)
-    
-    // 等待DOM更新
+
+    const list = (response.data || []).map(item => ({
+      word: item.word,
+      value: item.count
+    }))
+
+    wordCloudData.value = list
+    totalKeywords.value = response.total_keywords ?? list.length
+    totalCount.value = response.total_count ?? list.reduce((sum, item) => sum + item.value, 0)
+
     await nextTick()
-    
-    // 词云将通过Vue模板系统自动渲染
   } catch (error) {
     console.error('生成词云失败:', error)
     ElMessage.error('生成词云失败')
@@ -1677,52 +1831,24 @@ function showKeywordWorks(keyword) {
   nextTick(() => {
     try {
       // 从历史记录中筛选包含该关键词的画作
-      // 实际应用中应该从API获取
       const filteredWorks = historyList.value.filter(item => {
+        if (selectedAuthor.value !== 'all') {
+          const aliases = wordCloudArtistAliases.value || []
+          if (aliases.length > 0) {
+            if (!aliases.includes(item.artist)) return false
+          } else {
+            if (item.artist !== selectedAuthor.value) return false
+          }
+        }
         // 检查标题、分析说明或备注中是否包含关键词
         const titleMatch = item.title && item.title.includes(keyword)
         const noteMatch = item.analysisNote && item.analysisNote.includes(keyword)
         const notesMatch = item.notes && item.notes.includes(keyword)
-        return titleMatch || noteMatch || notesMatch
+        const inscriptionMatch = item.inscriptionContent && item.inscriptionContent.includes(keyword)
+        return titleMatch || noteMatch || notesMatch || inscriptionMatch
       })
       
-      // 如果没有匹配的画作，使用模拟数据，但使用不存在的ID以避免404错误
-      if (filteredWorks.length === 0) {
-        keywordWorks.value = [
-          { 
-            id: -1, // 使用负数ID，确保不会与实际作品ID冲突
-            title: '芭蕉萱石图', 
-            artist: '李鱓',
-            thumbnailUrl: 'https://via.placeholder.com/100x100?text=梅花',
-            inscriptionPercent: 25.5,
-            paintingPercent: 60.2,
-            inscriptionContent: '乾隆甲申年春，李鱓写于扬州寓所。',
-            created_at: new Date().toISOString()
-          },
-          { 
-            id: -2, // 使用负数ID，确保不会与实际作品ID冲突
-            title: '梅花图', 
-            artist: '李鱓',
-            thumbnailUrl: 'https://via.placeholder.com/100x100?text=梅花',
-            inscriptionPercent: 30.1,
-            paintingPercent: 55.8,
-            inscriptionContent: '墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。乾隆乙酉年冬，李鱓。',
-            created_at: new Date().toISOString()
-          },
-          { 
-            id: -3, // 使用负数ID，确保不会与实际作品ID冲突
-            title: '兰竹图', 
-            artist: '李鱓',
-            thumbnailUrl: 'https://via.placeholder.com/100x100?text=梅花',
-            inscriptionPercent: 20.8,
-            paintingPercent: 65.3,
-            inscriptionContent: '竹石幽兰共岁寒，清风明月伴我闲。乾隆丙戌年秋，李鱓。',
-            created_at: new Date().toISOString()
-          }
-        ]
-      } else {
-        keywordWorks.value = filteredWorks
-      }
+      keywordWorks.value = filteredWorks
       
       keywordWorksLoading.value = false
       keywordWorksDialogVisible.value = true
@@ -1750,8 +1876,9 @@ function handleWordMouseOut(event) {
 }
 
 // 初始化词云
-function initWordCloud() {
-  generateWordCloud()
+async function initWordCloud() {
+  await loadWordCloudArtists()
+  await generateWordCloud()
 }
 
 // 趋势图数据
@@ -1773,34 +1900,74 @@ const filteredTrendChartData = computed(() => {
 
 // 艺术家统计数据
 const artistStats = computed(() => {
+  const total = historyList.value.length || 0
   const liShanData = historyList.value.filter(item => item.artist === '李鱓')
   const zhengXieData = historyList.value.filter(item => item.artist === '郑燮')
 
-  // 计算李鱓统计
-  const liShanPercents = liShanData.map(item => item.inscriptionPercent).filter(p => p !== undefined && p !== null)
-  const liShanAvg = liShanPercents.length > 0
-    ? (liShanPercents.reduce((a, b) => a + b, 0) / liShanPercents.length).toFixed(1)
-    : '19.4'
+  const avg = (list, key) => {
+    const nums = list.map(item => Number(item[key])).filter(n => Number.isFinite(n))
+    if (nums.length === 0) return 0
+    return Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10
+  }
 
-  // 计算郑燮统计
-  const zhengXiePercents = zhengXieData.map(item => item.inscriptionPercent).filter(p => p !== undefined && p !== null)
-  const zhengXieAvg = zhengXiePercents.length > 0
-    ? (zhengXiePercents.reduce((a, b) => a + b, 0) / zhengXiePercents.length).toFixed(1)
-    : '--'
+  const getLayoutType = (item) => {
+    return item?.positionAnalysis?.layout_type || item?.position_analysis?.layout_type || ''
+  }
 
-  return {
-    liShan: {
-      count: liShanData.length || 8,
-      avgPercent: liShanAvg,
-      favoriteLayout: '边角式'
-    },
-    zhengXie: {
-      count: zhengXieData.length || 0,
-      avgPercent: zhengXieAvg,
-      favoriteLayout: zhengXieData.length > 0 ? '待分析' : '待添加'
+  const cornerCount = (list) => {
+    return list.filter(item => getLayoutType(item) === '边角式').length
+  }
+
+  const build = (list) => {
+    const count = list.length
+    const countPercent = total > 0 ? (count / total) * 100 : 0
+    const corner = cornerCount(list)
+    const cornerPercent = count > 0 ? (corner / count) * 100 : 0
+    const fmt = (n) => `${Number(n).toFixed(1).replace(/\.0$/, '')}%`
+
+    return {
+      count,
+      countPercent,
+      countDisplay: `${count}`,
+      avgInscription: avg(list, 'inscriptionPercent'),
+      avgPainting: avg(list, 'paintingPercent'),
+      avgBlank: avg(list, 'blankPercent'),
+      cornerCount: corner,
+      cornerPercent,
+      cornerDisplay: fmt(cornerPercent)
     }
   }
+
+  return {
+    total,
+    liShan: build(liShanData),
+    zhengXie: build(zhengXieData)
+  }
 })
+
+function percentWidth(value) {
+  const v = Number(value)
+  if (!Number.isFinite(v) || v <= 0) return '0%'
+  const clamped = Math.min(100, Math.max(v, 0))
+  const minVisible = 2
+  const out = clamped > 0 && clamped < minVisible ? minVisible : clamped
+  return out.toFixed(1).replace(/\.0$/, '') + '%'
+}
+
+function shouldLabelInside(value) {
+  const v = Number(value)
+  if (!Number.isFinite(v)) return false
+  return v >= 18
+}
+
+function outsideLabelStyle(value, side) {
+  const width = percentWidth(value)
+  const gap = 10
+  if (side === 'left') {
+    return { right: `calc(${width} + ${gap}px)` }
+  }
+  return { left: `calc(${width} + ${gap}px)` }
+}
 
 // 题画比排行榜数据
 const rankings = computed(() => {
@@ -1924,7 +2091,8 @@ function showUploadDialog() {
   uploadDialogVisible.value = true
   tempFile = null
   uploadForm.title = ''
-  uploadForm.artist = '李鱓'
+  uploadForm.artistChoice = '李鱓'
+  uploadForm.artistCustom = ''
   uploadForm.year = ARTISTS['李鱓'].defaultYear
   uploadForm.age = calculateAge(ARTISTS['李鱓'].defaultYear, '李鱓')
 }
@@ -1987,10 +2155,16 @@ async function confirmUpload() {
     return
   }
 
+  const finalArtist = uploadArtist.value
+  if (uploadForm.artistChoice === 'other' && !finalArtist) {
+    ElMessage.warning('请输入作者姓名')
+    return
+  }
+
   const formData = new FormData()
   formData.append('file', tempFile)
   if (uploadForm.title) formData.append('title', uploadForm.title)
-  if (uploadForm.artist) formData.append('artist', uploadForm.artist)
+  if (finalArtist) formData.append('artist', finalArtist)
   if (uploadForm.year) formData.append('year', uploadForm.year.toString())
   // 将年龄作为 period 传给后端，格式为 "39岁"
   if (uploadForm.age) formData.append('period', `${uploadForm.age}岁`)
@@ -2012,7 +2186,7 @@ async function confirmUpload() {
         width: result.data.width,
         height: result.data.height,
         title: uploadForm.title,
-        artist: uploadForm.artist,
+        artist: finalArtist,
         year: uploadForm.year,
         period: `${uploadForm.age}岁`,
         inscriptionPercent: undefined,
@@ -2830,9 +3004,14 @@ function updatePieChart() {
   const container = pieChartRef.value
   if (container.clientWidth === 0 || container.clientHeight === 0) {
     console.warn('Pie chart container has no size:', container.clientWidth, container.clientHeight)
-    // 设置默认尺寸
-    container.style.width = '200px'
-    container.style.height = '200px'
+    if (pieChartUpdateRaf) {
+      cancelAnimationFrame(pieChartUpdateRaf)
+    }
+    pieChartUpdateRaf = requestAnimationFrame(() => {
+      pieChartUpdateRaf = 0
+      updatePieChart()
+    })
+    return
   }
 
   if (!pieChart) {
@@ -2858,28 +3037,58 @@ function updatePieChart() {
     },
     series: [{
       type: 'pie',
-      radius: ['30%', '55%'],
-      center: ['50%', '45%'],
+      radius: '92%',
+      center: ['50%', '50%'],
       avoidLabelOverlap: true,
       itemStyle: {
-        borderRadius: 6,
+        borderRadius: 8,
         borderColor: '#fff',
         borderWidth: 2
       },
       label: {
         show: true,
-        position: 'outside',
-        formatter: '{b}\n{d}%',
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#333',
-        lineHeight: 18
+        position: 'inside',
+        rotate: 0,
+        formatter: function (p) {
+          const percent = typeof p.percent === 'number' ? p.percent : 0
+          const percentText = `${percent.toFixed(2).replace(/\.00$/, '')}%`
+          if (percent < 12) {
+            return `{percentSmall|${percentText}}`
+          }
+          return `{percent|${percentText}}\n{name|${p.name}}`
+        },
+        rich: {
+          percent: {
+            fontSize: 22,
+            fontWeight: 700,
+            color: '#fff',
+            lineHeight: 26
+          },
+          name: {
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'rgba(255, 255, 255, 0.95)',
+            lineHeight: 18
+          },
+          percentSmall: {
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#fff',
+            lineHeight: 14
+          },
+          nameSmall: {
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'rgba(255, 255, 255, 0.95)',
+            lineHeight: 16
+          }
+        }
       },
       labelLine: {
-        show: true,
-        length: 15,
-        length2: 10,
-        smooth: true
+        show: false
+      },
+      labelLayout: {
+        hideOverlap: false
       },
       emphasis: {
         label: {
@@ -2897,6 +3106,9 @@ function updatePieChart() {
         {
           value: areaStats.inscriptionPercent || 0,
           name: '题跋',
+          label: {
+            rotate: (areaStats.inscriptionPercent || 0) < 12 ? 'radial' : 0
+          },
           itemStyle: {
             color: '#4A90E2' // 蓝色
           }
@@ -2904,6 +3116,9 @@ function updatePieChart() {
         {
           value: areaStats.paintingPercent || 0,
           name: '绘画',
+          label: {
+            rotate: (areaStats.paintingPercent || 0) < 12 ? 'radial' : 0
+          },
           itemStyle: {
             color: '#FF6B6B' // 红色
           }
@@ -2911,6 +3126,9 @@ function updatePieChart() {
         {
           value: areaStats.blankPercent || 0,
           name: '留白',
+          label: {
+            rotate: (areaStats.blankPercent || 0) < 12 ? 'radial' : 0
+          },
           itemStyle: {
             color: '#F5A623' // 橙色
           }
@@ -3195,10 +3413,28 @@ function updateTrendChart() {
   const option = {
     tooltip: {
       trigger: 'axis',
+      confine: true,
+      enterable: false,
       backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderColor: '#9B7ED8',
       borderWidth: 1,
       textStyle: { color: '#333' },
+      extraCssText: 'pointer-events:none;',
+      position: function (pos, params, dom, rect, size) {
+        const padding = 12
+        const contentSize = size.contentSize
+        const viewSize = size.viewSize
+
+        const x = Math.min(
+          Math.max(pos[0] - contentSize[0] / 2, padding),
+          viewSize[0] - contentSize[0] - padding
+        )
+
+        const preferredY = pos[1] - contentSize[1] - padding
+        const y = preferredY < padding ? pos[1] + padding : preferredY
+
+        return [x, y]
+      },
       formatter: function(params) {
         const dataIndex = params[0].dataIndex
         const item = trendData[dataIndex]
@@ -3430,8 +3666,6 @@ async function loadHistory() {
       // 加载完成后更新趋势图
       await nextTick()
       updateTrendChart()
-      // 为所有作品重新生成关键词
-      regenerateKeywordsForAllWorks()
     } else {
       console.error('历史记录API返回失败:', response)
       ElMessage.error(response.message || '加载历史记录失败')
@@ -3638,7 +3872,14 @@ async function deleteHistoryItem(row) {
 function editHistoryItem(row) {
   editForm.id = row.id
   editForm.title = row.title || ''
-  editForm.artist = row.artist || ''
+  const existingArtist = row.artist || ''
+  if (existingArtist === '李鱓' || existingArtist === '郑燮') {
+    editForm.artistChoice = existingArtist
+    editForm.artistCustom = ''
+  } else {
+    editForm.artistChoice = 'other'
+    editForm.artistCustom = existingArtist
+  }
   editForm.year = row.year || ''
   editForm.age = getDisplayAge(row) ?? ''
   editForm.notes = row.notes || ''
@@ -3653,9 +3894,14 @@ function editHistoryItem(row) {
 // 保存编辑
 async function saveEdit() {
   try {
+    const finalArtist = editArtist.value
+    if (editForm.artistChoice === 'other' && !finalArtist) {
+      ElMessage.warning('请输入作者姓名')
+      return
+    }
     const response = await tubiApi.updateImageInfo(editForm.id, {
       title: editForm.title,
-      artist: editForm.artist,
+      artist: finalArtist,
       year: editForm.year ? parseInt(editForm.year) : null,
       age: editForm.age ? parseInt(editForm.age) : null,
       notes: editForm.notes,
@@ -3674,7 +3920,7 @@ async function saveEdit() {
       // 如果当前正在查看这张图片，也更新当前图片的信息
       if (currentImage.value?.id === editForm.id) {
         currentImage.value.title = editForm.title
-        currentImage.value.artist = editForm.artist
+        currentImage.value.artist = finalArtist
         currentImage.value.year = editForm.year
         currentImage.value.age = editForm.age
         currentImage.value.analysisNote = editForm.analysisNote
@@ -3703,7 +3949,14 @@ async function saveEdit() {
 function editImageInfo(item) {
   editForm.id = item.id
   editForm.title = item.title || ''
-  editForm.artist = item.artist || ''
+  const existingArtist = item.artist || ''
+  if (existingArtist === '李鱓' || existingArtist === '郑燮') {
+    editForm.artistChoice = existingArtist
+    editForm.artistCustom = ''
+  } else {
+    editForm.artistChoice = 'other'
+    editForm.artistCustom = existingArtist
+  }
   editForm.year = item.year || ''
   editForm.age = getDisplayAge(item) ?? ''
   editForm.notes = item.notes || ''
@@ -4080,13 +4333,11 @@ function initFriendCircleChart() {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('resize', handleResize)
   // 页面加载时自动加载历史记录
+  await initWordCloud()
   loadHistory()
-  
-  // 生成词云
-  generateWordCloud()
   
   // 检查URL参数，处理从排行榜页面跳转过来的情况
   const urlParams = new URLSearchParams(window.location.hash.split('?')[1])
@@ -4129,13 +4380,6 @@ onMounted(() => {
       }
     }, 500)
   }
-  
-  // 初始化词云
-  nextTick(() => {
-    if (wordCloudRef.value) {
-      initWordCloud()
-    }
-  })
 })
 
 onUnmounted(() => {
@@ -6391,6 +6635,24 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.bar-value-text-outside {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  color: #333;
+  pointer-events: none;
+}
+
+.bar-value-text-outside.left-outside {
+  text-align: right;
+}
+
+.bar-value-text-outside.right-outside {
+  text-align: left;
 }
 
 /* 旧样式兼容 */

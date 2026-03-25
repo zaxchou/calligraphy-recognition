@@ -24,6 +24,7 @@ from app.services.siliconflow_service import (
     generate_heatmap_data
 )
 from app.services.inscription_position_analyzer import analyze_inscription_position
+from app.services.keyword_extractor import extract_wordcloud_keywords, load_wordcloud_config, get_artist_aliases
 
 router = APIRouter(prefix="/tubi", tags=["题跋分析"])
 
@@ -37,6 +38,69 @@ os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 settings = get_settings()
 _QUEUE_KEY_PENDING = "tubi:queue:pending"
 _QUEUE_KEY_PROCESSING = "tubi:queue:processing"
+
+
+class WordCloudKeywordItem(BaseModel):
+    word: str
+    count: int
+    score: float
+
+
+class WordCloudResponse(BaseModel):
+    success: bool
+    data: List[WordCloudKeywordItem]
+    total_keywords: int
+    total_count: int
+
+
+class WordCloudArtistItem(BaseModel):
+    name: str
+    aliases: List[str]
+
+
+class WordCloudArtistsResponse(BaseModel):
+    success: bool
+    data: List[WordCloudArtistItem]
+
+
+@router.get("/wordcloud/artists", response_model=WordCloudArtistsResponse)
+def get_wordcloud_artists():
+    cfg = load_wordcloud_config()
+    artists = []
+    for a in cfg.get("artists", []) or []:
+        name = a.get("name")
+        if isinstance(name, str) and name:
+            artists.append({"name": name, "aliases": get_artist_aliases(name)})
+    return {"success": True, "data": artists}
+
+
+@router.get("/wordcloud", response_model=WordCloudResponse)
+def get_wordcloud_keywords(
+    artist: Optional[str] = None,
+    top_k: int = 40,
+    db: Session = Depends(get_db),
+):
+    q = db.query(TubiAnalysis)
+    if artist and artist != "all":
+        q = q.filter(TubiAnalysis.artist.in_(get_artist_aliases(artist)))
+    items = q.order_by(TubiAnalysis.created_at.desc()).limit(2000).all()
+
+    docs = [
+        {
+            "title": i.title,
+            "notes": i.notes,
+            "analysis_note": i.analysis_note,
+            "inscription_content": i.inscription_content,
+        }
+        for i in items
+    ]
+    result = extract_wordcloud_keywords(docs, artist=artist, top_k=top_k)
+    return {
+        "success": True,
+        "data": result["keywords"],
+        "total_keywords": result["total_keywords"],
+        "total_count": result["total_count"],
+    }
 
 
 def _get_redis():

@@ -7,6 +7,11 @@ from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.api import recognition, steles, tubi
 
+try:
+    from app.api import composition
+except Exception:
+    composition = None
+
 settings = get_settings()
 
 # 创建数据库表
@@ -50,6 +55,13 @@ app.include_router(
     prefix=settings.API_V1_STR,
     tags=["题跋分析"]
 )
+
+if composition is not None:
+    app.include_router(
+        composition.router,
+        prefix=settings.API_V1_STR,
+        tags=["潘天寿教你构图"]
+    )
 
 
 @app.get("/")

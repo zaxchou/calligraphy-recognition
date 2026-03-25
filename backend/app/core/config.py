@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     
     # Redis配置
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    COMPOSITION_API_KEY: str = os.getenv("COMPOSITION_API_KEY", "")
+    COMPOSITION_REQUIRE_API_KEY: bool = False
+
+    QDRANT_URL: str = os.getenv("QDRANT_URL", "")
+    QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
     
     # 文件存储配置
     UPLOAD_DIR: str = os.path.join(DATA_DIR, "uploads")
@@ -44,6 +50,20 @@ class Settings(BaseSettings):
     SILICONFLOW_API_KEY: str = os.getenv("SILICONFLOW_API_KEY", "")
     SILICONFLOW_MODEL: str = "Pro/moonshotai/Kimi-K2.5"
     SILICONFLOW_ENABLED: bool = True  # 是否启用 SiliconFlow AI 识别
+
+    # Aliyun DashScope Qwen（OpenAI Compatible Mode）
+    QWEN_API_KEY: str = os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY", "")
+    QWEN_BASE_URL: str = (
+        os.getenv("QWEN_BASE_URL")
+        or os.getenv("DASHSCOPE_BASE_URL")
+        or os.getenv("DASHSCOPE_API_BASE")
+        or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+    QWEN_MODEL: str = os.getenv("QWEN_MODEL", "qwen3-vl-plus")
+    QWEN_ENABLED: bool = True
+
+    COMPOSITION_LLM_MODEL: str = os.getenv("COMPOSITION_LLM_MODEL", "qwen3.5-plus")
+    COMPOSITION_LLM_MAX_TOKENS: int = int(os.getenv("COMPOSITION_LLM_MAX_TOKENS", "1400"))
     
     class Config:
         env_file = ".env"

@@ -9,22 +9,14 @@ from typing import Optional, Dict, Any, List
 from app.core.config import get_settings
 
 settings = get_settings()
-
-# SiliconFlow API 配置
-import os
-SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
-SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
-MODEL_NAME = "Pro/moonshotai/Kimi-K2.5"
+_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
 
 
 class SiliconFlowRecognitionService:
     """SiliconFlow AI 字体识别服务 - 支持图像输入"""
     
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or SILICONFLOW_API_KEY
-        # 允许空 Key，只是不启用 AI 功能
-        if not self.api_key:
-            print("警告: SiliconFlow API Key 未配置，AI 识别功能将不可用")
+        self.api_key = api_key or settings.SILICONFLOW_API_KEY
     
     def recognize_character(
         self, 
@@ -75,7 +67,7 @@ class SiliconFlowRecognitionService:
 只返回 JSON，不要有其他内容。"""
             
             payload = {
-                "model": MODEL_NAME,
+                "model": settings.SILICONFLOW_MODEL,
                 "messages": [
                     {
                         "role": "user",
@@ -97,44 +89,70 @@ class SiliconFlowRecognitionService:
                 "max_tokens": 512,
                 "temperature": 0.1
             }
-            
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
+
+            def build_chat_url(base_url: str) -> str:
+                base = (base_url or "").rstrip("/")
+                if base.endswith("/chat/completions"):
+                    return base
+                return f"{base}/chat/completions"
+
+            def call_provider(provider: str, base_url: str, api_key: str, model: str) -> Dict[str, Any]:
+                url = build_chat_url(base_url)
+                print(f"当前使用AI供应商: {provider}")
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                provider_payload = dict(payload)
+                provider_payload["model"] = model
+                timeout = httpx.Timeout(60.0, connect=10.0, read=50.0, write=30.0)
+
+                with httpx.Client(timeout=timeout) as client:
+                    response = client.post(url, headers=headers, json=provider_payload)
+                    response.raise_for_status()
+                    result = response.json()
+
+                    content = result["choices"][0]["message"]["content"]
+                    content = content.strip()
+                    if content.startswith("```json"):
+                        content = content[7:]
+                    if content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+
+                    recognition_result = json.loads(content)
+
+                    character = recognition_result.get("character", "").strip()
+                    confidence = float(recognition_result.get("confidence", 0))
+
+                    return {
+                        "success": True,
+                        "provider": provider,
+                        "character": character,
+                        "confidence": confidence,
+                        "reason": recognition_result.get("reason", ""),
+                        "raw_response": content
+                    }
+
+            providers = []
+            if settings.QWEN_ENABLED and settings.QWEN_API_KEY and settings.QWEN_BASE_URL:
+                providers.append(("qwen", settings.QWEN_BASE_URL, settings.QWEN_API_KEY, settings.QWEN_MODEL))
+            if settings.SILICONFLOW_ENABLED and self.api_key:
+                providers.append(("siliconflow", _SILICONFLOW_BASE_URL, self.api_key, settings.SILICONFLOW_MODEL))
+
+            last_error = None
+            for provider, base_url, api_key, model in providers:
+                try:
+                    return call_provider(provider, base_url, api_key, model)
+                except Exception as e:
+                    last_error = e
+                    continue
+
+            return {
+                "success": False,
+                "error": f"无可用AI供应商或调用失败: {str(last_error) if last_error else ''}",
+                "character": "",
+                "confidence": 0
             }
-            
-            # 使用较短的超时时间
-            timeout = httpx.Timeout(60.0, connect=10.0)
-            
-            with httpx.Client(timeout=timeout) as client:
-                response = client.post(SILICONFLOW_API_URL, headers=headers, json=payload)
-                response.raise_for_status()
-                result = response.json()
-                
-                content = result["choices"][0]["message"]["content"]
-                
-                # 清理 JSON 格式
-                content = content.strip()
-                if content.startswith("```json"):
-                    content = content[7:]
-                if content.startswith("```"):
-                    content = content[3:]
-                if content.endswith("```"):
-                    content = content[:-3]
-                content = content.strip()
-                
-                recognition_result = json.loads(content)
-                
-                character = recognition_result.get("character", "").strip()
-                confidence = float(recognition_result.get("confidence", 0))
-                
-                return {
-                    "success": True,
-                    "character": character,
-                    "confidence": confidence,
-                    "reason": recognition_result.get("reason", ""),
-                    "raw_response": content
-                }
                 
         except httpx.TimeoutException:
             print("SiliconFlow API 请求超时")
