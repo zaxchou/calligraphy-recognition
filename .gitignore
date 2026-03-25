@@ -86,16 +86,12 @@ test_*.py
 test_api_*.py
 
 # Runtime / generated assets (do not commit)
-backend/data/annotated/
-backend/data/composition/
-backend/data/knowledge/
-backend/data/uploads/composition/
-backend/data/uploads/
-backend/data/thumbnails/
 backend/dump.rdb
 backend/.qdrant-initialized
 backend/qdrant_bin/
 backend/redis_bin/
 backend/*.zip
 backend/comp.pdf
+
+# Qdrant storage is machine-generated and very large (keep ignored)
 backend/storage/
