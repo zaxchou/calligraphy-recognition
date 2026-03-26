@@ -6,6 +6,9 @@ import numpy as np
 from PIL import Image
 import io
 from typing import List, Dict, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 # 延迟导入EasyOCR，避免启动时加载
 try:
@@ -13,7 +16,7 @@ try:
     HAS_EASYOCR = True
 except ImportError:
     HAS_EASYOCR = False
-    print("警告: EasyOCR未安装，OCR功能不可用")
+    logger.warning("EasyOCR未安装，OCR功能不可用")
 
 
 class OCRService:
@@ -33,10 +36,10 @@ class OCRService:
                 # 使用中文和英文模型
                 self.reader = easyocr.Reader(['ch_sim', 'en'], gpu=False)
                 self.is_initialized = True
-                print("✓ OCR服务初始化完成")
+                logger.info("OCR服务初始化完成")
                 return True
             except Exception as e:
-                print(f"✗ OCR初始化失败: {e}")
+                logger.error("OCR初始化失败: %s", e)
                 return False
         return True
     

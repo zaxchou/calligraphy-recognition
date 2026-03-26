@@ -3,6 +3,8 @@ from PIL import Image
 from typing import List, Union
 import cv2
 
+from app.services.image_processor import binarize_image
+
 # 尝试导入PyTorch，如果失败则使用简化版
 try:
     import torch
@@ -12,7 +14,8 @@ try:
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
-    print("警告: PyTorch未安装，使用简化版特征提取器")
+    import logging
+    logging.getLogger(__name__).warning("PyTorch未安装，使用简化版特征提取器")
 
 
 class CalligraphyFeatureExtractor:
@@ -41,9 +44,9 @@ class CalligraphyFeatureExtractor:
         if mean_val > 127:
             # 如果是黑色笔画在白色背景，反转
             gray = 255 - gray
-        
-        # 二值化
-        _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+        # 二值化（使用统一函数）
+        binary = binarize_image(gray, threshold=127)
         
         features = []
         

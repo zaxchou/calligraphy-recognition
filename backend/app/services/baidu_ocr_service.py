@@ -1,6 +1,7 @@
 """
 百度OCR服务 - 使用百度AI开放平台进行高精度文字识别
 """
+import logging
 import cv2
 import numpy as np
 import requests
@@ -8,14 +9,18 @@ import base64
 from typing import Dict, List
 from PIL import Image
 
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+
 
 class BaiduOCRService:
     """百度OCR识别服务"""
     
     def __init__(self):
-        # 百度OCR API配置 - 使用免费版
-        self.api_key = "YOUR_API_KEY"  # 需要用户自己申请
-        self.secret_key = "YOUR_SECRET_KEY"  # 需要用户自己申请
+        settings = get_settings()
+        self.api_key = settings.BAIDU_OCR_API_KEY
+        self.secret_key = settings.BAIDU_OCR_SECRET_KEY
         self.access_token = None
         self.api_url = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic"
         
@@ -37,7 +42,7 @@ class BaiduOCRService:
             self.access_token = result.get("access_token")
             return self.access_token
         except Exception as e:
-            print(f"获取access_token失败: {e}")
+            logger.error("获取access_token失败: %s", e)
             return None
     
     def recognize(self, image_bytes: bytes) -> Dict:

@@ -93,8 +93,16 @@ backend/redis_bin/
 backend/*.zip
 backend/comp.pdf
 
+.workbuddy/
+
 # Qdrant storage is machine-generated and very large (keep ignored)
 backend/storage/
+
+# Composition module runtime data (uploads, reports, heatmaps, PDFs)
+backend/data/composition/uploads/
+backend/data/composition/reports/
+backend/data/composition/pdfs/
+backend/data/composition/overlays/
 
 ingest_book_rules.py
 panqwen.md

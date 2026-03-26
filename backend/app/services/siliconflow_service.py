@@ -1,3 +1,4 @@
+import logging
 import httpx
 import base64
 import json
@@ -9,6 +10,7 @@ from PIL import Image
 
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 _SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
 MAX_RETRIES = 4
@@ -45,25 +47,25 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
             "analysis_note": "..."
         }
     """
-    print(f"开始分析图像: {image_path}")
-    print(f"图像尺寸: {image_width}x{image_height}")
+    logger.info("开始分析图像: %s", image_path)
+    logger.info("图像尺寸: %dx%d", image_width, image_height)
     
     try:
         # 检查图像文件大小
         import os
         file_size = os.path.getsize(image_path) / (1024 * 1024)  # MB
-        print(f"图像文件大小: {file_size:.2f} MB")
+        logger.info("图像文件大小: %.2f MB", file_size)
         
         # 限制文件大小，避免处理过大的图像
         if file_size > 50:  # 限制为50MB
-            print("错误: 图像文件过大，超过50MB限制")
+            logger.error("图像文件过大，超过50MB限制")
             return {
                 "success": False,
                 "error": "图像文件过大，超过50MB限制"
             }
         
         base64_image = encode_image_to_base64(image_path, max_side=2048, quality=85)
-        print(f"Base64编码完成，大小: {len(base64_image) / (1024 * 1024):.2f} MB")
+        logger.info("Base64编码完成，大小: %.2f MB", len(base64_image) / (1024 * 1024))
 
         prompt = f"""你是一个专业的中国画艺术分析师。请按照以下三步策略分析这幅李鱓的绘画作品：
 
@@ -174,7 +176,7 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
             "max_tokens": 2048
         }
 
-        print("开始调用API分析图像...")
+        logger.info("开始调用API分析图像...")
 
         def build_chat_url(base_url: str) -> str:
             base = (base_url or "").rstrip("/")
@@ -184,7 +186,7 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
 
         def call_provider(provider: str, base_url: str, api_key: str, model: str) -> Dict:
             url = build_chat_url(base_url)
-            print(f"当前使用AI供应商: {provider}")
+            logger.info("当前使用AI供应商: %s", provider)
             headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
             provider_payload = dict(payload)
             provider_payload["model"] = model
@@ -202,7 +204,7 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
                         result = response.json()
 
                         content = result["choices"][0]["message"]["content"]
-                        print("API调用成功，开始解析返回结果...")
+                        logger.info("API调用成功，开始解析返回结果...")
 
                         content = content.strip()
                         if content.startswith("```json"):
@@ -220,10 +222,10 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
                         content = re.sub(r",\s*([}\]])", r"\1", content)
 
                         analysis = json.loads(content)
-                        print("JSON解析成功")
+                        logger.info("JSON解析成功")
 
                         normalized_regions = _normalize_regions(analysis, image_width, image_height)
-                        print("区域标准化完成")
+                        logger.info("区域标准化完成")
 
                         return {
                             "success": True,
@@ -236,7 +238,7 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
                         status = e.response.status_code
                         retryable = status in (429, 500, 502, 503, 504)
                         if retryable and retry < MAX_RETRIES - 1:
-                            print(f"API请求错误 {status} (重试 {retry+1}/{MAX_RETRIES})")
+                            logger.warning("API请求错误 %d (重试 %d/%d)", status, retry+1, MAX_RETRIES)
                             time.sleep(delay)
                             continue
                         try:
@@ -246,13 +248,13 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
                             return {"success": False, "error": f"API请求错误: {status}"}
                     except (httpx.ConnectError, httpx.ReadError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.TimeoutException) as e:
                         if retry < MAX_RETRIES - 1:
-                            print(f"网络/超时错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
+                            logger.warning("网络/超时错误 (重试 %d/%d): %s", retry+1, MAX_RETRIES, e)
                             time.sleep(delay)
                             continue
                         return {"success": False, "error": f"网络/超时错误: {str(e)}"}
                     except json.JSONDecodeError as e:
                         if retry < MAX_RETRIES - 1:
-                            print(f"JSON解析错误 (重试 {retry+1}/{MAX_RETRIES}): {e}")
+                            logger.warning("JSON解析错误 (重试 %d/%d): %s", retry+1, MAX_RETRIES, e)
                             time.sleep(delay)
                             continue
                         return {"success": False, "error": f"JSON解析错误: {str(e)}"}
@@ -280,7 +282,7 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int) 
         return {"success": False, "error": f"无可用AI供应商或调用失败 ({tried_text}){suffix}"}
 
     except Exception as e:
-        print(f"分析失败: {e}")
+        logger.error("分析失败: %s", e)
         import traceback
         traceback.print_exc()
         return {
@@ -394,7 +396,7 @@ def calculate_blank_regions(inscription_regions, painting_regions, image_width, 
         
         return blank_regions
     except Exception as e:
-        print(f"计算留白区域时出错: {e}")
+        logger.error("计算留白区域时出错: %s", e)
         # 出错时返回一个默认的留白区域
         return [{
             "x1": 0,

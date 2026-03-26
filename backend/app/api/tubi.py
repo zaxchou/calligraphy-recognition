@@ -1,8 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form, Request
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -13,10 +14,25 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path
 from app.models.tubi_analysis import TubiAnalysis
+
+settings = get_settings()
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+# --- API Key 认证 ---
+
+
+def _require_admin_api_key(request: Request) -> None:
+    """验证管理员 API Key，用于危险操作（删除/清空）"""
+    expected = getattr(settings, "COMPOSITION_API_KEY", "")
+    key = request.headers.get("X-API-Key")
+    if expected and key != expected:
+        raise HTTPException(status_code=403, detail="invalid_api_key")
+
+
 from app.models.tubi_job import TubiJob
 
 # 获取项目根目录
-import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.siliconflow_service import (
     analyze_image_regions,
@@ -27,15 +43,6 @@ from app.services.inscription_position_analyzer import analyze_inscription_posit
 from app.services.keyword_extractor import extract_wordcloud_keywords, load_wordcloud_config, get_artist_aliases
 
 router = APIRouter(prefix="/tubi", tags=["题跋分析"])
-
-UPLOAD_DIR = "data/uploads"
-ANNOTATED_DIR = "data/annotated"
-THUMBNAIL_DIR = "data/thumbnails"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(ANNOTATED_DIR, exist_ok=True)
-os.makedirs(THUMBNAIL_DIR, exist_ok=True)
-
-settings = get_settings()
 _QUEUE_KEY_PENDING = "tubi:queue:pending"
 _QUEUE_KEY_PROCESSING = "tubi:queue:processing"
 
@@ -142,7 +149,7 @@ def create_thumbnail(image_path: str, thumbnail_path: str, max_size: int = 300):
             img.save(thumbnail_path, 'JPEG', quality=85, optimize=True)
             return thumbnail_path
     except Exception as e:
-        print(f"生成缩略图失败: {e}")
+        logger.error("生成缩略图失败: %s", e)
         return None
 
 
@@ -196,7 +203,7 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
         
         # 检查文件是否存在
         if not os.path.exists(original_path):
-            print(f"警告: 原始文件不存在: {original_path}")
+            logger.warning("原始文件不存在: %s", original_path)
             return None
         
         # 打开原图并调整大小以减少内存使用
@@ -256,7 +263,7 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
                         draw.rectangle([x1, y1, x2, y2], fill=fill_color)
                         draw.rectangle([x1, y1, x2, y2], outline=border_color, width=2)
                 except Exception as e:
-                    print(f"绘制区域时出错: {e}")
+                    logger.error("绘制区域时出错: %s", e)
             
             # 按优先级绘制：留白 -> 绘画 -> 题跋（题跋在最上层）
             # 限制区域数量，避免处理过多区域导致崩溃
@@ -285,7 +292,7 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
             result.save(output_path, 'JPEG', quality=75, optimize=True)
             return output_path
     except Exception as e:
-        print(f"生成标注图片失败: {e}")
+        logger.error("生成标注图片失败: %s", e)
         import traceback
         traceback.print_exc()
         return None
@@ -302,8 +309,8 @@ async def upload_image(
     db: Session = Depends(get_db)
 ):
     try:
-        print(f"开始上传文件: {file.filename}")
-        print(f"文件类型: {file.content_type}")
+        logger.info("开始上传文件: %s", file.filename)
+        logger.info("文件类型: %s", file.content_type)
         
         if file.content_type not in ["image/jpeg", "image/png", "image/bmp"]:
             raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP 格式")
@@ -315,13 +322,11 @@ async def upload_image(
         thumbnail_filename = f"{file_id}_thumb.jpg"
         thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
 
-        print(f"保存文件到: {filepath}")
-        content = await file.read()
-        print(f"文件大小: {len(content) / (1024 * 1024):.2f} MB")
-        
-        # 限制文件大小
-        if len(content) > 50 * 1024 * 1024:  # 50MB
-            raise HTTPException(status_code=400, detail="文件大小超过50MB限制")
+        # 先限制读取大小，防止大文件 OOM
+        MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+        content = await file.read(MAX_UPLOAD_SIZE + 1)
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="文件大小超过50MB限制")
             
         with open(filepath, "wb") as f:
             f.write(content)
@@ -329,17 +334,17 @@ async def upload_image(
         try:
             with Image.open(filepath) as img:
                 width, height = img.size
-            print(f"图像尺寸: {width}x{height}")
+            logger.info("图像尺寸: %dx%d", width, height)
         except Exception as e:
-            print(f"读取图像尺寸失败: {e}")
+            logger.error("读取图像尺寸失败: %s", e)
             width, height = 0, 0
 
         # 生成缩略图
-        print("生成缩略图...")
+        logger.info("生成缩略图...")
         create_thumbnail(filepath, thumbnail_path)
 
         # 保存到数据库
-        print("保存到数据库...")
+        logger.info("保存到数据库...")
         db_analysis = TubiAnalysis(
             image_id=file_id,
             filename=file.filename,
@@ -358,7 +363,7 @@ async def upload_image(
         db.commit()
         db.refresh(db_analysis)
 
-        print(f"上传成功: {file_id}")
+        logger.info("上传成功: %s", file_id)
         return {
             "success": True,
             "data": {
@@ -373,7 +378,7 @@ async def upload_image(
             }
         }
     except Exception as e:
-        print(f"上传失败: {e}")
+        logger.error("上传失败: %s", e)
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
@@ -390,7 +395,7 @@ async def upload_images(
     
     for i, file in enumerate(files):
         try:
-            print(f"处理文件 {i+1}/{total_files}: {file.filename}")
+            logger.info("处理文件 %d/%d: %s", i+1, total_files, file.filename)
             
             if file.content_type not in ["image/jpeg", "image/png", "image/bmp"]:
                 failed.append({
@@ -406,10 +411,10 @@ async def upload_images(
             thumbnail_filename = f"{file_id}_thumb.jpg"
             thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
 
-            content = await file.read()
-            
-            # 限制文件大小
-            if len(content) > 50 * 1024 * 1024:  # 50MB
+            # 先限制读取大小，防止大文件 OOM
+            MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+            content = await file.read(MAX_UPLOAD_SIZE + 1)
+            if len(content) > MAX_UPLOAD_SIZE:
                 failed.append({
                     "filename": file.filename,
                     "error": "文件大小超过50MB限制"
@@ -423,14 +428,14 @@ async def upload_images(
                 with Image.open(filepath) as img:
                     width, height = img.size
             except Exception as e:
-                print(f"读取图像尺寸失败: {e}")
+                logger.error("读取图像尺寸失败: %s", e)
                 width, height = 0, 0
 
             # 生成缩略图
             try:
                 create_thumbnail(filepath, thumbnail_path)
             except Exception as e:
-                print(f"生成缩略图失败: {e}")
+                logger.error("生成缩略图失败: %s", e)
 
             # 保存到数据库 - 使用标准化路径
             try:
@@ -456,7 +461,7 @@ async def upload_images(
                     "height": height
                 })
             except Exception as e:
-                print(f"保存到数据库失败: {e}")
+                logger.error("保存到数据库失败: %s", e)
                 failed.append({
                     "filename": file.filename,
                     "error": f"保存到数据库失败: {str(e)}"
@@ -470,7 +475,7 @@ async def upload_images(
                 except:
                     pass
         except Exception as e:
-            print(f"处理文件 {file.filename} 时出错: {e}")
+            logger.error("处理文件 %s 时出错: %s", file.filename, e)
             failed.append({
                 "filename": file.filename,
                 "error": f"处理失败: {str(e)}"
@@ -945,7 +950,8 @@ async def search_images(
 
 
 @router.delete("/image/{image_id}")
-async def delete_image(image_id: str, db: Session = Depends(get_db)):
+async def delete_image(image_id: str, request: Request, db: Session = Depends(get_db)):
+    _require_admin_api_key(request)
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
@@ -971,8 +977,9 @@ async def delete_image(image_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/clear-all")
-async def clear_all_analyses(db: Session = Depends(get_db)):
+async def clear_all_analyses(request: Request, db: Session = Depends(get_db)):
     """清空所有分析数据"""
+    _require_admin_api_key(request)
     try:
         # 获取所有记录
         all_analyses = db.query(TubiAnalysis).all()
@@ -985,7 +992,7 @@ async def clear_all_analyses(db: Session = Depends(get_db)):
                     try:
                         os.remove(file_path_local)
                     except Exception as e:
-                        print(f"删除文件失败 {file_path_local}: {e}")
+                        logger.error("删除文件失败 %s: %s", file_path_local, e)
 
             if analysis.annotated_image_path:
                 annotated_path_local = get_full_file_path(analysis.annotated_image_path, PROJECT_ROOT)
@@ -993,7 +1000,7 @@ async def clear_all_analyses(db: Session = Depends(get_db)):
                     try:
                         os.remove(annotated_path_local)
                     except Exception as e:
-                        print(f"删除标注图失败 {annotated_path_local}: {e}")
+                        logger.error("删除标注图失败 %s: %s", annotated_path_local, e)
 
         # 删除所有数据库记录
         db.query(TubiAnalysis).delete()

@@ -98,10 +98,12 @@ async def upload(request: Request, file: UploadFile = File(...), db: Session = D
     r = get_redis()
     _rate_limit(r, "upload", _client_id(request, api_key), window_seconds=60, limit=10)
 
-    content = await file.read()
+    # 先限制读取大小，防止大文件 OOM
+    MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20MB
+    content = await file.read(MAX_UPLOAD_SIZE + 1)
     if not content:
         raise HTTPException(status_code=400, detail="empty_file")
-    if len(content) > 20 * 1024 * 1024:
+    if len(content) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="file_too_large")
 
     try:
@@ -349,10 +351,12 @@ def ingest_rules(payload: IngestRulesRequest, request: Request):
 @router.post("/knowledge/upload/book", response_model=KnowledgeUploadResponse)
 async def upload_book(request: Request, file: UploadFile = File(...)):
     _require_api_key(request)
-    content = await file.read()
+    # 先限制读取大小，防止大文件 OOM（PDF 可能较大，允许 200MB）
+    MAX_UPLOAD_SIZE = 200 * 1024 * 1024
+    content = await file.read(MAX_UPLOAD_SIZE + 1)
     if not content:
         raise HTTPException(status_code=400, detail="empty_file")
-    if len(content) > 200 * 1024 * 1024:
+    if len(content) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="file_too_large")
     stored_path, stored_url = save_book_upload(file.filename or "book.pdf", content)
     return KnowledgeUploadResponse(file_name=file.filename or "book.pdf", stored_url=stored_url, stored_path=stored_path)
@@ -368,16 +372,20 @@ async def ingest_images(
     _require_api_key(request)
     if not files:
         raise HTTPException(status_code=400, detail="empty_file")
+    MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20MB per image
     pairs = []
     for f in files:
-        content = await f.read()
+        content = await f.read(MAX_IMAGE_SIZE + 1)
         if not content:
+            continue
+        if len(content) > MAX_IMAGE_SIZE:
             continue
         pairs.append((f.filename or uuid.uuid4().hex, content))
     mapping_path = None
     if mapping is not None:
-        mapping_bytes = await mapping.read()
-        if mapping_bytes:
+        MAX_MAPPING_SIZE = 5 * 1024 * 1024  # 5MB
+        mapping_bytes = await mapping.read(MAX_MAPPING_SIZE + 1)
+        if mapping_bytes and len(mapping_bytes) <= MAX_MAPPING_SIZE:
             pairs.append((mapping.filename or "mapping.json", mapping_bytes))
     _, batch_dir = save_ingest_files(pairs)
     if mapping is not None and mapping.filename:
@@ -411,8 +419,9 @@ async def ingest_book_pdf(
 
     mapping_path = None
     if mapping is not None:
-        mapping_bytes = await mapping.read()
-        if mapping_bytes:
+        MAX_MAPPING_SIZE = 5 * 1024 * 1024  # 5MB for JSON mapping
+        mapping_bytes = await mapping.read(MAX_MAPPING_SIZE + 1)
+        if mapping_bytes and len(mapping_bytes) <= MAX_MAPPING_SIZE:
             _, batch_dir = save_ingest_files([(mapping.filename or "mapping.json", mapping_bytes)])
             mapping_guess = os.path.join(batch_dir, os.path.basename(mapping.filename or "mapping.json"))
             if os.path.exists(mapping_guess):

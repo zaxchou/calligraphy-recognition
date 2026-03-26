@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 import time
 import os
 import uuid
@@ -18,6 +19,7 @@ from app.models.recognition_log import RecognitionLog
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # 初始化服务
 image_processor = ImageProcessor(target_size=(128, 128))
@@ -48,8 +50,11 @@ async def recognize_image(
         raise HTTPException(status_code=400, detail="不支持的文件类型，请上传图片文件")
     
     try:
-        # 读取上传的图片
-        contents = await file.read()
+        # 先限制读取大小，防止大文件 OOM
+        MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+        contents = await file.read(MAX_UPLOAD_SIZE + 1)
+        if len(contents) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail=f"文件大小超过{MAX_UPLOAD_SIZE // (1024*1024)}MB限制")
         
         # 保存上传的图片
         upload_dir = settings.UPLOAD_DIR
@@ -81,8 +86,8 @@ async def recognize_image(
         if match_result.get('top_matches'):
             candidates = [m['character'] for m in match_result['top_matches'][:5]]
         
-        print(f"特征匹配结果: {match_result.get('recognized_character')}, 相似度: {match_result.get('similarity')}")
-        print(f"Top 5 候选: {candidates}")
+        logger.info("特征匹配结果: %s, 相似度: %s", match_result.get('recognized_character'), match_result.get('similarity'))
+        logger.info("Top 5 候选: %s", candidates)
         
         # SiliconFlow AI 识别（使用 Kimi-K2.5 模型，直接图像输入）
         ai_result = None
@@ -97,7 +102,7 @@ async def recognize_image(
                 candidates=candidates if candidates else None
             )
             
-            print(f"SiliconFlow AI 识别结果: {ai_result}")
+            logger.info("SiliconFlow AI 识别结果: %s", ai_result)
             
             if ai_result.get('success'):
                 ai_character = ai_result.get('character', '').strip()
@@ -147,15 +152,14 @@ async def recognize_image(
                         } if stele else None
                     }
             else:
-                print(f"AI 识别失败: {ai_result.get('error')}")
+                logger.warning("AI 识别失败: %s", ai_result.get('error'))
                 # AI 失败，使用特征匹配结果
                 final_character = match_result.get('recognized_character', '')
                 final_confidence = match_result.get('similarity', 0)
                 
         except Exception as e:
-            print(f"SiliconFlow AI 识别失败: {e}")
+            logger.error("SiliconFlow AI 识别失败: %s", e, exc_info=True)
             import traceback
-            traceback.print_exc()
             match_result['ai_error'] = str(e)
             # AI 失败，使用特征匹配结果
             final_character = match_result.get('recognized_character', '')
@@ -165,9 +169,9 @@ async def recognize_image(
         ocr_result = None
         try:
             ocr_result = ocr_service.recognize_single_char(contents)
-            print(f"OCR识别结果: {ocr_result}")
+            logger.info("OCR识别结果: %s", ocr_result)
         except Exception as e:
-            print(f"OCR识别失败: {e}")
+            logger.warning("OCR识别失败: %s", e)
         
         # 计算处理时间
         processing_time = int((time.time() - start_time) * 1000)
@@ -191,7 +195,7 @@ async def recognize_image(
             )
             db.add(log)
             db.commit()
-            print(f"识别记录已保存: {final_character}, 相似度: {final_confidence}")
+            logger.info("识别记录已保存: %s, 相似度: %s", final_character, final_confidence)
         
         # 组装返回结果 - 使用跨平台路径处理
         result = {
@@ -323,8 +327,14 @@ async def get_recognition_history(
 @router.delete("/recognition/history/{log_id}")
 async def delete_recognition_history(
     log_id: int,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    # API Key 验证
+    expected = getattr(settings, "COMPOSITION_API_KEY", "")
+    key = request.headers.get("X-API-Key")
+    if expected and key != expected:
+        raise HTTPException(status_code=403, detail="invalid_api_key")
     """
     删除识别历史记录
     
@@ -344,7 +354,7 @@ async def delete_recognition_history(
                 try:
                     os.remove(file_path)
                 except Exception as e:
-                    print(f"删除图片文件失败: {e}")
+                    logger.error("删除图片文件失败: %s", e)
         
         db.delete(log)
         db.commit()

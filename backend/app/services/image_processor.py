@@ -5,6 +5,27 @@ import io
 from typing import Tuple, Optional
 
 
+def binarize_image(gray: np.ndarray, threshold: int = 127) -> np.ndarray:
+    """
+    统一的图像二值化函数。
+
+    自动检测背景颜色：深色背景用 THRESH_BINARY（保留浅色笔画），
+    浅色背景用 THRESH_BINARY_INV（反转深色笔画为白色）。
+
+    Args:
+        gray: 灰度图像 (H, W)
+        threshold: 固定阈值（默认 127）
+
+    Returns:
+        二值化图像 (H, W)，笔画区域为白色(255)，背景为黑色(0)
+    """
+    mean_val = np.mean(gray)
+    if mean_val < threshold:
+        return cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)[1]
+    else:
+        return cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY_INV)[1]
+
+
 class ImageProcessor:
     """图像预处理服务"""
     

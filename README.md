@@ -49,36 +49,87 @@ calligraphy-recognition/
 
 本地开发默认端口：
 - 前端：`http://localhost:3000`
-- 后端：`http://localhost:8003`
+- 后端：`http://localhost:8001`
+- Redis：`localhost:6379`（构图分析必需）
 - 后端 API 前缀：`/api/v1`
 
 前端通过 Vite 代理访问后端：
-- `/api` -> `http://localhost:8003`
-- `/static` -> `http://localhost:8003`
+- `/api` -> `http://localhost:8001`
+- `/static` -> `http://localhost:8001`
 
 ---
 
 ## 本地启动（推荐流程）
 
-### 1) 后端
+### 一键启动（推荐）
 
+所有服务一键拉起，首次运行会自动下载 Redis：
+
+**Windows:**
+```powershell
+# 一键启动 Redis + Celery + FastAPI
+.\start_all.ps1
+
+# 按需跳过
+.\start_all.ps1 -SkipFastAPI      # 只启动 Redis + Celery
+.\start_all.ps1 -SkipRedis        # 只启动 Celery + FastAPI
+```
+
+**Linux / macOS:**
+```bash
+chmod +x start_all.sh stop_all.sh
+./start_all.sh                    # 启动全部
+./stop_all.sh                     # 停止全部
+```
+
+启动后：
+| 服务 | 地址 |
+|------|------|
+| FastAPI 后端 | `http://localhost:8001` |
+| API 文档 (Swagger) | `http://localhost:8001/docs` |
+| 前端 | `http://localhost:3000` |
+| Redis | `localhost:6379` |
+
+### 手动分步启动
+
+<details>
+<summary>点击展开</summary>
+
+#### 1) Redis（构图分析必需）
+```powershell
+# Windows - 首次自动下载
+.\start_redis_windows.ps1
+
+# Linux
+sudo apt install redis-server && redis-server --daemonize yes
+```
+
+#### 2) Celery Worker（构图分析必需）
+```powershell
+# Windows - 一键启动
+.\start_celery_windows.ps1
+
+# Linux
+cd backend && celery -A app.core.celery_app worker --loglevel=info --pool=prefork
+```
+
+#### 3) 后端
 ```bash
 cd backend
 pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8003
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-健康检查：`http://localhost:8003/health`
+健康检查：`http://localhost:8001/health`
 
-### 2) 前端
-
+#### 4) 前端
 ```bash
 cd frontend
 npm install
 npm run dev -- --host 0.0.0.0 --port 3000
 ```
 
-打开：`http://localhost:3000`
+</details>
 
 ---
 

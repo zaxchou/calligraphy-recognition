@@ -10,6 +10,9 @@ from app.api import recognition, steles, tubi
 try:
     from app.api import composition
 except Exception:
+    import logging
+
+    logging.getLogger(__name__).exception("Failed to import composition module; composition routes will be disabled")
     composition = None
 
 settings = get_settings()
@@ -88,4 +91,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=settings.SERVER_PORT)

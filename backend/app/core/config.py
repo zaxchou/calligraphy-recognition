@@ -44,8 +44,15 @@ class Settings(BaseSettings):
     # 相似度阈值
     SIMILARITY_THRESHOLD: float = 70.0
     
+    # 百度 OCR 配置
+    BAIDU_OCR_API_KEY: str = os.getenv("BAIDU_OCR_API_KEY", "")
+    BAIDU_OCR_SECRET_KEY: str = os.getenv("BAIDU_OCR_SECRET_KEY", "")
+
     # DeepSeek AI 配置（已弃用，保留兼容）
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
+
+    # 服务端口
+    SERVER_PORT: int = int(os.getenv("SERVER_PORT", "8001"))
     DEEPSEEK_ENABLED: bool = False  # 已切换到 SiliconFlow
     
     # SiliconFlow AI 配置（题跋分析和字体识别共用）

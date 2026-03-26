@@ -1,10 +1,45 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
 import cv2
 import numpy as np
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# CLIP embedding singleton (lazy-loaded)
+# ---------------------------------------------------------------------------
+_clip_model = None
+_clip_preprocess = None
+_clip_device = None
+
+
+def _load_clip():
+    """延迟加载 CLIP 模型，只初始化一次。"""
+    global _clip_model, _clip_preprocess, _clip_device
+    if _clip_model is not None:
+        return _clip_model, _clip_preprocess, _clip_device
+    try:
+        import torch
+        import open_clip
+        _clip_device = "cuda" if torch.cuda.is_available() else "cpu"
+        model_name = "ViT-B-32-quickgelu"
+        pretrained = "openai"
+        _clip_model, _, _clip_preprocess = open_clip.create_model_and_transforms(
+            model_name, pretrained=pretrained
+        )
+        _clip_model = _clip_model.to(_clip_device).eval()
+        logger.info("CLIP model (%s/%s) loaded on %s", model_name, pretrained, _clip_device)
+    except ImportError:
+        logger.warning("open_clip 未安装，回退到像素展平 embedding。请运行: pip install open-clip-torch")
+        _clip_model = None
+    except Exception as e:
+        logger.error("CLIP 模型加载失败: %s，回退到像素展平 embedding", e)
+        _clip_model = None
+    return _clip_model, _clip_preprocess, _clip_device
 
 
 @dataclass
@@ -28,11 +63,48 @@ def decode_image_bytes(content: bytes) -> np.ndarray:
     return img
 
 
-def to_feature_vector_512(img_bgr: np.ndarray) -> List[float]:
+def _pixel_fallback_vector(img_bgr: np.ndarray) -> List[float]:
+    """原始像素展平 embedding（CLIP 不可用时的降级方案）。"""
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     small = cv2.resize(gray, (32, 16), interpolation=cv2.INTER_AREA)
     vec = (small.astype(np.float32) / 255.0).reshape(-1)
     return vec.tolist()
+
+
+def to_feature_vector_512(img_bgr: np.ndarray) -> List[float]:
+    """生成 512 维图像特征向量。
+
+    优先使用 CLIP (ViT-B-32) 语义 embedding，失败时降级到灰度像素展平。
+    输出维度固定 512，与现有 Qdrant collection 兼容，无需迁移。
+    """
+    model, preprocess, device = _load_clip()
+    if model is None:
+        return _pixel_fallback_vector(img_bgr)
+
+    try:
+        import torch
+        from PIL import Image
+
+        # BGR -> RGB for PIL
+        rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(rgb)
+
+        # CLIP preprocess & inference
+        tensor = preprocess(pil_img).unsqueeze(0).to(device)
+        with torch.no_grad():
+            features = model.encode_image(tensor)
+        # 归一化到单位向量
+        features = features / features.norm(dim=-1, keepdim=True)
+
+        vec = features.squeeze(0).cpu().float().tolist()
+        # ViT-B-32 输出 512 维，恰好匹配
+        if len(vec) != 512:
+            logger.warning("CLIP 输出维度 %d ≠ 512，回退到像素展平", len(vec))
+            return _pixel_fallback_vector(img_bgr)
+        return vec
+    except Exception as e:
+        logger.error("CLIP 推理失败: %s，回退到像素展平", e)
+        return _pixel_fallback_vector(img_bgr)
 
 
 def compute_metrics(img_bgr: np.ndarray, bucket: str) -> Tuple[ImageMetrics, np.ndarray, np.ndarray]:

@@ -1,11 +1,14 @@
 """
 简化匹配器 - 直接使用特征向量余弦相似度
 """
+import logging
 import numpy as np
 from typing import List, Dict
 from sqlalchemy.orm import Session
 from app.models.character import Character
 from app.models.stele import Stele
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleMatcher:
@@ -32,7 +35,7 @@ class SimpleMatcher:
                 })
         
         self.is_initialized = len(self.characters_data) > 0
-        print(f"简单匹配器初始化完成，包含 {len(self.characters_data)} 个字符")
+        logger.info("简单匹配器初始化完成，包含 %d 个字符", len(self.characters_data))
     
     def match(self, query_feature: np.ndarray, db: Session, top_k: int = 5, threshold: float = 50.0) -> Dict:
         """

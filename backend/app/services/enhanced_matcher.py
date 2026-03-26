@@ -8,6 +8,7 @@ from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.character import Character
 from app.core.path_utils import get_full_file_path
+from app.services.image_processor import binarize_image
 
 
 class EnhancedMatcher:
@@ -35,7 +36,7 @@ class EnhancedMatcher:
                     'stele_id': char.stele_id
                 })
         
-        print(f"增强匹配器初始化完成，包含 {len(self.characters_data)} 个字符")
+        logger.info("增强匹配器初始化完成，包含 %d 个字符", len(self.characters_data))
     
     def match(
         self, 
@@ -143,8 +144,8 @@ class EnhancedMatcher:
             if mean_val < 127:
                 gray = 255 - gray
             
-            # 二值化
-            _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+            # 二值化（使用统一函数）
+            binary = binarize_image(gray, threshold=127)
             
             # 调整大小
             resized = cv2.resize(binary, (128, 128))
@@ -152,7 +153,7 @@ class EnhancedMatcher:
             return resized
             
         except Exception as e:
-            print(f"加载图像失败: {e}")
+            logger.error("加载图像失败: %s", e)
             return None
     
     def _extract_multi_features(self, image: np.ndarray) -> Dict:
@@ -168,8 +169,8 @@ class EnhancedMatcher:
         if mean_val < 127:
             gray = 255 - gray
         
-        # 二值化
-        _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        # 二值化（使用统一函数）
+        binary = binarize_image(gray, threshold=127)
         
         # 调整大小为标准化尺寸
         binary = cv2.resize(binary, (128, 128))

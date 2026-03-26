@@ -2,12 +2,14 @@
 SiliconFlow AI 字体识别服务 - 使用 Kimi-K2.5 模型
 支持直接图像输入进行书法字体识别
 """
+import logging
 import json
 import base64
 import httpx
 from typing import Optional, Dict, Any, List
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 _SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
 
@@ -98,7 +100,7 @@ class SiliconFlowRecognitionService:
 
             def call_provider(provider: str, base_url: str, api_key: str, model: str) -> Dict[str, Any]:
                 url = build_chat_url(base_url)
-                print(f"当前使用AI供应商: {provider}")
+                logger.info("当前使用AI供应商: %s", provider)
                 headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
                 provider_payload = dict(payload)
                 provider_payload["model"] = model
@@ -155,7 +157,7 @@ class SiliconFlowRecognitionService:
             }
                 
         except httpx.TimeoutException:
-            print("SiliconFlow API 请求超时")
+            logger.error("SiliconFlow API 请求超时")
             return {
                 "success": False,
                 "error": "API请求超时，请重试",
@@ -163,7 +165,7 @@ class SiliconFlowRecognitionService:
                 "confidence": 0
             }
         except httpx.HTTPStatusError as e:
-            print(f"SiliconFlow API HTTP错误: {e.response.status_code}")
+            logger.error("SiliconFlow API HTTP错误: %d", e.response.status_code)
             return {
                 "success": False,
                 "error": f"API请求错误: {e.response.status_code}",
@@ -171,7 +173,7 @@ class SiliconFlowRecognitionService:
                 "confidence": 0
             }
         except json.JSONDecodeError as e:
-            print(f"SiliconFlow JSON解析错误: {str(e)}")
+            logger.error("SiliconFlow JSON解析错误: %s", e)
             return {
                 "success": False,
                 "error": f"JSON解析错误: {str(e)}",
@@ -179,9 +181,7 @@ class SiliconFlowRecognitionService:
                 "confidence": 0
             }
         except Exception as e:
-            print(f"SiliconFlow 识别失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error("SiliconFlow 识别失败: %s", e, exc_info=True)
             return {
                 "success": False,
                 "error": f"识别失败: {str(e)}",
