@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "书法碑帖字体认证系统"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+
+    CORS_ALLOW_ORIGINS: str = os.getenv("CORS_ALLOW_ORIGINS", "*")
     
     # 数据库配置 (使用SQLite，无需安装PostgreSQL)
     DATABASE_URL: str = f"sqlite:///{os.path.join(DATA_DIR, 'calligraphy.db')}"

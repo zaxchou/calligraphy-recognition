@@ -95,3 +95,7 @@ backend/comp.pdf
 
 # Qdrant storage is machine-generated and very large (keep ignored)
 backend/storage/
+
+ingest_book_rules.py
+panqwen.md
+qwenno7sample.md

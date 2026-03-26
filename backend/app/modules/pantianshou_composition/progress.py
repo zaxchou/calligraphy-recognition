@@ -36,6 +36,12 @@ def update_job(task_id: str, **fields: Any) -> None:
     finally:
         db.close()
 
+    try:
+        r = get_redis()
+        r.publish(f"composition:job:{task_id}".encode("utf-8"), b"1")
+    except Exception:
+        pass
+
 
 def job_to_status_dict(job: CompositionJob) -> Dict[str, Any]:
     return {

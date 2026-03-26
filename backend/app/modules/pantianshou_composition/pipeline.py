@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Dict, TypeVar
 
 from app.modules.pantianshou_composition import eta
 from app.modules.pantianshou_composition.progress import get_redis, update_job
@@ -64,4 +64,3 @@ def run_stage(
                 eta.update_expected_seconds(r, bucket, stage, time.time() - stage_started)
             except Exception:
                 pass
-

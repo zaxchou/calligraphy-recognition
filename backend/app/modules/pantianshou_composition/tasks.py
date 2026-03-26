@@ -76,6 +76,15 @@ def analyze_composition(self, task_id: str) -> None:
     bucket = "unknown"
     maps = StageMaps(text=STAGE_TEXT, progress=STAGE_PROGRESS)
 
+    def _safe_error_message(e: Exception) -> str:
+        msg = str(e or "")
+        msg = msg.replace("\n", " ").strip()
+        if not msg:
+            return type(e).__name__
+        if "Traceback" in msg or "/" in msg or "\\" in msg:
+            return type(e).__name__
+        return msg[:200]
+
     try:
         update_job(task_id, status="started", progress=0, stage="queued", stage_text="等待处理", message="")
 
@@ -146,7 +155,7 @@ def analyze_composition(self, task_id: str) -> None:
 
         update_job(task_id, status="done", progress=100, stage="done", stage_text="完成", message="", eta_seconds=0, eta_confidence=0.85)
     except Exception as e:
-        update_job(task_id, status="failed", stage="failed", stage_text="失败", message="", error_code="analysis_failed", error_message=str(e))
+        update_job(task_id, status="failed", stage="failed", stage_text="失败", message="", error_code="analysis_failed", error_message=_safe_error_message(e))
     finally:
         total = time.time() - started_at
         if width and height:
