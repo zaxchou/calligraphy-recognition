@@ -89,8 +89,14 @@ if (-not $SkipFastAPI) {
         Write-Host '[FastAPI] Using venv' -ForegroundColor DarkGray
     }
 
-    $uvicornCmd = "$pythonCmd -m uvicorn app.main:app --host 0.0.0.0 --port $ApiPort --reload --log-level info"
-    Start-Process powershell -ArgumentList '-NoExit', '-Command', "cd '$BackendDir'; Write-Host '=== FastAPI Backend (port $ApiPort) ===' -ForegroundColor Cyan; Write-Host 'Docs: http://localhost:$ApiPort/docs' -ForegroundColor Green; $uvicornCmd" -WindowStyle Normal
+    $args = @('-m', 'uvicorn', 'app.main:app', '--host', '0.0.0.0', "--port $ApiPort", '--reload', '--log-level', 'info')
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = 'python'
+    $psi.Arguments = $args -join ' '
+    $psi.WorkingDirectory = $BackendDir
+    $psi.UseShellExecute = $true
+    $psi.WindowStyle = 'Normal'
+    [System.Diagnostics.Process]::Start($psi) | Out-Null
 
     Start-Sleep -Seconds 3
 
@@ -132,7 +138,14 @@ if (-not $SkipFrontend) {
         Start-Sleep -Seconds 2
     }
 
-    Start-Process powershell -ArgumentList '-NoExit', '-Command', "cd '$FrontendDir'; Write-Host '=== Frontend Dev Server (port $FrontendPort) ===' -ForegroundColor Cyan; Write-Host 'URL: http://localhost:$FrontendPort' -ForegroundColor Green; npx vite --host 0.0.0.0 --port $FrontendPort" -WindowStyle Normal
+    $feArgs = @('vite', '--host', '0.0.0.0', "--port $FrontendPort")
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = 'npx'
+    $psi.Arguments = $feArgs -join ' '
+    $psi.WorkingDirectory = $FrontendDir
+    $psi.UseShellExecute = $true
+    $psi.WindowStyle = 'Normal'
+    [System.Diagnostics.Process]::Start($psi) | Out-Null
 
     Start-Sleep -Seconds 3
 

@@ -50,8 +50,14 @@ Pop-Location
 # ---------- Start Celery Worker ----------
 Write-Host '[Celery] Starting Celery Worker (--pool=solo for Windows) ...' -ForegroundColor Green
 
-$celeryCmd = "$pythonCmd -m celery -A app.core.celery_app worker --loglevel=info --pool=solo"
-Start-Process powershell -ArgumentList '-NoExit', '-Command', "cd '$BackendDir'; Write-Host '=== Celery Worker ===' -ForegroundColor Cyan; $celeryCmd" -WindowStyle Normal
+$celeryArgs = @('-m', 'celery', '-A', 'app.core.celery_app', 'worker', '--loglevel=info', '--pool=solo')
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = $pythonCmd
+$psi.Arguments = $celeryArgs -join ' '
+$psi.WorkingDirectory = $BackendDir
+$psi.UseShellExecute = $true
+$psi.WindowStyle = 'Normal'
+[System.Diagnostics.Process]::Start($psi) | Out-Null
 
 Start-Sleep -Seconds 3
 Write-Host '[Celery] Worker launched in a new window' -ForegroundColor Green
