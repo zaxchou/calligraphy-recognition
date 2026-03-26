@@ -40,6 +40,15 @@ settings = get_settings()
 router = APIRouter(prefix="/composition", tags=["潘天寿教你构图"])
 
 
+def _is_safe_path(path: str, base_dir: str) -> bool:
+    try:
+        base = os.path.realpath(base_dir)
+        target = os.path.realpath(path)
+        return os.path.commonpath([base, target]) == base
+    except Exception:
+        return False
+
+
 def _require_api_key(request: Request) -> str | None:
     require = bool(getattr(settings, "COMPOSITION_REQUIRE_API_KEY", False)) or bool(getattr(settings, "COMPOSITION_API_KEY", ""))
     key = request.headers.get("X-API-Key")
@@ -189,6 +198,17 @@ def task_events(task_id: str, request: Request):
 
     def gen() -> Generator[bytes, None, None]:
         last_updated = None
+
+        r_sub = None
+        pubsub = None
+        try:
+            r_sub = get_redis()
+            r_sub.ping()
+            pubsub = r_sub.pubsub(ignore_subscribe_messages=True)
+            pubsub.subscribe(f"composition:job:{task_id}".encode("utf-8"))
+        except Exception:
+            pubsub = None
+
         while True:
             db = SessionLocal()
             try:
@@ -207,7 +227,14 @@ def task_events(task_id: str, request: Request):
 
             if job.status in {"done", "failed", "canceled", "deleted"}:
                 return
-            time.sleep(0.8)
+
+            if pubsub is not None:
+                try:
+                    pubsub.get_message(timeout=0.8)
+                except Exception:
+                    time.sleep(0.8)
+            else:
+                time.sleep(0.8)
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
@@ -223,6 +250,8 @@ def get_report(task_id: str, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="task_not_found")
     if job.status != "done" or not job.report_json_path:
         raise HTTPException(status_code=409, detail="report_not_ready")
+    if not _is_safe_path(job.report_json_path, os.path.dirname(settings.UPLOAD_DIR)):
+        raise HTTPException(status_code=400, detail="invalid_report_path")
     if not os.path.exists(job.report_json_path):
         raise HTTPException(status_code=404, detail="report_missing")
     with open(job.report_json_path, "r", encoding="utf-8") as f:
@@ -237,7 +266,11 @@ def download_pdf(task_id: str, request: Request, db: Session = Depends(get_db)):
     job = db.query(CompositionJob).filter(CompositionJob.id == task_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="task_not_found")
-    if job.status != "done" or not job.pdf_path or not os.path.exists(job.pdf_path):
+    if job.status != "done" or not job.pdf_path:
+        raise HTTPException(status_code=409, detail="pdf_not_ready")
+    if not _is_safe_path(job.pdf_path, os.path.dirname(settings.UPLOAD_DIR)):
+        raise HTTPException(status_code=400, detail="invalid_pdf_path")
+    if not os.path.exists(job.pdf_path):
         raise HTTPException(status_code=409, detail="pdf_not_ready")
     return FileResponse(job.pdf_path, media_type="application/pdf", filename=f"composition_{task_id}.pdf")
 
