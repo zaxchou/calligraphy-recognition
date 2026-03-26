@@ -1,222 +1,125 @@
-# 书法碑帖字体认证系统
+# Calligraphy Recognition
 
-基于深度学习的书法碑帖字体认证系统，用户上传书法图片，系统识别出自哪个碑帖，并显示相似度百分比。
+一个面向“书法碑帖识别 / 中国画题跋分析 / 潘天寿构图讲评”的综合实验项目。
 
-## 功能特点
+当前仓库包含：
+- **前端**：Vue 3 + Vite + Element Plus
+- **后端**：FastAPI + SQLAlchemy（默认 SQLite）
+- **异步任务**：Celery + Redis（用于构图分析等长耗时任务）
+- **向量检索（可选）**：Qdrant（用于构图案例/规则检索）
+- **AI 能力（按需）**：SiliconFlow / Qwen（OpenAI Compatible）等
 
-- **智能识别**：基于深度学习和图像处理技术，精准识别书法字体
-- **碑帖匹配**：匹配数据库中的碑帖字形，返回相似度百分比
-- **多字体支持**：支持楷、行、草、隶、篆等多种字体风格
-- **可视化界面**：友好的Web界面，支持图片上传和结果展示
+---
 
-## 系统架构
+## 功能概览
+
+- **书法碑帖识别**：上传单字/局部图，匹配碑帖字形，返回相似度与候选。
+- **题跋分析（Tubi）**：题跋区域/画面结构的可视化与统计分析（见 [README_TUBI_ANALYSIS.md](README_TUBI_ANALYSIS.md)）。
+- **潘天寿教你构图（Composition）**：上传国画作品，异步分析构图特征，生成报告与 PDF，支持进度与 ETA。
+
+---
+
+## 目录结构
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   前端界面   │────▶│   API服务   │────▶│  图像处理   │
-│  (Vue3)     │     │  (FastAPI)  │     │  (OpenCV)   │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                                │
-                       ┌─────────────┐         │
-                       │  数据库     │◀────────┤
-                       │ (PostgreSQL)│         │
-                       └─────────────┘         │
-                                                │
-                       ┌─────────────┐         │
-                       │  特征匹配   │◀────────┘
-                       │  (FAISS)    │
-                       └─────────────┘
+calligraphy-recognition/
+  backend/                          # FastAPI 后端
+    app/
+      api/                          # 路由聚合（recognition/steles/tubi/composition）
+      core/                         # 配置、数据库、Celery
+      models/                       # 数据表模型
+      modules/
+        pantianshou_composition/    # 构图模块（任务、报告、Qdrant、知识库等）
+      services/                     # 识别/题跋等服务
+    data/                           # SQLite、上传、静态输出（本地运行生成）
+    requirements.txt
+    .env.example
+  frontend/                         # Vue3 前端
+    src/
+      views/                        # 主页面
+      modules/pantianshou-composition/  # 构图模块页面与组件
+    vite.config.js
+  README.md
+  README_TUBI_ANALYSIS.md
 ```
 
-## 技术栈
+---
 
-### 后端
-- **FastAPI**: 高性能Web框架
-- **SQLAlchemy**: ORM数据库操作
-- **OpenCV**: 图像处理
-- **PyTorch**: 深度学习（可选）
-- **FAISS**: 向量相似度搜索
-- **PostgreSQL**: 主数据库
+## 架构与端口
 
-### 前端
-- **Vue 3**: 前端框架
-- **Element Plus**: UI组件库
-- **Axios**: HTTP客户端
-- **Vite**: 构建工具
+本地开发默认端口：
+- 前端：`http://localhost:3000`
+- 后端：`http://localhost:8003`
+- 后端 API 前缀：`/api/v1`
 
-## 快速开始
+前端通过 Vite 代理访问后端：
+- `/api` -> `http://localhost:8003`
+- `/static` -> `http://localhost:8003`
 
-### 1. 克隆项目
+---
 
-```bash
-cd calligraphy-recognition
-```
+## 本地启动（推荐流程）
 
-### 2. 安装后端依赖
+### 1) 后端
 
 ```bash
 cd backend
 pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8003
 ```
 
-### 3. 配置数据库
+健康检查：`http://localhost:8003/health`
 
-修改 `backend/app/core/config.py` 中的数据库连接字符串：
-
-```python
-DATABASE_URL = "postgresql://username:password@localhost:5432/calligraphy"
-```
-
-### 4. 初始化数据
-
-```bash
-cd backend
-python scripts/init_data.py
-```
-
-### 5. 启动后端服务
-
-```bash
-cd backend
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 6. 安装前端依赖
+### 2) 前端
 
 ```bash
 cd frontend
 npm install
+npm run dev -- --host 0.0.0.0 --port 3000
 ```
 
-### 7. 启动前端服务
+打开：`http://localhost:3000`
 
-```bash
-cd frontend
-npm run dev
-```
+---
 
-### 8. 访问系统
+## 构图模块（潘天寿教你构图）说明
 
-打开浏览器访问 http://localhost:3000
+### 进度与 ETA
 
-## API接口
+构图分析为异步任务：
+- 上传后生成 `task_id`
+- 前端可轮询 `/api/v1/composition/task/{task_id}` 或订阅 SSE `/api/v1/composition/task/{task_id}/events`
 
-### 识别接口
+服务端实现：
+- Celery + Redis 可用时：异步执行 + 进度/ETA 持续更新
+- Redis 不可用时：自动降级为线程执行（仍会落库更新状态）
 
-**POST** `/api/v1/recognize`
+### 关键产物
 
-上传图片进行识别
+- 热力图：`/static/composition/overlays/*_heatmap.png`
+- 报告 JSON：`/static/composition/reports/*.json`
+- PDF：`/static/composition/pdfs/*.pdf`
 
-**请求参数**:
-- `file`: 图片文件 (multipart/form-data)
+---
 
-**响应示例**:
-```json
-{
-  "success": true,
-  "data": {
-    "recognized_character": "大",
-    "similarity": 92.5,
-    "best_match": {
-      "stele": {
-        "name": "雁塔圣教序",
-        "calligrapher": "褚遂良",
-        "style": "楷书"
-      }
-    },
-    "top_matches": [...]
-  }
-}
-```
+## 环境变量
 
-### 碑帖接口
+后端示例见：`backend/.env.example`。
 
-**GET** `/api/v1/steles`
+常用配置：
+- `REDIS_URL`：Redis 地址（Celery broker/backend、进度 PubSub）
+- `QDRANT_URL` / `QDRANT_API_KEY`：启用构图规则/案例检索
+- `SILICONFLOW_API_KEY`：题跋分析与识别相关 AI
+- `QWEN_API_KEY` / `QWEN_BASE_URL` / `COMPOSITION_LLM_MODEL`：构图讲评 LLM
+- `CORS_ALLOW_ORIGINS`：后端 CORS 白名单（逗号分隔；默认 `*`）
 
-获取碑帖列表
+---
 
-**GET** `/api/v1/steles/{id}`
+## 开发约定（建议）
 
-获取碑帖详情
+- 使用分支 + PR：避免直接在 `master` 上提交。
+- 已提供 `.gitattributes`，用于统一换行与二进制文件处理。
 
-**GET** `/api/v1/steles/{id}/characters`
-
-获取碑帖字形列表
-
-## 项目结构
-
-```
-calligraphy-recognition/
-├── backend/                 # 后端代码
-│   ├── app/
-│   │   ├── api/            # API路由
-│   │   ├── core/           # 核心配置
-│   │   ├── models/         # 数据模型
-│   │   ├── services/       # 业务逻辑
-│   │   │   ├── image_processor.py    # 图像处理
-│   │   │   ├── feature_extractor.py  # 特征提取
-│   │   │   └── matcher.py            # 相似度匹配
-│   │   └── main.py         # 入口文件
-│   ├── scripts/            # 脚本工具
-│   └── requirements.txt    # 依赖列表
-├── frontend/               # 前端代码
-│   ├── src/
-│   │   ├── api/           # API接口
-│   │   ├── views/         # 页面视图
-│   │   └── router/        # 路由配置
-│   └── package.json
-├── data/                   # 数据文件
-│   ├── uploads/           # 上传图片
-│   └── static/            # 静态资源
-└── README.md
-```
-
-## 核心算法
-
-### 图像预处理流程
-
-1. **灰度化**: 将彩色图像转换为灰度图
-2. **去噪**: 使用高斯滤波去除噪声
-3. **二值化**: 自适应阈值二值化
-4. **倾斜校正**: 基于矩的倾斜校正
-5. **ROI提取**: 提取感兴趣区域
-6. **归一化**: 统一尺寸为128x128
-
-### 特征提取
-
-- **CNN特征**: 使用ResNet50提取深度特征
-- **笔画特征**: HOG方向梯度直方图
-- **结构特征**: Hu矩、投影特征、区域密度
-- **融合策略**: 加权融合多层级特征
-
-### 相似度匹配
-
-- **余弦相似度**: 计算向量夹角余弦值
-- **FAISS索引**: 高效向量检索
-- **Top-K搜索**: 返回最相似的K个结果
-
-## 演示数据
-
-系统预置了《雁塔圣教序》作为演示碑帖，包含10个示例汉字：
-- 大、唐、三、藏、圣、教、序、皇、帝、文
-
-## 扩展开发
-
-### 添加新碑帖
-
-1. 在数据库中添加碑帖记录
-2. 准备碑帖字形图片
-3. 运行特征提取脚本
-4. 重建FAISS索引
-
-### 优化识别精度
-
-1. 收集更多训练数据
-2. 微调深度学习模型
-3. 调整特征权重
-4. 优化相似度阈值
-
-## 许可证
 
 MIT License
 
