@@ -960,7 +960,7 @@ defineExpose({
 .artwork-info-inline {
   display: flex;
   gap: 8px;
-  padding: 0 0 4px;
+  padding: 10px 0 4px;
   margin-bottom: 4px;
 }
 /* 作品信息表格 */
