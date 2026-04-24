@@ -236,26 +236,23 @@
       <!-- 原作卡片 -->
       <el-card shadow="hover" class="original-image-card" v-if="analyzeStatus === 'analyzed' && currentImage?.url">
         <template #header>
-          <div class="card-header">
-            <span>原作</span>
-            <div class="navigation-buttons">
-              <el-button
-                size="small"
-                :disabled="!prevImage"
-                @click="$emit('navigate', prevImage)"
-                :icon="ArrowLeft"
-              >
-                上一幅
-              </el-button>
-              <el-button
-                size="small"
-                :disabled="!nextImage"
-                @click="$emit('navigate', nextImage)"
-              >
-                下一幅
-                <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-              </el-button>
-            </div>
+          <div class="card-header navigation-header">
+            <el-button
+              size="small"
+              :disabled="!prevImage"
+              @click="$emit('navigate', prevImage)"
+              :icon="ArrowLeft"
+            >
+              上一幅
+            </el-button>
+            <el-button
+              size="small"
+              :disabled="!nextImage"
+              @click="$emit('navigate', nextImage)"
+            >
+              下一幅
+              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+            </el-button>
           </div>
         </template>
         <div class="original-image-wrapper">
@@ -1024,6 +1021,11 @@ defineExpose({
   border-radius: 6px;
   border: 1px solid #ede9de;
   white-space: pre-wrap;
+}
+
+/* 导航按钮左右分布 */
+.navigation-header {
+  justify-content: space-between !important;
 }
 
 /* 面积占比智能示意图标题与按钮同行 */
