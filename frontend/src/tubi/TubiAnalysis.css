@@ -1889,15 +1889,19 @@
 /* 分析结果左右布局 */
 .analysis-result-layout {
   display: flex;
-  gap: 14px;
-  margin: 0 10px 10px;
+  gap: 12px;
+  margin: 10px;
   min-height: 240px;
 }
 
 .annotated-image-section {
-  flex: 1.2;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 10px 12px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
 }
 
 .stats-section {
@@ -1905,6 +1909,10 @@
   display: flex;
   flex-direction: column;
   min-width: 180px;
+  padding: 10px 12px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
 }
 
 .section-title {
