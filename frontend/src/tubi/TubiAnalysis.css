@@ -2082,23 +2082,28 @@
 }
 
 /* 原图放大预览对话框样式 */
+.image-preview-dialog :deep(.el-dialog__header) {
+  padding: 8px 16px;
+  margin: 0;
+}
+
 .image-preview-dialog :deep(.el-dialog__body) {
-  padding: 10px 20px 20px;
+  padding: 8px 16px 16px;
 }
 
 .image-preview-container {
   display: flex;
   flex-direction: column;
-  height: 70vh;
+  height: 75vh;
 }
 
 .image-preview-toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
+  padding: 6px 0;
   border-bottom: 1px solid #e4e7ed;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .zoom-level {
