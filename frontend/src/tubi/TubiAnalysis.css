@@ -1922,11 +1922,13 @@
 }
 
 .section-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: #333;
   margin-bottom: 8px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .annotated-image {
