@@ -415,8 +415,7 @@ async function openArtworks(seal) {
 }
 
 function goToArtwork(art) {
-  showArtworksDialog.value = false
-  router.push(`/tubi/${art.image_id}`)
+  window.open(`/tubi/${art.image_id}`, '_blank')
 }
 
 // 图片URL处理
