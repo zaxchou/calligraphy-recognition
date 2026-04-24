@@ -463,7 +463,7 @@ function showBatchUploadDialog() {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
-  max-height: 28px;
+  max-height: 36px;
   overflow: hidden;
 }
 
