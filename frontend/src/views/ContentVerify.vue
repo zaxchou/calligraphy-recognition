@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">题跋校对 · 册页管理 · 标签管理 · 条屏管理 · 尺寸录入</p>
+        <p class="page-subtitle">题跋校对 · 册页管理 · 标签管理 · 条屏管理 · 尺寸录入 · 作者信息 · 印章管理</p>
       </div>
       <div class="header-center">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
@@ -218,6 +218,20 @@
           <AnnotationVerify :artist="selectedArtist" />
         </div>
       </el-tab-pane>
+
+      <!-- 作者信息 -->
+      <el-tab-pane label="作者信息" name="artist-info">
+        <div class="tab-content full-tab-content">
+          <ArtistInfoManager />
+        </div>
+      </el-tab-pane>
+
+      <!-- 印章管理 -->
+      <el-tab-pane label="印章管理" name="seal">
+        <div class="tab-content full-tab-content">
+          <SealManager :artist="selectedArtist" />
+        </div>
+      </el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -235,11 +249,13 @@ import TagManager from './TagManager.vue'
 import StripManager from './StripManager.vue'
 import DimensionInput from './DimensionInput.vue'
 import AnnotationVerify from './AnnotationVerify.vue'
+import ArtistInfoManager from './ArtistInfoManager.vue'
+import SealManager from './SealManager.vue'
 
 const router = useRouter()
 const route = useRoute()
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'seal']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
 const verifyPanelRef = ref(null)
 

@@ -87,13 +87,61 @@
           />
         </el-form-item>
         <el-form-item label="印章内容">
-          <el-input 
-            v-model="form.sealContent" 
-            type="textarea" 
-            :rows="2" 
-            placeholder="请输入印章内容"
-            class="modern-textarea"
-          />
+          <div class="seal-tag-editor">
+            <div class="seal-tags-area">
+              <el-tag
+                v-for="(seal, idx) in sealTags"
+                :key="idx"
+                closable
+                :type="seal.isNew ? 'success' : ''"
+                class="seal-tag"
+                @close="removeSealTag(idx)"
+                @mouseenter="hoveredSeal = seal.name"
+                @mouseleave="hoveredSeal = null"
+              >
+                {{ seal.name }}
+              </el-tag>
+              <el-popover
+                v-if="hoveredSeal && sealImageMap[hoveredSeal]"
+                :visible="hoveredSeal === hoveredSeal"
+                placement="top"
+                :width="120"
+                trigger="hover"
+              >
+                <template #reference>
+                  <span></span>
+                </template>
+                <img :src="sealImageMap[hoveredSeal]" style="width: 100px; height: 100px; object-fit: contain;" />
+              </el-popover>
+            </div>
+            <div class="seal-input-row">
+              <el-input
+                v-model="sealInput"
+                placeholder="输入印章名回车添加"
+                size="small"
+                style="width: 180px;"
+                @keyup.enter="addSealInput"
+              />
+              <el-dropdown trigger="click" @command="addSealFromLibrary" placement="bottom-start">
+                <el-button size="small" plain>
+                  从印章库选择 <el-icon><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="s in availableSeals"
+                      :key="s.name"
+                      :command="s.name"
+                      :disabled="sealTags.some(t => t.name === s.name)"
+                    >
+                      {{ s.name }}
+                      <span v-if="s.seal_type" style="color: #999; margin-left: 4px;">({{ s.seal_type }})</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="备注信息">
           <el-input 
@@ -118,11 +166,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
-import { tubiApi } from '../../api'
+import { ArrowDown } from '@element-plus/icons-vue'
+import { tubiApi, sealsApi } from '../../api'
 import { ARTISTS } from '../../tubi/constants'
 import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
 
 const emit = defineEmits(['saved', 'deleted', 'replaced'])
 
@@ -144,6 +195,75 @@ const form = reactive({
   paintingPercent: 0,
   blankPercent: 0
 })
+
+// 印章标签模式
+const sealTags = ref([])
+const sealInput = ref('')
+const sealLibrary = ref([])
+const sealImageMap = ref({})
+const hoveredSeal = ref(null)
+
+const availableSeals = computed(() => {
+  return sealLibrary.value.filter(s => !sealTags.value.some(t => t.name === s.name))
+})
+
+function parseSealContent(content) {
+  if (!content) return []
+  // 去掉"作者印："前缀
+  const cleaned = content.replace(/^作者印[：:]\s*/, '')
+  return cleaned.split(/[、，,]/).map(n => n.trim()).filter(n => n).map(n => ({ name: n, isNew: false }))
+}
+
+function sealTagsToString() {
+  const names = sealTags.value.map(t => t.name).filter(n => n)
+  return names.length > 0 ? names.join('、') : ''
+}
+
+function removeSealTag(idx) {
+  sealTags.value.splice(idx, 1)
+  form.sealContent = sealTagsToString()
+}
+
+function addSealInput() {
+  const name = sealInput.value.trim()
+  if (!name) return
+  if (sealTags.value.some(t => t.name === name)) {
+    ElMessage.warning('该印章已添加')
+    return
+  }
+  sealTags.value.push({ name, isNew: true })
+  form.sealContent = sealTagsToString()
+  sealInput.value = ''
+}
+
+function addSealFromLibrary(name) {
+  if (sealTags.value.some(t => t.name === name)) return
+  sealTags.value.push({ name, isNew: false })
+  form.sealContent = sealTagsToString()
+}
+
+async function loadSealLibrary() {
+  try {
+    const artistName = artist.value
+    const params = { limit: 200 }
+    if (artistName) params.artist = artistName
+    const res = await sealsApi.list(params)
+    if (res.success) {
+      sealLibrary.value = res.seals || []
+      // 构建图片映射
+      const imgMap = {}
+      for (const s of sealLibrary.value) {
+        if (s.images && s.images.length > 0) {
+          const img = s.images[0]
+          imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
+        }
+      }
+      sealImageMap.value = imgMap
+    }
+  } catch (e) {
+    console.error('加载印章库失败', e)
+  }
+}
 
 const artist = computed(() => {
   if (form.artistChoice === 'other') {
@@ -172,6 +292,14 @@ function open(item) {
   form.inscriptionPercent = item.inscriptionPercent || item.inscription_percent || 0
   form.paintingPercent = item.paintingPercent || item.painting_percent || 0
   form.blankPercent = item.blankPercent || item.blank_percent || 0
+
+  // 解析印章标签
+  sealTags.value = parseSealContent(form.sealContent)
+  sealInput.value = ''
+
+  // 加载印章库
+  loadSealLibrary()
+
   visible.value = true
 }
 
@@ -211,7 +339,7 @@ async function handleSave() {
       notes: form.notes,
       analysis_note: form.analysisNote,
       inscription_content: form.inscriptionContent,
-      seal_content: form.sealContent,
+      seal_content: sealTagsToString(),
       inscription_percent: parseFloat(form.inscriptionPercent) || 0,
       painting_percent: parseFloat(form.paintingPercent) || 0,
       blank_percent: parseFloat(form.blankPercent) || 0
@@ -230,7 +358,7 @@ async function handleSave() {
           notes: form.notes,
           analysisNote: form.analysisNote,
           inscriptionContent: form.inscriptionContent,
-          sealContent: form.sealContent,
+          sealContent: sealTagsToString(),
           inscriptionPercent: parseFloat(form.inscriptionPercent) || 0,
           paintingPercent: parseFloat(form.paintingPercent) || 0,
           blankPercent: parseFloat(form.blankPercent) || 0
@@ -480,5 +608,44 @@ defineExpose({ open })
 .btn-delete {
   padding: 10px 24px;
   border-radius: 8px;
+}
+
+/* 印章标签编辑器 */
+.seal-tag-editor {
+  width: 100%;
+}
+
+.seal-tags-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: 32px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafaf8;
+}
+
+.seal-tag {
+  cursor: default;
+}
+
+.seal-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.seal-input-row :deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seal-input-row :deep(.el-button__content) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>

@@ -268,4 +268,42 @@ export const tubiApi = {
   }
 }
 
+// ── 印章管理 API ───────────────────────────────────────────────────────────
+export const sealsApi = {
+  list(params = {}) {
+    return api.get('/seals', { params })
+  },
+  get(sealId) {
+    return api.get(`/seals/${sealId}`)
+  },
+  getByName(name) {
+    return api.get(`/seals/by-name/${encodeURIComponent(name)}`)
+  },
+  create(data) {
+    return api.post('/seals', data)
+  },
+  update(sealId, data) {
+    return api.put(`/seals/${sealId}`, data)
+  },
+  delete(sealId) {
+    return api.delete(`/seals/${sealId}`)
+  },
+  artworks(sealId) {
+    return api.get(`/seals/${sealId}/artworks`)
+  },
+  uploadImage(sealId, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post(`/seals/${sealId}/upload-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  deleteImage(sealId, imageIndex) {
+    return api.delete(`/seals/${sealId}/images/${imageIndex}`)
+  },
+  extract() {
+    return api.post('/seals/extract')
+  }
+}
+
 export default api
