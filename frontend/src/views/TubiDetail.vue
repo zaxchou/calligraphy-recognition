@@ -121,12 +121,12 @@
           <div v-if="analyzeStatus === 'analyzed'" class="analysis-result-layout">
             <!-- 左侧：面积占比智能示意图 -->
             <div class="annotated-image-section">
-              <div class="section-title">
-                面积占比智能示意图
-                <el-button size="small" plain class="btn-annotate" @click="$emit('open-annotator')">
+              <h4 class="section-title">
+                <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
+                <el-button size="small" text class="btn-annotate" @click="$emit('open-annotator')">
                   手动标注
                 </el-button>
-              </div>
+              </h4>
               <div class="annotated-image-wrapper">
                 <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
                 <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
@@ -137,7 +137,7 @@
 
             <!-- 右侧：题跋占比分析 -->
             <div class="stats-section">
-              <div class="section-title">题跋占比分析</div>
+              <h4 class="section-title"><el-icon><PieChart /></el-icon> 题跋占比分析</h4>
               <div class="stats-content">
                 <div ref="pieChartRef" class="pie-chart-small"></div>
               </div>

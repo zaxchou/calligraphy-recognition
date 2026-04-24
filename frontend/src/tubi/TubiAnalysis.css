@@ -1931,6 +1931,19 @@
   gap: 6px;
 }
 
+.section-title .btn-annotate {
+  margin-left: auto;
+  font-size: 12px;
+  color: #999;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.section-title .btn-annotate:hover {
+  opacity: 1;
+  color: #666;
+}
+
 .annotated-image {
   width: 100%;
   max-height: 400px;
