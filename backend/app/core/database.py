@@ -27,4 +27,6 @@ def get_db_connection():
     import sqlite3
     db_url = settings.DATABASE_URL  # e.g. "sqlite:///../data/calligraphy.db"
     db_path = db_url.replace("sqlite:///", "")
-    return sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
