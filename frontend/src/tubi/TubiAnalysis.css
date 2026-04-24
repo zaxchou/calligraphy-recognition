@@ -1784,6 +1784,10 @@
   font-weight: 400;
 }
 
+.analysis-note-main :deep(p) {
+  text-indent: 2em;
+}
+
 .analysis-note-main :deep(strong),
 .analysis-note-main :deep(b) {
   color: #333;
