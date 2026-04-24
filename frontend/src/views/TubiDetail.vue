@@ -171,17 +171,17 @@
                 </div>
                 <div class="stats-list">
                   <div class="stat-item inscription">
-                    <span class="stat-dot" style="background: #f2654e;"></span>
+                    <span class="stat-dot" style="background: #d4846a;"></span>
                     <span class="stat-name">题跋区域</span>
                     <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
                   </div>
                   <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
-                    <span class="stat-dot" style="background: #0d6ecf;"></span>
+                    <span class="stat-dot" style="background: #7ba3c4;"></span>
                     <span class="stat-name">绘画区域</span>
                     <span class="stat-percent">{{ areaStats.paintingPercent }}%</span>
                   </div>
                   <div class="stat-item blank" v-if="areaStats.blankPercent > 0">
-                    <span class="stat-dot" style="background: #8ed629;"></span>
+                    <span class="stat-dot" style="background: #a8c97a;"></span>
                     <span class="stat-name">留白区域</span>
                     <span class="stat-percent">{{ areaStats.blankPercent }}%</span>
                   </div>
@@ -779,9 +779,9 @@ function updatePieChart() {
   const blank = areaStats.value.blankPercent || 0
 
   const rawItems = [
-    { name: '题跋', value: insc, color: '#f2654e' },
-    { name: '绘画', value: paint, color: '#0d6ecf' },
-    { name: '留白', value: blank, color: '#8ed629' },
+    { name: '题跋', value: insc, color: '#d4846a' },
+    { name: '绘画', value: paint, color: '#7ba3c4' },
+    { name: '留白', value: blank, color: '#a8c97a' },
   ].filter(i => i.value > 0)
 
   rawItems.sort((a, b) => b.value - a.value)
