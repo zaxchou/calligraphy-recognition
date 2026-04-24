@@ -2082,19 +2082,23 @@
 }
 
 /* 原图放大预览对话框样式 */
+.image-preview-dialog :deep(.el-dialog) {
+  margin: 0;
+}
+
 .image-preview-dialog :deep(.el-dialog__header) {
-  padding: 8px 16px;
+  padding: 6px 12px;
   margin: 0;
 }
 
 .image-preview-dialog :deep(.el-dialog__body) {
-  padding: 8px 16px 16px;
+  padding: 4px 12px 12px;
 }
 
 .image-preview-container {
   display: flex;
   flex-direction: column;
-  height: 75vh;
+  height: 80vh;
 }
 
 .image-preview-toolbar {
