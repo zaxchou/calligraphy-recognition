@@ -303,6 +303,9 @@ export const sealsApi = {
   },
   extract() {
     return api.post('/seals/extract')
+  },
+  batchDelete(ids) {
+    return api.post('/seals/batch-delete', { ids })
   }
 }
 

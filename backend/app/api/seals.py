@@ -73,6 +73,9 @@ class SealUpdate(BaseModel):
     description: Optional[str] = None
     merge_on_conflict: Optional[bool] = False
 
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
 
 # ============ API 端点 ============
 
@@ -141,6 +144,78 @@ async def list_seals(
         total = conn.execute(count_query, count_params).fetchone()[0]
 
         return {"success": True, "seals": seals, "total": total}
+    finally:
+        conn.close()
+
+
+@router.post("/batch-delete")
+async def batch_delete_seals(req: BatchDeleteRequest):
+    """批量删除印章（同步清理所有作品的 seal_content）"""
+    if not req.ids:
+        raise HTTPException(status_code=400, detail="未选择任何印章")
+    conn = get_db_connection()
+    try:
+        # 获取所有待删除印章
+        placeholders = ",".join("?" * len(req.ids))
+        seals = conn.execute(
+            f"SELECT * FROM seals WHERE id IN ({placeholders})", req.ids
+        ).fetchall()
+        if not seals:
+            raise HTTPException(status_code=404, detail="未找到指定印章")
+
+        # 一次性获取所有 seal_content
+        all_rows = conn.execute(
+            "SELECT id, seal_content FROM tubi_analyses "
+            "WHERE seal_content IS NOT NULL AND seal_content != ''"
+        ).fetchall()
+
+        total_updated = 0
+        deleted_names = []
+        for seal in seals:
+            seal_name = seal["name"]
+            deleted_names.append(seal_name)
+            # 从所有作品的 seal_content 中移除该印章
+            for row in all_rows:
+                content = row["seal_content"] or ""
+                if seal_name not in content:
+                    continue
+                new_content = _remove_seal_from_content(content, seal_name)
+                if new_content != content:
+                    conn.execute(
+                        "UPDATE tubi_analyses SET seal_content = ? WHERE id = ?",
+                        (new_content, row["id"])
+                    )
+                    total_updated += 1
+            # 删除印章图片文件
+            if seal["images"]:
+                try:
+                    images = json.loads(seal["images"])
+                    for img_path in images:
+                        full_path = os.path.join(
+                            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                            img_path.lstrip("/")
+                        )
+                        if os.path.exists(full_path):
+                            os.remove(full_path)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+        # 批量删除印章记录
+        conn.execute(
+            f"DELETE FROM seals WHERE id IN ({placeholders})", req.ids
+        )
+        conn.commit()
+        return {
+            "success": True,
+            "message": f"已删除 {len(seals)} 个印章（{', '.join(deleted_names)}），{total_updated} 个作品的印章内容已更新",
+            "deleted_count": len(seals),
+            "updated_count": total_updated
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
 

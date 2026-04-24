@@ -3,12 +3,23 @@
     <!-- 工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <el-button type="primary" plain size="small" @click="showCreateDialog = true">
+        <el-button v-if="!batchMode" type="primary" plain size="small" @click="showCreateDialog = true">
           <el-icon><Plus /></el-icon>新增印章
         </el-button>
-        <el-button plain size="small" @click="handleExtract" :loading="extracting">
+        <el-button v-if="!batchMode" plain size="small" @click="handleExtract" :loading="extracting">
           <el-icon><Download /></el-icon>从作品提取
         </el-button>
+        <el-button v-if="!batchMode" plain size="small" @click="batchMode = true">
+          <el-icon><Check /></el-icon>批量操作
+        </el-button>
+        <template v-if="batchMode">
+          <el-button type="danger" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchDelete">
+            <el-icon><Delete /></el-icon>删除选中（{{ selectedIds.length }}）
+          </el-button>
+          <el-button plain size="small" @click="cancelBatch">
+            取消
+          </el-button>
+        </template>
       </div>
       <div class="toolbar-right">
         <span class="seal-count">共 {{ total }} 个印章</span>
@@ -17,7 +28,8 @@
 
     <!-- 卡片网格 -->
     <div v-loading="loading" class="seal-grid">
-      <div v-for="seal in seals" :key="seal.id" class="seal-card">
+      <div v-for="seal in seals" :key="seal.id" class="seal-card" :class="{ 'seal-card-selected': batchMode && selectedIds.includes(seal.id) }">
+        <el-checkbox v-if="batchMode" :model-value="selectedIds.includes(seal.id)" @change="toggleSelect(seal.id)" class="seal-checkbox" />
         <div class="seal-images">
           <div v-if="seal.images && seal.images.length > 0" class="seal-thumb-wrapper">
             <img :src="getImageUrl(seal.images[0])" class="seal-thumb" @error="onImageError" />
@@ -126,7 +138,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Download, Picture, Stamp } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Picture, Stamp, Check } from '@element-plus/icons-vue'
 import { sealsApi } from '../api'
 import { useRouter } from 'vue-router'
 
@@ -143,6 +155,10 @@ const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const extracting = ref(false)
+
+// 批量操作
+const batchMode = ref(false)
+const selectedIds = ref([])
 
 // 作者列表
 const artistList = ref([])
@@ -309,6 +325,44 @@ async function handleExtract() {
   }
 }
 
+// 批量操作
+function toggleSelect(id) {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedIds.value.splice(idx, 1)
+  } else {
+    selectedIds.value.push(id)
+  }
+}
+
+function cancelBatch() {
+  batchMode.value = false
+  selectedIds.value = []
+}
+
+async function handleBatchDelete() {
+  if (selectedIds.value.length === 0) return
+  const count = selectedIds.value.length
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${count} 个印章吗？所有作品中的这些印章引用也会被清除。`,
+      '批量删除确认',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    const res = await sealsApi.batchDelete(selectedIds.value)
+    if (res.success) {
+      ElMessage.success(res.message || `已删除 ${count} 个印章`)
+      batchMode.value = false
+      selectedIds.value = []
+      await loadSeals()
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('批量删除失败: ' + (e.message || e))
+    }
+  }
+}
+
 // 图片上传
 function triggerUpload() {
   uploadInput.value?.click()
@@ -435,11 +489,24 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 
 .seal-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+}
+
+.seal-card-selected {
+  border: 2px solid #c96442;
+  background: #fdf8f6;
+}
+
+.seal-checkbox {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
 }
 
 .seal-images {
@@ -643,5 +710,17 @@ onMounted(async () => {
 
 .form-item-half {
   flex: 1;
+}
+
+:deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.el-button__content) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
