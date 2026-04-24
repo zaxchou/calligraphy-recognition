@@ -38,74 +38,82 @@
             </div>
           </div>
 
-          <!-- AI分析说明 -->
-          <div v-if="analyzeStatus === 'analyzed' && analysisNote" class="analysis-note-main">
-            <h4><el-icon><Edit /></el-icon> AI分析说明</h4>
-            <div v-html="analysisNote"></div>
-          </div>
-
-          <!-- 自动标签 -->
-          <div v-if="analyzeStatus === 'analyzed' && currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
-            <div class="detail-tags-list">
-              <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
-            </div>
-          </div>
-
-          <!-- 款识题跋 -->
-          <div v-if="analyzeStatus === 'analyzed'" class="inscription-note-main">
-            <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
-            <div v-if="currentImage.inscriptionContent" class="inscription-content">
-              {{ currentImage.inscriptionContent }}
-            </div>
-            <div v-else class="inscription-empty">
-              <p>暂无款识题跋内容</p>
-              <p class="empty-tip">可在编辑画作信息时添加</p>
+          <!-- AI分析说明 + 标签/款识/钤印 两列布局 -->
+          <div v-if="analyzeStatus === 'analyzed'" class="analysis-two-col-layout">
+            <!-- 左列：AI分析说明 -->
+            <div class="analysis-left-col">
+              <div v-if="analysisNote" class="analysis-note-main">
+                <h4><el-icon><Edit /></el-icon> AI分析说明</h4>
+                <div v-html="analysisNote"></div>
+              </div>
             </div>
 
-            <!-- 白话文翻译 -->
-            <div v-if="currentImage.inscriptionModern" class="inscription-translation">
-              <div class="translation-divider"></div>
-              <div class="translation-label">
-                <div class="clickable-tag-wrapper" @click="translationExpanded = !translationExpanded">
-                  <el-tag type="success" size="small" class="clickable-tag">
-                    白话文
-                  </el-tag>
-                  <el-icon class="expand-icon" :class="{ 'rotated': translationExpanded }">
-                    <ArrowDown />
-                  </el-icon>
+            <!-- 右列：标签 + 款识 + 钤印 -->
+            <div class="analysis-right-col">
+              <!-- 自动标签 -->
+              <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
+                <div class="detail-tags-list">
+                  <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
                 </div>
               </div>
-              <div class="translation-content" v-show="translationExpanded">
-                {{ currentImage.inscriptionModern }}
-              </div>
-            </div>
-          </div>
 
-          <!-- 钤印 -->
-          <div v-if="analyzeStatus === 'analyzed'" class="seal-note-main">
-            <h4><el-icon><Collection /></el-icon> 钤印</h4>
-            <div v-if="currentImage.sealContent" class="seal-content">
-              <div class="seal-tags-display">
-                <el-popover
-                  v-for="(seal, idx) in detailSealTags"
-                  :key="idx"
-                  :width="120"
-                  placement="top"
-                  :disabled="!detailSealImageMap[seal.name]"
-                  trigger="hover"
-                >
-                  <template #reference>
-                    <span class="seal-display-tag" :class="{ 'has-image': detailSealImageMap[seal.name] }">
-                      {{ seal.name }}
-                      <span v-if="seal.seal_type" class="seal-display-type">{{ seal.seal_type }}</span>
-                    </span>
-                  </template>
-                  <img v-if="detailSealImageMap[seal.name]" :src="detailSealImageMap[seal.name]" style="width: 100px; height: 100px; object-fit: contain;" />
-                </el-popover>
+              <!-- 款识题跋 -->
+              <div class="inscription-note-main">
+                <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
+                <div v-if="currentImage.inscriptionContent" class="inscription-content">
+                  {{ currentImage.inscriptionContent }}
+                </div>
+                <div v-else class="inscription-empty">
+                  <p>暂无款识题跋内容</p>
+                  <p class="empty-tip">可在编辑画作信息时添加</p>
+                </div>
+
+                <!-- 白话文翻译 -->
+                <div v-if="currentImage.inscriptionModern" class="inscription-translation">
+                  <div class="translation-divider"></div>
+                  <div class="translation-label">
+                    <div class="clickable-tag-wrapper" @click="translationExpanded = !translationExpanded">
+                      <el-tag type="success" size="small" class="clickable-tag">
+                        白话文
+                      </el-tag>
+                      <el-icon class="expand-icon" :class="{ 'rotated': translationExpanded }">
+                        <ArrowDown />
+                      </el-icon>
+                    </div>
+                  </div>
+                  <div class="translation-content" v-show="translationExpanded">
+                    {{ currentImage.inscriptionModern }}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div v-else class="seal-empty">
-              <p>暂无钤印内容</p>
+
+              <!-- 钤印 -->
+              <div class="seal-note-main">
+                <h4><el-icon><Collection /></el-icon> 钤印</h4>
+                <div v-if="currentImage.sealContent" class="seal-content">
+                  <div class="seal-tags-display">
+                    <el-popover
+                      v-for="(seal, idx) in detailSealTags"
+                      :key="idx"
+                      :width="120"
+                      placement="top"
+                      :disabled="!detailSealImageMap[seal.name]"
+                      trigger="hover"
+                    >
+                      <template #reference>
+                        <span class="seal-display-tag" :class="{ 'has-image': detailSealImageMap[seal.name] }">
+                          {{ seal.name }}
+                          <span v-if="seal.seal_type" class="seal-display-type">{{ seal.seal_type }}</span>
+                        </span>
+                      </template>
+                      <img v-if="detailSealImageMap[seal.name]" :src="detailSealImageMap[seal.name]" style="width: 100px; height: 100px; object-fit: contain;" />
+                    </el-popover>
+                  </div>
+                </div>
+                <div v-else class="seal-empty">
+                  <p>暂无钤印内容</p>
+                </div>
+              </div>
             </div>
           </div>
 
