@@ -421,16 +421,16 @@ onMounted(async () => {
 
 .seal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
   min-height: 200px;
 }
 
 .seal-card {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  padding: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -438,35 +438,38 @@ onMounted(async () => {
 }
 
 .seal-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
 }
 
 .seal-images {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .seal-thumb-wrapper {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  max-width: 80px;
+  max-height: 80px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 2px solid #f0ede6;
+  border: 1px solid #f0ede6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .seal-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
 }
 
 .seal-thumb-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
   background: #f5f3ee;
   display: flex;
   align-items: center;
@@ -477,27 +480,30 @@ onMounted(async () => {
 .seal-info {
   text-align: center;
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .seal-name {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .seal-meta {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 11px;
   color: #888;
 }
 
 .seal-type-tag {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .seal-actions {
