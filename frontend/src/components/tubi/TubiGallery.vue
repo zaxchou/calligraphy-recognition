@@ -82,11 +82,14 @@
               </el-button>
             </div>
           </div>
-          <!-- 册页标识 + 面积统计（右下角叠加） -->
-          <div v-if="item.album_name || item.inscriptionPercent !== undefined" class="gallery-labels">
-            <span v-if="item.album_name" class="gallery-label album-label">册页</span>
-            <span v-if="item.inscriptionPercent !== undefined" class="gallery-label stat-label danger">{{ item.inscriptionPercent?.toFixed(1) }}%题跋</span>
-            <span v-if="item.paintingPercent > 0" class="gallery-label stat-label primary">{{ item.paintingPercent?.toFixed(1) }}%绘画</span>
+          <!-- 册页标识（左上角） -->
+          <div v-if="item.album_name" class="gallery-label-tl">
+            <span class="gallery-label album-label">册页</span>
+          </div>
+          <!-- 面积统计（右下角） -->
+          <div v-if="item.inscriptionPercent !== undefined || item.paintingPercent > 0" class="gallery-labels">
+            <span v-if="item.inscriptionPercent !== undefined" class="gallery-label stat-label danger">{{ item.inscriptionPercent?.toFixed(1) }}%</span>
+            <span v-if="item.paintingPercent > 0" class="gallery-label stat-label primary">{{ item.paintingPercent?.toFixed(1) }}%画</span>
           </div>
         </div>
         <div class="gallery-info">
@@ -146,7 +149,7 @@ const emit = defineEmits(['item-click', 'edit', 'delete', 'search', 'load-more',
 
 // Local state
 const searchKeyword = ref('')
-const displayLimit = ref(20)
+const displayLimit = ref(24)
 
 // Computed
 const displayedHistoryList = computed(() => {
@@ -190,7 +193,7 @@ function handleSearch() {
 }
 
 function handleLoadMore() {
-  displayLimit.value += 20
+  displayLimit.value += 12
   emit('load-more')
 }
 
@@ -374,6 +377,13 @@ function showBatchUploadDialog() {
 
 .gallery-item:hover .gallery-actions {
   opacity: 1;
+}
+
+.gallery-label-tl {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 1;
 }
 
 .gallery-labels {
