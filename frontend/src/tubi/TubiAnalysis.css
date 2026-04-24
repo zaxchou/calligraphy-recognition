@@ -1335,6 +1335,7 @@
   min-width: 80px;
   max-width: 100px;
   text-align: center;
+  font-size: 12px;
 }
 
 /* 批量上传样式 */

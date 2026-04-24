@@ -956,6 +956,9 @@ defineExpose({
   font-weight: 500;
 }
 .btn-edit {
+  font-size: 12px !important;
+}
+:deep(.btn-edit .el-button__content) {
   font-size: 12px;
 }
 
