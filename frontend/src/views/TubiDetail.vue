@@ -265,6 +265,7 @@
         </template>
         <div class="original-image-wrapper">
           <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url)" title="点击放大查看" />
+          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url)" title="放大查看"><ZoomIn /></el-icon>
         </div>
 
         <!-- 册页导航 -->

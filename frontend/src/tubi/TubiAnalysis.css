@@ -2037,6 +2037,26 @@
   justify-content: center;
   background: #f5f4ed;
   border-radius: 8px;
+  position: relative;
+}
+
+.zoom-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s, color 0.2s;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.zoom-icon:hover {
+  opacity: 1;
+  color: #333;
 }
 
 .original-image {
