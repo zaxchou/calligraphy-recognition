@@ -98,6 +98,19 @@ async def list_seals(
         params.extend([limit, skip])
 
         rows = conn.execute(query, params).fetchall()
+
+        # 一次性获取所有 seal_content，用于精确匹配统计
+        all_contents = conn.execute(
+            "SELECT seal_content FROM tubi_analyses WHERE seal_content IS NOT NULL AND seal_content != ''"
+        ).fetchall()
+        # 预处理：将每条 seal_content 拆分为印章名集合
+        content_sets = []
+        for c in all_contents:
+            raw = c["seal_content"] or ""
+            cleaned = re.sub(r'^作者印[：:]\s*', '', raw)
+            names = set(n.strip() for n in re.split(r'[、，,]', cleaned) if n.strip())
+            content_sets.append(names)
+
         seals = []
         for row in rows:
             seal = dict(row)
@@ -108,12 +121,9 @@ async def list_seals(
                     seal["images"] = []
             else:
                 seal["images"] = []
-            # 统计使用频率：seal_content 中包含该印章名的作品数
+            # 精确匹配统计使用频率
             seal_name = seal["name"]
-            usage = conn.execute(
-                "SELECT COUNT(*) FROM tubi_analyses WHERE seal_content LIKE ?",
-                (f"%{seal_name}%",)
-            ).fetchone()[0]
+            usage = sum(1 for ns in content_sets if seal_name in ns)
             seal["usage_count"] = usage
             seals.append(seal)
 
