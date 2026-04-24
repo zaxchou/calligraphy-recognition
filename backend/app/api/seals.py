@@ -108,7 +108,17 @@ async def list_seals(
                     seal["images"] = []
             else:
                 seal["images"] = []
+            # 统计使用频率：seal_content 中包含该印章名的作品数
+            seal_name = seal["name"]
+            usage = conn.execute(
+                "SELECT COUNT(*) FROM tubi_analyses WHERE seal_content LIKE ?",
+                (f"%{seal_name}%",)
+            ).fetchone()[0]
+            seal["usage_count"] = usage
             seals.append(seal)
+
+        # 按使用频率降序排序
+        seals.sort(key=lambda s: s["usage_count"], reverse=True)
 
         count_query = "SELECT COUNT(*) FROM seals WHERE 1=1"
         count_params = []

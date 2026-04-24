@@ -138,20 +138,22 @@
               </div>
               <div v-if="sealLibrary.length > 0" class="seal-library">
                 <div class="seal-library-title">印章库（点击添加）</div>
-                <div class="seal-library-grid">
-                  <div
-                    v-for="s in sealLibrary"
-                    :key="s.name"
-                    class="seal-library-item"
-                    :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
-                    @click="addSealFromLibrary(s.name)"
-                    @mouseenter="showSealPreview(s.name)"
-                    @mouseleave="hideSealPreview"
-                  >
-                    <div v-if="sealImageMap[s.name]" class="seal-lib-thumb"><img :src="sealImageMap[s.name]" /></div>
-                    <div v-else class="seal-lib-icon"><el-icon :size="14"><Stamp /></el-icon></div>
-                    <span class="seal-lib-name">{{ s.name }}</span>
-                    <span v-if="s.seal_type" class="seal-lib-type">{{ s.seal_type }}</span>
+                <div v-for="group in groupedSeals" :key="group.type" class="seal-group">
+                  <div class="seal-group-header">{{ group.type }}</div>
+                  <div class="seal-library-grid">
+                    <div
+                      v-for="s in group.seals"
+                      :key="s.name"
+                      class="seal-library-item"
+                      :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
+                      @click="addSealFromLibrary(s.name)"
+                      @mouseenter="showSealPreview(s.name)"
+                      @mouseleave="hideSealPreview"
+                    >
+                      <div v-if="sealImageMap[s.name]" class="seal-lib-thumb"><img :src="sealImageMap[s.name]" /></div>
+                      <div v-else class="seal-lib-icon"><el-icon :size="14"><Stamp /></el-icon></div>
+                      <span class="seal-lib-name">{{ s.name }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -305,6 +307,29 @@ function addSealFromLibrary(name) {
 
 function showSealPreview(name) { previewSealName.value = name }
 function hideSealPreview() { previewSealName.value = null }
+
+// 按类型分组的印章库
+const groupedSeals = computed(() => {
+  const groups = []
+  const typeOrder = ['名章', '闲章', '收藏印']
+  const grouped = {}
+  for (const s of sealLibrary.value) {
+    const type = s.seal_type || '名章'
+    if (!grouped[type]) grouped[type] = []
+    grouped[type].push(s)
+  }
+  for (const t of typeOrder) {
+    if (grouped[t] && grouped[t].length > 0) {
+      groups.push({ type: t, seals: grouped[t] })
+    }
+  }
+  for (const t of Object.keys(grouped)) {
+    if (!typeOrder.includes(t)) {
+      groups.push({ type: t, seals: grouped[t] })
+    }
+  }
+  return groups
+})
 
 async function loadSealLibrary() {
   try {
@@ -749,6 +774,9 @@ defineExpose({ nextRecord, jumpToRecordById })
 .seal-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .seal-library { border: 1px solid #ebe8e0; border-radius: 8px; padding: 8px; background: #fdfcf9; }
 .seal-library-title { font-size: 12px; color: #999; margin-bottom: 6px; }
+.seal-group { margin-bottom: 4px; }
+.seal-group:last-child { margin-bottom: 0; }
+.seal-group-header { font-size: 11px; font-weight: 600; color: #c96442; padding: 2px 0 3px 0; border-bottom: 1px dashed #ebe8e0; margin-bottom: 3px; }
 .seal-library-grid { display: flex; flex-wrap: wrap; gap: 5px; }
 .seal-library-item { display: flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 5px; border: 1px solid #e0ddd5; cursor: pointer; font-size: 12px; transition: all 0.15s; background: white; }
 .seal-library-item:hover { border-color: #c96442; background: #fef8f5; }

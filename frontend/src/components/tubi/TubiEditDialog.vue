@@ -123,27 +123,29 @@
                 @keyup.enter="addSealInput"
               />
             </div>
-            <!-- 印章库直接列出 -->
+            <!-- 印章库按类型分组列出 -->
             <div v-if="sealLibrary.length > 0" class="seal-library">
               <div class="seal-library-title">印章库（点击添加）</div>
-              <div class="seal-library-grid">
-                <div
-                  v-for="s in sealLibrary"
-                  :key="s.name"
-                  class="seal-library-item"
-                  :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
-                  @click="addSealFromLibrary(s.name)"
-                  @mouseenter="showSealPreview(s.name)"
-                  @mouseleave="hideSealPreview"
-                >
-                  <div v-if="sealImageMap[s.name]" class="seal-lib-thumb">
-                    <img :src="sealImageMap[s.name]" />
+              <div v-for="group in groupedSeals" :key="group.type" class="seal-group">
+                <div class="seal-group-header">{{ group.type }}</div>
+                <div class="seal-library-grid">
+                  <div
+                    v-for="s in group.seals"
+                    :key="s.name"
+                    class="seal-library-item"
+                    :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
+                    @click="addSealFromLibrary(s.name)"
+                    @mouseenter="showSealPreview(s.name)"
+                    @mouseleave="hideSealPreview"
+                  >
+                    <div v-if="sealImageMap[s.name]" class="seal-lib-thumb">
+                      <img :src="sealImageMap[s.name]" />
+                    </div>
+                    <div v-else class="seal-lib-icon">
+                      <el-icon :size="14"><Stamp /></el-icon>
+                    </div>
+                    <span class="seal-lib-name">{{ s.name }}</span>
                   </div>
-                  <div v-else class="seal-lib-icon">
-                    <el-icon :size="14"><Stamp /></el-icon>
-                  </div>
-                  <span class="seal-lib-name">{{ s.name }}</span>
-                  <span v-if="s.seal_type" class="seal-lib-type">{{ s.seal_type }}</span>
                 </div>
               </div>
             </div>
@@ -212,6 +214,31 @@ const previewSeal = ref(null)
 
 const availableSeals = computed(() => {
   return sealLibrary.value.filter(s => !sealTags.value.some(t => t.name === s.name))
+})
+
+// 按类型分组的印章库（名章在前，闲章/收藏印在后）
+const groupedSeals = computed(() => {
+  const groups = []
+  const typeOrder = ['名章', '闲章', '收藏印']
+  const grouped = {}
+  for (const s of sealLibrary.value) {
+    const type = s.seal_type || '名章'
+    if (!grouped[type]) grouped[type] = []
+    grouped[type].push(s)
+  }
+  // 按预定义顺序输出
+  for (const t of typeOrder) {
+    if (grouped[t] && grouped[t].length > 0) {
+      groups.push({ type: t, seals: grouped[t] })
+    }
+  }
+  // 其他未在预定义中的类型
+  for (const t of Object.keys(grouped)) {
+    if (!typeOrder.includes(t)) {
+      groups.push({ type: t, seals: grouped[t] })
+    }
+  }
+  return groups
 })
 
 function parseSealContent(content) {
@@ -717,6 +744,23 @@ defineExpose({ open })
   font-size: 12px;
   color: #999;
   margin-bottom: 8px;
+}
+
+.seal-group {
+  margin-bottom: 6px;
+}
+
+.seal-group:last-child {
+  margin-bottom: 0;
+}
+
+.seal-group-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c96442;
+  padding: 2px 0 4px 0;
+  border-bottom: 1px dashed #ebe8e0;
+  margin-bottom: 4px;
 }
 
 .seal-library-grid {
