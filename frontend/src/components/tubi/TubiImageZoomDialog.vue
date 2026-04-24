@@ -1,39 +1,14 @@
 <template>
   <el-dialog
     v-model="localVisible"
-    :title="title"
-    width="90%"
+    :show-close="false"
+    width="95vw"
     :close-on-click-modal="true"
     class="image-preview-dialog"
     destroy-on-close
+    :style="{ '--el-dialog-padding-primary': '0' }"
   >
     <div class="image-preview-container">
-      <div class="image-preview-toolbar">
-        <el-button
-          type="primary"
-          size="small"
-          @click="zoomIn"
-          :disabled="scale >= 10"
-        >
-          放大
-        </el-button>
-        <el-button
-          type="primary"
-          size="small"
-          @click="zoomOut"
-          :disabled="scale <= 0.5"
-        >
-          缩小
-        </el-button>
-        <el-button
-          type="default"
-          size="small"
-          @click="resetZoom"
-        >
-          重置
-        </el-button>
-        <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
-      </div>
       <div
         class="image-preview-wrapper"
         @mousedown="handleMouseDown"
@@ -52,6 +27,45 @@
           @wheel.prevent="handleWheel"
           draggable="false"
         />
+        <!-- 工具栏覆盖在图片上 -->
+        <div class="image-overlay-toolbar">
+          <el-button
+            type="primary"
+            size="small"
+            circle
+            @click="zoomIn"
+            :disabled="scale >= 10"
+          >
+            <el-icon><ZoomIn /></el-icon>
+          </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            circle
+            @click="zoomOut"
+            :disabled="scale <= 0.5"
+          >
+            <el-icon><ZoomOut /></el-icon>
+          </el-button>
+          <el-button
+            type="default"
+            size="small"
+            circle
+            @click="resetZoom"
+          >
+            <el-icon><RefreshRight /></el-icon>
+          </el-button>
+          <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
+          <el-button
+            type="default"
+            size="small"
+            circle
+            class="close-btn"
+            @click="localVisible = false"
+          >
+            <el-icon><Close /></el-icon>
+          </el-button>
+        </div>
       </div>
     </div>
   </el-dialog>
@@ -59,6 +73,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { ZoomIn, ZoomOut, RefreshRight, Close } from '@element-plus/icons-vue'
 
 const props = defineProps({
   modelValue: {
@@ -68,10 +83,6 @@ const props = defineProps({
   imageUrl: {
     type: String,
     default: ''
-  },
-  title: {
-    type: String,
-    default: '原图查看'
   }
 })
 
@@ -150,32 +161,19 @@ function handleMouseLeave() {
 .image-preview-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.image-preview-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-}
-
-.zoom-level {
-  margin-left: 12px;
-  font-size: 14px;
-  color: var(--el-text-color-secondary);
-  font-weight: 500;
+  width: 100%;
+  height: 90vh;
 }
 
 .image-preview-wrapper {
   width: 100%;
-  height: 600px;
+  height: 100%;
   overflow: hidden;
-  background: #f5f5f5;
-  border-radius: 8px;
+  background: #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .preview-image-zoom {
@@ -183,5 +181,40 @@ function handleMouseLeave() {
   max-height: 100%;
   transition: transform 0.1s ease-out;
   user-select: none;
+}
+
+.image-overlay-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.image-overlay-toolbar .el-button {
+  --el-button-bg-color: rgba(255, 255, 255, 0.2);
+  --el-button-border-color: rgba(255, 255, 255, 0.3);
+  --el-button-text-color: #fff;
+  --el-button-hover-bg-color: rgba(255, 255, 255, 0.3);
+  --el-button-hover-border-color: rgba(255, 255, 255, 0.4);
+  --el-button-hover-text-color: #fff;
+}
+
+.image-overlay-toolbar .close-btn {
+  margin-left: 8px;
+}
+
+.zoom-level {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  min-width: 40px;
+  text-align: center;
 }
 </style>
