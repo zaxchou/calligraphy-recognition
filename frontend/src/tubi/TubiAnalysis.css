@@ -1905,9 +1905,9 @@
   display: flex;
   flex-direction: column;
   padding: 10px 12px;
-  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  background: #f5f4ed;
   border-radius: 8px;
-  border: 1px solid #3a3a3a;
+  border: 1px solid #e8e4da;
 }
 
 .stats-section {
@@ -1932,15 +1932,15 @@
 }
 
 .annotated-image-section .section-title {
-  color: #e0e0e0;
+  color: #333;
 }
 
 .annotated-image-section .section-title .btn-annotate {
-  color: #888;
+  color: #999;
 }
 
 .annotated-image-section .section-title .btn-annotate:hover {
-  color: #ccc;
+  color: #666;
 }
 
 .section-title .btn-annotate {
@@ -1961,9 +1961,9 @@
   max-height: 400px;
   object-fit: contain;
   border-radius: 8px;
-  border: 1px solid #444;
-  background: #1a1a1a;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid #e4e7ed;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .stats-content {
@@ -2027,11 +2027,15 @@
   margin-bottom: 10px;
 }
 
+.original-image-card .el-button {
+  box-shadow: none;
+}
+
 .original-image-wrapper {
   padding: 6px;
   display: flex;
   justify-content: center;
-  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+  background: #f5f4ed;
   border-radius: 8px;
 }
 
@@ -2040,10 +2044,10 @@
   max-height: 280px;
   object-fit: contain;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: 1px solid #e4e7ed;
   cursor: zoom-in;
   transition: transform 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .original-image:hover {
