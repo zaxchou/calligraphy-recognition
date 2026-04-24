@@ -38,13 +38,13 @@
     </div>
     <!-- 骨架屏（数量与默认显示一致，避免加载完成后的高度抖动） -->
     <div class="gallery-grid" v-if="loading">
-      <div v-for="i in 20" :key="i" class="gallery-item gallery-skeleton">
+      <div v-for="i in 24" :key="i" class="gallery-item gallery-skeleton">
         <div class="gallery-image-wrapper">
           <div class="skeleton-img skeleton-pulse"></div>
         </div>
         <div class="gallery-info">
-          <div class="skeleton-line skeleton-pulse" style="width:80%;height:14px;margin-bottom:8px;"></div>
-          <div class="skeleton-line skeleton-pulse" style="width:60%;height:11px;"></div>
+          <div class="skeleton-line skeleton-pulse" style="width:80%;height:12px;margin-bottom:4px;"></div>
+          <div class="skeleton-line skeleton-pulse" style="width:60%;height:9px;"></div>
         </div>
       </div>
     </div>
@@ -59,26 +59,26 @@
         <div class="gallery-image-wrapper">
           <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="gallery-image" loading="lazy" />
           <div v-else class="gallery-image-placeholder">
-            <el-icon size="32"><Picture /></el-icon>
+            <el-icon size="24"><Picture /></el-icon>
           </div>
           <!-- 处理状态标识 -->
           <div v-if="item.status && item.status !== 'analyzed'" class="gallery-status-badge" :class="'status-' + item.status">
-            <el-icon v-if="item.status === 'queued'" size="14"><Clock /></el-icon>
-            <el-icon v-else-if="item.status === 'analyzing'" size="14" class="is-loading"><Loading /></el-icon>
-            <el-icon v-else-if="item.status === 'error'" size="14"><Close /></el-icon>
-            <el-icon v-else size="14"><Clock /></el-icon>
+            <el-icon v-if="item.status === 'queued'" size="10"><Clock /></el-icon>
+            <el-icon v-else-if="item.status === 'analyzing'" size="10" class="is-loading"><Loading /></el-icon>
+            <el-icon v-else-if="item.status === 'error'" size="10"><Close /></el-icon>
+            <el-icon v-else size="10"><Clock /></el-icon>
             <span>{{ item.status === 'queued' ? '排队中' : item.status === 'analyzing' ? '分析中' : item.status === 'error' ? '失败' : item.status }}</span>
           </div>
 
           <div class="gallery-actions">
             <div class="action-tl">
               <el-button plain size="small" circle class="btn-edit" @click.stop="handleEdit(item)" title="编辑">
-                <el-icon><Edit /></el-icon>
+                <el-icon :size="12"><Edit /></el-icon>
               </el-button>
             </div>
             <div class="action-tr">
               <el-button type="danger" size="small" circle @click.stop="handleDelete(item)" title="删除">
-                <el-icon><Delete /></el-icon>
+                <el-icon :size="12"><Delete /></el-icon>
               </el-button>
             </div>
           </div>
@@ -278,15 +278,15 @@ function showBatchUploadDialog() {
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 12px;
 }
 
 .gallery-item {
   background: var(--pure-white);
   border: 1px solid var(--border-cream);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
   transition: all var(--transition-normal);
@@ -301,7 +301,7 @@ function showBatchUploadDialog() {
 .gallery-image-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 75%;
+  aspect-ratio: 3/4;
   background: var(--parchment);
 }
 
@@ -328,16 +328,16 @@ function showBatchUploadDialog() {
 
 .gallery-status-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 4px;
+  left: 4px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 3px;
+  padding: 2px 6px;
   background: rgba(0, 0, 0, 0.7);
   color: white;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 10px;
   font-family: var(--font-sans);
 }
 
@@ -364,10 +364,10 @@ function showBatchUploadDialog() {
 
 .gallery-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
   display: flex;
-  gap: 4px;
+  gap: 3px;
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
@@ -378,16 +378,16 @@ function showBatchUploadDialog() {
 
 .gallery-labels {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 4px;
+  right: 4px;
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 
 .gallery-label {
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 500;
   font-family: var(--font-sans);
 }
@@ -408,34 +408,36 @@ function showBatchUploadDialog() {
 }
 
 .gallery-info {
-  padding: 12px;
+  padding: 6px 8px 8px;
 }
 
 .gallery-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--near-black);
   font-family: 'Noto Serif SC', 'KaiTi', serif;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .gallery-meta {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--stone-gray);
   font-family: var(--font-sans);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   display: flex;
-  gap: 4px;
-  width: 60%;
+  gap: 3px;
+  width: 100%;
 }
 
 .meta-col {
-  flex: 0 0 33.33%;
+  flex: 1;
   min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: center;
 }
 
@@ -450,31 +452,46 @@ function showBatchUploadDialog() {
 .gallery-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
+  max-height: 28px;
+  overflow: hidden;
 }
 
 .info-tag {
-  padding: 2px 6px;
+  padding: 1px 5px;
   background: var(--warm-sand);
   color: var(--charcoal-warm);
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: 9px;
   font-family: var(--font-sans);
+  white-space: nowrap;
 }
 
 .gallery-load-more {
   text-align: center;
-  padding: 16px;
+  padding: 10px;
 }
 
 .gallery-end {
   text-align: center;
-  padding: 16px;
+  padding: 10px;
 }
 
 .gallery-end-text {
   color: var(--stone-gray);
   font-size: 13px;
   font-family: var(--font-sans);
+}
+
+:deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.el-button__content) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
