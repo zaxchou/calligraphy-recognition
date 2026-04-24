@@ -1,0 +1,963 @@
+/**
+ * 书法碑帖字体认证系统 — Claude 风格设计系统
+ * 
+ * 基于 Anthropic Claude 设计语言，融合中国书画文化特色
+ * 赤陶色 → 朱砂色，羊皮纸 → 宣纸，衬线 → 宋体/楷体
+ */
+
+:root {
+  /* === 色板 === */
+  
+  /* 品牌色 — 朱砂（替代 Claude 原始赤陶色） */
+  --cinnabar: #c96442;
+  --cinnabar-light: #d97757;
+  --cinnabar-dark: #a8503a;
+  
+  /* 主文字色 — 暖黑 */
+  --near-black: #141413;
+  --dark-warm: #3d3d3a;
+  
+  /* 次要/辅助文字色 */
+  --charcoal-warm: #4d4c48;
+  --olive-gray: #5e5d59;
+  --stone-gray: #87867f;
+  --warm-silver: #b0aea5;
+  
+  /* 表面/背景 */
+  --parchment: #f5f4ed;       /* 主背景 — 宣纸色 */
+  --ivory: #faf9f5;           /* 卡片表面 */
+  --pure-white: #ffffff;
+  --warm-sand: #e8e6dc;       /* 按钮背景 */
+  --dark-surface: #30302e;
+  --deep-dark: #141413;
+  
+  /* 边框 */
+  --border-cream: #f0eee6;
+  --border-warm: #e8e6dc;
+  --border-dark: #30302e;
+  
+  /* 阴影环 */
+  --ring-warm: #d1cfc5;
+  --ring-subtle: #dedcd4;
+  --ring-deep: #c2c0b6;
+  
+  /* 语义色 */
+  --error-crimson: #b53333;
+  --focus-blue: #3898ec;
+  
+  /* 印泥色 — 用于印章/强调元素 */
+  --seal-red: #c45c48;
+  --seal-red-dark: #a84838;
+  
+  /* 金色 — 用于暗色模式装饰 */
+  --gold: #b8a47e;
+  --gold-light: #d4c5a0;
+  
+  /* === 排版 === */
+  
+  /* 字体栈 — 系统字体优先，网络字体作为视觉增强 */
+  --font-serif: "KaiTi", "STKaiti", "PingFang SC", "Noto Serif SC", "Source Han Serif SC", Georgia, "SimSun", serif;
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", system-ui, -apple-system, Arial, sans-serif;
+  --font-kai: "KaiTi", "STKaiti", "PingFang SC", "Noto Serif SC", serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  
+  /* 字号层级 */
+  --text-display: 3.25rem;    /* 52px — Hero/Display */
+  --text-h1: 2.5rem;          /* 40px */
+  --text-h2: 2rem;            /* 32px */
+  --text-h3: 1.6rem;          /* 25.6px */
+  --text-h4: 1.3rem;          /* 20.8px */
+  --text-body-lg: 1.25rem;    /* 20px */
+  --text-body: 1rem;          /* 16px */
+  --text-body-sm: 0.94rem;    /* 15px */
+  --text-caption: 0.88rem;    /* 14px */
+  --text-label: 0.75rem;      /* 12px */
+  --text-micro: 0.63rem;      /* 10px */
+  
+  /* 行高 */
+  --leading-tight: 1.10;
+  --leading-snug: 1.20;
+  --leading-normal: 1.30;
+  --leading-relaxed: 1.60;
+  
+  /* === 间距 === */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+  --space-4xl: 64px;
+  --space-5xl: 80px;
+  --space-6xl: 120px;
+  
+  /* === 圆角 === */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-full: 9999px;
+  
+  /* === 阴影 === */
+  --shadow-ring: 0px 0px 0px 1px var(--ring-warm);
+  --shadow-ring-hover: 0px 0px 0px 1px var(--ring-deep);
+  --shadow-whisper: rgba(0,0,0,0.05) 0px 4px 24px;
+  --shadow-elevated: rgba(0,0,0,0.08) 0px 8px 32px;
+  
+  /* === 容器 === */
+  --container-max: 1200px;
+  --container-wide: 1400px;
+  --header-height: 64px;
+  
+  /* === 动画 === */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+}
+
+/* ============================================
+   TubiAnalysis 组件颜色覆盖 — Claude 风格
+   利用后代选择器统一替换硬编码色值
+   ============================================ */
+
+.tubi-analysis {
+  /* 文字色 */
+  --tubi-text-primary: var(--near-black);
+  --tubi-text-secondary: var(--charcoal-warm);
+  --tubi-text-muted: var(--stone-gray);
+  --tubi-text-placeholder: var(--warm-silver);
+
+  /* 背景 */
+  --tubi-bg-card: var(--pure-white);
+  --tubi-bg-hover: var(--ivory);
+  --tubi-bg-subtle: var(--parchment);
+
+  /* 边框 */
+  --tubi-border-default: var(--border-warm);
+  --tubi-border-light: var(--border-cream);
+
+  /* 强调色 */
+  --tubi-accent: var(--cinnabar);
+  --tubi-accent-light: var(--cinnabar-light);
+  --tubi-gold: var(--gold);
+  --tubi-success: #5a8a4a;
+  --tubi-error: var(--error-crimson);
+
+  /* 排名奖牌 */
+  --tubi-medal-gold: #c4a245;
+  --tubi-medal-silver: #9a9a9a;
+  --tubi-medal-bronze: #a07548;
+
+  /* 圆角/阴影 */
+  --tubi-radius: var(--radius-lg);
+  --tubi-shadow: var(--shadow-whisper);
+  --tubi-shadow-hover: var(--shadow-elevated);
+}
+
+/* TubiAnalysis 文字色覆盖 */
+.tubi-analysis .page-title {
+  font-family: var(--font-serif);
+  color: var(--near-black);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.tubi-analysis .page-subtitle {
+  font-family: var(--font-sans);
+  color: var(--stone-gray);
+  letter-spacing: 0.04em;
+}
+
+/* 排行卡片背景 */
+.tubi-analysis .ranking-card,
+.tubi-analysis .top-card,
+.tubi-analysis .ranking-item {
+  background-color: var(--pure-white);
+  border-color: var(--border-warm);
+  border-radius: var(--radius-lg);
+}
+
+.tubi-analysis .top-card:hover,
+.tubi-analysis .ranking-item:hover {
+  box-shadow: var(--shadow-elevated);
+}
+
+/* 排名奖牌 → 暖金色调 */
+.tubi-analysis .top-card.first {
+  background-color: var(--ivory);
+  border-color: var(--gold-light);
+}
+
+.tubi-analysis .top-card.second {
+  background-color: var(--ivory);
+  border-color: var(--ring-warm);
+}
+
+.tubi-analysis .top-card.third {
+  background-color: var(--ivory);
+  border-color: var(--gold);
+}
+
+.tubi-analysis .top-medal {
+  background-color: var(--ring-warm);
+  color: var(--charcoal-warm);
+}
+
+.tubi-analysis .top-card.first .top-medal {
+  background-color: var(--tubi-medal-gold);
+  color: var(--pure-white);
+}
+
+.tubi-analysis .top-card.second .top-medal {
+  background-color: var(--tubi-medal-silver);
+  color: var(--pure-white);
+}
+
+.tubi-analysis .top-card.third .top-medal {
+  background-color: var(--tubi-medal-bronze);
+  color: var(--pure-white);
+}
+
+.tubi-analysis .ranking-medal {
+  background-color: var(--ring-warm);
+  color: var(--charcoal-warm);
+}
+
+/* 文字色覆盖 */
+.tubi-analysis .top-name,
+.tubi-analysis .ranking-name {
+  color: var(--near-black);
+}
+
+.tubi-analysis .top-author,
+.tubi-analysis .ranking-author {
+  color: var(--olive-gray);
+}
+
+.tubi-analysis .top-ratio,
+.tubi-analysis .ranking-ratio {
+  color: var(--cinnabar);
+}
+
+/* 缩略图 */
+.tubi-analysis .top-thumbnail,
+.tubi-analysis .ranking-thumbnail {
+  background-color: var(--parchment);
+  border-color: var(--border-warm);
+  border-radius: var(--radius-sm);
+}
+
+.tubi-analysis .top-thumbnail-placeholder,
+.tubi-analysis .ranking-thumbnail-placeholder {
+  color: var(--cinnabar);
+  background-color: var(--parchment);
+}
+
+/* Element Plus 输入框在 tubi 内 */
+.tubi-analysis .el-input__wrapper {
+  border-color: var(--border-warm);
+  border-radius: var(--radius-md);
+}
+
+/* 上传区域 */
+.tubi-analysis .upload-area {
+  border-color: var(--border-warm);
+  background-color: var(--ivory);
+  border-radius: var(--radius-xl);
+}
+
+.tubi-analysis .upload-area:hover {
+  border-color: var(--cinnabar);
+  background-color: var(--parchment);
+}
+
+/* 分析结果面板 */
+.tubi-analysis .analysis-panel {
+  background: var(--pure-white);
+  border: 1px solid var(--border-cream);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-whisper);
+}
+
+/* 标签色覆盖 */
+.tubi-analysis .el-tag {
+  border-radius: var(--radius-md);
+}
+
+/* 进度条颜色 */
+.tubi-analysis .el-progress-bar__inner {
+  background-color: var(--cinnabar);
+}
+
+/* 颜色重映射 — 常见硬编码 */
+.tubi-analysis [style*="color: #333"],
+.tubi-analysis [style*="color:#333"] {
+  color: var(--near-black) !important;
+}
+
+.tubi-analysis [style*="color: #666"],
+.tubi-analysis [style*="color:#666"] {
+  color: var(--charcoal-warm) !important;
+}
+
+.tubi-analysis [style*="color: #999"],
+.tubi-analysis [style*="color:#999"] {
+  color: var(--stone-gray) !important;
+}
+
+/* 按钮 → Claude 风格 */
+.tubi-analysis .el-button--primary {
+  background: var(--cinnabar) !important;
+  border-color: var(--cinnabar) !important;
+  box-shadow: none !important;
+}
+.tubi-analysis .el-button--primary:hover {
+  background: var(--cinnabar-dark) !important;
+  transform: none !important;
+  box-shadow: var(--shadow-whisper) !important;
+}
+.tubi-analysis .el-button--success {
+  background: var(--tubi-success) !important;
+  border-color: var(--tubi-success) !important;
+  color: var(--pure-white) !important;
+  box-shadow: none !important;
+}
+.tubi-analysis .el-button--danger {
+  background: var(--error-crimson) !important;
+  border-color: var(--error-crimson) !important;
+  box-shadow: none !important;
+}
+.tubi-analysis .el-button--default {
+  background: var(--pure-white) !important;
+  color: var(--charcoal-warm) !important;
+  border: 1px solid var(--border-warm) !important;
+  box-shadow: none !important;
+}
+.tubi-analysis .el-button--default:hover {
+  border-color: var(--cinnabar) !important;
+  color: var(--cinnabar) !important;
+  transform: none !important;
+}
+.tubi-analysis .el-button {
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+}
+/* 编辑按钮 — 轮廓暖色风格 */
+.tubi-analysis .btn-edit {
+  background: var(--pure-white) !important;
+  color: var(--cinnabar) !important;
+  border: 1px solid var(--cinnabar) !important;
+  box-shadow: none !important;
+  transition: all var(--transition-fast) !important;
+}
+.tubi-analysis .btn-edit:hover {
+  background: var(--cinnabar) !important;
+  color: var(--pure-white) !important;
+  border-color: var(--cinnabar) !important;
+  transform: none !important;
+  box-shadow: var(--shadow-whisper) !important;
+}
+
+/* 卡片 → Claude 风格 */
+.tubi-analysis .el-card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-cream) !important;
+  box-shadow: var(--shadow-whisper) !important;
+}
+.tubi-analysis .el-card__header {
+  border-bottom: 1px solid var(--border-cream) !important;
+}
+
+/* 背景色覆盖 */
+.tubi-analysis .history-item { background: var(--ivory); }
+.tubi-analysis .history-item:hover { background: var(--parchment); }
+.tubi-analysis .batch-file-preview { background: var(--ivory); }
+.tubi-analysis .batch-current-file { background: var(--ivory); }
+.tubi-analysis .stats-content { background: var(--ivory); }
+.tubi-analysis .canvas-wrapper { background: var(--ivory); }
+.tubi-analysis .image-compare-container { background: var(--ivory); }
+.tubi-analysis .form-section { background: var(--pure-white); box-shadow: var(--shadow-whisper); }
+/* ===== 弹窗样式（必须放全局，因为 el-dialog teleport 到 body，scoped :deep() 失效）===== */
+.modern-form-dialog .el-dialog__header {
+  background: transparent;
+  padding: 16px 20px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 1px solid var(--border-light, #e8e6df);
+}
+.modern-form-dialog .el-dialog__title {
+  color: var(--near-black);
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font-serif);
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.modern-form-dialog .el-dialog__headerbtn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--radius-sm, 6px);
+  transition: background var(--transition-fast, 0.15s);
+}
+.modern-form-dialog .el-dialog__headerbtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.modern-form-dialog .el-dialog__headerbtn .el-dialog__close {
+  color: rgba(20, 20, 19, 0.45);
+  font-size: 14px;
+  transition: color var(--transition-fast, 0.15s);
+}
+.modern-form-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: var(--near-black);
+}
+.modern-form-dialog .el-dialog__body {
+  padding: 0;
+  background: var(--ivory, #faf9f5);
+}
+.tubi-analysis .modern-footer { border-top: 1px solid var(--border-cream); }
+
+/* 其他弹窗穿透样式（el-dialog teleport 导致 scoped :deep() 失效）*/
+.history-dialog-wide .el-dialog__body { padding: 20px; }
+.search-dialog-wide .el-dialog__body { padding: 20px; }
+.image-preview-dialog .el-dialog__body { padding: 10px 20px 20px; }
+
+/* 边框色覆盖 */
+.tubi-analysis .history-item-thumb,
+.tubi-analysis .history-thumb,
+.tubi-analysis .history-thumb-placeholder,
+.tubi-analysis .history-item-thumb-placeholder { border-color: var(--border-warm); }
+.tubi-analysis .history-more { border-top-color: var(--border-warm); }
+.tubi-analysis .gallery-item { border-color: var(--border-warm); }
+.tubi-analysis .gallery-item:hover { border-color: var(--cinnabar); }
+.tubi-analysis .gallery-card .el-card__header { border-bottom-color: var(--border-cream); background: var(--ivory); }
+.tubi-analysis .comparison-dashboard-card .el-card__header { border-bottom-color: var(--border-cream); background: var(--ivory); }
+
+/* 文字色覆盖 */
+.tubi-analysis .module-title { color: var(--near-black); font-family: var(--font-serif); }
+.tubi-analysis .history-item-title { color: var(--near-black); }
+.tubi-analysis .history-item-meta { color: var(--stone-gray); }
+.tubi-analysis .gallery-title { color: var(--near-black); }
+.tubi-analysis .gallery-meta { color: var(--stone-gray); }
+.tubi-analysis .card-header { color: var(--near-black); }
+.tubi-analysis .image-info-header h3 { color: var(--near-black); }
+.tubi-analysis .image-info-header p { color: var(--charcoal-warm); }
+.tubi-analysis .image-hint { color: var(--stone-gray); }
+.tubi-analysis .form-section-title { color: var(--near-black); border-bottom-color: var(--border-cream); }
+.tubi-analysis .form-section-title::after { background: var(--cinnabar); }
+.tubi-analysis .stat-value { color: var(--near-black); }
+.tubi-analysis .stat-label { color: var(--charcoal-warm); }
+.tubi-analysis .stat-name { color: var(--charcoal-warm); }
+.tubi-analysis .section-title { color: var(--near-black); }
+.tubi-analysis .compare-title { color: var(--near-black); }
+.tubi-analysis .section-label { color: var(--charcoal-warm); }
+
+/* 分析说明覆盖 */
+.tubi-analysis .analysis-note-main,
+.tubi-analysis .analysis-note {
+  background: var(--ivory);
+  border-left-color: var(--cinnabar);
+}
+.tubi-analysis .analysis-note-main h4,
+.tubi-analysis .analysis-note h4 { color: var(--near-black); }
+.tubi-analysis .analysis-note-main p,
+.tubi-analysis .analysis-note p,
+.tubi-analysis .inscription-content { color: var(--charcoal-warm); }
+.tubi-analysis .inscription-note-main {
+  background: var(--ivory);
+  border-left-color: var(--tubi-success);
+}
+.tubi-analysis .inscription-note-main h4 { color: var(--near-black); }
+
+/* 统计卡片覆盖 */
+.tubi-analysis .stat-card.inscription { background: rgba(201,100,66,0.08); border-left-color: var(--cinnabar); }
+.tubi-analysis .stat-card.painting { background: rgba(90,138,74,0.08); border-left-color: var(--tubi-success); }
+.tubi-analysis .stat-card.blank { background: var(--ivory); border-left-color: var(--gold); }
+.tubi-analysis .stat-card.inscription .stat-icon { color: var(--cinnabar); }
+.tubi-analysis .stat-card.painting .stat-icon { color: var(--tubi-success); }
+.tubi-analysis .stat-card.blank .stat-icon { color: var(--gold); }
+
+/* 位置分析覆盖 */
+.tubi-analysis .position-analysis-card { border-color: var(--gold); box-shadow: var(--shadow-whisper) !important; animation: none !important; }
+.tubi-analysis .position-analysis-card .el-card__header { background: var(--gold); color: var(--near-black); }
+.tubi-analysis .position-type { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--ivory); }
+.tubi-analysis .position-desc { border-left-color: var(--cinnabar); background: var(--ivory); }
+.tubi-analysis .position-analysis-merged { border-color: var(--gold); background: var(--ivory); }
+.tubi-analysis .position-metrics { border-top-color: var(--gold); }
+.tubi-analysis .metric-value { color: var(--cinnabar); }
+.tubi-analysis .layout-description-box { border-left-color: var(--cinnabar); }
+
+/* 对比条覆盖 */
+.tubi-analysis .bar-progress.li-bar { background: var(--cinnabar); }
+.tubi-analysis .bar-progress.zheng-bar { background: var(--gold); }
+.tubi-analysis .artist-avatar.li { background: var(--cinnabar); }
+.tubi-analysis .artist-avatar.zheng { background: var(--gold); }
+.tubi-analysis .artist-name-section h3 { color: var(--near-black); }
+.tubi-analysis .bar-bg { background: var(--border-cream); }
+.tubi-analysis .bar-label-center { color: var(--charcoal-warm); }
+.tubi-analysis .bar-value-text-outside { color: var(--near-black); }
+
+/* 发光进度条 → Claude 风格 */
+.tubi-analysis .analyzing-progress {
+  background: linear-gradient(135deg, var(--near-black) 0%, #2a2a28 100%);
+  box-shadow: var(--shadow-elevated);
+}
+.tubi-analysis .glow-progress-fill {
+  background: linear-gradient(90deg, var(--cinnabar) 0%, var(--gold) 50%, var(--cinnabar) 100%);
+  box-shadow: 0 0 10px rgba(201,100,66,0.4), 0 0 20px rgba(201,100,66,0.2);
+}
+.tubi-analysis .glow-progress-text { color: var(--cinnabar); text-shadow: 0 0 10px rgba(201,100,66,0.4); }
+
+/* 表单对话框 */
+.tubi-analysis .modern-upload .el-upload-dragger:hover { border-color: var(--cinnabar); background: var(--ivory); }
+.tubi-analysis .modern-form .el-textarea__inner:hover { border-color: var(--cinnabar); }
+.tubi-analysis .modern-form .el-textarea__inner:focus { border-color: var(--cinnabar); box-shadow: 0 0 0 3px rgba(201,100,66,0.1); }
+.tubi-analysis .form-section-title { color: var(--near-black); font-family: var(--font-serif); }
+.tubi-analysis .form-section-title::after { background: var(--cinnabar); }
+.tubi-analysis .modern-upload .el-upload__text em { color: var(--cinnabar); }
+.tubi-analysis .btn-cancel:hover { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--ivory); }
+.tubi-analysis .btn-submit { background: var(--cinnabar); box-shadow: var(--shadow-whisper); }
+.tubi-analysis .btn-submit:hover { background: var(--cinnabar-dark); }
+.tubi-analysis .batch-progress-count { color: var(--cinnabar); }
+.tubi-analysis .batch-current-status { color: var(--cinnabar); }
+.tubi-analysis .batch-upload-area .el-upload-dragger:hover { border-color: var(--tubi-success); background: var(--ivory); }
+
+/* 空状态 */
+.tubi-analysis .empty-state { color: var(--stone-gray); }
+.tubi-analysis .search-empty { color: var(--stone-gray); }
+.tubi-analysis .search-loading { color: var(--stone-gray); }
+.tubi-analysis .position-analysis-empty { color: var(--stone-gray); }
+
+/* ============================================
+   全局页面级覆盖 — Claude 风格
+   所有页面的通用元素
+   ============================================ */
+
+/* 通用页面标题 */
+.page-title,
+h1.page-title,
+h1.welcome-title {
+  font-family: var(--font-serif) !important;
+  font-weight: 500 !important;
+  color: var(--near-black) !important;
+  letter-spacing: 0.06em !important;
+}
+
+.page-subtitle,
+p.page-subtitle,
+p.welcome-subtitle {
+  font-family: var(--font-sans) !important;
+  color: var(--stone-gray) !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* ============================================
+   Recognize 页面 — Claude 风格
+   ============================================ */
+.recognize-page {
+  font-family: var(--font-sans);
+}
+
+.recognize-page .el-card {
+  border-radius: var(--radius-lg);
+  border-color: var(--border-cream);
+  box-shadow: var(--shadow-whisper);
+}
+
+.recognize-page .upload-card .el-upload-dragger {
+  background-color: var(--ivory);
+  border-color: var(--border-warm);
+  border-radius: var(--radius-xl);
+  transition: border-color var(--transition-fast);
+}
+
+.recognize-page .upload-card .el-upload-dragger:hover {
+  border-color: var(--cinnabar);
+  background-color: var(--parchment);
+}
+
+.recognize-page .result-card {
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================
+   Steles 碑帖库页面 — Claude 风格
+   ============================================ */
+.steles-page {
+  font-family: var(--font-sans);
+}
+
+.steles-page .el-card {
+  border-radius: var(--radius-lg);
+  border-color: var(--border-cream);
+  box-shadow: var(--shadow-whisper);
+  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
+}
+
+.steles-page .el-card:hover {
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--cinnabar-light);
+}
+
+.steles-page .stele-name {
+  font-family: var(--font-serif);
+  color: var(--near-black);
+}
+
+.steles-page .stele-meta {
+  color: var(--olive-gray);
+}
+
+.steles-page .stele-description {
+  color: var(--charcoal-warm);
+}
+
+/* ============================================
+   KnowledgeSearch 知识库页面 — Claude 风格
+   ============================================ */
+.knowledge-search {
+  font-family: var(--font-sans);
+  background: var(--parchment);
+}
+
+.knowledge-search .search-box {
+  background: var(--pure-white);
+  border: 1px solid var(--border-warm);
+  border-radius: var(--radius-full);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.knowledge-search .search-box:focus-within {
+  border-color: var(--cinnabar);
+  box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.1);
+}
+
+.knowledge-search .search-input {
+  font-family: var(--font-sans);
+  color: var(--near-black);
+}
+
+.knowledge-search .search-input::placeholder {
+  color: var(--warm-silver);
+}
+
+.knowledge-search .search-btn {
+  background: var(--cinnabar);
+  color: var(--pure-white);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  transition: background var(--transition-fast);
+}
+
+.knowledge-search .search-btn:hover {
+  background: var(--cinnabar-light);
+}
+
+.knowledge-search .tag-btn {
+  background: var(--ivory);
+  border: 1px solid var(--border-warm);
+  color: var(--charcoal-warm);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+}
+
+.knowledge-search .tag-btn:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: var(--pure-white);
+}
+
+.knowledge-search .result-card,
+.knowledge-search .search-result-card {
+  background: var(--pure-white);
+  border: 1px solid var(--border-cream);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-whisper);
+}
+
+/* ============================================
+   TubiRanking 排行榜页面 — Claude 风格
+   ============================================ */
+.tubi-ranking {
+  font-family: var(--font-sans);
+  background: var(--parchment);
+}
+
+.tubi-ranking .ranking-list-card {
+  border-radius: var(--radius-lg);
+  border-color: var(--border-cream);
+  box-shadow: var(--shadow-whisper);
+}
+
+.tubi-ranking .el-card {
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================
+   Element Plus 全局组件 Claude 风格覆盖
+   ============================================ */
+
+/* 卡片 */
+.el-card {
+  border-radius: var(--radius-lg);
+  border-color: var(--border-cream);
+}
+
+.el-card__header {
+  border-bottom-color: var(--border-cream);
+}
+
+/* 对话框 */
+.el-dialog {
+  border-radius: var(--radius-xl) !important;
+}
+
+/* 标签页 */
+.el-tabs__item.is-active {
+  color: var(--cinnabar) !important;
+}
+
+.el-tabs__active-bar {
+  background-color: var(--cinnabar) !important;
+}
+
+/* 单选按钮组 */
+.el-radio-button__inner {
+  font-family: var(--font-sans) !important;
+}
+
+/* Tag 标签 */
+.el-tag {
+  border-radius: var(--radius-md);
+}
+
+/* 链接色 */
+.el-button--primary {
+  --el-button-bg-color: var(--cinnabar) !important;
+  --el-button-border-color: var(--cinnabar) !important;
+  --el-button-hover-bg-color: var(--cinnabar-light) !important;
+  --el-button-hover-border-color: var(--cinnabar-light) !important;
+  --el-button-active-bg-color: var(--cinnabar-dark) !important;
+  --el-button-active-border-color: var(--cinnabar-dark) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* Info 按钮也暖色化 */
+.el-button--info {
+  --el-button-bg-color: var(--warm-sand) !important;
+  --el-button-border-color: var(--warm-sand) !important;
+  --el-button-hover-bg-color: var(--ring-warm) !important;
+  --el-button-hover-border-color: var(--ring-warm) !important;
+  --el-button-text-color: var(--charcoal-warm) !important;
+  --el-button-hover-text-color: var(--near-black) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* 进度条 */
+.el-progress-bar__inner {
+  background-color: var(--cinnabar) !important;
+}
+
+/* 加载动画 */
+.el-loading-spinner .circular .path {
+  stroke: var(--cinnabar) !important;
+}
+
+/* 空状态 */
+.el-empty__description p {
+  font-family: var(--font-sans);
+  color: var(--stone-gray);
+}
+
+/* 分页 */
+.el-pagination .el-pager li.is-active {
+  color: var(--cinnabar) !important;
+}
+
+/* 表格 */
+.el-table th.el-table__cell {
+  background-color: var(--ivory) !important;
+  color: var(--charcoal-warm);
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.el-table tr:hover > td {
+  background-color: var(--ivory) !important;
+}
+
+/* ============================================
+   构图分析模块 — Claude 风格覆盖
+   ============================================ */
+
+/* CompositionAnalyze 页面 */
+.composition-analyze,
+.composition-page {
+  font-family: var(--font-sans);
+  background: var(--parchment);
+}
+
+.composition-analyze .page-title,
+.composition-page .page-title {
+  font-family: var(--font-serif);
+  color: var(--near-black);
+}
+
+/* 橙色品牌色 #ff6b35 → 朱砂色 */
+.composition-analyze [style*="background: #ff6b35"],
+.composition-analyze [style*="background:#ff6b35"],
+.composition-page [style*="background: #ff6b35"],
+.composition-page [style*="background:#ff6b35"] {
+  background: var(--cinnabar) !important;
+  border-color: var(--cinnabar) !important;
+}
+
+.composition-analyze [style*="color: #ff6b35"],
+.composition-page [style*="color: #ff6b35"] {
+  color: var(--cinnabar) !important;
+}
+
+/* CompositionAnalyze 专用覆盖 — 上传区拖拽框 */
+.composition-analyze .el-upload-dragger,
+.composition-page .el-upload-dragger {
+  border-color: var(--ring-warm) !important;
+  background: var(--ivory) !important;
+  border-radius: var(--radius-xl) !important;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.composition-analyze .el-upload-dragger:hover,
+.composition-page .el-upload-dragger:hover {
+  border-color: var(--cinnabar) !important;
+  background: var(--parchment) !important;
+}
+
+/* CompositionAnalyze — 进度条颜色 */
+.composition-analyze .el-progress-bar__inner,
+.composition-page .el-progress-bar__inner {
+  background-color: var(--cinnabar) !important;
+}
+
+/* CompositionAnalyze — Drawer 抽屉 */
+.composition-analyze .el-drawer__header,
+.composition-page .el-drawer__header {
+  font-family: var(--font-serif);
+  color: var(--near-black);
+}
+
+/* CompositionAnalyze — Table 表格 */
+.composition-analyze .el-table th.el-table__cell,
+.composition-page .el-table th.el-table__cell {
+  background-color: var(--ivory) !important;
+  color: var(--charcoal-warm);
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.composition-analyze .el-table tr:hover > td,
+.composition-page .el-table tr:hover > td {
+  background-color: var(--ivory) !important;
+}
+
+/* ArrowDemo / 起承转合页面 */
+.arrow-demo {
+  font-family: var(--font-sans);
+  background: var(--parchment);
+}
+
+/* CompositionPrint 打印页面 — 保持简洁 */
+.composition-print {
+  font-family: var(--font-serif);
+  background: var(--pure-white);
+}
+
+/* ============================================
+   全局颜色重映射 — CSS scoped 硬编码覆盖
+   针对各页面内联 scoped 样式的统一替换
+   ============================================ */
+
+/* 深色文字统一 */
+.recognize-page h3,
+.recognize-page h4,
+.steles-page h3,
+.steles-page h4,
+.tubi-ranking h3,
+.tubi-ranking h4 {
+  color: var(--near-black);
+}
+
+/* 次要文字统一 */
+.recognize-page .result-info p,
+.steles-page .stele-meta p,
+.knowledge-search .result-meta {
+  color: var(--olive-gray);
+}
+
+/* 搜索/输入框焦点状态 */
+.search-input:focus,
+.el-input__wrapper.is-focus {
+  border-color: var(--cinnabar) !important;
+  box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.1) !important;
+}
+
+/* ============================================
+   打印样式优化
+   ============================================ */
+@media print {
+  .main-header,
+  .main-footer,
+  .main-nav {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .main-content {
+    padding: 0 !important;
+  }
+}
+
+
+/* ContentAnalysis 弹窗加载更多按钮居中（覆盖 el-dialog__footer 的 text-align: right） */
+.el-dialog__footer .dialog-footer {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+.el-dialog__footer .dialog-footer .el-button {
+  margin: 16px auto 0 !important;
+}
+
+/* 兜底：所有 dialog-footer 里的按钮都居中 */
+.dialog-footer {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+.dialog-footer .el-button {
+  margin: 16px auto 0 !important;
+}
+
+/* 按钮文字垂直居中 */
+.dialog-footer .el-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}

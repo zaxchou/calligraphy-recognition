@@ -1,0 +1,202 @@
+"""
+SiliconFlow AI 字体识别服务 - 使用 Kimi-K2.5 模型
+支持直接图像输入进行书法字体识别
+"""
+import logging
+import json
+import base64
+import httpx
+from typing import Optional, Dict, Any, List
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+_SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
+
+
+class SiliconFlowRecognitionService:
+    """SiliconFlow AI 字体识别服务 - 支持图像输入"""
+    
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.SILICONFLOW_API_KEY
+    
+    def recognize_character(
+        self, 
+        image_bytes: bytes,
+        candidates: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        使用 Kimi-K2.5 识别书法字体
+        
+        Args:
+            image_bytes: 图片二进制数据
+            candidates: 候选字形列表（可选）
+            
+        Returns:
+            识别结果
+        """
+        try:
+            # 将图片转为 base64
+            base64_image = base64.b64encode(image_bytes).decode("utf-8")
+            
+            # 构建提示词
+            if candidates:
+                candidate_str = ", ".join(candidates)
+                prompt = f"""你是一位专业的书法字体识别专家。请识别这张图片中的汉字。
+
+候选汉字：{candidate_str}
+
+请仔细观察图片中的书法字体，注意：
+1. 笔画结构和形态
+2. 整体字形特征
+3. 书法风格特点
+
+请从候选字中选择最匹配的一个，并以 JSON 格式返回结果：
+{{"character": "识别的汉字", "confidence": 95.5, "reason": "判断理由"}}
+
+注意：必须从候选字列表中选择，只返回 JSON，不要有其他内容。"""
+            else:
+                prompt = """你是一位专业的书法字体识别专家。请识别这张图片中的汉字。
+
+请仔细观察图片中的书法字体，注意：
+1. 笔画结构和形态
+2. 整体字形特征
+3. 书法风格特点
+
+请以 JSON 格式返回结果：
+{"character": "识别的汉字", "confidence": 95.5, "reason": "判断理由"}
+
+只返回 JSON，不要有其他内容。"""
+            
+            payload = {
+                "model": settings.SILICONFLOW_MODEL,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "stream": False,
+                "max_tokens": 512,
+                "temperature": 0.1
+            }
+
+            def build_chat_url(base_url: str) -> str:
+                base = (base_url or "").rstrip("/")
+                if base.endswith("/chat/completions"):
+                    return base
+                return f"{base}/chat/completions"
+
+            def call_provider(provider: str, base_url: str, api_key: str, model: str) -> Dict[str, Any]:
+                url = build_chat_url(base_url)
+                logger.info("当前使用AI供应商: %s", provider)
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                provider_payload = dict(payload)
+                provider_payload["model"] = model
+                timeout = httpx.Timeout(60.0, connect=10.0, read=50.0, write=30.0)
+
+                with httpx.Client(timeout=timeout) as client:
+                    response = client.post(url, headers=headers, json=provider_payload)
+                    response.raise_for_status()
+                    result = response.json()
+
+                    content = result["choices"][0]["message"]["content"]
+                    content = content.strip()
+                    if content.startswith("```json"):
+                        content = content[7:]
+                    if content.startswith("```"):
+                        content = content[3:]
+                    if content.endswith("```"):
+                        content = content[:-3]
+                    content = content.strip()
+
+                    recognition_result = json.loads(content)
+
+                    character = recognition_result.get("character", "").strip()
+                    confidence = float(recognition_result.get("confidence", 0))
+
+                    return {
+                        "success": True,
+                        "provider": provider,
+                        "character": character,
+                        "confidence": confidence,
+                        "reason": recognition_result.get("reason", ""),
+                        "raw_response": content
+                    }
+
+            providers = []
+            if settings.QWEN_ENABLED and settings.QWEN_API_KEY and settings.QWEN_BASE_URL:
+                providers.append(("qwen", settings.QWEN_BASE_URL, settings.QWEN_API_KEY, settings.QWEN_MODEL))
+            if settings.SILICONFLOW_ENABLED and self.api_key:
+                providers.append(("siliconflow", _SILICONFLOW_BASE_URL, self.api_key, settings.SILICONFLOW_MODEL))
+
+            last_error = None
+            for provider, base_url, api_key, model in providers:
+                try:
+                    return call_provider(provider, base_url, api_key, model)
+                except Exception as e:
+                    last_error = e
+                    continue
+
+            return {
+                "success": False,
+                "error": f"无可用AI供应商或调用失败: {str(last_error) if last_error else ''}",
+                "character": "",
+                "confidence": 0
+            }
+                
+        except httpx.TimeoutException:
+            logger.error("SiliconFlow API 请求超时")
+            return {
+                "success": False,
+                "error": "API请求超时，请重试",
+                "character": "",
+                "confidence": 0
+            }
+        except httpx.HTTPStatusError as e:
+            logger.error("SiliconFlow API HTTP错误: %d", e.response.status_code)
+            return {
+                "success": False,
+                "error": f"API请求错误: {e.response.status_code}",
+                "character": "",
+                "confidence": 0
+            }
+        except json.JSONDecodeError as e:
+            logger.error("SiliconFlow JSON解析错误: %s", e)
+            return {
+                "success": False,
+                "error": f"JSON解析错误: {str(e)}",
+                "character": "",
+                "confidence": 0
+            }
+        except Exception as e:
+            logger.error("SiliconFlow 识别失败: %s", e, exc_info=True)
+            return {
+                "success": False,
+                "error": f"识别失败: {str(e)}",
+                "character": "",
+                "confidence": 0
+            }
+
+
+# 全局服务实例
+_recognition_service: Optional[SiliconFlowRecognitionService] = None
+
+
+def get_siliconflow_recognition_service() -> SiliconFlowRecognitionService:
+    """获取 SiliconFlow 字体识别服务实例（单例模式）"""
+    global _recognition_service
+    if _recognition_service is None:
+        _recognition_service = SiliconFlowRecognitionService()
+    return _recognition_service

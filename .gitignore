@@ -1,0 +1,155 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database - 已启用同步到GitHub（注释掉以允许提交）
+# *.db
+# *.sqlite
+# *.sqlite3
+
+# Uploads and data (do not commit large image files)
+backend/data/uploads/
+backend/data/annotated/
+backend/data/static/
+!backend/data/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build
+dist/
+build/
+
+# Local dev artifacts
+backend/test_log.txt
+backend/check_db*.py
+backend/test_*.py
+backend/test_api_*.py
+backend/update_db.py
+backend/recover_data.py
+backend/data/*.bak
+backend/data/*.restored
+backend/data/*.db.*
+backend/data/*.temp
+calligraphy.db.temp
+auto_commit.bat
+check_db*.py
+recover_data.py
+test_*.py
+test_api_*.py
+
+# Runtime / generated assets (do not commit)
+backend/dump.rdb
+backend/.qdrant-initialized
+backend/qdrant_bin/
+backend/redis_bin/
+backend/*.zip
+backend/comp.pdf
+
+.workbuddy/
+
+# Qdrant storage is machine-generated and very large (keep ignored)
+backend/storage/
+
+# Composition module runtime data (uploads, reports, heatmaps, PDFs)
+backend/data/composition/uploads/
+backend/data/composition/reports/
+backend/data/composition/pdfs/
+backend/data/composition/overlays/
+
+ingest_book_rules.py
+panqwen.md
+qwenno7sample.md
+
+# Temporary diagnostic/utility scripts (not for repo)
+_check_procs.py
+_test_import.py
+_wait_analysis.py
+backend/_check_progress.py
+backend/_fix_queue.py
+backend/_kill_worker.py
+backend/_launch_worker.py
+backend/diag_*.py
+backend/diag_*_out.txt
+backend/test_formal_algo/
+backend/test_formal_out.txt
+backend/test_insc_only/
+backend/test_insc_v2/
+backend/test_insc_v2_debug/
+backend/test_insc_v3/
+backend/test_insc_v4/
+backend/test_v4_output.txt
+backend/monitor_task.py
+backend/regenerate_annotated.py
+backend/reset_and_requeue.py
+backend/manual_annotate.py
+backend/auto_annotate*.py
+backend/batch_*.py
+!backend/batch_local_reprocess.py
+backend/check_*.py
+
+# Baidu Yun upload artifacts
+*.baiduyun.uploading.cfg
+
+# Annotated image variants (only keep main annotated_*.jpg)
+backend/data/annotated/*_auto.jpg
+backend/data/annotated/*_final.jpg
+backend/data/annotated/*_final_v2.jpg
+backend/data/annotated/*_manual.jpg
+backend/data/annotated/*_v2.jpg
+backend/data/annotated/*_v3.jpg
+
+# Debug annotated images
+backend/data/annotated/auto_*.jpg
+backend/data/annotated/batch_*.jpg
+backend/data/annotated/*_debug.jpg
+backend/data/annotated/test_*.jpg
+backend/data/annotated/final_*.jpg
+backend/data/annotated/ef4795a9_llm_box_check.jpg

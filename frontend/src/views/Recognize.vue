@@ -1,0 +1,1096 @@
+<template>
+  <div class="recognize-page">
+    <div class="page-header">
+      <h1>书法字体识别</h1>
+      <p class="sub">使用最新AI技术提升中华传统文化实力</p>
+      <div class="header-ornament">
+        <span class="ornament-line"></span>
+        <span class="ornament-dot">◇</span>
+        <span class="ornament-line"></span>
+      </div>
+    </div>
+    
+    <div class="content-wrapper">
+      <!-- 左侧：上传区域 -->
+      <div class="upload-section">
+        <el-card shadow="hover" class="upload-card">
+          <template #header>
+            <div class="card-header">
+              <span>上传书法图片</span>
+              <el-button 
+                type="info" 
+                size="small" 
+                @click="showHistoryDialog"
+                :icon="Clock"
+              >
+                历史记录
+              </el-button>
+            </div>
+          </template>
+          
+          <el-upload
+            class="upload-area"
+            drag
+            action="#"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :show-file-list="false"
+            accept="image/*"
+          >
+            <el-icon class="el-icon--upload" size="60"><UploadFilled /></el-icon>
+            <div class="el-upload__text">
+              拖拽图片到此处或 <em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 JPG、PNG、BMP 格式，建议上传清晰的单字书法图片
+              </div>
+            </template>
+          </el-upload>
+
+          <!-- 预览区域 -->
+          <div v-if="previewImage" class="preview-area">
+            <h4>预览</h4>
+            <img :src="previewImage" alt="预览" class="preview-image">
+            <el-button 
+              type="primary" 
+              @click="startRecognize"
+              :loading="isRecognizing"
+              :disabled="isRecognizing"
+              class="recognize-btn"
+            >
+              <el-icon v-if="!isRecognizing"><Search /></el-icon>
+              {{ isRecognizing ? 'AI分析中...' : '开始识别' }}
+            </el-button>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 右侧：结果区域 -->
+      <div class="result-section">
+        <el-card shadow="hover" class="result-card" v-loading="isRecognizing" :element-loading-text="loadingText">
+          <template #header>
+            <div class="card-header">
+              <span>识别结果</span>
+              <el-tag v-if="result" :type="result.is_confident ? 'success' : 'warning'">
+                {{ result.is_confident ? '高置信度' : '低置信度' }}
+              </el-tag>
+            </div>
+          </template>
+
+          <!-- AI分析中状态 -->
+          <div v-if="isRecognizing" class="analyzing-status">
+            <el-progress 
+              :percentage="progressPercentage" 
+              :stroke-width="20"
+              :status="progressStatus"
+              striped
+              striped-flow
+              :duration="10"
+            />
+            <p class="analyzing-text">{{ analyzingStep }}</p>
+            <p class="analyzing-subtext">Kimi-K2.5 正在分析图片...</p>
+          </div>
+
+          <!-- 无结果状态 -->
+          <div v-else-if="!result" class="empty-result">
+            <el-icon size="80" color="#dcdfe6"><Document /></el-icon>
+            <p>请上传图片进行识别</p>
+          </div>
+
+          <!-- 识别结果 -->
+          <div v-else class="result-content">
+            <!-- 上传的原图 -->
+            <div class="original-image-section" v-if="result.uploaded_image_url">
+              <h3>上传的原图</h3>
+              <div class="original-image-wrapper">
+                <img
+                  :src="result.uploaded_image_url"
+                  alt="上传的原图"
+                  class="original-image"
+                  @click="openImagePreview(result.uploaded_image_url)"
+                  title="点击放大查看"
+                >
+                <div class="image-hint">点击放大查看</div>
+              </div>
+            </div>
+
+            <el-divider />
+
+            <!-- 最佳匹配 -->
+            <div class="best-match">
+              <h3>最佳匹配</h3>
+              <div class="match-info">
+                <div class="character-display">
+                  <span class="character">{{ result.recognized_character }}</span>
+                </div>
+                <div class="similarity-circle">
+                  <el-progress
+                    type="circle"
+                    :percentage="Math.round(result.similarity || 0)"
+                    :color="similarityColor"
+                    :stroke-width="12"
+                    :width="120"
+                  />
+                  <span class="similarity-label">相似度</span>
+                </div>
+              </div>
+              
+              <!-- AI分析理由 -->
+              <div v-if="result.ai_reason" class="ai-reason">
+                <el-alert
+                  :title="'AI分析: ' + result.ai_reason"
+                  type="info"
+                  :closable="false"
+                  show-icon
+                />
+              </div>
+              
+              <!-- 碑帖信息 -->
+              <div v-if="result.best_match?.stele" class="stele-info">
+                <h4>出自碑帖</h4>
+                <el-descriptions :column="1" border>
+                  <el-descriptions-item label="碑帖名称">
+                    {{ result.best_match.stele.name }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="书法家">
+                    {{ result.best_match.stele.calligrapher }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="朝代">
+                    {{ result.best_match.stele.dynasty }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="字体风格">
+                    <el-tag>{{ result.best_match.stele.style }}</el-tag>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+            </div>
+
+            <el-divider />
+
+            <!-- 其他候选 - 只显示相似度 >= 40% 的 -->
+            <div class="other-matches" v-if="filteredTopMatches.length > 0">
+              <h4>其他候选</h4>
+              <el-table :data="filteredTopMatches" style="width: 100%">
+                <el-table-column prop="rank" label="排名" width="80">
+                  <template #default="scope">
+                    <el-tag size="small">{{ scope.row.rank }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="character" label="字形" width="100">
+                  <template #default="scope">
+                    <span class="table-character">{{ scope.row.character }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="similarity" label="相似度">
+                  <template #default="scope">
+                    <el-progress 
+                      :percentage="Math.round(scope.row.similarity)" 
+                      :color="getSimilarityColor(scope.row.similarity)"
+                    />
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <!-- 处理信息 -->
+            <div class="process-info">
+              <el-tag size="small" type="info">
+                处理时间: {{ result.processing_time_ms }}ms
+              </el-tag>
+              <el-tag v-if="result.recognition_method" size="small" :type="result.recognition_method === 'ai_primary' ? 'success' : 'warning'">
+                {{ result.recognition_method === 'ai_primary' ? 'AI识别' : '特征匹配' }}
+              </el-tag>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
+
+    <!-- 历史记录对话框 -->
+    <el-dialog
+      v-model="historyDialogVisible"
+      title="识别历史记录"
+      width="1400px"
+      :close-on-click-modal="true"
+      class="history-dialog"
+    >
+      <div class="history-content">
+        <el-table :data="historyList" style="width: 100%" v-loading="historyLoading" class="history-table">
+          <el-table-column label="上传图片" width="120">
+            <template #default="scope">
+              <img 
+                :src="getImageUrl(scope.row.uploaded_image_path)" 
+                class="history-image"
+                @click="previewHistoryImage(scope.row)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="recognized_character" label="识别结果" width="100">
+            <template #default="scope">
+              <span class="history-character">{{ scope.row.recognized_character }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="similarity_score" label="相似度" width="120">
+            <template #default="scope">
+              <el-progress 
+                :percentage="Math.round(scope.row.similarity_score || 0)" 
+                :color="getSimilarityColor(scope.row.similarity_score)"
+                :stroke-width="8"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="processing_time_ms" label="耗时" width="100">
+            <template #default="scope">
+              {{ scope.row.processing_time_ms }}ms
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="识别时间" width="180">
+            <template #default="scope">
+              {{ formatDate(scope.row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="200" fixed="right">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button
+                  type="primary"
+                  size="default"
+                  @click="loadHistoryResult(scope.row)"
+                >
+                  查看
+                </el-button>
+                <el-button
+                  type="danger"
+                  size="default"
+                  @click="deleteHistoryItem(scope.row)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <div class="history-pagination">
+          <el-pagination
+            v-model:current-page="historyPage"
+            v-model:page-size="historyPageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="historyTotal"
+            layout="total, sizes, prev, pager, next"
+            @size-change="loadHistory"
+            @current-change="loadHistory"
+          />
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 图片预览对话框 -->
+    <el-dialog
+      v-model="previewDialogVisible"
+      title="图片预览"
+      width="600px"
+      :close-on-click-modal="true"
+    >
+      <img :src="previewImageUrl" style="width: 100%;" />
+    </el-dialog>
+
+    <!-- 原图放大查看对话框 -->
+    <el-dialog
+      v-model="imagePreviewVisible"
+      title="原图查看"
+      width="90%"
+      :close-on-click-modal="true"
+      class="image-preview-dialog"
+      destroy-on-close
+    >
+      <div class="image-preview-container">
+        <div class="image-preview-toolbar">
+          <el-button
+            type="primary"
+            size="small"
+            @click="zoomIn"
+            :disabled="previewScale >= 3"
+          >
+            放大
+          </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            @click="zoomOut"
+            :disabled="previewScale <= 0.5"
+          >
+            缩小
+          </el-button>
+          <el-button
+            type="default"
+            size="small"
+            @click="resetZoom"
+          >
+            重置
+          </el-button>
+          <span class="zoom-level">{{ Math.round(previewScale * 100) }}%</span>
+        </div>
+        <div class="image-preview-wrapper" ref="previewWrapper">
+          <img
+            :src="currentPreviewImage"
+            alt="原图预览"
+            class="preview-image-zoom"
+            :style="{ transform: `scale(${previewScale})` }"
+            @wheel.prevent="handleWheel"
+          />
+        </div>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { UploadFilled, Search, Document, Clock } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { recognitionApi } from '../api'
+
+const previewImage = ref('')
+const currentFile = ref(null)
+const isRecognizing = ref(false)
+const result = ref(null)
+const loadingText = ref('正在识别...')
+
+// 进度条相关
+const progressPercentage = ref(0)
+const progressStatus = ref('')
+const analyzingStep = ref('准备分析...')
+
+// 历史记录相关
+const historyDialogVisible = ref(false)
+const historyList = ref([])
+const historyLoading = ref(false)
+const historyPage = ref(1)
+const historyPageSize = ref(10)
+
+// 过滤后的候选列表（只显示相似度 >= 40% 且不是最佳匹配的）
+const filteredTopMatches = computed(() => {
+  if (!result.value?.top_matches) return []
+  // 过滤掉第一个（最佳匹配）和相似度低于40%的
+  return result.value.top_matches
+    .slice(1) // 去掉第一个（最佳匹配）
+    .filter(match => match.similarity >= 40) // 只保留相似度 >= 40% 的
+})
+const historyTotal = ref(0)
+
+// 图片预览
+const previewDialogVisible = ref(false)
+const previewImageUrl = ref('')
+
+// 原图放大预览
+const imagePreviewVisible = ref(false)
+const currentPreviewImage = ref('')
+const previewScale = ref(1)
+const previewWrapper = ref(null)
+
+// 打开原图预览
+const openImagePreview = (imageUrl) => {
+  currentPreviewImage.value = imageUrl
+  previewScale.value = 1
+  imagePreviewVisible.value = true
+}
+
+// 放大
+const zoomIn = () => {
+  if (previewScale.value < 3) {
+    previewScale.value += 0.25
+  }
+}
+
+// 缩小
+const zoomOut = () => {
+  if (previewScale.value > 0.5) {
+    previewScale.value -= 0.25
+  }
+}
+
+// 重置缩放
+const resetZoom = () => {
+  previewScale.value = 1
+}
+
+// 鼠标滚轮缩放
+const handleWheel = (e) => {
+  if (e.deltaY < 0) {
+    zoomIn()
+  } else {
+    zoomOut()
+  }
+}
+
+// 相似度颜色
+const similarityColor = computed(() => {
+  if (!result.value) return '#409EFF'
+  const sim = result.value.similarity
+  if (sim >= 80) return '#67C23A'
+  if (sim >= 60) return '#E6A23C'
+  return '#F56C6C'
+})
+
+const getSimilarityColor = (similarity) => {
+  if (!similarity) return '#F56C6C'
+  if (similarity >= 80) return '#67C23A'
+  if (similarity >= 60) return '#E6A23C'
+  return '#F56C6C'
+}
+
+// 模拟进度条
+const startProgress = () => {
+  progressPercentage.value = 0
+  progressStatus.value = ''
+  analyzingStep.value = '正在上传图片...'
+  
+  const steps = [
+    { percent: 15, text: '正在预处理图像...' },
+    { percent: 30, text: '正在提取特征...' },
+    { percent: 45, text: '正在匹配候选字形...' },
+    { percent: 60, text: 'AI正在分析图片...' },
+    { percent: 80, text: 'AI正在识别字体...' },
+    { percent: 95, text: '正在生成结果...' }
+  ]
+  
+  let stepIndex = 0
+  const interval = setInterval(() => {
+    if (!isRecognizing.value) {
+      clearInterval(interval)
+      progressPercentage.value = 100
+      return
+    }
+    
+    if (stepIndex < steps.length) {
+      const step = steps[stepIndex]
+      progressPercentage.value = step.percent
+      analyzingStep.value = step.text
+      stepIndex++
+    }
+  }, 1500)
+  
+  return interval
+}
+
+// 处理文件选择
+const handleFileChange = (file) => {
+  if (!file) return
+  
+  const isImage = file.raw.type.startsWith('image/')
+  if (!isImage) {
+    ElMessage.error('请上传图片文件')
+    return
+  }
+  
+  const isLt10M = file.raw.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('图片大小不能超过10MB')
+    return
+  }
+  
+  currentFile.value = file.raw
+  
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    previewImage.value = e.target.result
+  }
+  reader.readAsDataURL(file.raw)
+  
+  result.value = null
+}
+
+// 开始识别
+const startRecognize = async () => {
+  if (!currentFile.value) {
+    ElMessage.warning('请先上传图片')
+    return
+  }
+  
+  isRecognizing.value = true
+  result.value = null
+  
+  const progressInterval = startProgress()
+  
+  try {
+    const response = await recognitionApi.recognize(currentFile.value)
+    
+    if (response.success) {
+      result.value = response.data
+      progressPercentage.value = 100
+      progressStatus.value = 'success'
+      analyzingStep.value = '识别完成！'
+      ElMessage.success('识别完成')
+      // 刷新历史记录
+      loadHistory()
+    } else {
+      progressStatus.value = 'exception'
+      analyzingStep.value = '识别失败'
+      ElMessage.error(response.message || '识别失败')
+    }
+  } catch (error) {
+    console.error('识别错误:', error)
+    progressStatus.value = 'exception'
+    analyzingStep.value = '识别出错'
+    ElMessage.error('识别失败，请重试')
+  } finally {
+    clearInterval(progressInterval)
+    setTimeout(() => {
+      isRecognizing.value = false
+    }, 500)
+  }
+}
+
+// 显示历史记录对话框
+const showHistoryDialog = () => {
+  historyDialogVisible.value = true
+  loadHistory()
+}
+
+// 加载历史记录
+const loadHistory = async () => {
+  historyLoading.value = true
+  try {
+    const response = await recognitionApi.getHistory(historyPage.value, historyPageSize.value)
+    if (response.success) {
+      historyList.value = response.data
+      historyTotal.value = response.total
+    }
+  } catch (error) {
+    console.error('加载历史记录失败:', error)
+    ElMessage.error('加载历史记录失败')
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+// 获取图片URL
+const getImageUrl = (path) => {
+  if (!path) return ''
+  // 从路径中提取文件名
+  const filename = path.split('\\').pop().split('/').pop()
+  return `/static/uploads/${filename}`
+}
+
+// 预览历史图片
+const previewHistoryImage = (row) => {
+  previewImageUrl.value = getImageUrl(row.uploaded_image_path)
+  previewDialogVisible.value = true
+}
+
+// 加载历史记录结果
+const loadHistoryResult = (row) => {
+  result.value = {
+    recognized_character: row.recognized_character,
+    similarity: row.similarity_score,
+    processing_time_ms: row.processing_time_ms,
+    top_matches: row.top_matches || [],
+    best_match: row.best_match || null,
+    recognition_method: row.recognition_method || 'feature_match',
+    uploaded_image_url: getImageUrl(row.uploaded_image_path)
+  }
+  historyDialogVisible.value = false
+  ElMessage.success('已加载历史记录')
+}
+
+// 删除历史记录
+const deleteHistoryItem = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除这条历史记录吗？',
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    console.log('正在删除记录:', row.id)
+    const response = await recognitionApi.deleteHistory(row.id)
+    console.log('删除响应:', response)
+    
+    if (response.success) {
+      ElMessage.success('删除成功')
+      // 刷新历史记录列表
+      loadHistory()
+    } else {
+      ElMessage.error(response.message || '删除失败')
+    }
+  } catch (error) {
+    console.error('删除失败详细错误:', error)
+    if (error !== 'cancel') {
+      if (error.response) {
+        // 服务器返回了错误响应
+        ElMessage.error(`删除失败: ${error.response.data?.detail || error.response.statusText}`)
+      } else if (error.request) {
+        // 请求发送但没有收到响应
+        ElMessage.error('删除失败: 无法连接到服务器')
+      } else {
+        // 其他错误
+        ElMessage.error(`删除失败: ${error.message || '未知错误'}`)
+      }
+    }
+  }
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN')
+}
+
+onMounted(() => {
+  // 页面加载时可以自动加载历史记录
+})
+</script>
+
+<style scoped>
+.recognize-page {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  position: relative;
+  background: radial-gradient(ellipse at 50% 30%, rgba(201, 100, 66, 0.06) 0%, transparent 60%),
+              linear-gradient(180deg, var(--ivory, #faf9f5) 0%, var(--parchment, #f5f4ed) 100%);
+  color: var(--near-black, #141413);
+  padding: 20px 40px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-cream, #f0eee6);
+  margin: -20px -20px 20px;
+}
+
+.page-header h1 {
+  margin: 0 0 4px;
+  font-family: var(--font-serif, "Noto Serif SC", Georgia, serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--near-black, #141413);
+}
+
+.page-header .sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--stone-gray, #87867f);
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+}
+
+.header-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ornament-line {
+  width: 36px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ring-warm, #d1cfc5), transparent);
+}
+
+.ornament-dot {
+  color: var(--cinnabar, #c96442);
+  font-size: 12px;
+  opacity: 0.4;
+  line-height: 1;
+}
+
+.content-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.upload-card,
+.result-card {
+  height: 100%;
+  min-height: 500px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--near-black);
+}
+
+.upload-area {
+  width: 100%;
+}
+
+.upload-area :deep(.el-upload-dragger) {
+  width: 100%;
+  height: 200px;
+}
+
+.preview-area {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.preview-area h4 {
+  margin-bottom: 10px;
+  color: var(--charcoal-warm);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 200px;
+  border: 1px solid var(--border-warm);
+  border-radius: var(--radius-lg);
+  margin-bottom: 15px;
+}
+
+.recognize-btn {
+  width: 100%;
+  font-size: 16px;
+  padding: 12px;
+}
+
+.empty-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: var(--stone-gray);
+}
+
+.empty-result p {
+  margin-top: 20px;
+  font-size: 16px;
+}
+
+.analyzing-status {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.analyzing-text {
+  margin-top: 20px;
+  font-size: 18px;
+  color: var(--cinnabar);
+  font-weight: bold;
+}
+
+.analyzing-subtext {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--stone-gray);
+}
+
+.result-content {
+  padding: 10px 0;
+}
+
+/* 上传原图样式 */
+.original-image-section {
+  margin-bottom: 20px;
+}
+
+.original-image-section h3 {
+  margin-bottom: 15px;
+  color: var(--near-black);
+  font-size: 18px;
+}
+
+.original-image-wrapper {
+  text-align: center;
+  padding: 20px;
+  background: var(--ivory);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-warm);
+}
+
+.original-image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-whisper);
+  cursor: zoom-in;
+  transition: transform var(--transition-fast);
+}
+
+.original-image:hover {
+  transform: scale(1.02);
+}
+
+.image-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--stone-gray);
+  text-align: center;
+}
+
+/* 原图放大预览对话框样式 */
+.image-preview-dialog :deep(.el-dialog__body) {
+  padding: 10px 20px 20px;
+}
+
+.image-preview-container {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+}
+
+.image-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-warm);
+  margin-bottom: 10px;
+}
+
+.zoom-level {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--charcoal-warm);
+  font-weight: bold;
+}
+
+.image-preview-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--parchment);
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+
+.preview-image-zoom {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform var(--transition-fast);
+  cursor: grab;
+}
+
+.best-match h3 {
+  margin-bottom: 20px;
+  color: var(--near-black);
+}
+
+.match-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin-bottom: 30px;
+}
+
+.character-display {
+  text-align: center;
+}
+
+.character {
+  font-size: 80px;
+  font-family: var(--font-kai);
+  color: var(--near-black);
+}
+
+.similarity-circle {
+  text-align: center;
+}
+
+.similarity-label {
+  display: block;
+  margin-top: 10px;
+  color: var(--charcoal-warm);
+  font-size: 14px;
+}
+
+.ai-reason {
+  margin-bottom: 20px;
+}
+
+.stele-info h4 {
+  margin-bottom: 15px;
+  color: var(--near-black);
+}
+
+.other-matches h4 {
+  margin-bottom: 15px;
+  color: var(--near-black);
+}
+
+.table-character {
+  font-size: 24px;
+  font-family: var(--font-kai);
+}
+
+.process-info {
+  margin-top: 20px;
+  text-align: right;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* 历史记录样式 */
+.history-dialog :deep(.el-dialog__body) {
+  padding: 20px;
+}
+
+.history-content {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.history-table {
+  width: 100%;
+}
+
+.history-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--border-warm);
+  transition: border-color var(--transition-fast);
+}
+
+.history-image:hover {
+  border-color: var(--cinnabar);
+}
+
+.history-character {
+  font-size: 28px;
+  font-family: var(--font-kai);
+}
+
+/* 操作按钮容器 - 与题跋分析板块一致 */
+.action-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.action-buttons .el-button {
+  padding: 8px 20px;
+  font-size: 14px;
+  border-radius: var(--radius-md);
+}
+
+.history-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 按钮 — Claude 风格 */
+:deep(.el-button) {
+  border-radius: var(--radius-md) !important;
+  padding: 12px 32px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+  box-shadow: none;
+}
+
+:deep(.el-button--primary) {
+  background: var(--cinnabar);
+  color: var(--pure-white);
+  border-color: var(--cinnabar);
+}
+
+:deep(.el-button--primary:hover) {
+  background: var(--cinnabar-dark);
+  border-color: var(--cinnabar-dark);
+  box-shadow: var(--shadow-whisper);
+}
+
+:deep(.el-button--success) {
+  background: var(--tubi-success, #5a8a4a);
+  color: var(--pure-white);
+  border-color: var(--tubi-success, #5a8a4a);
+}
+
+:deep(.el-button--success:hover) {
+  background: #4a7a3a;
+  border-color: #4a7a3a;
+  box-shadow: var(--shadow-whisper);
+}
+
+:deep(.el-button--warning) {
+  background: var(--cinnabar-light);
+  color: var(--pure-white);
+  border-color: var(--cinnabar-light);
+}
+
+:deep(.el-button--warning:hover) {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  box-shadow: var(--shadow-whisper);
+}
+
+:deep(.el-button--danger) {
+  background: var(--error-crimson);
+  color: var(--pure-white);
+  border-color: var(--error-crimson);
+}
+
+:deep(.el-button--danger:hover) {
+  background: #9a2828;
+  border-color: #9a2828;
+  box-shadow: var(--shadow-whisper);
+}
+
+:deep(.el-button--default) {
+  background: var(--pure-white);
+  color: var(--charcoal-warm);
+  border: 1px solid var(--border-warm);
+}
+
+:deep(.el-button--default:hover) {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  box-shadow: var(--shadow-whisper);
+}
+
+:deep(.el-button--info) {
+  background: var(--warm-sand);
+  color: var(--charcoal-warm);
+  border-color: var(--warm-sand);
+}
+
+:deep(.el-button--info:hover) {
+  background: var(--ring-warm);
+  border-color: var(--ring-warm);
+  color: var(--near-black);
+  box-shadow: var(--shadow-whisper);
+}
+
+:deep(.el-button.is-small) {
+  padding: 8px 20px;
+  font-size: 13px;
+}
+
+@media (max-width: 968px) {
+  .content-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

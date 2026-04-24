@@ -1,0 +1,2408 @@
+"""
+题跋内容学术分析 API
+- 分期统计
+- 主题分类
+- 词频分析
+- 情感分布
+- 内容-形式关联
+"""
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+import os
+import json
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from app.core.database import get_db_connection
+from app.services.inscription_content_analyzer import (
+    analyze_tiba_content,
+    analyze_tiba_content_dual,
+    get_period_phase,
+    FEATURE_WORDS,
+    THEMES,
+)
+from app.services.content_form_correlation import (
+    build_contingency_table,
+    chi_square_test,
+    compute_correlation_stats,
+    get_invasive_analysis,
+)
+from app.services.inscription_position_analyzer import FORM_TYPES
+
+router = APIRouter(prefix="/content-analysis", tags=["content-analysis"])
+
+
+# ============ 辅助函数 ============
+
+def build_artist_condition(artist: str) -> tuple:
+    """
+    构建画家筛选条件
+    
+    Args:
+        artist: 画家名称，'all' 表示所有画家
+    
+    Returns:
+        (where_clause, params): SQL WHERE 子句和参数
+    """
+    if not artist or artist == 'all':
+        # 所有画家
+        return "1=1", ()
+    else:
+        # 特定画家（支持模糊匹配）
+        return "(artist LIKE ? OR artist LIKE ?)", (f"%{artist}%", f"%{artist}%")
+
+
+# ============ 数据模型 ============
+
+class PeriodStats(BaseModel):
+    period: str
+    count: int
+    avg_char_count: float
+    max_char_count: int
+    min_char_count: int
+    avg_word_count: float
+    avg_ttr: float
+
+
+class WordFreqItem(BaseModel):
+    word: str
+    count: int
+    period: str
+
+
+class ThemeDistItem(BaseModel):
+    theme_code: int
+    theme_name: str
+    period: str
+    count: int
+    percentage: float
+
+
+class SentimentDistItem(BaseModel):
+    polarity: str  # positive/negative/neutral
+    period: str
+    count: int
+    percentage: float
+
+
+class LayoutFormDistItem(BaseModel):
+    form_name: str
+    count: int
+    percentage: float
+
+
+class FeatureWordStat(BaseModel):
+    dimension: str
+    word: str
+    count: int
+    period: str
+
+
+class MaterialTagItem(BaseModel):
+    tag: str
+    count: int
+    percentage: float
+
+
+class AreaDistItem(BaseModel):
+    range: str
+    inscription_count: int
+    painting_count: int
+    blank_count: int
+
+
+class AreaThemeItem(BaseModel):
+    theme_name: str
+    avg_inscription_percent: float
+    avg_painting_percent: float
+    avg_blank_percent: float
+
+
+class AreaSizeItem(BaseModel):
+    artwork_height_cm: float
+    inscription_percent: float
+    theme_name: str
+    title: str
+    period: str
+
+
+class StatsResponse(BaseModel):
+    artist: str
+    total_count: int
+    period_stats: List[PeriodStats]
+    theme_distribution: List[ThemeDistItem]
+    sentiment_distribution: List[SentimentDistItem]
+    layout_form_distribution: List[LayoutFormDistItem]
+    feature_word_stats: List[FeatureWordStat]
+    top_words: List[WordFreqItem]
+    material_tags: List[MaterialTagItem] = []
+    area_distribution: List[AreaDistItem] = []
+    area_theme_stats: List[AreaThemeItem] = []
+    area_size_correlation: List[AreaSizeItem] = []
+
+
+class CorrelationItem(BaseModel):
+    theme: str
+    form_type: str
+    count: int
+    expected: float
+    chi2_contrib: float
+
+
+class CorrelationResponse(BaseModel):
+    artist: str
+    chi2_statistic: float
+    p_value: float
+    significant: bool  # p < 0.05
+    correlation_table: List[CorrelationItem]
+
+
+class VerifyRequest(BaseModel):
+    inscription_content: str
+    seal_content: Optional[str] = None
+    analysis_note: Optional[str] = None
+
+
+class VerifyResponse(BaseModel):
+    success: bool
+    message: str
+    record_id: int
+
+
+class ArtistsResponse(BaseModel):
+    success: bool
+    artists: List[str]  # ["李鱓", "郑燮", "潘天寿", ...]
+
+
+# ============ API 端点 ============
+
+@router.get("/artists", response_model=ArtistsResponse)
+async def get_artists():
+    """
+    获取数据库中所有去重作者列表
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT DISTINCT artist
+        FROM tubi_analyses
+        WHERE artist IS NOT NULL AND artist != ''
+        ORDER BY artist
+    """)
+    artists = [row[0] for row in cur.fetchall()]
+    return {"success": True, "artists": artists}
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_stats(
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+):
+    """
+    获取分期统计：字数、词频、主题分布、情感分布
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+
+    # 1. 基础统计（按分期）
+    cur.execute(f"""
+        SELECT 
+            period_phase,
+            COUNT(*) as count,
+            AVG(COALESCE(char_count, 0)) as avg_chars,
+            MAX(COALESCE(char_count, 0)) as max_chars,
+            MIN(CASE WHEN COALESCE(char_count, 0) > 0 THEN char_count END) as min_chars,
+            AVG(COALESCE(word_count, 0)) as avg_words
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL
+          AND LENGTH(inscription_content) > 0
+        GROUP BY period_phase
+        ORDER BY period_phase
+    """, artist_params)
+
+    period_stats = []
+    for row in cur.fetchall():
+        period_stats.append(PeriodStats(
+            period=row[0] or "未分期",
+            count=row[1],
+            avg_char_count=round(row[2] or 0, 1),
+            max_char_count=row[3] or 0,
+            min_char_count=row[4] or 0,
+            avg_word_count=round(row[5] or 0, 1),
+            avg_ttr=0.0  # TODO: 从content_analysis解析
+        ))
+
+    # 2. 主题分布（从content_analysis JSON解析）
+    cur.execute(f"""
+        SELECT period_phase, content_analysis
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+    """, artist_params)
+
+    theme_counts = {}  # {(period, theme_name): count}
+    sentiment_counts = {}  # {(period, polarity): count}
+    feature_word_stats = []  # FeatureWordStat list
+    all_top_words = []
+
+    import json
+    for row in cur.fetchall():
+        period, content_json = row
+        period = period or "未分期"
+
+        try:
+            analysis = json.loads(content_json)
+
+            # 主题统计
+            themes = analysis.get("themes", [])
+            for theme in themes:
+                key = (period, theme.get("name", "未知"))
+                theme_counts[key] = theme_counts.get(key, 0) + 1
+
+            # 情感统计
+            sentiment = analysis.get("sentiment", {})
+            polarity = sentiment.get("polarity", "neutral")
+            key = (period, polarity)
+            sentiment_counts[key] = sentiment_counts.get(key, 0) + 1
+
+            # 特征词统计
+            feature_words = analysis.get("feature_words", {})
+            for dim, words in feature_words.items():
+                for word in words:
+                    feature_word_stats.append(FeatureWordStat(
+                        dimension=dim,
+                        word=word,
+                        count=1,
+                        period=period
+                    ))
+
+        except:
+            continue
+
+    # 计算主题分布百分比
+    theme_distribution = []
+    period_totals = {}
+    for (period, theme), count in theme_counts.items():
+        period_totals[period] = period_totals.get(period, 0) + count
+
+    for (period, theme), count in theme_counts.items():
+        total = period_totals.get(period, 1)
+        theme_distribution.append(ThemeDistItem(
+            theme_code=0,  # TODO: 映射code
+            theme_name=theme,
+            period=period,
+            count=count,
+            percentage=round(count / total * 100, 1)
+        ))
+
+    # 计算情感分布百分比
+    sentiment_distribution = []
+    for (period, polarity), count in sentiment_counts.items():
+        total = period_totals.get(period, 1)
+        sentiment_distribution.append(SentimentDistItem(
+            polarity=polarity,
+            period=period,
+            count=count,
+            percentage=round(count / total * 100, 1)
+        ))
+
+    # 3. 总数量
+    cur.execute(f"""
+        SELECT COUNT(*) FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL
+          AND LENGTH(inscription_content) > 0
+    """, artist_params)
+    total_count = cur.fetchone()[0]
+
+    # 4. 布局形式分布（从 position_analysis JSON 解析 form_types）
+    cur.execute(f"""
+        SELECT position_analysis FROM tubi_analyses
+        WHERE {artist_where}
+          AND position_analysis IS NOT NULL
+    """, artist_params)
+    form_counts = {}
+    total_form_count = 0
+    for row in cur.fetchall():
+        try:
+            pos = json.loads(row[0])
+            for ft in pos.get("form_types", []):
+                if ft.get("matched"):
+                    name = ft.get("name", "未知")
+                    form_counts[name] = form_counts.get(name, 0) + 1
+                    total_form_count += 1
+        except:
+            continue
+
+    layout_form_distribution = []
+    for name, count in form_counts.items():
+        layout_form_distribution.append(LayoutFormDistItem(
+            form_name=name,
+            count=count,
+            percentage=round(count / max(total_form_count, 1) * 100, 1)
+        ))
+    layout_form_distribution.sort(key=lambda x: x.count, reverse=True)
+
+    # 5. 画材标签统计
+    cur.execute(f"""
+        SELECT material_tags FROM tubi_analyses
+        WHERE {artist_where}
+          AND material_tags IS NOT NULL
+          AND material_tags != ''
+    """, artist_params)
+    
+    tag_counts = {}
+    total_tagged = 0
+    for row in cur.fetchall():
+        tags = row[0].split(',')
+        for tag in tags:
+            tag = tag.strip()
+            if tag:
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+                total_tagged += 1
+    
+    material_tags = []
+    for tag, count in sorted(tag_counts.items(), key=lambda x: -x[1]):
+        material_tags.append(MaterialTagItem(
+            tag=tag,
+            count=count,
+            percentage=round(count / max(total_tagged, 1) * 100, 1)
+        ))
+
+    # ============ 6. 面积分布直方图 ============
+    cur.execute(f"""
+        SELECT inscription_percent, painting_percent, blank_percent
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_percent IS NOT NULL
+    """, artist_params)
+
+    bins = [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50),
+            (50, 60), (60, 70), (70, 80), (80, 90), (90, 100)]
+    bucket_counts = {}
+    for low, high in bins:
+        bucket_counts[f"{low}-{high}%"] = {"inscription": 0, "painting": 0, "blank": 0}
+
+    for row in cur.fetchall():
+        insc, paint, blank = row
+        for low, high in bins:
+            key = f"{low}-{high}%"
+            if low <= insc < high or (high == 100 and insc >= 100):
+                bucket_counts[key]["inscription"] += 1
+            if low <= paint < high or (high == 100 and paint >= 100):
+                bucket_counts[key]["painting"] += 1
+            if low <= blank < high or (high == 100 and blank >= 100):
+                bucket_counts[key]["blank"] += 1
+
+    area_distribution = []
+    for low, high in bins:
+        key = f"{low}-{high}%"
+        area_distribution.append(AreaDistItem(
+            range=key,
+            inscription_count=bucket_counts[key]["inscription"],
+            painting_count=bucket_counts[key]["painting"],
+            blank_count=bucket_counts[key]["blank"]
+        ))
+
+    # ============ 7. 面积-主题堆叠柱状图 ============
+    cur.execute(f"""
+        SELECT content_analysis, inscription_percent, painting_percent, blank_percent
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+          AND content_analysis != ''
+          AND content_analysis != '{{}}'
+          AND inscription_percent IS NOT NULL
+    """, artist_params)
+
+    theme_area_sums = {}
+    theme_area_counts = {}
+    for row in cur.fetchall():
+        content_json, insc, paint, blank = row
+        try:
+            analysis = json.loads(content_json)
+            themes = analysis.get("themes", [])
+            for theme in themes:
+                name = theme.get("name", "未知")
+                if name not in theme_area_sums:
+                    theme_area_sums[name] = {"insc": 0.0, "paint": 0.0, "blank": 0.0}
+                    theme_area_counts[name] = 0
+                theme_area_sums[name]["insc"] += insc or 0
+                theme_area_sums[name]["paint"] += paint or 0
+                theme_area_sums[name]["blank"] += blank or 0
+                theme_area_counts[name] += 1
+        except Exception:
+            continue
+
+    area_theme_stats = []
+    for name in theme_area_sums:
+        count = theme_area_counts[name]
+        area_theme_stats.append(AreaThemeItem(
+            theme_name=name,
+            avg_inscription_percent=round(theme_area_sums[name]["insc"] / count, 1),
+            avg_painting_percent=round(theme_area_sums[name]["paint"] / count, 1),
+            avg_blank_percent=round(theme_area_sums[name]["blank"] / count, 1),
+        ))
+
+    # ============ 8. 面积-尺寸相关性散点图 ============
+    cur.execute(f"""
+        SELECT content_analysis, inscription_percent, artwork_height_cm, title, period_phase
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+          AND content_analysis != ''
+          AND content_analysis != '{{}}'
+          AND inscription_percent IS NOT NULL
+          AND artwork_height_cm IS NOT NULL
+    """, artist_params)
+
+    area_size_correlation = []
+    for row in cur.fetchall():
+        content_json, insc, height, title, period = row
+        try:
+            analysis = json.loads(content_json)
+            themes = analysis.get("themes", [])
+            theme_name = themes[0].get("name", "未知") if themes else "未知"
+            area_size_correlation.append(AreaSizeItem(
+                artwork_height_cm=height,
+                inscription_percent=insc,
+                theme_name=theme_name,
+                title=title or "未命名",
+                period=period or "未分期",
+            ))
+        except Exception:
+            continue
+
+    conn.close()
+
+    return StatsResponse(
+        artist=artist,
+        total_count=total_count,
+        period_stats=period_stats,
+        theme_distribution=theme_distribution,
+        sentiment_distribution=sentiment_distribution,
+        layout_form_distribution=layout_form_distribution,
+        feature_word_stats=feature_word_stats,
+        top_words=[],  # TODO: 从分词结果聚合
+        material_tags=material_tags,
+        area_distribution=area_distribution,
+        area_theme_stats=area_theme_stats,
+        area_size_correlation=area_size_correlation,
+    )
+
+
+@router.get("/correlation")
+async def get_correlation(
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+):
+    """
+    内容-形式关联分析（列联表 + 卡方检验）
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+
+    cur.execute(f"""
+        SELECT content_analysis, position_analysis, period_phase
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+          AND position_analysis IS NOT NULL
+    """, artist_params)
+
+    records = []
+    for r in cur.fetchall():
+        try:
+            pos = json.loads(r[1]) if r[1] else {}
+        except Exception:
+            pos = {}
+        records.append({
+            "content_analysis": r[0],
+            "position_analysis": pos,
+            "period_phase": r[2]
+        })
+    conn.close()
+
+    if not records:
+        return {
+            "artist": artist,
+            "chi2_statistic": 0.0,
+            "p_value": 1.0,
+            "significant": False,
+            "correlation_table": [],
+            "invasive_analysis": {"invasive_items": [], "total": 0},
+            "message": "暂无数据"
+        }
+
+    contingency = build_contingency_table(records)
+    chi2_result = chi_square_test(contingency)
+    correlation_stats = compute_correlation_stats(contingency)
+    invasive_analysis = get_invasive_analysis(contingency)
+
+    return {
+        "artist": artist,
+        "chi2_statistic": chi2_result["chi2"],
+        "p_value": chi2_result["p_value"],
+        "dof": chi2_result.get("dof", 0),
+        "significant": chi2_result["significant"],
+        "highly_significant": chi2_result.get("highly_significant", False),
+        "correlation_table": correlation_stats,
+        "invasive_analysis": invasive_analysis,
+        "total_records": contingency["total_count"],
+    }
+
+
+@router.post("/batch")
+async def batch_analyze(
+    artist: str = Query(default="all", description="画家名称"),
+    force_reanalyze: bool = Query(default=False, description="强制重新分析已校验记录"),
+    use_llm: bool = Query(default=True, description="启用LLM双通道情感分析"),
+):
+    """
+    批量触发题跋内容分析
+    """
+    artist_where, artist_params = build_artist_condition(artist)
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 获取待分析记录（包含尺寸字段）
+    # 增量模式：跳过已有分析结果的记录（content_analysis 非空且非空字典）
+    skip_analyzed = "" if force_reanalyze else """
+        AND (content_analysis IS NULL
+             OR content_analysis = ''
+             OR content_analysis = '{}')"""
+
+    cur.execute(f"""
+        SELECT id, inscription_content, year, title, analysis_note, 
+               artwork_width_cm, artwork_height_cm, artist
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL
+          AND LENGTH(inscription_content) > 0
+        {skip_analyzed}
+    """, artist_params)
+
+    rows = cur.fetchall()
+    analyzed = 0
+
+    import json
+    import asyncio
+
+    async def process_record(record_id, content, year, title, analysis_note, width_cm, height_cm, record_artist=None):
+        if use_llm:
+            result = await analyze_tiba_content_dual(content, year=year, title=title, analysis_note=analysis_note, 
+                                                       width_cm=width_cm, height_cm=height_cm, artist=record_artist)
+        else:
+            result = analyze_tiba_content(content, year=year, title=title, analysis_note=analysis_note,
+                                         width_cm=width_cm, height_cm=height_cm, artist=record_artist)
+        content_analysis = {
+            "char_count": result.char_count,
+            "word_count": result.word_count,
+            "ttr": result.ttr,
+            "themes": result.themes,
+            "sentiment": result.sentiment,
+            "feature_words": result.feature_words,
+            "objects_mentioned": result.objects_mentioned,
+        }
+        theme_tags = ",".join([t["name"] for t in result.themes])
+        return record_id, content_analysis, theme_tags, year, record_artist
+
+    # 并发处理（限制5个并发）
+    semaphore = asyncio.Semaphore(5)
+
+    async def sem_process(record_id, content, year, title, analysis_note, width_cm, height_cm, record_artist=None):
+        async with semaphore:
+            return await process_record(record_id, content, year, title, analysis_note, width_cm, height_cm, record_artist)
+
+    tasks = [sem_process(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]) for r in rows]
+    results = await asyncio.gather(*tasks)
+
+    # 批量更新数据库
+    for record_id, content_analysis, theme_tags, year, record_artist in results:
+        cur.execute("""
+            UPDATE tubi_analyses
+            SET char_count = ?,
+                word_count = ?,
+                theme_tags = ?,
+                content_analysis = ?,
+                period_phase = ?
+            WHERE id = ?
+        """, (
+            content_analysis["char_count"],
+            content_analysis["word_count"],
+            theme_tags,
+            json.dumps(content_analysis, ensure_ascii=False),
+            get_period_phase(year, record_artist),
+            record_id
+        ))
+        analyzed += 1
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "analyzed_count": analyzed,
+        "artist": artist,
+        "force_reanalyze": force_reanalyze
+    }
+
+
+@router.post("/verify/{record_id}", response_model=VerifyResponse)
+async def verify_inscription(
+    record_id: int,
+    request: VerifyRequest,
+):
+    """
+    用户校对确认题跋文本
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 检查记录存在
+    cur.execute("SELECT id FROM tubi_analyses WHERE id = ?", (record_id,))
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    # 计算字数
+    char_count = len(request.inscription_content) if request.inscription_content else 0
+
+    # 更新题跋文本和校验标志
+    cur.execute("""
+        UPDATE tubi_analyses
+        SET inscription_content = ?,
+            char_count = ?,
+            inscription_verified = 1,
+            inscription_verified_at = ?,
+            updated_at = ?
+        WHERE id = ?
+    """, (
+        request.inscription_content,
+        char_count,
+        datetime.now(),
+        datetime.now(),
+        record_id
+    ))
+
+    # 更新印章内容（如果提供了）
+    if request.seal_content is not None:
+        cur.execute("""
+            UPDATE tubi_analyses
+            SET seal_content = ?,
+                seal_verified = 1,
+                seal_verified_at = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, (
+            request.seal_content,
+            datetime.now(),
+            datetime.now(),
+            record_id
+        ))
+
+    # 更新 AI 分析说明（如果提供了）
+    if request.analysis_note is not None:
+        cur.execute("""
+            UPDATE tubi_analyses
+            SET analysis_note = ?,
+                updated_at = ?
+            WHERE id = ?
+        """, (
+            request.analysis_note,
+            datetime.now(),
+            record_id
+        ))
+
+    conn.commit()
+    conn.close()
+
+    # 重新分析（新文本可能主题不同）
+    # 异步触发或让用户手动触发 batch_analyze
+
+    return VerifyResponse(
+        success=True,
+        message="Text verified and updated",
+        record_id=record_id
+    )
+
+
+@router.get("/records")
+async def get_records(
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+    period: Optional[str] = Query(default=None, description="分期筛选"),
+    verified_only: bool = Query(default=False, description="仅已校验"),
+    keyword: Optional[str] = Query(default=None, description="搜索关键词（作品名/年份/题跋文字）"),
+    annotated_status: Optional[str] = Query(default=None, description="标注状态筛选: all/unannotated/annotated"),
+    limit: int = Query(default=50, le=500),
+    offset: int = Query(default=0),
+):
+    """
+    获取记录列表（用于校对界面）
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+
+    params = list(artist_params)
+    where_clauses = [
+        artist_where,
+    ]
+
+    if period:
+        where_clauses.append("period_phase = ?")
+        params.append(period)
+
+    if verified_only:
+        where_clauses.append("inscription_verified = 1")
+
+    if keyword:
+        where_clauses.append("(title LIKE ? OR CAST(year AS TEXT) LIKE ? OR inscription_content LIKE ?)")
+        keyword_filter = f"%{keyword}%"
+        params.extend([keyword_filter, keyword_filter, keyword_filter])
+
+    if annotated_status == "annotated":
+        where_clauses.append("is_manual_annotated = 1")
+    elif annotated_status == "unannotated":
+        where_clauses.append("(is_manual_annotated = 0 OR is_manual_annotated IS NULL)")
+
+    # 在这里保存用于 COUNT 查询的 WHERE 条件和参数（在主查询添加 LIMIT/OFFSET 之前）
+    count_where = list(where_clauses)  # 复制一份，避免后续修改影响 COUNT 查询
+    count_params = list(params)         # 复制一份
+
+    sql = f"""
+        SELECT id, image_id, title, year, period_phase,
+               inscription_content, inscription_modern, inscription_verified,
+               seal_content, seal_verified,
+               filepath, thumbnail_path,
+               content_analysis, analysis_note,
+               is_manual_annotated
+        FROM tubi_analyses
+        WHERE {' AND '.join(where_clauses)}
+        ORDER BY (CASE WHEN inscription_verified = 1 THEN 1 ELSE 0 END) ASC, year, id
+        LIMIT ? OFFSET ?
+    """
+    params.extend([limit, offset])
+
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+
+    import json as _json
+    records = []
+    for row in rows:
+        content_analysis_str = row[12]
+        content_analysis = None
+        themes = []
+        sentiment = None
+        if content_analysis_str:
+            try:
+                content_analysis = _json.loads(content_analysis_str)
+                themes = [t.get("name") for t in content_analysis.get("themes", [])]
+                sentiment = content_analysis.get("sentiment", {}).get("polarity")
+            except Exception:
+                pass
+
+        records.append({
+            "id": row[0],
+            "image_id": row[1],
+            "title": row[2],
+            "year": row[3],
+            "period_phase": row[4],
+            "inscription_content": row[5],
+            "inscription_modern": row[6],
+            "inscription_verified": bool(row[7]),
+            "seal_content": row[8],
+            "seal_verified": bool(row[9]),
+            "filepath": row[10],
+            "thumbnail_path": row[11],
+            "content_analysis": content_analysis,
+            "theme_tags": themes,
+            "sentiment": sentiment,
+            "analysis_note": row[13],
+            "is_manual_annotated": bool(row[14]) if row[14] else False,
+        })
+
+    # 获取总数（使用与主查询相同的 WHERE 条件，仅去掉 LIMIT/OFFSET 参数）
+    count_sql = f"""
+        SELECT COUNT(*) FROM tubi_analyses
+        WHERE {' AND '.join(count_where)}
+    """
+    cur.execute(count_sql, count_params)
+    total = cur.fetchone()[0]
+
+    # 单独计算 verified_count, translated_count, analyzed_count（不受 limit/offset 影响）
+    # 所有三个 COUNT 查询都复用相同的 count_params（没有额外参数，因为新增条件都是硬编码的）
+    # verified_count
+    where_v = list(count_where) + ["inscription_verified = 1"]
+    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {' AND '.join(where_v)}", count_params)
+    verified_count = cur.fetchone()[0]
+
+    # translated_count
+    where_t = list(count_where) + ["inscription_modern IS NOT NULL AND LENGTH(inscription_modern) > 0"]
+    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {' AND '.join(where_t)}", count_params)
+    translated_count = cur.fetchone()[0]
+
+    # analyzed_count
+    where_a = list(count_where) + [
+        "content_analysis IS NOT NULL AND content_analysis != '' AND content_analysis != '{}'"
+    ]
+    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {' AND '.join(where_a)}", count_params)
+    analyzed_count = cur.fetchone()[0]
+
+    # annotated_count
+    where_anno = list(count_where) + ["is_manual_annotated = 1"]
+    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {' AND '.join(where_anno)}", count_params)
+    annotated_count = cur.fetchone()[0]
+
+    conn.close()
+
+    return {
+        "records": records,
+        "total": total,
+        "verified_count": verified_count,
+        "translated_count": translated_count,
+        "analyzed_count": analyzed_count,
+        "annotated_count": annotated_count,
+        "artist": artist,
+        "period": period,
+    }
+
+
+class SentimentPaintingsItem(BaseModel):
+    id: str
+    title: str
+    period: str
+    char_count: int
+    inscription_content: str
+    sentiment: str
+    confidence: float
+
+
+class SentimentPaintingsResponse(BaseModel):
+    success: bool
+    polarity: str
+    polarity_name: str
+    total: int
+    paintings: List[SentimentPaintingsItem]
+
+
+class PeriodPaintingsItem(BaseModel):
+    id: str
+    title: str
+    period: str
+    char_count: int
+    inscription_content: str
+    sentiment: str
+    confidence: float
+
+
+class PeriodPaintingsResponse(BaseModel):
+    success: bool
+    period: str
+    total: int
+    paintings: List[PeriodPaintingsItem]
+
+
+class ThemePaintingsItem(BaseModel):
+    id: str
+    title: str
+    period: str
+    char_count: int
+    inscription_content: str
+    sentiment: str
+    confidence: float
+
+
+class ThemePaintingsResponse(BaseModel):
+    success: bool
+    theme_code: int
+    theme_name: str
+    total: int
+    paintings: List[ThemePaintingsItem]
+
+
+@router.get("/theme/{theme_code}/paintings", response_model=ThemePaintingsResponse)
+async def get_theme_paintings(
+    theme_code: int,
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+    limit: int = Query(default=5, le=100),
+    offset: int = Query(default=0),
+):
+    """
+    按主题 code 获取该主题的所有画作（用于饼图点击弹窗）
+    theme_code: 1=记录创作信息, 2=阐述画理画法, 3=即景寄兴与抒怀, 4=世俗祈愿与谐趣, 5=讽喻社会与民生, 6=应酬送人与雅交
+    """
+    THEME_MAP = {
+        1: "记录创作信息",
+        2: "即景寄兴与抒怀",
+        3: "讽喻社会与民生",
+        4: "阐述画理画法",
+        5: "世俗祈愿与谐趣",
+        6: "应酬送人与雅交",
+    }
+    theme_name = THEME_MAP.get(theme_code, "未知")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+
+    params = list(artist_params)
+    cur.execute(f"""
+        SELECT image_id, title, period_phase, char_count, inscription_content, content_analysis
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+        ORDER BY id DESC
+    """, params)
+
+    paintings = []
+    for row in cur.fetchall():
+        row_image_id, title, period, char_count, inscription, content_json = row
+        try:
+            analysis = json.loads(content_json)
+            themes = analysis.get("themes", [])
+            # 找该记录中匹配指定 theme_code 的主题
+            matched = next((t for t in themes if t.get("code") == theme_code), None)
+            if matched:
+                sentiment = analysis.get("sentiment", {}).get("polarity", "neutral")
+                paintings.append(ThemePaintingsItem(
+                    id=row_image_id,
+                    title=title or f"画作 #{row_image_id}",
+                    period=period or "未分期",
+                    char_count=char_count or 0,
+                    inscription_content=inscription[:80] if inscription else "",
+                    sentiment=sentiment,
+                    confidence=matched.get("confidence", 0),
+                ))
+        except:
+            continue
+
+    conn.close()
+
+    total = len(paintings)
+    paginated = paintings[offset:offset + limit]
+
+    return ThemePaintingsResponse(
+        success=True,
+        theme_code=theme_code,
+        theme_name=theme_name,
+        total=total,
+        paintings=paginated,
+    )
+
+
+@router.get("/sentiment/{polarity}/paintings", response_model=SentimentPaintingsResponse)
+async def get_sentiment_paintings(
+    polarity: str,
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+    limit: int = Query(default=5, le=100),
+    offset: int = Query(default=0),
+):
+    """
+    按情感极性获取该极性的所有画作（用于饼图点击弹窗）
+    polarity: positive / negative / neutral
+    """
+    POLARITY_MAP = {"positive": "积极", "negative": "消极", "neutral": "中性"}
+    polarity_name = POLARITY_MAP.get(polarity, "未知")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+    params = list(artist_params)
+    cur.execute(f"""
+        SELECT image_id, title, period_phase, char_count, inscription_content, content_analysis
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+        ORDER BY id DESC
+    """, params)
+
+    paintings = []
+    for row in cur.fetchall():
+        row_image_id, title, period, char_count, inscription, content_json = row
+        try:
+            analysis = json.loads(content_json)
+            sent = analysis.get("sentiment", {})
+            if sent.get("polarity") == polarity:
+                paintings.append(SentimentPaintingsItem(
+                    id=row_image_id,
+                    title=title or f"画作 #{row_image_id}",
+                    period=period or "未分期",
+                    char_count=char_count or 0,
+                    inscription_content=inscription[:80] if inscription else "",
+                    sentiment=polarity,
+                    confidence=sent.get("intensity", 0),
+                ))
+        except:
+            continue
+
+    conn.close()
+    total = len(paintings)
+    paginated = paintings[offset:offset + limit]
+
+    return SentimentPaintingsResponse(
+        success=True,
+        polarity=polarity,
+        polarity_name=polarity_name,
+        total=total,
+        paintings=paginated,
+    )
+
+
+# ============ 尺寸统计端点 ============
+
+class SizeStatsResponse(BaseModel):
+    artist: str
+    total_count: int
+    size_distribution: List[Dict[str, Any]]  # [{"category": "小幅", "count": 50, "percentage": 30.5}, ...]
+    period_size_distribution: List[Dict[str, Any]]  # [{"period": "早期", "avg_height": 68.5, "avg_width": 45.2, "count": 20}, ...]
+    percentile_data: List[float]  # 高度百分位数，用于计算百分位排名 [10th, 25th, 50th, 75th, 90th]
+
+
+@router.get("/size-stats", response_model=SizeStatsResponse)
+async def get_size_stats(
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+):
+    """
+    获取尺寸统计数据：分布、分期平均、百分位数
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+
+    # 1. 获取所有有高度的记录
+    cur.execute(f"""
+        SELECT artwork_height_cm, artwork_width_cm, period_phase
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND artwork_height_cm IS NOT NULL
+        ORDER BY artwork_height_cm
+    """, artist_params)
+    rows = cur.fetchall()
+    total_count = len(rows)
+
+    if total_count == 0:
+        return SizeStatsResponse(
+            artist=artist,
+            total_count=0,
+            size_distribution=[],
+            period_size_distribution=[],
+            percentile_data=[]
+        )
+
+    heights = [r[0] for r in rows if r[0]]
+
+    # 2. 尺寸分组统计
+    size_cats = {"小幅": 0, "中幅": 0, "大幅": 0}
+    for h in heights:
+        if h < 70:
+            size_cats["小幅"] += 1
+        elif h <= 150:
+            size_cats["中幅"] += 1
+        else:
+            size_cats["大幅"] += 1
+
+    size_distribution = []
+    for cat, cnt in size_cats.items():
+        size_distribution.append({
+            "category": cat,
+            "count": cnt,
+            "percentage": round(cnt / total_count * 100, 1)
+        })
+
+    # 3. 分期尺寸统计
+    from collections import defaultdict
+    period_data = defaultdict(lambda: {"heights": [], "widths": [], "count": 0})
+    for h, w, p in rows:
+        period = p or "未分期"
+        period_data[period]["heights"].append(h or 0)
+        period_data[period]["widths"].append(w or 0)
+        period_data[period]["count"] += 1
+
+    period_size_distribution = []
+    period_order = ["早期", "中期", "晚期", "年代不详", "未分期"]
+    for period in period_order:
+        if period not in period_data:
+            continue
+        data = period_data[period]
+        avg_h = sum(data["heights"]) / max(len(data["heights"]), 1)
+        avg_w = sum(data["widths"]) / max(len(data["widths"]), 1)
+        period_size_distribution.append({
+            "period": period,
+            "avg_height": round(avg_h, 1),
+            "avg_width": round(avg_w, 1),
+            "count": data["count"]
+        })
+
+    # 4. 百分位数（10/25/50/75/90）
+    import math
+    percentiles = []
+    for p in [10, 25, 50, 75, 90]:
+        idx = int(math.ceil(p / 100 * len(heights))) - 1
+        percentiles.append(round(heights[max(0, min(idx, len(heights) - 1))], 1))
+
+    conn.close()
+
+    return SizeStatsResponse(
+        artist=artist,
+        total_count=total_count,
+        size_distribution=size_distribution,
+        period_size_distribution=period_size_distribution,
+        percentile_data=percentiles
+    )
+
+
+# ============ 尺寸百分位端点 ============
+
+class SizePercentileResponse(BaseModel):
+    width_cm: Optional[float]
+    height_cm: Optional[float]
+    size_category: str
+    height_percentile: Optional[float]  # 在全集中的百分位（0-100）
+    interpretation: str
+
+
+@router.get("/size-percentile", response_model=SizePercentileResponse)
+async def get_size_percentile(
+    width: Optional[float] = Query(None, description="作品宽度(cm)"),
+    height: Optional[float] = Query(None, description="作品高度(cm)"),
+    artist: str = Query(default="all", description="画家名称"),
+):
+    """
+    获取单个作品尺寸的百分位和解读
+    """
+    from app.services.inscription_content_analyzer import get_size_category, get_size_interpretation, get_period_phase
+
+    artist_where, artist_params = build_artist_condition(artist)
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 获取所有有高度的记录
+    cur.execute(f"""
+        SELECT artwork_height_cm
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND artwork_height_cm IS NOT NULL
+        ORDER BY artwork_height_cm
+    """, artist_params)
+    all_heights = [r[0] for r in cur.fetchall()]
+    conn.close()
+
+    size_category = get_size_category(width, height)
+    height_percentile = None
+
+    if height and all_heights:
+        # 计算高度百分位：有多少作品 <= 当前高度
+        count_le = sum(1 for h in all_heights if h <= height)
+        height_percentile = round(count_le / len(all_heights) * 100, 1)
+
+    interpretation = get_size_interpretation(size_category)
+
+    return SizePercentileResponse(
+        width_cm=width,
+        height_cm=height,
+        size_category=size_category,
+        height_percentile=height_percentile,
+        interpretation=interpretation
+    )
+
+
+@router.get("/period/{period}/paintings", response_model=PeriodPaintingsResponse)
+async def get_period_paintings(
+    period: str,
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+    limit: int = Query(default=5, le=100),
+    offset: int = Query(default=0),
+):
+    """
+    按分期获取该时期的所有画作（用于饼图点击弹窗）
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+    params = list(artist_params) + [period]
+    cur.execute(f"""
+        SELECT image_id, title, period_phase, char_count, inscription_content, content_analysis
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND period_phase = ?
+          AND content_analysis IS NOT NULL
+        ORDER BY id DESC
+    """, params)
+
+    paintings = []
+    for row in cur.fetchall():
+        row_image_id, title, period_phase, char_count, inscription, content_json = row
+        try:
+            analysis = json.loads(content_json)
+            sentiment = analysis.get("sentiment", {}).get("polarity", "neutral")
+            confidence = analysis.get("sentiment", {}).get("intensity", 0)
+            paintings.append(PeriodPaintingsItem(
+                id=row_image_id,
+                title=title or f"画作 #{row_image_id}",
+                period=period_phase or "未分期",
+                char_count=char_count or 0,
+                inscription_content=inscription[:80] if inscription else "",
+                sentiment=sentiment,
+                confidence=confidence,
+            ))
+        except:
+            continue
+
+    conn.close()
+    total = len(paintings)
+    paginated = paintings[offset:offset + limit]
+
+    return PeriodPaintingsResponse(
+        success=True,
+        period=period,
+        total=total,
+        paintings=paginated,
+    )
+
+
+@router.get("/report")
+async def get_report(
+    artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
+):
+    """
+    获取 Markdown 分析报告
+    """
+    from app.services.inscription_report_generator import (
+        generate_markdown_report,
+        generate_latex_tables,
+    )
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    artist_where, artist_params = build_artist_condition(artist)
+
+    # --- 统计数据（与 /stats 逻辑相同） ---
+    stats_data = {"period_stats": [], "theme_distribution": [], "sentiment_distribution": [], "layout_form_distribution": [], "feature_word_stats": [], "total_count": 0}
+
+    cur.execute(f"""
+        SELECT period_phase, COUNT(*) as cnt,
+               AVG(COALESCE(char_count, 0)) as avg_chars,
+               MAX(COALESCE(char_count, 0)) as max_chars,
+               MIN(CASE WHEN COALESCE(char_count, 0) > 0 THEN char_count END) as min_chars,
+               AVG(COALESCE(word_count, 0)) as avg_words
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0
+        GROUP BY period_phase ORDER BY period_phase
+    """, artist_params)
+
+    for row in cur.fetchall():
+        stats_data["period_stats"].append({
+            "period": row[0] or "未分期", "count": row[1],
+            "avg_char_count": round(row[2] or 0, 1), "max_char_count": row[3] or 0,
+            "min_char_count": row[4] or 0, "avg_word_count": round(row[5] or 0, 1),
+        })
+
+    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {artist_where} AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0",
+                artist_params)
+    stats_data["total_count"] = cur.fetchone()[0]
+
+    # 主题分布
+    cur.execute(f"SELECT period_phase, content_analysis FROM tubi_analyses WHERE {artist_where} AND content_analysis IS NOT NULL",
+                artist_params)
+    theme_counts, sentiment_counts, feat_words = {}, {}, []
+    for row in cur.fetchall():
+        period = row[0] or "未分期"
+        try:
+            analysis = json.loads(row[1])
+            for t in analysis.get("themes", []):
+                key = (period, t.get("name", "未知"))
+                theme_counts[key] = theme_counts.get(key, 0) + 1
+            pol = analysis.get("sentiment", {}).get("polarity", "neutral")
+            sentiment_counts[(period, pol)] = sentiment_counts.get((period, pol), 0) + 1
+        except:
+            pass
+
+    period_totals = {}
+    for (p, _), c in theme_counts.items():
+        period_totals[p] = period_totals.get(p, 0) + c
+    for (p, t), c in theme_counts.items():
+        stats_data["theme_distribution"].append({
+            "period": p, "theme_name": t, "count": c,
+            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
+        })
+    for (p, pol), c in sentiment_counts.items():
+        stats_data["sentiment_distribution"].append({
+            "period": p, "polarity": pol, "count": c,
+            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
+        })
+
+    # 布局形式分布（与 /stats 端点一致）
+    cur.execute(f"""
+        SELECT position_analysis FROM tubi_analyses
+        WHERE {artist_where}
+          AND position_analysis IS NOT NULL
+    """, artist_params)
+    form_counts_summary = {}
+    total_form_count_summary = 0
+    for row in cur.fetchall():
+        try:
+            pos = json.loads(row[0])
+            for ft in pos.get("form_types", []):
+                if ft.get("matched"):
+                    name = ft.get("name", "未知")
+                    form_counts_summary[name] = form_counts_summary.get(name, 0) + 1
+                    total_form_count_summary += 1
+        except:
+            continue
+    for name, count in sorted(form_counts_summary.items(), key=lambda x: x[1], reverse=True):
+        stats_data["layout_form_distribution"].append({
+            "form_name": name, "count": count,
+            "percentage": round(count / max(total_form_count_summary, 1) * 100, 1),
+        })
+
+    # --- 关联数据 ---
+    cur.execute(f"SELECT content_analysis, position_analysis, period_phase FROM tubi_analyses WHERE {artist_where} AND content_analysis IS NOT NULL AND position_analysis IS NOT NULL",
+                artist_params)
+    records = [{"content_analysis": r[0], "position_analysis": r[1], "period_phase": r[2]} for r in cur.fetchall()]
+    conn.close()
+
+    contingency = build_contingency_table(records)
+    chi2_result = chi_square_test(contingency)
+    corr_data = {
+        "chi2_statistic": chi2_result["chi2"],
+        "p_value": chi2_result["p_value"],
+        "significant": chi2_result["significant"],
+        "invasive_analysis": get_invasive_analysis(contingency),
+        "total_records": contingency["total_count"],
+    }
+
+    md_report = generate_markdown_report(stats_data, corr_data, artist=artist)
+    latex_tables = generate_latex_tables(stats_data, corr_data)
+
+    return {
+        "success": True,
+        "artist": artist,
+        "markdown": md_report,
+        "latex": latex_tables,
+    }
+
+
+@router.get("/export/csv")
+async def export_csv_report(
+    artist: str = Query(default="all", description="画家名称"),
+):
+    """
+    导出 CSV 报告文件
+    """
+    from fastapi.responses import FileResponse
+    from app.services.inscription_report_generator import export_csv
+
+    # 获取统计数据
+    stats_resp = await get_stats(artist=artist)
+    stats_data = stats_resp.model_dump() if hasattr(stats_resp, "model_dump") else dict(stats_resp)
+    corr_resp = await get_correlation(artist=artist)
+    corr_data = dict(corr_resp)
+
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data", "reports")
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"{artist}_题跋分析报告_{datetime.now().strftime('%Y%m%d')}.csv"
+    output_path = os.path.join(output_dir, filename)
+
+    export_csv(stats_data, corr_data, output_path)
+
+    return FileResponse(
+        output_path,
+        media_type="text/csv",
+        filename=filename,
+    )
+
+
+# ============ 翻译相关 API ============
+
+class TranslateRequest(BaseModel):
+    inscription_content: str
+
+
+class TranslateResponse(BaseModel):
+    success: bool
+    record_id: int
+    original: str
+    modern: str
+    message: str
+
+
+class AnalyzeRequest(BaseModel):
+    use_llm: bool = True
+
+
+class AnalyzeResponse(BaseModel):
+    success: bool
+    record_id: int
+    message: str
+
+
+@router.post("/translate/{record_id}", response_model=TranslateResponse)
+async def translate_single(
+    record_id: int,
+    request: TranslateRequest,
+):
+    """
+    单条记录翻译：将古文题跋翻译为现代文
+    """
+    from app.services.inscription_translation import translate_inscription
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 检查记录存在
+    cur.execute("SELECT id, inscription_content, inscription_modern FROM tubi_analyses WHERE id = ?", (record_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    # 使用请求中的内容或数据库中的内容
+    content = request.inscription_content.strip() if request.inscription_content else row[1]
+    if not content:
+        conn.close()
+        raise HTTPException(status_code=400, detail="题跋内容为空")
+
+    # 调用翻译服务
+    result = await translate_inscription(content)
+
+    if not result.success:
+        conn.close()
+        raise HTTPException(status_code=500, detail=result.error)
+
+    # 更新数据库
+    cur.execute("""
+        UPDATE tubi_analyses
+        SET inscription_modern = ?,
+            updated_at = ?
+        WHERE id = ?
+    """, (result.modern, datetime.now(), record_id))
+
+    conn.commit()
+    conn.close()
+
+    return TranslateResponse(
+        success=True,
+        record_id=record_id,
+        original=result.original,
+        modern=result.modern,
+        message="翻译完成"
+    )
+
+
+@router.post("/analyze/{record_id}", response_model=AnalyzeResponse)
+async def analyze_single(
+    record_id: int,
+    request: AnalyzeRequest = AnalyzeRequest(),
+):
+    """
+    单条记录重新分析：重新计算题跋内容分析（主题/情感/词频等）
+    """
+    import json
+    from app.services.inscription_content_analyzer import (
+        analyze_tiba_content,
+        analyze_tiba_content_dual,
+        get_period_phase
+    )
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 查询记录
+    cur.execute("""
+        SELECT id, inscription_content, year, title, analysis_note,
+               artwork_width_cm, artwork_height_cm, artist
+        FROM tubi_analyses
+        WHERE id = ?
+    """, (record_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    record_id_db, content, year, title, analysis_note, width_cm, height_cm, record_artist = row
+
+    if not content or len(content.strip()) == 0:
+        conn.close()
+        raise HTTPException(status_code=400, detail="题跋内容为空")
+
+    # 调用分析服务
+    if request.use_llm:
+        result = await analyze_tiba_content_dual(
+            content, year=year, title=title, analysis_note=analysis_note,
+            width_cm=width_cm, height_cm=height_cm, artist=record_artist
+        )
+    else:
+        result = analyze_tiba_content(
+            content, year=year, title=title, analysis_note=analysis_note,
+            width_cm=width_cm, height_cm=height_cm, artist=record_artist
+        )
+
+    content_analysis = {
+        "char_count": result.char_count,
+        "word_count": result.word_count,
+        "ttr": result.ttr,
+        "themes": result.themes,
+        "sentiment": result.sentiment,
+        "feature_words": result.feature_words,
+        "objects_mentioned": result.objects_mentioned,
+    }
+    theme_tags = ",".join([t["name"] for t in result.themes])
+
+    # 更新数据库
+    cur.execute("""
+        UPDATE tubi_analyses
+        SET char_count = ?,
+            word_count = ?,
+            theme_tags = ?,
+            content_analysis = ?,
+            period_phase = ?,
+            updated_at = ?
+        WHERE id = ?
+    """, (
+        content_analysis["char_count"],
+        content_analysis["word_count"],
+        theme_tags,
+        json.dumps(content_analysis, ensure_ascii=False),
+        get_period_phase(year, record_artist),
+        datetime.now(),
+        record_id_db
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return AnalyzeResponse(
+        success=True,
+        record_id=record_id_db,
+        message="分析完成"
+    )
+
+
+@router.post("/translate/batch")
+async def translate_batch(
+    artist: str = Query(default="all", description="画家名称"),
+    force_retranslate: bool = Query(default=False, description="强制重新翻译已翻译记录"),
+):
+    """
+    批量翻译：对已校对但未翻译的记录进行翻译
+    """
+    from app.services.inscription_translation import translate_inscription
+
+    artist_where, artist_params = build_artist_condition(artist)
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 获取待翻译记录（已校验但未翻译）
+    if force_retranslate:
+        cur.execute(f"""
+            SELECT id, inscription_content
+            FROM tubi_analyses
+            WHERE {artist_where}
+              AND inscription_content IS NOT NULL
+              AND LENGTH(inscription_content) > 0
+              AND inscription_verified = 1
+        """, artist_params)
+    else:
+        cur.execute(f"""
+            SELECT id, inscription_content
+            FROM tubi_analyses
+            WHERE {artist_where}
+              AND inscription_content IS NOT NULL
+              AND LENGTH(inscription_content) > 0
+              AND inscription_verified = 1
+              AND (inscription_modern IS NULL OR LENGTH(inscription_modern) = 0)
+        """, artist_params)
+
+    rows = cur.fetchall()
+    translated = 0
+    failed = 0
+
+    for row in rows:
+        record_id, content = row
+
+        # 调用翻译服务
+        result = await translate_inscription(content)
+
+        if result.success:
+            cur.execute("""
+                UPDATE tubi_analyses
+                SET inscription_modern = ?,
+                    updated_at = ?
+                WHERE id = ?
+            """, (result.modern, datetime.now(), record_id))
+            translated += 1
+        else:
+            failed += 1
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "translated_count": translated,
+        "failed_count": failed,
+        "total": len(rows),
+        "artist": artist,
+        "force_retranslate": force_retranslate
+    }
+
+
+@router.post("/translate/batch/stream")
+async def translate_batch_stream(
+    artist: str = Query(default="all", description="画家名称"),
+    force_retranslate: bool = Query(default=False, description="强制重新翻译已翻译记录"),
+):
+    """
+    批量翻译（SSE流式）：对已校对但未翻译的记录进行翻译，实时推送进度
+    """
+    from app.services.inscription_translation import translate_inscription
+    import asyncio
+    import logging
+    logger = logging.getLogger(__name__)
+
+    artist_where, artist_params = build_artist_condition(artist)
+
+    async def event_generator():
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # 获取待翻译记录（已校验但未翻译）
+        if force_retranslate:
+            cur.execute(f"""
+                SELECT id, inscription_content
+                FROM tubi_analyses
+                WHERE {artist_where}
+                  AND inscription_content IS NOT NULL
+                  AND LENGTH(inscription_content) > 0
+                  AND inscription_verified = 1
+            """, artist_params)
+        else:
+            cur.execute(f"""
+                SELECT id, inscription_content
+                FROM tubi_analyses
+                WHERE {artist_where}
+                  AND inscription_content IS NOT NULL
+                  AND LENGTH(inscription_content) > 0
+                  AND inscription_verified = 1
+                  AND (inscription_modern IS NULL OR LENGTH(inscription_modern) = 0)
+            """, artist_params)
+
+        rows = cur.fetchall()
+        total = len(rows)
+
+        # 先发送总条数
+        yield f'data: {{"type": "start", "total": {total}, "artist": "{artist}"}}\n\n'
+
+        translated = 0
+        failed = 0
+
+        for idx, row in enumerate(rows):
+            record_id, content = row
+
+            # 发送正在处理状态
+            yield f'data: {{"type": "progress", "current": {idx + 1}, "total": {total}, "status": "translating", "record_id": {record_id}}}\n\n'
+
+            # 调用翻译服务
+            result = await translate_inscription(content)
+            
+            if not result.success:
+                logger.error(f"翻译失败 record_id={record_id}: {result.error}")
+
+            if result.success:
+                cur.execute("""
+                    UPDATE tubi_analyses
+                    SET inscription_modern = ?,
+                        updated_at = ?
+                    WHERE id = ?
+                """, (result.modern, datetime.now(), record_id))
+                conn.commit()  # 每条成功后立即提交
+                translated += 1
+                yield f'data: {{"type": "record_done", "current": {idx + 1}, "total": {total}, "record_id": {record_id}, "success": true}}\n\n'
+            else:
+                failed += 1
+                error_msg = str(result.error)[:100].replace('"', '\\"')
+                yield f'data: {{"type": "record_done", "current": {idx + 1}, "total": {total}, "record_id": {record_id}, "success": false, "error": "{error_msg}"}}\n\n'
+
+            # 每条之间稍微喘息一下，避免阻塞
+            await asyncio.sleep(0.05)
+
+        conn.close()
+
+        # 发送完成状态
+        yield f'data: {{"type": "done", "total": {total}, "translated": {translated}, "failed": {failed}}}\n\n'
+
+    from starlette.responses import StreamingResponse
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+        }
+    )
+
+
+# ============ 主题情感重新分类 API（SSE 流式） ============
+THEMES_MAP = {
+    1: "记录创作信息",
+    2: "即景寄兴与抒怀",
+    3: "讽喻社会与民生",
+    4: "阐述画理画法",
+    5: "世俗祈愿与谐趣",
+    6: "应酬送人与雅交",
+}
+
+THEME_PROMPT_TEMPLATE = """你是一位中国古代书画题跋研究专家。请根据以下题跋内容，严格判断它属于哪个主题类别。
+
+【主题类别定义】
+1. 记录创作信息：题跋记录作画时间、地点、画家自述创作经过，或临摹前人画作、题写画名等
+2. 即景寄兴与抒怀：题跋描写眼前景物、表达当下感怀、抒发诗情画意（纯粹的写景抒情）
+3. 讽喻社会与民生：**重点关注**——包括讽刺官场腐败、揭露官吏欺压、反映民生疾苦（苛捐杂税、农民之苦）、文字狱风险（"夺朱"类敏感词）、市场冷遇（卖画艰难）、感叹世态炎凉/人心险恶（"世味"、"防辣"等）、借物讽世。表面写景但实质含社会批判的作品也归入此类
+4. 阐述画理画法：题跋论说绘画技法、笔墨道理、师承渊源、雅俗之辨
+5. 世俗祈愿与谐趣：题跋含有吉祥祝福（福寿富贵）、玩笑戏语、或世俗应景之词
+6. 应酬送人与雅交：题跋提及为谁而作、请人指教、敬请雅正、赠送友人等应酬交往内容
+
+【判定规则】
+- **必须返回至少2个主题**，除非题跋少于5个字（这类极短题跋只归"记录创作信息"）
+- 按相关程度排序，但讽喻社会与民生是主导时要排在前面
+- 置信度：高度相关=0.9，中度=0.7，低度=0.5
+
+【输出格式】只返回JSON，不要其他文字：
+{{"themes": [{{"code": 1, "name": "记录创作信息", "confidence": 0.9}}, {{"code": 2, "name": "即景寄兴与抒怀", "confidence": 0.7}}], "reasoning": "简要说明"}}
+
+【题跋内容】
+{inscription}
+
+【输出】"""
+
+SENTIMENT_PROMPT_TEMPLATE = """你是一位中国古代书画题跋情感分析专家。请分析以下题跋的情感倾向。
+
+【情感分类】
+- positive（积极）：表达喜悦、畅快、热爱自然、田园雅兴、祝福吉祥等**明显正面**情绪
+- negative（消极）：表达悲伤、愤怒、压抑、无奈、不平、讽刺、讥诮、困苦、世态炎凉、怀才不遇、理想受阻等**任何负面或批判性**情绪
+- neutral（中性）：仅陈述作画事实（如记录时间地点）、或纯技法描述，无明显情感倾向
+
+【判定规则】只要题跋中有任何负面情绪的蛛丝马迹，就必须判为 negative：
+- 叹、悲、愁、苦、恼、愤、憾、哀 → negative
+- 世味、世情、防辣、人情冷暖 → negative
+- 卖画、利市、佣儿、租税、催租、老、残、衰、败、无力 → negative
+- 讽刺、讥诮、无奈、困 → negative
+
+只有明显正面情绪（喜悦、祝福、田园雅兴）才判 positive，其他都判 neutral。
+
+【输出格式】只返回JSON，不要其他文字：
+{{"polarity": "negative", "reasoning": "简要说明"}}
+
+【题跋内容】
+{inscription}
+
+【输出】"""
+
+
+def call_llm_json(prompt: str, model: str, api_key: str, base_url: str) -> dict:
+    """调用 LLM 并解析 JSON 响应"""
+    import httpx
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "你是一位严谨的中国古代书画题跋研究专家。"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 512
+    }
+    with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+        resp = client.post(f"{base_url}/chat/completions", headers=headers, json=payload)
+        resp.raise_for_status()
+        result = resp.json()
+        content = result["choices"][0]["message"]["content"].strip()
+        if content.startswith("```"):
+            lines = content.split("\n")
+            content = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
+        return json.loads(content)
+
+
+@router.post("/reclassify/stream")
+async def reclassify_themes_sentiment(
+    artist: str = Query(default="all", description="画家名称"),
+    force_reanalyze: bool = Query(default=False, description="强制重新分类所有记录"),
+):
+    """
+    批量重新分类主题和情感（SSE流式），使用v3专家规则
+    """
+    import asyncio as _asyncio
+    from starlette.responses import StreamingResponse
+    from app.services.inscription_content_analyzer import llm_theme_classification_v3, llm_sentiment_analysis_v3, classify_inscription_v4, llm_analyze_combined, detect_sentiment_theme_conflict, llm_retry_with_conflict
+
+    artist_where, artist_params = build_artist_condition(artist)
+
+    async def event_generator():
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # 增量模式：只处理已校对、已翻译、但未分析的记录
+            if force_reanalyze:
+                extra_where = ""
+            else:
+                extra_where = """
+                  AND inscription_verified = 1
+                  AND inscription_modern IS NOT NULL
+                  AND LENGTH(inscription_modern) > 0
+                  AND (content_analysis IS NULL
+                       OR content_analysis = ''
+                       OR content_analysis = '{}')"""
+
+            cur.execute(f"""
+                SELECT id, inscription_content, content_analysis, year, title, analysis_note,
+                       artwork_width_cm, artwork_height_cm, artist
+                FROM tubi_analyses
+                WHERE {artist_where}
+                  AND inscription_content IS NOT NULL
+                  AND LENGTH(inscription_content) > 0
+                {extra_where}
+            """, artist_params)
+            rows = cur.fetchall()
+            total = len(rows)
+
+            yield f'data: {{"type": "start", "total": {total}, "artist": "{artist}"}}\n\n'
+
+            updated = 0
+            errors = 0
+
+            for idx, (record_id, content, old_ca, year, title, analysis_note, width_cm, height_cm, record_artist) in enumerate(rows):
+                yield f'data: {{"type": "progress", "current": {idx + 1}, "total": {total}, "status": "analyzing", "record_id": {record_id}}}\n\n'
+
+                try:
+                    # 步骤1：调用组合LLM分析（一次API同时返回主题+情感）
+                    llm_result = await llm_analyze_combined(content.strip(), artist=record_artist)
+                    
+                    if not llm_result.get("success"):
+                        # LLM调用失败时，回退到v4本地规则
+                        v4_result = classify_inscription_v4(content.strip(), year=year, title=title, analysis_note=analysis_note,
+                                                             width_cm=width_cm, height_cm=height_cm, artist=record_artist)
+                        themes = v4_result["themes"]
+                        sentiment = v4_result["sentiment"]
+                        sentiment["fallback"] = True
+                        sentiment["fallback_reason"] = llm_result.get("error", "LLM调用失败")
+                        retry_used = False
+                    else:
+                        # LLM调用成功，检查是否有矛盾
+                        llm_themes = llm_result.get("themes", [])
+                        llm_sentiment = llm_result.get("sentiment", {})
+                        
+                        # 步骤2：检测主题和情感的矛盾
+                        has_conflict, conflict_desc = detect_sentiment_theme_conflict(
+                            content.strip(), llm_themes, llm_sentiment
+                        )
+                        
+                        if has_conflict:
+                            # 步骤3：矛盾时重试
+                            retry_result = await llm_retry_with_conflict(
+                                content.strip(), llm_themes, llm_sentiment, conflict_desc
+                            )
+                            if retry_result.get("success"):
+                                themes = retry_result.get("themes", llm_themes)
+                                sentiment = retry_result.get("sentiment", llm_sentiment)
+                                sentiment["retry_applied"] = True
+                                sentiment["conflict_detected"] = True
+                                sentiment["conflict_description"] = conflict_desc
+                                sentiment["retry_explanation"] = retry_result.get("explanation", "")
+                            else:
+                                # 重试失败，采用第一次结果但标记有矛盾
+                                themes = llm_themes
+                                sentiment = llm_sentiment
+                                sentiment["retry_failed"] = True
+                                sentiment["conflict_detected"] = True
+                                sentiment["conflict_description"] = conflict_desc
+                        else:
+                            themes = llm_themes
+                            sentiment = llm_sentiment
+                        
+                        retry_used = llm_result.get("retry_used", False)
+                    
+                    # v4信号作为参考保存
+                    v4_result = classify_inscription_v4(content.strip(), year=year, title=title, analysis_note=analysis_note,
+                                                         width_cm=width_cm, height_cm=height_cm, artist=record_artist)
+
+                    # 验证themes
+                    valid_themes = []
+                    for t in themes:
+                        if isinstance(t, dict) and "code" in t and 1 <= t["code"] <= 6:
+                            valid_themes.append({
+                                "code": t["code"],
+                                "name": THEMES_MAP.get(t["code"], "未知"),
+                                "confidence": min(float(t.get("confidence", 0.5)), 0.95),
+                            })
+
+                    if not valid_themes:
+                        valid_themes = [{"code": 1, "name": "记录创作信息", "confidence": 0.9}]
+
+                    valid_themes.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+                    theme_tags = ",".join([f"{t['name']}:{t['confidence']}" for t in valid_themes])
+
+                    polarity = sentiment.get("polarity", "neutral")
+                    if polarity not in ("positive", "negative", "neutral"):
+                        polarity = "neutral"
+                    
+                    # 情感强度
+                    intensity = sentiment.get("intensity", 0.5)
+                    if isinstance(intensity, (int, float)) and intensity > 1:
+                        intensity = min(intensity / 3, 1.0)
+                    
+                    final_sentiment = {
+                        "polarity": polarity,
+                        "intensity": round(float(intensity), 2),
+                        "reasoning": sentiment.get("reasoning", ""),
+                    }
+                    
+                    # 添加调试信息
+                    if sentiment.get("retry_applied"):
+                        final_sentiment["retry_applied"] = True
+                    if sentiment.get("conflict_detected"):
+                        final_sentiment["conflict_detected"] = True
+                        final_sentiment["conflict_description"] = sentiment.get("conflict_description", "")
+
+                    old_data = json.loads(old_ca) if old_ca else {}
+                    old_data["themes"] = valid_themes
+                    old_data["sentiment"] = final_sentiment
+                    # 保存v4信号作为参考
+                    if "feature_words" not in old_data:
+                        old_data["feature_words"] = {}
+                    old_data["feature_words"]["v4_signals"] = v4_result.get("signals", {})
+                    old_data["feature_words"]["v4_special_rules"] = v4_result.get("special_rules", [])
+
+                    # 计算分期（使用画家出生年份动态计算）
+                    period_phase_val = get_period_phase(year, record_artist)
+                    cur.execute("""
+                        UPDATE tubi_analyses
+                        SET content_analysis = ?, theme_tags = ?, period_phase = ?, updated_at = ?
+                        WHERE id = ?
+                    """, (json.dumps(old_data, ensure_ascii=False), theme_tags, period_phase_val, datetime.now(), record_id))
+                    conn.commit()
+                    updated += 1
+
+                    yield f'data: {{"type": "record_done", "current": {idx + 1}, "total": {total}, "record_id": {record_id}, "success": true, "codes": "{"/".join(str(t["code"]) for t in valid_themes)}", "polarity": "{polarity}"}}\n\n'
+
+                except Exception as e:
+                    errors += 1
+                    yield f'data: {{"type": "record_done", "current": {idx + 1}, "total": {total}, "record_id": {record_id}, "success": false, "error": "{str(e)[:80]}"}}\n\n'
+
+                await _asyncio.sleep(0.05)
+
+            conn.close()
+
+            yield f'data: {{"type": "done", "total": {total}, "analyzed_count": {updated}, "errors": {errors}}}\n\n'
+
+        except Exception as e:
+            import traceback as _tb
+            yield f'data: {{"type": "error", "message": "{str(e)[:100]}", "traceback": "{_tb.format_exc()[:200].replace(chr(10), " ")}"}}\n\n'
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+# ============ AI 总结 API ============
+
+class SummaryRequest(BaseModel):
+    artist: str = "all"
+    force_regenerate: bool = False  # 强制重新生成
+
+
+class SummaryResponse(BaseModel):
+    success: bool
+    summary: str
+    error: Optional[str] = None
+    cached: bool = False  # 是否来自缓存
+    generated_at: Optional[str] = None  # 生成时间
+
+
+@router.post("/summary", response_model=SummaryResponse)
+async def generate_summary(
+    request: SummaryRequest,
+):
+    """
+    基于当前统计数据，使用 Qwen3.6 生成专业的学术分析总结
+    总结显示在大数据分析页面顶部
+    首次生成后自动缓存，后续直接读取缓存
+    支持多画家，根据 artist 参数自动选择对应的背景上下文
+    """
+    from app.services.inscription_summary_generator import generate_summary
+    import time
+
+    artist_where, artist_params = build_artist_condition(request.artist)
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 确保表存在
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS analysis_summary (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            artist TEXT NOT NULL UNIQUE,
+            summary TEXT NOT NULL,
+            stats_snapshot TEXT,
+            record_count INTEGER DEFAULT 0,
+            generated_at TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+
+    # 先查缓存（force_regenerate=False 时直接返回缓存）
+    if not request.force_regenerate:
+        cur.execute(
+            "SELECT summary, generated_at FROM analysis_summary WHERE artist = ?",
+            (request.artist,)
+        )
+        row = cur.fetchone()
+        if row:
+            conn.close()
+            return SummaryResponse(
+                success=True,
+                summary=row[0],
+                cached=True,
+                generated_at=row[1],
+            )
+
+    # 准备重新生成，重新获取连接
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 获取统计数据（与 /stats 逻辑相同）
+    import json
+    stats_data = {"period_stats": [], "theme_distribution": [], "sentiment_distribution": [], "feature_word_stats": [], "total_count": 0}
+
+    cur.execute(f"""
+        SELECT period_phase, COUNT(*) as cnt,
+               AVG(COALESCE(char_count, 0)) as avg_chars,
+               MAX(COALESCE(char_count, 0)) as max_chars,
+               MIN(CASE WHEN COALESCE(char_count, 0) > 0 THEN char_count END) as min_chars,
+               AVG(COALESCE(word_count, 0)) as avg_words
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0
+        GROUP BY period_phase ORDER BY period_phase
+    """, artist_params)
+
+    for row in cur.fetchall():
+        stats_data["period_stats"].append({
+            "period": row[0] or "未分期", "count": row[1],
+            "avg_char_count": round(row[2] or 0, 1), "max_char_count": row[3] or 0,
+            "min_char_count": row[4] or 0, "avg_word_count": round(row[5] or 0, 1),
+        })
+
+    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {artist_where} AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0",
+                artist_params)
+    stats_data["total_count"] = cur.fetchone()[0]
+
+    # 主题分布
+    cur.execute(f"SELECT period_phase, content_analysis FROM tubi_analyses WHERE {artist_where} AND content_analysis IS NOT NULL",
+                artist_params)
+    theme_counts, sent_counts, feat_words = {}, {}, []
+    for row in cur.fetchall():
+        period = row[0] or "未分期"
+        try:
+            analysis = json.loads(row[1])
+            for t in analysis.get("themes", []):
+                key = (period, t.get("name", "未知"))
+                theme_counts[key] = theme_counts.get(key, 0) + 1
+            pol = analysis.get("sentiment", {}).get("polarity", "neutral")
+            sent_counts[(period, pol)] = sent_counts.get((period, pol), 0) + 1
+            feat_words.extend([
+                {"dimension": dim, "word": w, "count": 1, "period": period}
+                for dim, words in analysis.get("feature_words", {}).items()
+                for w in words
+            ])
+        except:
+            pass
+
+    period_totals = {}
+    for (p, _), c in theme_counts.items():
+        period_totals[p] = period_totals.get(p, 0) + c
+    for (p, t), c in theme_counts.items():
+        stats_data["theme_distribution"].append({
+            "period": p, "theme_name": t, "count": c,
+            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
+        })
+    for (p, pol), c in sent_counts.items():
+        stats_data["sentiment_distribution"].append({
+            "period": p, "polarity": pol, "count": c,
+            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
+        })
+    stats_data["feature_word_stats"] = feat_words[:200]  # 限制数量
+
+    # 关联数据
+    corr_data = None
+    cur.execute(f"SELECT content_analysis, position_analysis, period_phase FROM tubi_analyses WHERE {artist_where} AND content_analysis IS NOT NULL AND position_analysis IS NOT NULL",
+                artist_params)
+    _records = []
+    for r in cur.fetchall():
+        try:
+            pos = json.loads(r[1]) if r[1] else {}
+        except Exception:
+            pos = {}
+        _records.append({"content_analysis": r[0], "position_analysis": pos, "period_phase": r[2]})
+
+    if _records:
+        contingency = build_contingency_table(_records)
+        chi2_result = chi_square_test(contingency)
+        corr_data = {
+            "chi2_statistic": chi2_result["chi2"],
+            "p_value": chi2_result["p_value"],
+            "significant": chi2_result["significant"],
+            "highly_significant": chi2_result.get("highly_significant", False),
+        }
+
+    # 调用 AI 总结生成
+    result = await generate_summary(stats_data, corr_data, artist=request.artist)
+
+    if result.success:
+        # 保存到数据库（覆盖旧记录）
+        import json
+        generated_at = datetime.now().isoformat()
+        cur.execute("""
+            INSERT INTO analysis_summary (artist, summary, stats_snapshot, record_count, generated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(artist) DO UPDATE SET
+                summary = excluded.summary,
+                stats_snapshot = excluded.stats_snapshot,
+                record_count = excluded.record_count,
+                generated_at = excluded.generated_at
+        """, (
+            request.artist,
+            result.summary,
+            json.dumps({"total_count": stats_data["total_count"], "periods": len(stats_data["period_stats"])}, ensure_ascii=False),
+            stats_data["total_count"],
+            generated_at,
+        ))
+        conn.commit()
+
+    conn.close()
+    return SummaryResponse(
+        success=result.success,
+        summary=result.summary,
+        error=result.error,
+        cached=False,
+        generated_at=datetime.now().isoformat() if result.success else None,
+    )
+
+
+# ============ AI 深度洞察报告 API ============
+
+class InsightRequest(BaseModel):
+    artist: str = "all"
+    force_regenerate: bool = False
+
+
+class InsightResponse(BaseModel):
+    success: bool
+    report: str
+    sections: Optional[Dict[str, str]] = None
+    error: Optional[str] = None
+
+
+@router.post("/insight", response_model=InsightResponse)
+async def generate_insight_report(
+    request: InsightRequest,
+):
+    """
+    基于多维度统计数据，生成题跋艺术的深度洞察分析报告。
+    包含四大板块：空间革命量化印证、文本语义网络、印章符号学、综合画像与矛盾调和。
+    支持多画家，根据 artist 参数自动选择对应的背景上下文。
+    """
+    from app.services.insight_generator import generate_insight
+
+    artist_where, artist_params = build_artist_condition(request.artist)
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # ---- 收集 stats_data（与 /summary 逻辑相同） ----
+    import json as _json
+    stats_data = {"period_stats": [], "theme_distribution": [], "sentiment_distribution": [],
+                   "feature_word_stats": [], "layout_form_distribution": [], "total_count": 0}
+
+    cur.execute(f"""
+        SELECT period_phase, COUNT(*) as cnt,
+               AVG(COALESCE(char_count, 0)) as avg_chars,
+               MAX(COALESCE(char_count, 0)) as max_chars,
+               MIN(CASE WHEN COALESCE(char_count, 0) > 0 THEN char_count END) as min_chars,
+               AVG(COALESCE(word_count, 0)) as avg_words
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0
+        GROUP BY period_phase ORDER BY period_phase
+    """, artist_params)
+
+    for row in cur.fetchall():
+        stats_data["period_stats"].append({
+            "period": row[0] or "未分期", "count": row[1],
+            "avg_char_count": round(row[2] or 0, 1), "max_char_count": row[3] or 0,
+            "min_char_count": row[4] or 0, "avg_word_count": round(row[5] or 0, 1),
+        })
+
+    cur.execute(f"""
+        SELECT COUNT(*) FROM tubi_analyses
+        WHERE {artist_where}
+          AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0
+    """, artist_params)
+    stats_data["total_count"] = cur.fetchone()[0]
+
+    # 主题分布
+    cur.execute(f"""
+        SELECT period_phase, content_analysis FROM tubi_analyses
+        WHERE {artist_where} AND content_analysis IS NOT NULL
+    """, artist_params)
+    theme_counts, sent_counts, feat_words = {}, {}, []
+    for row in cur.fetchall():
+        period = row[0] or "未分期"
+        try:
+            analysis = _json.loads(row[1])
+            for t in analysis.get("themes", []):
+                key = (period, t.get("name", "未知"))
+                theme_counts[key] = theme_counts.get(key, 0) + 1
+            pol = analysis.get("sentiment", {}).get("polarity", "neutral")
+            sent_counts[(period, pol)] = sent_counts.get((period, pol), 0) + 1
+            feat_words.extend([
+                {"dimension": dim, "word": w, "count": 1, "period": period}
+                for dim, words in analysis.get("feature_words", {}).items()
+                for w in words
+            ])
+        except:
+            pass
+
+    period_totals = {}
+    for (p, _), c in theme_counts.items():
+        period_totals[p] = period_totals.get(p, 0) + c
+    for (p, t), c in theme_counts.items():
+        stats_data["theme_distribution"].append({
+            "period": p, "theme_name": t, "count": c,
+            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
+        })
+    for (p, pol), c in sent_counts.items():
+        stats_data["sentiment_distribution"].append({
+            "period": p, "polarity": pol, "count": c,
+            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
+        })
+    stats_data["feature_word_stats"] = feat_words[:300]
+
+    # 布局形式分布
+    cur.execute(f"""
+        SELECT position_analysis FROM tubi_analyses
+        WHERE {artist_where} AND position_analysis IS NOT NULL
+    """, artist_params)
+    form_counts = {}
+    total_form = 0
+    for row in cur.fetchall():
+        try:
+            pos = _json.loads(row[0])
+            for ft in pos.get("form_types", []):
+                if ft.get("matched"):
+                    name = ft.get("name", "未知")
+                    form_counts[name] = form_counts.get(name, 0) + 1
+                    total_form += 1
+        except:
+            pass
+    for name, count in sorted(form_counts.items(), key=lambda x: x[1], reverse=True):
+        stats_data["layout_form_distribution"].append({
+            "form_name": name, "count": count,
+            "percentage": round(count / max(total_form, 1) * 100, 1),
+        })
+
+    # ---- 收集原始记录（含面积数据、印章等） ----
+    cur.execute(f"""
+        SELECT id, title, year, period_phase, inscription_content, inscription_modern,
+               seal_content, content_analysis, position_analysis,
+               inscription_percent, painting_percent, blank_percent
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+        LIMIT 300
+    """, artist_params)
+
+    records = []
+    for row in cur.fetchall():
+        content_json = row[7]
+        pos_json = row[8]
+        try:
+            ca = _json.loads(content_json) if content_json else {}
+        except:
+            ca = {}
+        try:
+            pa = _json.loads(pos_json) if pos_json else {}
+        except:
+            pa = {}
+        records.append({
+            "id": row[0],
+            "title": row[1],
+            "year": row[2],
+            "period_phase": row[3],
+            "inscription_content": row[4],
+            "inscription_modern": row[5],
+            "seal_content": row[6],
+            "content_analysis": ca,
+            "position_analysis": pa,
+            "inscription_percent": row[9],
+            "painting_percent": row[10],
+            "blank_percent": row[11],
+        })
+
+    # ---- 关联数据 ----
+    corr_data = None
+    cur.execute(f"""
+        SELECT content_analysis, position_analysis, period_phase
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL AND position_analysis IS NOT NULL
+    """, artist_params)
+    _recs_for_corr = []
+    for r in cur.fetchall():
+        try:
+            pos = _json.loads(r[1]) if r[1] else {}
+        except:
+            pos = {}
+        _recs_for_corr.append({"content_analysis": r[0], "position_analysis": pos, "period_phase": r[2]})
+
+    if _recs_for_corr:
+        contingency = build_contingency_table(_recs_for_corr)
+        chi2_result = chi_square_test(contingency)
+        inv_analysis = get_invasive_analysis(contingency)
+        corr_data = {
+            "chi2_statistic": chi2_result["chi2"],
+            "p_value": chi2_result["p_value"],
+            "significant": chi2_result["significant"],
+            "invasive_analysis": inv_analysis,
+        }
+
+    conn.close()
+
+    # ---- 调用 AI 生成洞察报告 ----
+    result = await generate_insight(stats_data, corr_data, records, artist=request.artist)
+
+    return InsightResponse(
+        success=result.success,
+        report=result.report,
+        sections=result.sections,
+        error=result.error,
+    )
