@@ -937,13 +937,13 @@ defineExpose({
 <style scoped>
 /* 现代文翻译样式 */
 .inscription-translation {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 10px;
+  padding-top: 10px;
 }
 .translation-divider {
   height: 1px;
   background: linear-gradient(to right, transparent, #e8e6dc 20%, #e8e6dc 80%, transparent);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .translation-label {
   margin-bottom: 8px;
@@ -953,8 +953,8 @@ defineExpose({
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+  gap: 4px;
+  padding: 2px 0;
 }
 .clickable-tag-wrapper:hover {
   transform: translateY(-1px);
@@ -965,13 +965,13 @@ defineExpose({
 .clickable-tag { white-space: nowrap; }
 .expand-icon {
   transition: transform 0.2s ease;
-  font-size: 14px;
+  font-size: 12px;
   color: #5a8a4a;
   flex-shrink: 0;
 }
 .expand-icon.rotated { transform: rotate(180deg); }
 .card-title-artwork {
-  font-size: 18px;
+  font-size: 15px;
   color: #333;
   font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-weight: 500;
@@ -993,10 +993,10 @@ defineExpose({
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
+  gap: 1px;
+  padding: 6px 10px;
   background: #f8f9fa;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: all 0.2s ease;
 }
 .info-item:hover {
@@ -1004,24 +1004,24 @@ defineExpose({
   transform: translateY(-1px);
 }
 .info-label {
-  font-size: 11px;
+  font-size: 10px;
   color: #6b7280;
   font-weight: 500;
   letter-spacing: 0.02em;
 }
 .info-value {
-  font-size: 12px;
+  font-size: 11px;
   color: #111827;
   font-weight: 500;
   line-height: 1.3;
 }
 .translation-content {
-  font-size: 14px;
-  line-height: 1.9;
+  font-size: 13px;
+  line-height: 1.8;
   color: #3d3d3a;
   background: #fffef8;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
   border: 1px solid #ede9de;
   white-space: pre-wrap;
 }
@@ -1031,12 +1031,12 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   text-align: left;
 }
 .btn-annotate {
-  font-size: 12px;
-  padding: 4px 12px;
+  font-size: 11px;
+  padding: 3px 10px;
 }
 
 /* 面积示意图容器（用于定位打勾徽章） */
@@ -1049,25 +1049,25 @@ defineExpose({
 /* 手动标注打勾徽章 */
 .manual-annotated-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
   background: rgba(76, 175, 80, 0.9);
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 10;
 }
 
 /* 册页导航样式 */
 .album-navigation {
-  margin-top: 12px;
-  padding: 12px;
+  margin-top: 8px;
+  padding: 8px;
   background: #faf8f3;
   border-radius: 8px;
   border: 1px solid #ede9de;
@@ -1076,22 +1076,22 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 .album-nav-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #c96442;
 }
 .album-nav-count {
-  font-size: 12px;
+  font-size: 11px;
   color: #8a8a7a;
 }
 .album-nav-thumbnails {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   overflow-x: auto;
-  padding: 4px 0;
+  padding: 3px 0;
   scroll-behavior: smooth;
 }
 .album-nav-thumbnails::-webkit-scrollbar { height: 4px; }
@@ -1101,9 +1101,9 @@ defineExpose({
 }
 .album-nav-thumbnail {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 5px;
   border: 2px solid transparent;
   cursor: pointer;
   overflow: hidden;
@@ -1136,18 +1136,18 @@ defineExpose({
 .seal-tags-display {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .seal-display-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
   background: #f5f3ee;
   border: 1px solid #e8e5de;
-  font-size: 13px;
+  font-size: 12px;
   color: #5a5a4e;
   cursor: default;
   transition: all 0.15s;
