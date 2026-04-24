@@ -99,7 +99,7 @@
     </el-dialog>
 
     <!-- 关联作品弹窗 -->
-    <el-dialog v-model="showArtworksDialog" :title="`使用「${artworksSealName}」的作品`" width="640px" class="claude-dialog">
+    <el-dialog v-model="showArtworksDialog" :title="`使用「${artworksSealName}」的作品（${artworks.length}幅）`" width="640px" class="claude-dialog">
       <div v-loading="artworksLoading" class="artworks-list">
         <div v-for="art in artworks" :key="art.id" class="artwork-item" @click="goToArtwork(art)">
           <img v-if="art.thumbnail_path" :src="`${API_BASE.replace('/api/v1', '')}/static/${art.thumbnail_path.replace(/^data\//, '').replace(/\\/g, '/')}`" class="artwork-thumb" />
