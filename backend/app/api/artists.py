@@ -160,6 +160,48 @@ async def delete_artist(artist_id: int):
         conn.close()
 
 
+class SyncNameRequest(BaseModel):
+    old_name: str
+    new_name: str
+
+
+@router.post("/{artist_id}/sync-name")
+async def sync_artist_name(artist_id: int, req: SyncNameRequest):
+    """同步画家姓名到所有相关作品"""
+    conn = get_db_connection()
+    try:
+        artist = conn.execute("SELECT * FROM artists WHERE id = ?", (artist_id,)).fetchone()
+        if not artist:
+            raise HTTPException(status_code=404, detail="画家不存在")
+
+        # 更新 tubi_analyses 中的 artist 字段
+        result = conn.execute(
+            "UPDATE tubi_analyses SET artist = ? WHERE artist = ?",
+            (req.new_name, req.old_name)
+        )
+        updated = result.rowcount
+
+        # 更新 seals 中的 artist_name 字段
+        result2 = conn.execute(
+            "UPDATE seals SET artist_name = ? WHERE artist_name = ?",
+            (req.new_name, req.old_name)
+        )
+        seal_updated = result2.rowcount
+
+        conn.commit()
+        return {
+            "success": True,
+            "message": f"姓名已同步：{updated} 个作品、{seal_updated} 个印章已更新"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
 @router.post("/{artist_id}/ai-fill")
 async def ai_fill_artist(artist_id: int):
     """AI一键查询画家信息并填充"""

@@ -88,58 +88,64 @@
         </el-form-item>
         <el-form-item label="印章内容">
           <div class="seal-tag-editor">
+            <!-- 已选印章标签 -->
             <div class="seal-tags-area">
               <el-tag
                 v-for="(seal, idx) in sealTags"
                 :key="idx"
                 closable
-                :type="seal.isNew ? 'success' : ''"
+                :type="seal.isNew ? 'success' : undefined"
                 class="seal-tag"
                 @close="removeSealTag(idx)"
-                @mouseenter="hoveredSeal = seal.name"
-                @mouseleave="hoveredSeal = null"
+                @mouseenter="showSealPreview(seal.name)"
+                @mouseleave="hideSealPreview"
               >
                 {{ seal.name }}
-              </el-tag>
-              <el-popover
-                v-if="hoveredSeal && sealImageMap[hoveredSeal]"
-                :visible="hoveredSeal === hoveredSeal"
-                placement="top"
-                :width="120"
-                trigger="hover"
-              >
-                <template #reference>
-                  <span></span>
+                <template v-if="sealTypeMap[seal.name]">
+                  <span class="seal-tag-type">({{ sealTypeMap[seal.name] }})</span>
                 </template>
-                <img :src="sealImageMap[hoveredSeal]" style="width: 100px; height: 100px; object-fit: contain;" />
-              </el-popover>
+              </el-tag>
+              <el-button v-if="sealTags.length > 0" type="danger" text size="small" @click="clearAllSeals" class="clear-seals-btn">
+                清空
+              </el-button>
+              <!-- hover 图片预览 -->
+              <div v-if="previewSeal && sealImageMap[previewSeal]" class="seal-preview-popup">
+                <img :src="sealImageMap[previewSeal]" class="seal-preview-img" />
+              </div>
             </div>
+            <!-- 手动输入 -->
             <div class="seal-input-row">
               <el-input
                 v-model="sealInput"
                 placeholder="输入印章名回车添加"
                 size="small"
-                style="width: 180px;"
+                style="width: 200px;"
                 @keyup.enter="addSealInput"
               />
-              <el-dropdown trigger="click" @command="addSealFromLibrary" placement="bottom-start">
-                <el-button size="small" plain>
-                  从印章库选择 <el-icon><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item
-                      v-for="s in availableSeals"
-                      :key="s.name"
-                      :command="s.name"
-                      :disabled="sealTags.some(t => t.name === s.name)"
-                    >
-                      {{ s.name }}
-                      <span v-if="s.seal_type" style="color: #999; margin-left: 4px;">({{ s.seal_type }})</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+            </div>
+            <!-- 印章库直接列出 -->
+            <div v-if="sealLibrary.length > 0" class="seal-library">
+              <div class="seal-library-title">印章库（点击添加）</div>
+              <div class="seal-library-grid">
+                <div
+                  v-for="s in sealLibrary"
+                  :key="s.name"
+                  class="seal-library-item"
+                  :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
+                  @click="addSealFromLibrary(s.name)"
+                  @mouseenter="showSealPreview(s.name)"
+                  @mouseleave="hideSealPreview"
+                >
+                  <div v-if="sealImageMap[s.name]" class="seal-lib-thumb">
+                    <img :src="sealImageMap[s.name]" />
+                  </div>
+                  <div v-else class="seal-lib-icon">
+                    <el-icon :size="14"><Stamp /></el-icon>
+                  </div>
+                  <span class="seal-lib-name">{{ s.name }}</span>
+                  <span v-if="s.seal_type" class="seal-lib-type">{{ s.seal_type }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </el-form-item>
@@ -168,7 +174,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Stamp } from '@element-plus/icons-vue'
 import { tubiApi, sealsApi } from '../../api'
 import { ARTISTS } from '../../tubi/constants'
 import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
@@ -201,7 +207,8 @@ const sealTags = ref([])
 const sealInput = ref('')
 const sealLibrary = ref([])
 const sealImageMap = ref({})
-const hoveredSeal = ref(null)
+const sealTypeMap = ref({})
+const previewSeal = ref(null)
 
 const availableSeals = computed(() => {
   return sealLibrary.value.filter(s => !sealTags.value.some(t => t.name === s.name))
@@ -242,23 +249,40 @@ function addSealFromLibrary(name) {
   form.sealContent = sealTagsToString()
 }
 
+function clearAllSeals() {
+  sealTags.value = []
+  form.sealContent = ''
+}
+
+function showSealPreview(name) {
+  previewSeal.value = name
+}
+
+function hideSealPreview() {
+  previewSeal.value = null
+}
+
 async function loadSealLibrary() {
   try {
-    const artistName = artist.value
     const params = { limit: 200 }
-    if (artistName) params.artist = artistName
+    if (artist.value) params.artist = artist.value
     const res = await sealsApi.list(params)
     if (res.success) {
       sealLibrary.value = res.seals || []
-      // 构建图片映射
+      // 构建图片映射和类型映射
       const imgMap = {}
+      const typeMap = {}
       for (const s of sealLibrary.value) {
         if (s.images && s.images.length > 0) {
           const img = s.images[0]
           imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
         }
+        if (s.seal_type) {
+          typeMap[s.name] = s.seal_type
+        }
       }
       sealImageMap.value = imgMap
+      sealTypeMap.value = typeMap
     }
   } catch (e) {
     console.error('加载印章库失败', e)
@@ -310,6 +334,8 @@ function onArtistChange(artistChoice) {
     form.year = artistInfo.defaultYear
     form.age = calculateAge(artistInfo.defaultYear, artistChoice)
   }
+  // 作者切换时重新加载印章库
+  loadSealLibrary()
 }
 
 function onYearChange(year) {
@@ -625,16 +651,46 @@ defineExpose({ open })
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background: #fafaf8;
+  position: relative;
 }
 
 .seal-tag {
   cursor: default;
 }
 
+.seal-tag-type {
+  font-size: 10px;
+  color: #999;
+  margin-left: 2px;
+}
+
+.clear-seals-btn {
+  margin-left: auto;
+}
+
+.seal-preview-popup {
+  position: absolute;
+  top: -110px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+}
+
+.seal-preview-img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
 .seal-input-row {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-bottom: 8px;
 }
 
 .seal-input-row :deep(.el-button) {
@@ -647,5 +703,76 @@ defineExpose({ open })
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 印章库网格 */
+.seal-library {
+  border: 1px solid #ebe8e0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fdfcf9;
+}
+
+.seal-library-title {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.seal-library-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seal-library-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e0ddd5;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+  background: white;
+}
+
+.seal-library-item:hover {
+  border-color: #c96442;
+  background: #fef8f5;
+}
+
+.seal-library-item.is-selected {
+  background: #f0ebe5;
+  border-color: #c0b8a8;
+  opacity: 0.6;
+  cursor: default;
+}
+
+.seal-lib-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.seal-lib-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.seal-lib-icon {
+  color: #c0b8a8;
+}
+
+.seal-lib-name {
+  color: #333;
+}
+
+.seal-lib-type {
+  font-size: 10px;
+  color: #aaa;
 }
 </style>

@@ -3,10 +3,6 @@
     <!-- 工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <el-select v-model="filterArtist" placeholder="按画家筛选" clearable size="small" style="width: 140px;" class="claude-select" @change="loadSeals">
-          <el-option label="全部画家" value="" />
-          <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
-        </el-select>
         <el-button type="primary" plain size="small" @click="showCreateDialog = true">
           <el-icon><Plus /></el-icon>新增印章
         </el-button>
@@ -34,7 +30,7 @@
           <div class="seal-name">{{ seal.name }}</div>
           <div class="seal-meta">
             <span v-if="seal.artist_name" class="seal-artist">{{ seal.artist_name }}</span>
-            <el-tag v-if="seal.seal_type" size="small" :type="seal.seal_type === '名章' ? '' : 'info'" class="seal-type-tag">
+            <el-tag v-if="seal.seal_type" size="small" :type="seal.seal_type === '名章' ? undefined : 'info'" class="seal-type-tag">
               {{ seal.seal_type }}
             </el-tag>
           </div>
@@ -106,7 +102,7 @@
     <el-dialog v-model="showArtworksDialog" :title="`使用「${artworksSealName}」的作品`" width="640px" class="claude-dialog">
       <div v-loading="artworksLoading" class="artworks-list">
         <div v-for="art in artworks" :key="art.id" class="artwork-item" @click="goToArtwork(art)">
-          <img v-if="art.thumbnail_url" :src="art.thumbnail_url" class="artwork-thumb" />
+          <img v-if="art.thumbnail_path" :src="`${API_BASE.replace('/api/v1', '')}/${art.thumbnail_path.replace(/\\\\/g, '/')}`" class="artwork-thumb" />
           <div v-else class="artwork-thumb-placeholder"><el-icon><Picture /></el-icon></div>
           <div class="artwork-info">
             <div class="artwork-title">{{ art.title || '未命名' }}</div>
@@ -128,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Download, Picture, Stamp } from '@element-plus/icons-vue'
 import { sealsApi } from '../api'
@@ -147,7 +143,6 @@ const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const extracting = ref(false)
-const filterArtist = ref('')
 
 // 作者列表
 const artistList = ref([])
@@ -176,7 +171,7 @@ async function loadSeals() {
   loading.value = true
   try {
     const params = { limit: 200 }
-    if (filterArtist.value) params.artist = filterArtist.value
+    if (props.artist && props.artist !== 'all') params.artist = props.artist
     const res = await sealsApi.list(params)
     if (res.success) {
       seals.value = res.seals
@@ -195,7 +190,6 @@ async function loadArtists() {
     const res = await fetch(`${API_BASE}/content-analysis/artists`)
     const data = await res.json()
     artistList.value = data.artists || []
-    if (props.artist) filterArtist.value = props.artist
   } catch (e) {
     console.error('获取作者列表失败', e)
   }
@@ -383,7 +377,6 @@ function onImageError(e) {
 }
 
 // 监听 showCreateDialog
-import { watch } from 'vue'
 watch(showCreateDialog, (val) => {
   if (val) {
     editingSeal.value = null
@@ -392,6 +385,9 @@ watch(showCreateDialog, (val) => {
     showCreateDialog.value = false
   }
 })
+
+// 监听顶部作者过滤变化
+watch(() => props.artist, () => { loadSeals() })
 
 onMounted(async () => {
   await loadArtists()

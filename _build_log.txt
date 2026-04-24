@@ -1,0 +1,41 @@
+﻿[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 519 modules transformed.
+node.exe : [31mx[39m Build failed in 1.49s
+所在位置 行:1 字符: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mx[39m Build failed in 1.49s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31merror during build:
+[31m[vite:vue] [vue/compiler-sfc] Identifier 'watch' has already been declared. (256:9)
+
+Z:/BaiduSync/BaiduSyncdisk/calligraphy-recognition/frontend/src/views/SealManager.vue
+379|  
+380|  // 监听 showCreateDialog
+381|  import { watch } from 'vue'
+   |           ^
+382|  watch(showCreateDialog, (val) => {
+383|    if (val) {[31m
+file: [36mZ:/BaiduSync/BaiduSyncdisk/calligraphy-recognition/frontend/src/views/SealManager.vue:256:9[31m
+    at constructor (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\parser\lib\index.js
+:365:19)
+    at Parser.raise (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\parser\lib\index.j
+s:6599:19)
+    at ScopeHandler.checkRedeclarationInScope (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules
+\@babel\parser\lib\index.js:1619:19)
+    at ScopeHandler.declareName (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\parser
+\lib\index.js:1585:12)
+    at Parser.declareNameFromIdentifier (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babe
+l\parser\lib\index.js:7567:16)
+    at Parser.checkIdentifier (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\parser\l
+ib\index.js:7563:12)
+    at Parser.checkLVal (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\parser\lib\ind
+ex.js:7500:12)
+    at Parser.finishImportSpecifier (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\pa
+rser\lib\index.js:14266:10)
+    at Parser.parseImportSpecifier (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@babel\par
+ser\lib\index.js:14419:17)
+    at Parser.parseNamedImportSpecifiers (Z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\frontend\node_modules\@bab
+el\parser\lib\index.js:14398:36)[39m

@@ -85,7 +85,24 @@
           <div v-if="analyzeStatus === 'analyzed'" class="seal-note-main">
             <h4><el-icon><Collection /></el-icon> 钤印</h4>
             <div v-if="currentImage.sealContent" class="seal-content">
-              {{ currentImage.sealContent }}
+              <div class="seal-tags-display">
+                <el-popover
+                  v-for="(seal, idx) in detailSealTags"
+                  :key="idx"
+                  :width="120"
+                  placement="top"
+                  :disabled="!detailSealImageMap[seal.name]"
+                  trigger="hover"
+                >
+                  <template #reference>
+                    <span class="seal-display-tag" :class="{ 'has-image': detailSealImageMap[seal.name] }">
+                      {{ seal.name }}
+                      <span v-if="seal.seal_type" class="seal-display-type">{{ seal.seal_type }}</span>
+                    </span>
+                  </template>
+                  <img v-if="detailSealImageMap[seal.name]" :src="detailSealImageMap[seal.name]" style="width: 100px; height: 100px; object-fit: contain;" />
+                </el-popover>
+              </div>
             </div>
             <div v-else class="seal-empty">
               <p>暂无钤印内容</p>
@@ -454,7 +471,46 @@ import {
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
+import { sealsApi } from '../api'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+
+// 印章显示
+const sealLibraryCache = ref([])
+const detailSealImageMap = ref({})
+const detailSealTypeMap = ref({})
+
+const detailSealTags = computed(() => {
+  const content = props.currentImage?.sealContent || ''
+  if (!content) return []
+  const cleaned = content.replace(/^作者印[：:]\s*/, '')
+  return cleaned.split(/[、，,]/).map(n => n.trim()).filter(n => n).map(n => ({
+    name: n,
+    seal_type: detailSealTypeMap.value[n] || null
+  }))
+})
+
+async function loadSealLibraryForDetail() {
+  try {
+    const res = await sealsApi.list({ limit: 200 })
+    if (res.success) {
+      sealLibraryCache.value = res.seals || []
+      const imgMap = {}, typeMap = {}
+      for (const s of sealLibraryCache.value) {
+        if (s.images && s.images.length > 0) {
+          const img = s.images[0]
+          imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
+        }
+        if (s.seal_type) typeMap[s.name] = s.seal_type
+      }
+      detailSealImageMap.value = imgMap
+      detailSealTypeMap.value = typeMap
+    }
+  } catch (e) { console.error('加载印章库失败', e) }
+}
+
+onMounted(() => { loadSealLibraryForDetail() })
 
 const props = defineProps({
   currentImage: { type: Object, required: true },
@@ -1074,5 +1130,42 @@ defineExpose({
   font-size: 12px;
   color: #8a8a7a;
   font-weight: 500;
+}
+
+/* 印章标签显示 */
+.seal-tags-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seal-display-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f5f3ee;
+  border: 1px solid #e8e5de;
+  font-size: 13px;
+  color: #5a5a4e;
+  cursor: default;
+  transition: all 0.15s;
+}
+
+.seal-display-tag.has-image {
+  cursor: pointer;
+  border-color: #d0ccc2;
+}
+
+.seal-display-tag.has-image:hover {
+  background: #ede9e0;
+  border-color: #c96442;
+  color: #c96442;
+}
+
+.seal-display-type {
+  font-size: 10px;
+  color: #aaa;
 }
 </style>

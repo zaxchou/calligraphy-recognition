@@ -138,7 +138,7 @@ async def get_seal_artworks(seal_id: int):
         seal_name = seal["name"]
         # 查找 seal_content 中包含该印章名的作品
         rows = conn.execute(
-            "SELECT id, image_id, title, artist, year, seal_content, status, thumbnail_url "
+            "SELECT id, image_id, title, artist, year, seal_content, status, thumbnail_path "
             "FROM tubi_analyses WHERE seal_content LIKE ?",
             (f"%{seal_name}%",)
         ).fetchall()

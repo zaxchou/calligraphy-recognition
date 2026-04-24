@@ -110,7 +110,52 @@
               <el-tooltip content="请对照图片中的印章文字进行校对，多个印章用逗号分隔"><span class="hint-icon">?</span></el-tooltip>
               <span v-if="currentRecord.seal_verified" class="verified-badge"><el-icon><Check /></el-icon>已校对</span>
             </div>
-            <el-input v-model="editSealContent" type="textarea" :rows="3" placeholder="如：李鱓印,宗扬,复堂..." class="content-input" />
+            <!-- 印章标签插入模式 -->
+            <div class="seal-tag-editor">
+              <div class="seal-tags-area">
+                <el-tag
+                  v-for="(seal, idx) in sealTags"
+                  :key="idx"
+                  closable
+                  :type="seal.isNew ? 'success' : undefined"
+                  class="seal-tag"
+                  @close="removeSealTag(idx)"
+                  @mouseenter="showSealPreview(seal.name)"
+                  @mouseleave="hideSealPreview"
+                >
+                  {{ seal.name }}
+                  <template v-if="sealTypeMap[seal.name]">
+                    <span class="seal-tag-type">({{ sealTypeMap[seal.name] }})</span>
+                  </template>
+                </el-tag>
+                <el-button v-if="sealTags.length > 0" type="danger" text size="small" @click="clearAllSeals" class="clear-seals-btn">清空</el-button>
+                <div v-if="previewSealName && sealImageMap[previewSealName]" class="seal-preview-popup">
+                  <img :src="sealImageMap[previewSealName]" class="seal-preview-img" />
+                </div>
+              </div>
+              <div class="seal-input-row">
+                <el-input v-model="sealInput" placeholder="输入印章名回车添加" size="small" style="width: 200px;" @keyup.enter="addSealInput" />
+              </div>
+              <div v-if="sealLibrary.length > 0" class="seal-library">
+                <div class="seal-library-title">印章库（点击添加）</div>
+                <div class="seal-library-grid">
+                  <div
+                    v-for="s in sealLibrary"
+                    :key="s.name"
+                    class="seal-library-item"
+                    :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
+                    @click="addSealFromLibrary(s.name)"
+                    @mouseenter="showSealPreview(s.name)"
+                    @mouseleave="hideSealPreview"
+                  >
+                    <div v-if="sealImageMap[s.name]" class="seal-lib-thumb"><img :src="sealImageMap[s.name]" /></div>
+                    <div v-else class="seal-lib-icon"><el-icon :size="14"><Stamp /></el-icon></div>
+                    <span class="seal-lib-name">{{ s.name }}</span>
+                    <span v-if="s.seal_type" class="seal-lib-type">{{ s.seal_type }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="text-card">
             <div class="card-header">
@@ -186,11 +231,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Bottom, RefreshRight, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position } from '@element-plus/icons-vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
-import { tubiApi } from '../api'
+import { tubiApi, sealsApi } from '../api'
 
 const props = defineProps({
   records: { type: Array, default: () => [] },
@@ -213,6 +258,76 @@ const editContent = ref('')
 const editSealContent = ref('')
 const editAnalysisNote = ref('')
 const showFullImage = ref(false)
+
+// 印章标签模式
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const sealTags = ref([])
+const sealInput = ref('')
+const sealLibrary = ref([])
+const sealImageMap = ref({})
+const sealTypeMap = ref({})
+const previewSealName = ref(null)
+
+function parseSealContent(content) {
+  if (!content) return []
+  const cleaned = content.replace(/^作者印[：:]\s*/, '')
+  return cleaned.split(/[、，,]/).map(n => n.trim()).filter(n => n).map(n => ({ name: n, isNew: false }))
+}
+
+function sealTagsToString() {
+  return sealTags.value.map(t => t.name).filter(n => n).join('、') || ''
+}
+
+function removeSealTag(idx) {
+  sealTags.value.splice(idx, 1)
+  editSealContent.value = sealTagsToString()
+}
+
+function clearAllSeals() {
+  sealTags.value = []
+  editSealContent.value = ''
+}
+
+function addSealInput() {
+  const name = sealInput.value.trim()
+  if (!name) return
+  if (sealTags.value.some(t => t.name === name)) { ElMessage.warning('该印章已添加'); return }
+  sealTags.value.push({ name, isNew: true })
+  editSealContent.value = sealTagsToString()
+  sealInput.value = ''
+}
+
+function addSealFromLibrary(name) {
+  if (sealTags.value.some(t => t.name === name)) return
+  sealTags.value.push({ name, isNew: false })
+  editSealContent.value = sealTagsToString()
+}
+
+function showSealPreview(name) { previewSealName.value = name }
+function hideSealPreview() { previewSealName.value = null }
+
+async function loadSealLibrary() {
+  try {
+    const params = { limit: 200 }
+    if (props.artist && props.artist !== 'all') params.artist = props.artist
+    const res = await sealsApi.list(params)
+    if (res.success) {
+      sealLibrary.value = res.seals || []
+      const imgMap = {}, typeMap = {}
+      for (const s of sealLibrary.value) {
+        if (s.images && s.images.length > 0) {
+          const img = s.images[0]
+          imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
+        }
+        if (s.seal_type) typeMap[s.name] = s.seal_type
+      }
+      sealImageMap.value = imgMap
+      sealTypeMap.value = typeMap
+    }
+  } catch (e) { console.error('加载印章库失败', e) }
+}
+
+onMounted(() => { loadSealLibrary() })
 
 // 作品名内联编辑
 const isEditingTitle = ref(false)
@@ -418,8 +533,9 @@ function handleTranslate() { if (!currentRecord.value) return; emit('translate',
 function handleAnalyze() { if (!currentRecord.value) return; emit('analyze', { id: currentRecord.value.id }) }
 
 watch(filteredRecords, () => { if (currentIndex.value >= filteredRecords.value.length) currentIndex.value = Math.max(0, filteredRecords.value.length - 1) })
-watch(currentRecord, (rec) => { if (rec) { editContent.value = rec.inscription_content || ''; editSealContent.value = rec.seal_content || ''; editAnalysisNote.value = rec.analysis_note || '' } })
-watch(() => props.records, (newRecords) => { if (newRecords.length > 0 && currentIndex.value === 0) { editContent.value = newRecords[0].inscription_content || ''; editSealContent.value = newRecords[0].seal_content || '' } }, { immediate: true })
+watch(currentRecord, (rec) => { if (rec) { editContent.value = rec.inscription_content || ''; editSealContent.value = rec.seal_content || ''; sealTags.value = parseSealContent(rec.seal_content || ''); editAnalysisNote.value = rec.analysis_note || '' } })
+watch(() => props.artist, () => { loadSealLibrary() })
+watch(() => props.records, (newRecords) => { if (newRecords.length > 0 && currentIndex.value === 0) { editContent.value = newRecords[0].inscription_content || ''; editSealContent.value = newRecords[0].seal_content || ''; sealTags.value = parseSealContent(newRecords[0].seal_content || '') } }, { immediate: true })
 
 defineExpose({ nextRecord, jumpToRecordById })
 </script>
@@ -621,4 +737,25 @@ defineExpose({ nextRecord, jumpToRecordById })
 .search-loading {
   padding: 8px 0;
 }
+
+/* 印章标签编辑器 */
+.seal-tag-editor { width: 100%; }
+.seal-tags-area { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; min-height: 32px; padding: 6px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fafaf8; position: relative; }
+.seal-tag { cursor: default; }
+.seal-tag-type { font-size: 10px; color: #999; margin-left: 2px; }
+.clear-seals-btn { margin-left: auto; }
+.seal-preview-popup { position: absolute; top: -110px; left: 50%; transform: translateX(-50%); z-index: 100; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; }
+.seal-preview-img { width: 96px; height: 96px; object-fit: contain; }
+.seal-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.seal-library { border: 1px solid #ebe8e0; border-radius: 8px; padding: 8px; background: #fdfcf9; }
+.seal-library-title { font-size: 12px; color: #999; margin-bottom: 6px; }
+.seal-library-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.seal-library-item { display: flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 5px; border: 1px solid #e0ddd5; cursor: pointer; font-size: 12px; transition: all 0.15s; background: white; }
+.seal-library-item:hover { border-color: #c96442; background: #fef8f5; }
+.seal-library-item.is-selected { background: #f0ebe5; border-color: #c0b8a8; opacity: 0.6; cursor: default; }
+.seal-lib-thumb { width: 18px; height: 18px; border-radius: 3px; overflow: hidden; }
+.seal-lib-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.seal-lib-icon { color: #c0b8a8; }
+.seal-lib-name { color: #333; }
+.seal-lib-type { font-size: 10px; color: #aaa; }
 </style>

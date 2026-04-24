@@ -7,35 +7,25 @@
       </el-button>
     </div>
 
-    <!-- 画家列表 -->
+    <!-- 画家列表（精简版） -->
     <div v-loading="loading" class="artist-list">
-      <div v-for="artist in artists" :key="artist.id" class="artist-card">
-        <div class="artist-header">
-          <div class="artist-name">{{ artist.name }}</div>
-          <el-tag v-if="artist.birth_year" size="small" type="info">{{ artist.birth_year }}年生</el-tag>
-          <el-tag v-if="!artist.enabled" size="small" type="danger">已禁用</el-tag>
-        </div>
-        <div v-if="artist.background" class="artist-background">{{ artist.background }}</div>
-        <div class="artist-details">
-          <div v-if="artist.sentiment_note" class="detail-item">
-            <span class="detail-label">情感倾向：</span>{{ artist.sentiment_note }}
+      <div v-for="artist in sortedArtists" :key="artist.id" class="artist-card">
+        <div class="artist-row">
+          <div class="artist-main">
+            <span class="artist-name">{{ artist.name }}</span>
+            <el-tag v-if="artist.birth_year" size="small" type="info">{{ artist.birth_year }}年生</el-tag>
+            <el-tag v-if="!artist.enabled" size="small" type="danger">已禁用</el-tag>
           </div>
-          <div v-if="artist.theme_note" class="detail-item">
-            <span class="detail-label">主题倾向：</span>{{ artist.theme_note }}
+          <div class="artist-actions">
+            <el-button size="small" @click="openEdit(artist)">编辑</el-button>
+            <el-button size="small" type="primary" plain @click="handleAiFill(artist)" :loading="aiFillLoading[artist.id]">
+              <el-icon><MagicStick /></el-icon>AI查询
+            </el-button>
+            <el-button size="small" :type="artist.enabled ? 'warning' : 'success'" plain @click="toggleEnabled(artist)">
+              {{ artist.enabled ? '禁用' : '启用' }}
+            </el-button>
+            <el-button size="small" type="danger" plain @click="handleDelete(artist)">删除</el-button>
           </div>
-          <div v-if="artist.specialties" class="detail-item">
-            <span class="detail-label">专长：</span>{{ artist.specialties }}
-          </div>
-        </div>
-        <div class="artist-actions">
-          <el-button size="small" @click="openEdit(artist)">编辑</el-button>
-          <el-button size="small" type="primary" plain @click="handleAiFill(artist)" :loading="aiFillLoading[artist.id]">
-            <el-icon><MagicStick /></el-icon>AI查询
-          </el-button>
-          <el-button size="small" :type="artist.enabled ? 'warning' : 'success'" plain @click="toggleEnabled(artist)">
-            {{ artist.enabled ? '禁用' : '启用' }}
-          </el-button>
-          <el-button size="small" type="danger" plain @click="handleDelete(artist)">删除</el-button>
         </div>
       </div>
       <div v-if="!loading && artists.length === 0" class="empty-state">
@@ -43,34 +33,39 @@
       </div>
     </div>
 
-    <!-- 创建/编辑弹窗 -->
-    <el-dialog v-model="showEditDialog" :title="editingArtist ? '编辑画家' : '新增画家'" width="560px" class="claude-dialog">
-      <el-form :model="editForm" label-position="top" class="modern-form">
+    <!-- 创建/编辑弹窗（扩大） -->
+    <el-dialog v-model="showEditDialog" :title="editingArtist ? '编辑画家' : '新增画家'" width="720px" class="claude-dialog">
+      <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
         <div class="form-row">
           <el-form-item label="画家姓名" required class="form-item-half">
             <el-input v-model="editForm.name" placeholder="如：李鱓" />
+            <div v-if="editingArtist && editForm.name !== editingArtist.name" class="rename-warning">
+              ⚠️ 修改姓名将同步更新所有相关画作的作者信息
+            </div>
           </el-form-item>
           <el-form-item label="出生年份" class="form-item-half">
             <el-input v-model.number="editForm.birth_year" placeholder="如：1686" />
           </el-form-item>
         </div>
         <el-form-item label="背景简介">
-          <el-input v-model="editForm.background" type="textarea" :rows="2" placeholder="画家背景简介" />
+          <el-input v-model="editForm.background" type="textarea" :rows="3" placeholder="画家背景简介" />
         </el-form-item>
         <el-form-item label="情感倾向说明">
-          <el-input v-model="editForm.sentiment_note" type="textarea" :rows="2" placeholder="如：晚年多悲凉之感" />
+          <el-input v-model="editForm.sentiment_note" type="textarea" :rows="3" placeholder="如：晚年多悲凉之感" />
         </el-form-item>
         <el-form-item label="主题倾向说明">
-          <el-input v-model="editForm.theme_note" type="textarea" :rows="2" placeholder="如：善画花鸟虫鱼" />
+          <el-input v-model="editForm.theme_note" type="textarea" :rows="3" placeholder="如：善画花鸟虫鱼" />
         </el-form-item>
-        <el-form-item label="主题别名（逗号分隔）">
-          <el-input v-model="editForm.theme_aliases" placeholder="如：花鸟,虫鱼,兰竹" />
-        </el-form-item>
-        <el-form-item label="专长">
-          <el-input v-model="editForm.specialties" placeholder="如：写意花鸟" />
-        </el-form-item>
+        <div class="form-row">
+          <el-form-item label="主题别名（逗号分隔）" class="form-item-half">
+            <el-input v-model="editForm.theme_aliases" placeholder="如：花鸟,虫鱼,兰竹" />
+          </el-form-item>
+          <el-form-item label="专长" class="form-item-half">
+            <el-input v-model="editForm.specialties" placeholder="如：写意花鸟" />
+          </el-form-item>
+        </div>
         <el-form-item label="关键词规则（JSON）">
-          <el-input v-model="editForm.keyword_rules" type="textarea" :rows="3" placeholder='{"positive": ["..."], "negative": ["..."]}' />
+          <el-input v-model="editForm.keyword_rules" type="textarea" :rows="4" placeholder='{"positive": ["..."], "negative": ["..."]}' />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -82,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, MagicStick } from '@element-plus/icons-vue'
 
@@ -104,6 +99,15 @@ const editForm = ref({
   theme_aliases: '',
   specialties: '',
   keyword_rules: ''
+})
+
+// 已启用的排前面，否则按创建顺序
+const sortedArtists = computed(() => {
+  return [...artists.value].sort((a, b) => {
+    if (a.enabled && !b.enabled) return -1
+    if (!a.enabled && b.enabled) return 1
+    return a.id - b.id
+  })
 })
 
 async function loadArtists() {
@@ -148,6 +152,20 @@ async function handleSave() {
     ElMessage.warning('请输入画家姓名')
     return
   }
+
+  // 如果修改了姓名，确认同步
+  if (editingArtist.value && editForm.value.name !== editingArtist.value.name) {
+    try {
+      await ElMessageBox.confirm(
+        `修改姓名将从「${editingArtist.value.name}」改为「${editForm.value.name}」，所有相关画作的作者信息也会同步更新。确认修改？`,
+        '确认修改姓名',
+        { confirmButtonText: '确认修改', cancelButtonText: '取消', type: 'warning' }
+      )
+    } catch {
+      return
+    }
+  }
+
   saving.value = true
   try {
     const url = editingArtist.value
@@ -161,6 +179,18 @@ async function handleSave() {
     })
     const data = await res.json()
     if (data.success) {
+      // 如果修改了姓名，后端需要同步更新 tubi_analyses 中的 artist 字段
+      if (editingArtist.value && editForm.value.name !== editingArtist.value.name) {
+        try {
+          await fetch(`${API_BASE}/artists/${editingArtist.value.id}/sync-name`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_name: editingArtist.value.name, new_name: editForm.value.name })
+          })
+        } catch (e) {
+          console.error('同步画家姓名失败', e)
+        }
+      }
       ElMessage.success(editingArtist.value ? '画家信息已更新' : '画家创建成功')
       showEditDialog.value = false
       await loadArtists()
@@ -234,61 +264,45 @@ onMounted(() => loadArtists())
 }
 
 .toolbar {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .artist-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-height: 200px;
 }
 
 .artist-card {
   background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
 }
 
-.artist-header {
+.artist-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.artist-main {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
 }
 
 .artist-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #333;
 }
 
-.artist-background {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
-.artist-details {
-  margin-bottom: 12px;
-}
-
-.detail-item {
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 4px;
-}
-
-.detail-label {
-  color: #888;
-  font-size: 12px;
-}
-
 .artist-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .artist-actions :deep(.el-button) {
@@ -314,5 +328,15 @@ onMounted(() => loadArtists())
 
 .form-item-half {
   flex: 1;
+}
+
+.artist-edit-form :deep(.el-textarea__inner) {
+  min-height: 60px !important;
+}
+
+.rename-warning {
+  font-size: 12px;
+  color: #e6a23c;
+  margin-top: 4px;
 }
 </style>
