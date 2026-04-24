@@ -106,23 +106,19 @@
               </div>
             </div>
             <div class="analysis-right-col">
-              <!-- 画作信息卡片 -->
-              <div class="artwork-info-card" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
-                <div class="artwork-info-table">
-                  <div class="info-row-horizontal">
-                    <div class="info-item" v-if="currentImage.artist">
-                      <span class="info-label">作者</span>
-                      <span class="info-value">{{ currentImage.artist }}</span>
-                    </div>
-                    <div class="info-item" v-if="currentImage.year">
-                      <span class="info-label">年份</span>
-                      <span class="info-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
-                    </div>
-                    <div class="info-item" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
-                      <span class="info-label">尺寸</span>
-                      <span class="info-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
-                    </div>
-                  </div>
+              <!-- 画作信息 -->
+              <div class="artwork-info-inline" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
+                <div class="info-item" v-if="currentImage.artist">
+                  <span class="info-label">作者</span>
+                  <span class="info-value">{{ currentImage.artist }}</span>
+                </div>
+                <div class="info-item" v-if="currentImage.year">
+                  <span class="info-label">年份</span>
+                  <span class="info-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
+                </div>
+                <div class="info-item" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
+                  <span class="info-label">尺寸</span>
+                  <span class="info-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
                 </div>
               </div>
               <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
@@ -960,12 +956,12 @@ defineExpose({
   font-weight: 500;
 }
 
-/* 作品信息卡片（右栏） */
-.artwork-info-card {
-  padding: 10px 12px;
-  background: #faf9f7;
-  border-radius: 8px;
-  border: 1px solid #e8e4da;
+/* 作品信息行内（右栏，无卡片包裹） */
+.artwork-info-inline {
+  display: flex;
+  gap: 8px;
+  padding: 0 0 4px;
+  margin-bottom: 4px;
 }
 /* 作品信息表格 */
 .image-info-header {
