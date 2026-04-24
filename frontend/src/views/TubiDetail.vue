@@ -950,10 +950,13 @@ defineExpose({
 }
 .expand-icon.rotated { transform: rotate(180deg); }
 .card-title-artwork {
-  font-size: 15px;
+  font-size: 20px;
   color: #333;
   font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-weight: 500;
+}
+.btn-edit {
+  font-size: 12px;
 }
 
 /* 作品信息行内（右栏，无卡片包裹） */
@@ -975,7 +978,6 @@ defineExpose({
   width: 100%;
 }
 .info-item {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -985,6 +987,9 @@ defineExpose({
   border-radius: 6px;
   transition: all 0.2s ease;
 }
+.info-item:nth-child(1) { flex: 0 0 30%; }
+.info-item:nth-child(2) { flex: 0 0 35%; }
+.info-item:nth-child(3) { flex: 0 0 35%; }
 .info-item:hover {
   background: #f1f3f5;
   transform: translateY(-1px);
