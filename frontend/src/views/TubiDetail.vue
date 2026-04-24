@@ -79,17 +79,35 @@
 
                   <div class="ts-section" v-if="currentImage.contentAnalysis?.sentiment">
                     <div class="ts-label">情感极性</div>
-                    <div class="sentiment-row">
-                      <el-tag
-                        size="small"
-                        :type="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? 'success' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? 'danger' : 'info'"
-                        class="sentiment-tag"
-                      >
-                        {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
-                      </el-tag>
-                      <span class="sentiment-intensity">
-                        强度 {{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%
-                      </span>
+                    <div class="sentiment-gauge-row">
+                      <div class="sentiment-gauge">
+                        <svg viewBox="0 0 120 120" class="gauge-svg">
+                          <!-- 背景弧 -->
+                          <circle cx="60" cy="60" r="50" fill="none" stroke="#e8e4da" stroke-width="8"
+                            stroke-dasharray="235.6 78.5" stroke-dashoffset="-39.3" stroke-linecap="round" />
+                          <!-- 强度弧 -->
+                          <circle cx="60" cy="60" r="50" fill="none"
+                            :stroke="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#c96442' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#6b8cae' : '#b8a47e'"
+                            stroke-width="8"
+                            :stroke-dasharray="`${235.6 * currentImage.contentAnalysis.sentiment.intensity} ${235.6 * (1 - currentImage.contentAnalysis.sentiment.intensity) + 78.5}`"
+                            stroke-dashoffset="-39.3" stroke-linecap="round"
+                            class="gauge-arc" />
+                        </svg>
+                        <div class="gauge-center">
+                          <span class="gauge-emoji">{{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '&#x1F31F;' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '&#x1F327;' : '&#x26C5;' }}</span>
+                          <span class="gauge-percent">{{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%</span>
+                        </div>
+                      </div>
+                      <div class="sentiment-info">
+                        <el-tag
+                          size="small"
+                          :type="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? 'success' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? 'danger' : 'info'"
+                          class="sentiment-tag"
+                        >
+                          {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                        </el-tag>
+                        <span class="sentiment-intensity-label">强度 {{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%</span>
+                      </div>
                     </div>
                     <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.channel2?.reasoning">
                       <div class="reasoning-label">推导过程</div>
@@ -1015,6 +1033,9 @@ defineExpose({
   position: relative;
   display: inline-block;
   width: 100%;
+  background: linear-gradient(180deg, #ede8dc 0%, #e2dcd0 100%);
+  border-radius: 6px;
+  padding: 4px;
 }
 
 /* 手动标注打勾徽章 */
