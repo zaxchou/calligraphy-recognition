@@ -1969,7 +1969,7 @@
 .analysis-result-layout {
   display: flex;
   gap: 12px;
-  margin: 10px;
+  margin: 0 10px 10px;
   min-height: 240px;
 }
 
