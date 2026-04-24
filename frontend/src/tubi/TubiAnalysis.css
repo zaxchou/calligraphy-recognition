@@ -1336,9 +1336,13 @@
   max-width: 100px;
   text-align: center;
   font-size: 12px;
-  --el-button-border-color: #d9d5cc;
-  --el-button-hover-border-color: #b8a47e;
-  --el-button-hover-text-color: #8a7a5e;
+  border-color: #d9d5cc !important;
+  color: #8a7a5e !important;
+}
+.header-buttons .el-button:hover {
+  border-color: #b8a47e !important;
+  color: #6b5a3e !important;
+  background: #faf8f2 !important;
 }
 
 /* 批量上传样式 */
