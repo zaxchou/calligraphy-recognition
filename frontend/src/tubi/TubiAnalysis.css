@@ -570,6 +570,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
 }
 
 /* 历史记录卡片 */
@@ -1898,7 +1901,7 @@
 
 .annotated-image {
   width: 100%;
-  flex: 1;
+  max-height: 400px;
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid #e4e7ed;
@@ -3349,6 +3352,8 @@ gallery-album-tag {
   .right-panel {
     flex-direction: row;
     flex-wrap: wrap;
+    position: static;
+    align-self: auto;
   }
 
   .chart-card,
@@ -3405,6 +3410,8 @@ gallery-album-tag {
 
   .right-panel {
     flex-direction: column;
+    position: static;
+    align-self: auto;
   }
 
   .chart-card,
