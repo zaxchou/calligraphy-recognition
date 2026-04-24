@@ -38,26 +38,81 @@
             </div>
           </div>
 
-          <!-- AI分析说明 + 标签/款识/钤印 两列布局 -->
-          <div v-if="analyzeStatus === 'analyzed'" class="analysis-two-col-layout">
-            <!-- 左列：AI分析说明 -->
+          <!-- 面积占比智能示意图 + 标签/款识/钤印 并排布局 -->
+          <div v-if="analyzeStatus === 'analyzed'" class="analysis-result-layout">
             <div class="analysis-left-col">
-              <div v-if="analysisNote" class="analysis-note-main">
-                <h4><el-icon><Edit /></el-icon> AI分析说明</h4>
-                <div v-html="analysisNote"></div>
+              <div class="annotated-image-section">
+                <h4 class="section-title">
+                  <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
+                  <el-button size="small" text class="btn-annotate" @click="$emit('open-annotator')">手动标注</el-button>
+                </h4>
+                <div class="annotated-image-wrapper">
+                  <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
+                  <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
+                    <el-icon><Check /></el-icon>
+                  </div>
+                </div>
+              </div>
+              <!-- 主题与情感分析卡片 -->
+              <div class="theme-sentiment-card" v-if="currentImage?.contentAnalysis">
+                <h4 class="section-title">
+                  <el-icon><DataAnalysis /></el-icon> 主题与情感分析
+                  <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">
+                    {{ currentImage.contentAnalysis.period_phase }}
+                  </el-tag>
+                </h4>
+                <div class="theme-sentiment-content">
+                  <div class="ts-section" v-if="currentImage.contentAnalysis?.themes?.length">
+                    <div class="ts-label">主题</div>
+                    <div class="theme-tags">
+                      <el-tag
+                        v-for="theme in currentImage.contentAnalysis.themes"
+                        :key="theme.code"
+                        size="small"
+                        class="theme-tag"
+                      >
+                        {{ theme.name }}
+                        <span class="theme-confidence">({{ Math.round(theme.confidence * 100) }}%)</span>
+                      </el-tag>
+                    </div>
+                  </div>
+
+                  <div class="ts-section" v-if="currentImage.contentAnalysis?.sentiment">
+                    <div class="ts-label">情感极性</div>
+                    <div class="sentiment-row">
+                      <el-tag
+                        size="small"
+                        :type="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? 'success' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? 'danger' : 'info'"
+                        class="sentiment-tag"
+                      >
+                        {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                      </el-tag>
+                      <span class="sentiment-intensity">
+                        强度 {{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%
+                      </span>
+                    </div>
+                    <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.channel2?.reasoning">
+                      <div class="reasoning-label">推导过程</div>
+                      <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.channel2.reasoning }}</div>
+                    </div>
+                    <div class="sentiment-reasoning" v-else-if="currentImage.contentAnalysis.sentiment.channel1?.reasoning">
+                      <div class="reasoning-label">推导过程</div>
+                      <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.channel1.reasoning }}</div>
+                    </div>
+                  </div>
+
+                <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
+                  暂无内容分析数据
+                </div>
+                </div>
               </div>
             </div>
-
-            <!-- 右列：标签 + 款识 + 钤印 -->
             <div class="analysis-right-col">
-              <!-- 自动标签 -->
               <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
                 <div class="detail-tags-list">
                   <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
                 </div>
               </div>
-
-              <!-- 款识题跋 -->
               <div class="inscription-note-main">
                 <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
                 <div v-if="currentImage.inscriptionContent" class="inscription-content">
@@ -67,39 +122,22 @@
                   <p>暂无款识题跋内容</p>
                   <p class="empty-tip">可在编辑画作信息时添加</p>
                 </div>
-
-                <!-- 白话文翻译 -->
                 <div v-if="currentImage.inscriptionModern" class="inscription-translation">
                   <div class="translation-divider"></div>
                   <div class="translation-label">
                     <div class="clickable-tag-wrapper" @click="translationExpanded = !translationExpanded">
-                      <el-tag type="success" size="small" class="clickable-tag">
-                        白话文
-                      </el-tag>
-                      <el-icon class="expand-icon" :class="{ 'rotated': translationExpanded }">
-                        <ArrowDown />
-                      </el-icon>
+                      <el-tag type="success" size="small" class="clickable-tag">白话文</el-tag>
+                      <el-icon class="expand-icon" :class="{ 'rotated': translationExpanded }"><ArrowDown /></el-icon>
                     </div>
                   </div>
-                  <div class="translation-content" v-show="translationExpanded">
-                    {{ currentImage.inscriptionModern }}
-                  </div>
+                  <div class="translation-content" v-show="translationExpanded">{{ currentImage.inscriptionModern }}</div>
                 </div>
               </div>
-
-              <!-- 钤印 -->
               <div class="seal-note-main">
                 <h4><el-icon><Collection /></el-icon> 钤印</h4>
                 <div v-if="currentImage.sealContent" class="seal-content">
                   <div class="seal-tags-display">
-                    <el-popover
-                      v-for="(seal, idx) in detailSealTags"
-                      :key="idx"
-                      :width="120"
-                      placement="top"
-                      :disabled="!detailSealImageMap[seal.name]"
-                      trigger="hover"
-                    >
+                    <el-popover v-for="(seal, idx) in detailSealTags" :key="idx" :width="120" placement="top" :disabled="!detailSealImageMap[seal.name]" trigger="hover">
                       <template #reference>
                         <span class="seal-display-tag" :class="{ 'has-image': detailSealImageMap[seal.name] }">
                           {{ seal.name }}
@@ -110,52 +148,30 @@
                     </el-popover>
                   </div>
                 </div>
-                <div v-else class="seal-empty">
-                  <p>暂无钤印内容</p>
-                </div>
+                <div v-else class="seal-empty"><p>暂无钤印内容</p></div>
               </div>
-            </div>
-          </div>
-
-          <!-- 分析完成后的左右布局 -->
-          <div v-if="analyzeStatus === 'analyzed'" class="analysis-result-layout">
-            <!-- 左侧：面积占比智能示意图 -->
-            <div class="annotated-image-section">
-              <h4 class="section-title">
-                <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
-                <el-button size="small" text class="btn-annotate" @click="$emit('open-annotator')">
-                  手动标注
-                </el-button>
-              </h4>
-              <div class="annotated-image-wrapper">
-                <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
-                <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
-                  <el-icon><Check /></el-icon>
+              <!-- 题跋占比分析 -->
+              <div class="stats-section">
+                <h4 class="section-title"><el-icon><PieChart /></el-icon> 题跋占比分析</h4>
+                <div class="stats-content">
+                  <div ref="pieChartRef" class="pie-chart-small"></div>
                 </div>
-              </div>
-            </div>
-
-            <!-- 右侧：题跋占比分析 -->
-            <div class="stats-section">
-              <h4 class="section-title"><el-icon><PieChart /></el-icon> 题跋占比分析</h4>
-              <div class="stats-content">
-                <div ref="pieChartRef" class="pie-chart-small"></div>
-              </div>
-              <div class="stats-list">
-                <div class="stat-item inscription">
-                  <span class="stat-dot" style="background: #f2654e;"></span>
-                  <span class="stat-name">题跋区域</span>
-                  <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
-                </div>
-                <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
-                  <span class="stat-dot" style="background: #0d6ecf;"></span>
-                  <span class="stat-name">绘画区域</span>
-                  <span class="stat-percent">{{ areaStats.paintingPercent }}%</span>
-                </div>
-                <div class="stat-item blank" v-if="areaStats.blankPercent > 0">
-                  <span class="stat-dot" style="background: #8ed629;"></span>
-                  <span class="stat-name">留白区域</span>
-                  <span class="stat-percent">{{ areaStats.blankPercent }}%</span>
+                <div class="stats-list">
+                  <div class="stat-item inscription">
+                    <span class="stat-dot" style="background: #f2654e;"></span>
+                    <span class="stat-name">题跋区域</span>
+                    <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
+                  </div>
+                  <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
+                    <span class="stat-dot" style="background: #0d6ecf;"></span>
+                    <span class="stat-name">绘画区域</span>
+                    <span class="stat-percent">{{ areaStats.paintingPercent }}%</span>
+                  </div>
+                  <div class="stat-item blank" v-if="areaStats.blankPercent > 0">
+                    <span class="stat-dot" style="background: #8ed629;"></span>
+                    <span class="stat-name">留白区域</span>
+                    <span class="stat-percent">{{ areaStats.blankPercent }}%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -288,62 +304,6 @@
               />
               <div v-else class="thumb-placeholder">{{ item.album_index || idx + 1 }}</div>
             </div>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- 主题与情感分析卡片 -->
-      <el-card shadow="hover" class="theme-sentiment-card" v-if="analyzeStatus === 'analyzed' && currentImage?.contentAnalysis">
-        <template #header>
-          <div class="card-header">
-            <span>主题与情感分析</span>
-            <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">
-              {{ currentImage.contentAnalysis.period_phase }}
-            </el-tag>
-          </div>
-        </template>
-        <div class="theme-sentiment-content">
-          <div class="ts-section" v-if="currentImage.contentAnalysis?.themes?.length">
-            <div class="ts-label">主题</div>
-            <div class="theme-tags">
-              <el-tag
-                v-for="theme in currentImage.contentAnalysis.themes"
-                :key="theme.code"
-                size="small"
-                class="theme-tag"
-              >
-                {{ theme.name }}
-                <span class="theme-confidence">({{ Math.round(theme.confidence * 100) }}%)</span>
-              </el-tag>
-            </div>
-          </div>
-
-          <div class="ts-section" v-if="currentImage.contentAnalysis?.sentiment">
-            <div class="ts-label">情感极性</div>
-            <div class="sentiment-row">
-              <el-tag
-                size="small"
-                :type="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? 'success' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? 'danger' : 'info'"
-                class="sentiment-tag"
-              >
-                {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
-              </el-tag>
-              <span class="sentiment-intensity">
-                强度 {{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%
-              </span>
-            </div>
-            <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.channel2?.reasoning">
-              <div class="reasoning-label">推导过程</div>
-              <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.channel2.reasoning }}</div>
-            </div>
-            <div class="sentiment-reasoning" v-else-if="currentImage.contentAnalysis.sentiment.channel1?.reasoning">
-              <div class="reasoning-label">推导过程</div>
-              <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.channel1.reasoning }}</div>
-            </div>
-          </div>
-
-          <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
-            暂无内容分析数据
           </div>
         </div>
       </el-card>

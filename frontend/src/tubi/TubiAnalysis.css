@@ -119,17 +119,38 @@
 
 /* 主题与情感分析卡片 */
 .theme-sentiment-card {
-  border: 1px solid #e8e6e0;
-  border-radius: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e8e4da;
+  border-radius: 8px;
   overflow: hidden;
   transition: box-shadow 0.2s ease;
+  margin-top: 12px;
+  background: #faf9f7;
+  padding: 10px 12px;
 }
 
 .theme-sentiment-card:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
 }
 
+.theme-sentiment-card .section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-sentiment-card .section-title .el-tag {
+  margin-left: auto;
+}
+
 .theme-sentiment-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -139,15 +160,14 @@
 .ts-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ts-label {
   font-size: 12px;
   font-weight: 600;
   color: #8a8070;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .theme-tags {
@@ -184,8 +204,8 @@
 }
 
 .sentiment-reasoning {
-  background: #faf8f4;
-  border-radius: 8px;
+  background: #f0eeea;
+  border-radius: 6px;
   padding: 8px 10px;
   margin-top: 4px;
 }
@@ -1905,7 +1925,6 @@
 }
 
 .annotated-image-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 10px 12px;
