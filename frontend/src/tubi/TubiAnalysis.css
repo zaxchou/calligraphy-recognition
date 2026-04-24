@@ -1001,7 +1001,7 @@
 
 /* 图片显示区域 */
 .image-display {
-  padding: 10px;
+  padding: 0 10px 10px;
 }
 
 .image-info-header {
