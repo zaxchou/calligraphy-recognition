@@ -2738,9 +2738,12 @@ watch(currentImage, (newVal) => {
 </style>
 
 <style>
-/* ElMessage 透明样式（非 scoped，因为 ElMessage DOM 在组件外） */
+/* ElMessage 透明+靠右样式（非 scoped，因为 ElMessage DOM 在组件外） */
 .toast-transparent {
   opacity: 0.75 !important;
   backdrop-filter: blur(4px);
+  top: 20px !important;
+  right: 20px !important;
+  left: auto !important;
 }
 </style>
