@@ -358,6 +358,7 @@
             v-for="item in relatedWorks"
             :key="item.id"
             class="history-grid-item"
+            :class="{ 'is-current': item.id === currentImage.id }"
             @click="$emit('history-item-click', item)"
           >
             <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="history-grid-thumb" />
@@ -466,15 +467,17 @@ const emit = defineEmits([
 // ── 翻译折叠 ──────────────────────────────────
 const translationExpanded = ref(false)
 
-// ── 相关作品（同作者、ID > 当前作品，最多20条）──
+// ── 相关作品（同作者，前3 + 当前 + 后8 = 12条）──
 const relatedWorks = computed(() => {
   if (!props.currentImage || !props.historyList?.length) return []
   const currentId = props.currentImage.id
   const currentArtist = props.currentImage.artist
   if (!currentId || !currentArtist) return []
-  return props.historyList
-    .filter(item => item.artist === currentArtist && item.id > currentId)
-    .slice(0, 12)
+  const sameArtist = props.historyList.filter(item => item.artist === currentArtist)
+  const idx = sameArtist.findIndex(item => item.id === currentId)
+  if (idx < 0) return sameArtist.slice(0, 12)
+  const start = Math.max(0, idx - 3)
+  return sameArtist.slice(start, start + 12)
 })
 
 function openRanking() {

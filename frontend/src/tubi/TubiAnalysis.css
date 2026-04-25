@@ -684,6 +684,16 @@
   transform: scale(1.05);
 }
 
+.history-grid-item.is-current .history-grid-thumb {
+  border: 2px solid #c96442;
+  box-shadow: 0 0 0 2px rgba(201, 100, 66, 0.3);
+}
+
+.history-grid-item.is-current .history-grid-title {
+  color: #c96442;
+  font-weight: 600;
+}
+
 .history-grid-thumb {
   width: 100%;
   aspect-ratio: 1;
