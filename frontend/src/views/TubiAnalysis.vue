@@ -63,25 +63,9 @@
       @navigate-album="navigateToAlbumItem"
       @open-annotator="openAnnotator"
       @filter-by-tag="filterByTag"
-      @show-history="showHistoryDialog"
       @history-item-click="loadHistoryItem"
     />
 
-
-    <!-- 历史记录对话框 -->
-    <TubiHistoryDialog
-      v-model="historyDialogVisible"
-      :history-list="historyList"
-      :loading="historyLoading"
-      :total="historyTotal"
-      :current-page="historyCurrentPage"
-      :page-size="historyPageSize"
-      @view="loadHistoryItem"
-      @edit="editHistoryItem"
-      @delete="deleteHistoryItem"
-      @preview="previewHistoryImage"
-      @page-change="handleHistoryPageChange"
-    />
 
     <!-- 搜索结果弹窗 -->
     <TubiSearchDialog
@@ -150,7 +134,6 @@ import TubiGallery from '../components/tubi/TubiGallery.vue'
 import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
 import TubiComparison from '../components/tubi/TubiComparison.vue'
 import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
-import TubiHistoryDialog from '../components/tubi/TubiHistoryDialog.vue'
 import TubiSearchDialog from '../components/tubi/TubiSearchDialog.vue'
 import TubiImagePreviewDialog from '../components/tubi/TubiImagePreviewDialog.vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
@@ -200,10 +183,7 @@ watch(
 )
 
 // 历史记录相关
-const historyDialogVisible = ref(false)
 const historyList = ref([])
-const historyTotal = ref(0)
-const historyCurrentPage = ref(1)
 const historyPageSize = ref(500)
 
 // 搜索相关
@@ -1294,12 +1274,6 @@ function updateTrendChart() {
   })
 }
 
-// 显示历史记录对话框
-async function showHistoryDialog() {
-  historyDialogVisible.value = true
-  await loadHistory()
-}
-
 // 搜索画作
 async function handleSearch() {
   if (!searchKeyword.value.trim()) {
@@ -1409,9 +1383,7 @@ async function loadHistory(page = 1) {
           sealContent: item.seal_content || ''
         }
       })
-      historyTotal.value = response.total || 0
-      historyCurrentPage.value = page
-      console.log('历史记录加载成功:', historyList.value.length, '条，总计:', historyTotal.value, '条')
+      console.log('历史记录加载成功:', historyList.value.length, '条')
       // 加载完成后更新趋势图
       await nextTick()
       updateTrendChart()
@@ -1425,11 +1397,6 @@ async function loadHistory(page = 1) {
   } finally {
     historyLoading.value = false
   }
-}
-
-// 处理历史记录分页变化
-function handleHistoryPageChange(page) {
-  loadHistory(page)
 }
 
 // 预览历史图片
@@ -1463,7 +1430,6 @@ async function loadHistoryItem(row) {
 
       // 选中该图片
       selectImage(historyImage)
-      historyDialogVisible.value = false
       
       // 滚动到页面顶部
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -1522,7 +1488,6 @@ async function loadHistoryItem(row) {
 
         // 选中该图片
         selectImage(historyImage)
-        historyDialogVisible.value = false
         
         // 滚动到页面顶部
         window.scrollTo({ top: 0, behavior: 'smooth' })

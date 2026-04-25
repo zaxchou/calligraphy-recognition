@@ -348,7 +348,7 @@
         <template #header>
           <div class="card-header">
             <span>作品库</span>
-            <el-button type="primary" size="small" @click="$emit('show-history')" :icon="Clock">
+            <el-button type="primary" size="small" @click="openRanking" :icon="Clock">
               查看全部
             </el-button>
           </div>
@@ -460,7 +460,7 @@ const positionAnalysis = computed(() => props.analysis?.positionAnalysis || null
 const emit = defineEmits([
   'back', 'edit-current', 'open-upload', 'auto-analyze',
   'navigate', 'navigate-album', 'open-annotator',
-  'filter-by-tag', 'show-history', 'history-item-click'
+  'filter-by-tag', 'history-item-click'
 ])
 
 // ── 翻译折叠 ──────────────────────────────────
@@ -476,6 +476,10 @@ const relatedWorks = computed(() => {
     .filter(item => item.artist === currentArtist && item.id > currentId)
     .slice(0, 20)
 })
+
+function openRanking() {
+  window.open('/tubi/ranking', '_blank')
+}
 
 // ── 悬浮示意图 ────────────────────────────────
 const showDiagramOverlay = ref(false)
