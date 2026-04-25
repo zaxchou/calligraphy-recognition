@@ -358,7 +358,7 @@
             :class="{ 'is-current': item.id === currentImage.id }"
             @click="$emit('history-item-click', item)"
           >
-            <img v-if="item.url" :src="item.url" class="history-grid-thumb" loading="lazy" />
+            <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="history-grid-thumb" loading="lazy" />
             <div v-else class="history-grid-thumb-placeholder">
               <el-icon size="16"><Picture /></el-icon>
             </div>

@@ -586,9 +586,9 @@ async def upload_image(
                         if thumb.mode != "RGB":
                             thumb = thumb.convert("RGB")
                         ratio = width / height if height > 0 else 1
+                        max_size = 300
                         if ratio > 2:
                             # 超宽图片：先缩放高度到 300，再从中间裁切 300x300
-                            max_size = 300
                             scale = max_size / height
                             scaled_w = int(width * scale)
                             img_scaled = thumb.resize((scaled_w, max_size), Image.Resampling.LANCZOS)
@@ -601,9 +601,23 @@ async def upload_image(
                             os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
                             img_cropped.save(thumbnail_path, "JPEG", quality=85, optimize=False)
                             ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 0
+                        elif ratio < 0.5:
+                            # 超高图片（条屏类）：先缩放宽度到 300，再从中间裁切 300x300
+                            scale = max_size / width
+                            scaled_h = int(height * scale)
+                            img_scaled = thumb.resize((max_size, scaled_h), Image.Resampling.LANCZOS)
+                            left = 0
+                            top = max(0, (scaled_h - max_size) // 2)
+                            right = max_size
+                            bottom = top + max_size
+                            img_cropped = img_scaled.crop((left, top, right, bottom))
+                            img_scaled.close()
+                            os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
+                            img_cropped.save(thumbnail_path, "JPEG", quality=85, optimize=False)
+                            ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 0
                         else:
                             # 普通图片：整体缩放
-                            thumb.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                            thumb.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
                             os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
                             thumb.save(thumbnail_path, "JPEG", quality=85, optimize=False)
                             ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 0
@@ -750,9 +764,9 @@ async def upload_images(
                             if thumb.mode != "RGB":
                                 thumb = thumb.convert("RGB")
                             ratio = width / height if height > 0 else 1
+                            max_size = 300
                             if ratio > 2:
                                 # 超宽图片：先缩放高度到 300，再从中间裁切 300x300
-                                max_size = 300
                                 scale = max_size / height
                                 scaled_w = int(width * scale)
                                 img_scaled = thumb.resize((scaled_w, max_size), Image.Resampling.LANCZOS)
@@ -765,9 +779,23 @@ async def upload_images(
                                 os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
                                 img_cropped.save(thumbnail_path, "JPEG", quality=85, optimize=False)
                                 ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 0
+                            elif ratio < 0.5:
+                                # 超高图片（条屏类）：先缩放宽度到 300，再从中间裁切 300x300
+                                scale = max_size / width
+                                scaled_h = int(height * scale)
+                                img_scaled = thumb.resize((max_size, scaled_h), Image.Resampling.LANCZOS)
+                                left = 0
+                                top = max(0, (scaled_h - max_size) // 2)
+                                right = max_size
+                                bottom = top + max_size
+                                img_cropped = img_scaled.crop((left, top, right, bottom))
+                                img_scaled.close()
+                                os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
+                                img_cropped.save(thumbnail_path, "JPEG", quality=85, optimize=False)
+                                ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 0
                             else:
                                 # 普通图片：整体缩放
-                                thumb.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                                thumb.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
                                 os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
                                 thumb.save(thumbnail_path, "JPEG", quality=85, optimize=False)
                                 ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 0
