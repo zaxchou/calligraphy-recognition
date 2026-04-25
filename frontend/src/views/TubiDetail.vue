@@ -69,11 +69,11 @@
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
         </div>
         <div class="info-card-actions">
-          <el-button plain size="small" class="btn-edit" @click="$emit('edit-current')">
+          <el-button plain size="small" class="btn-action" @click="$emit('edit-current')">
             <el-icon><Edit /></el-icon> 编辑
           </el-button>
-          <el-button plain size="small" class="btn-edit" @click="$emit('back')" :icon="HomeFilled">
-            返回首页
+          <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
+            返回
           </el-button>
         </div>
       </div>
@@ -905,13 +905,6 @@ defineExpose({
   flex-shrink: 0;
 }
 .expand-icon.rotated { transform: rotate(180deg); }
-.btn-edit {
-  font-size: 12px !important;
-}
-:deep(.btn-edit .el-button__content) {
-  font-size: 12px;
-}
-
 /* 画作信息卡片（合并作者/年份/尺寸 + 操作按钮） */
 .artwork-info-card {
   padding: 10px 12px;
@@ -942,10 +935,19 @@ defineExpose({
 }
 .info-card-actions {
   display: flex;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid #ede9de;
+}
+.btn-action {
+  flex: 1;
+  font-size: 12px !important;
+}
+:deep(.btn-action .el-button__content) {
+  font-size: 12px;
+  justify-content: center;
 }
 /* 作品信息表格 */
 .image-info-header {
