@@ -1100,7 +1100,6 @@ onMounted(() => {
   opacity: 0.75 !important;
   backdrop-filter: blur(4px);
   top: 20px !important;
-  right: 20px !important;
-  left: auto !important;
+  left: 20px !important;
 }
 </style>
