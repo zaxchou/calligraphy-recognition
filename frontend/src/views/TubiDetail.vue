@@ -26,11 +26,81 @@
                   <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
                   <el-button size="small" text class="btn-annotate" @click="$emit('open-annotator')">手动标注</el-button>
                 </h4>
-                <div class="annotated-image-wrapper">
+                <div class="annotated-image-wrapper" @mouseenter="showDiagramOverlay = true" @mouseleave="showDiagramOverlay = false">
                   <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
                   <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
                     <el-icon><Check /></el-icon>
                   </div>
+                  <!-- 悬浮布局示意图 -->
+                  <transition name="fade">
+                    <div v-if="showDiagramOverlay && diagramRegions.inscription_regions?.length" class="diagram-hover-overlay">
+                      <svg
+                        class="diagram-svg"
+                        :viewBox="`0 0 100 ${(100 * (currentImage?.height || 1) / (currentImage?.width || 1)).toFixed(1)}`"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.painting_regions"
+                          :key="'p'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-painting-poly"
+                        />
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.inscription_regions"
+                          :key="'i'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-inscription-poly"
+                        />
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.blank_regions"
+                          :key="'b'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-blank-poly"
+                        />
+                      </svg>
+                      <div class="diagram-legend-overlay">
+                        <span class="legend-item"><span class="legend-dot inscription"></span>题跋</span>
+                        <span class="legend-item"><span class="legend-dot painting"></span>绘画</span>
+                        <span class="legend-item"><span class="legend-dot blank"></span>留白</span>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+              <!-- 题跋空间分布分析（精简版） -->
+              <div class="spatial-analysis-card" v-if="analyzeStatus === 'analyzed' && positionAnalysis">
+                <h4 class="section-title">
+                  <el-icon><DataAnalysis /></el-icon> 题跋空间分布分析
+                  <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
+                    <el-tooltip
+                      v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
+                      :key="ft.code"
+                      :content="ft.description"
+                      placement="bottom"
+                      effect="dark"
+                    >
+                      <span class="form-type-tag" :class="`tag-code-${ft.code}`">
+                        {{ ft.name }}
+                      </span>
+                    </el-tooltip>
+                    <span v-if="positionAnalysis.vl_overall_status === 'partial_timeout'" class="vl-timeout-badge">VL超时</span>
+                  </div>
+                </h4>
+                <div class="spatial-description" v-if="positionAnalysis?.form_types?.length">
+                  <div
+                    v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
+                    :key="ft.code"
+                    class="form-type-desc-row"
+                  >
+                    <span class="desc-tag" :class="`desc-tag-${ft.code}`">{{ ft.code }}</span>
+                    <span class="desc-text">{{ ft.description }}</span>
+                  </div>
+                  <div v-if="!positionAnalysis.form_types.filter(f => f.matched).length" class="desc-none">
+                    {{ positionAnalysis.layout_description || '暂无形式分析结果' }}
+                  </div>
+                </div>
+                <div class="spatial-description" v-else>
+                  {{ positionAnalysis.layout_description }}
                 </div>
               </div>
               <!-- 主题与情感分析卡片 -->
@@ -321,118 +391,7 @@
         </div>
       </el-card>
 
-      <!-- 区域分析与位置分析融合卡片 -->
-      <el-card shadow="hover" class="chart-card integrated-analysis-card" v-if="analyzeStatus === 'analyzed'">
-        <template #header>
-          <div class="card-header">
-            <span>题跋空间分布分析</span>
-            <div class="form-types-header" v-if="positionAnalysis?.form_types?.length">
-              <el-tooltip
-                v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
-                :key="ft.code"
-                :content="ft.description"
-                placement="bottom"
-                effect="dark"
-              >
-                <span class="form-type-tag" :class="`tag-code-${ft.code}`">
-                  {{ ft.name }}
-                </span>
-              </el-tooltip>
-              <span v-if="positionAnalysis.vl_overall_status === 'partial_timeout'" class="vl-timeout-badge">VL超时</span>
-            </div>
-          </div>
-        </template>
-
-        <div class="integrated-analysis-container">
-          <div v-if="positionAnalysis" class="analysis-legend-panel">
-            <!-- 布局示意图 -->
-            <div class="layout-diagram">
-              <div class="diagram-title">布局示意图</div>
-              <div class="diagram-canvas" :style="{ aspectRatio: `${currentImage?.width || 1} / ${currentImage?.height || 1}` }">
-                <div class="canvas-frame">
-                  <svg
-                    v-if="diagramRegions.inscription_regions?.length"
-                    class="diagram-svg"
-                    :viewBox="`0 0 100 ${(100 * (currentImage?.height || 1) / (currentImage?.width || 1)).toFixed(1)}`"
-                    preserveAspectRatio="xMidYMid meet"
-                  >
-                    <polygon
-                      v-for="(reg, idx) in diagramRegions.painting_regions"
-                      :key="'p'+idx"
-                      :points="toDiagramPoints(reg)"
-                      class="diagram-painting-poly"
-                    />
-                    <polygon
-                      v-for="(reg, idx) in diagramRegions.inscription_regions"
-                      :key="'i'+idx"
-                      :points="toDiagramPoints(reg)"
-                      class="diagram-inscription-poly"
-                    />
-                    <polygon
-                      v-for="(reg, idx) in diagramRegions.blank_regions"
-                      :key="'b'+idx"
-                      :points="toDiagramPoints(reg)"
-                      class="diagram-blank-poly"
-                    />
-                  </svg>
-                  <template v-else>
-                    <div class="canvas-painting-area">绘画</div>
-                    <div
-                      class="canvas-inscription-area"
-                      :class="getInscriptionAreaClass()"
-                      :style="getInscriptionAreaStyle()"
-                    >
-                      题跋
-                    </div>
-                  </template>
-                  <div class="diagram-legend">
-                    <span class="legend-item"><span class="legend-dot inscription"></span>题跋</span>
-                    <span class="legend-item"><span class="legend-dot painting"></span>绘画</span>
-                    <span class="legend-item"><span class="legend-dot blank"></span>留白</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 指标列表 -->
-            <div class="metrics-list">
-              <div class="metric-row">
-                <div class="metric-icon coverage"></div>
-                <span class="metric-name">覆盖率</span>
-                <span class="metric-value">{{ (positionAnalysis.coverage_ratio * 100).toFixed(1) }}%</span>
-              </div>
-              <div class="metric-row">
-                <div class="metric-icon overlap"></div>
-                <span class="metric-name">重叠率</span>
-                <span class="metric-value">{{ (positionAnalysis.overlap_ratio * 100).toFixed(1) }}%</span>
-              </div>
-              <div class="metric-row">
-                <div class="metric-icon margin"></div>
-                <span class="metric-name">边距</span>
-                <span class="metric-value">{{ getEdgeDistanceShortText() }}</span>
-              </div>
-            </div>
-
-            <!-- 描述文本 -->
-            <div class="layout-description-box" v-if="positionAnalysis?.form_types?.length">
-              <div
-                v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
-                :key="ft.code"
-                class="form-type-desc-row"
-              >
-                <span class="desc-tag" :class="`desc-tag-${ft.code}`">{{ ft.code }}</span>
-                <span class="desc-text">{{ ft.description }}</span>
-              </div>
-              <div v-if="!positionAnalysis.form_types.filter(f => f.matched).length" class="desc-none">
-                {{ positionAnalysis.layout_description || '暂无形式分析结果' }}
-              </div>
-            </div>
-            <div v-else class="layout-description-box">
-              {{ positionAnalysis.layout_description }}
-            </div>
-          </div>
-        </div>
-      </el-card>
+      <!-- (题跋空间分布分析已移至左面板) -->
     </div>
 
     <!-- 原图放大查看对话框 -->
@@ -446,7 +405,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import {
-  Picture, Edit, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check
+  Picture, Edit, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
@@ -527,6 +486,9 @@ const emit = defineEmits([
 
 // ── 翻译折叠 ──────────────────────────────────
 const translationExpanded = ref(false)
+
+// ── 悬浮示意图 ────────────────────────────────
+const showDiagramOverlay = ref(false)
 
 // ── Canvas 相关 ────────────────────────────────
 const canvasRef = ref(null)
@@ -1132,6 +1094,101 @@ defineExpose({
   font-size: 12px;
   color: #8a8a7a;
   font-weight: 500;
+}
+
+/* ── 悬浮布局示意图覆盖层 ── */
+.diagram-hover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 253, 245, 0.88);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+.diagram-hover-overlay .diagram-svg {
+  width: 100%;
+  max-height: 100%;
+}
+.diagram-legend-overlay {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #666;
+}
+.diagram-legend-overlay .legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+.diagram-legend-overlay .legend-dot.inscription { background: rgba(220, 92, 92, 0.6); }
+.diagram-legend-overlay .legend-dot.painting { background: rgba(74, 144, 217, 0.5); }
+.diagram-legend-overlay .legend-dot.blank { background: rgba(90, 184, 112, 0.5); }
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* ── 题跋空间分布分析（精简卡片） ── */
+.spatial-analysis-card {
+  padding: 10px 12px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
+}
+.spatial-analysis-card .section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+.form-types-inline {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 6px;
+}
+.spatial-description {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #555;
+}
+.form-type-desc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.desc-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #ede9de;
+  color: #8a7a5e;
+  font-weight: 600;
+}
+.desc-text {
+  color: #555;
+}
+.desc-none {
+  color: #999;
+  font-style: italic;
 }
 
 /* 印章标签显示 */
