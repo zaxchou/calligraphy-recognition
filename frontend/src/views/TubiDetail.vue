@@ -1084,7 +1084,7 @@ defineExpose({
 .album-nav-title {
   font-size: 13px;
   font-weight: 600;
-  color: #c96442;
+  color: #333;
 }
 .album-nav-count {
   font-size: 11px;
