@@ -474,7 +474,7 @@ const relatedWorks = computed(() => {
   if (!currentId || !currentArtist) return []
   return props.historyList
     .filter(item => item.artist === currentArtist && item.id > currentId)
-    .slice(0, 20)
+    .slice(0, 12)
 })
 
 function openRanking() {
