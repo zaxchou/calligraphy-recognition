@@ -622,7 +622,7 @@
 /* 响应式布局容器 */
 .analysis-container {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 360px 1fr;
   gap: 14px;
 }
 
@@ -632,6 +632,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
 }
 
 /* 右侧面板 */
@@ -639,9 +642,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 20px;
-  align-self: flex-start;
 }
 
 /* 历史记录卡片 */
@@ -3491,11 +3491,14 @@ gallery-album-tag {
     grid-template-columns: 1fr;
   }
 
+  .left-panel {
+    position: static;
+    align-self: auto;
+  }
+
   .right-panel {
     flex-direction: row;
     flex-wrap: wrap;
-    position: static;
-    align-self: auto;
   }
 
   .analysis-two-col-layout {
@@ -3555,10 +3558,13 @@ gallery-album-tag {
     gap: 16px;
   }
 
-  .right-panel {
-    flex-direction: column;
+  .left-panel {
     position: static;
     align-self: auto;
+  }
+
+  .right-panel {
+    flex-direction: column;
   }
 
   .analysis-two-col-layout {
@@ -3808,7 +3814,7 @@ gallery-album-tag {
   }
 
   .analysis-container {
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 400px 1fr;
   }
 
   .pie-chart {

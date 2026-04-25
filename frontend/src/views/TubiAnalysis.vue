@@ -1,7 +1,7 @@
 ﻿<template>
   <div class="tubi-analysis tubi-page">
     <!-- 页面标题 -->
-    <div class="tubi-header">
+    <div class="tubi-header" v-if="!currentImage">
       <h1>中国画题跋空间分析</h1>
       <p class="sub">上传国画图片，AI 自动识别画作中的题跋、绘画、留白区域</p>
       <div class="header-ornament">

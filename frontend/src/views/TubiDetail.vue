@@ -1,7 +1,78 @@
 <template>
   <div class="analysis-container">
-    <!-- 左侧：图片上传和显示 -->
+    <!-- 左侧：原作图 + 作品信息（sticky） -->
     <div class="left-panel">
+      <!-- 原作卡片 -->
+      <el-card shadow="hover" class="original-image-card" v-if="analyzeStatus === 'analyzed' && currentImage?.url">
+        <template #header>
+          <div class="card-header navigation-header">
+            <el-button
+              size="small"
+              :disabled="!prevImage"
+              @click="$emit('navigate', prevImage)"
+              :icon="ArrowLeft"
+            >
+              上一幅
+            </el-button>
+            <span class="nav-title">{{ currentImage.title || '未命名' }}</span>
+            <el-button
+              size="small"
+              :disabled="!nextImage"
+              @click="$emit('navigate', nextImage)"
+            >
+              下一幅
+              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </template>
+        <div class="original-image-wrapper">
+          <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url)" title="点击放大查看" />
+          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url)" title="放大查看"><ZoomIn /></el-icon>
+        </div>
+
+        <!-- 册页导航 -->
+        <div v-if="albumNavigation.is_in_album" class="album-navigation">
+          <div class="album-nav-header">
+            <span class="album-nav-title">「{{ albumNavigation.album_name }}」</span>
+            <span class="album-nav-count">第{{ albumNavigation.current_index + 1 }}幅 / 共{{ albumNavigation.total_count }}幅</span>
+          </div>
+          <div class="album-nav-thumbnails">
+            <div
+              v-for="(item, idx) in albumNavigation.items"
+              :key="item.id"
+              :class="['album-nav-thumbnail', { active: item.is_current }]"
+              @click="$emit('navigate-album', item)"
+            >
+              <img
+                v-if="item.thumbnail_url"
+                :src="item.thumbnail_url"
+                @error="e => e.target.style.display='none'"
+              />
+              <div v-else class="thumb-placeholder">{{ item.album_index || idx + 1 }}</div>
+            </div>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 画作信息卡片（作者/年份/尺寸） -->
+      <div class="artwork-info-cards" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
+        <div class="info-card-row" v-if="currentImage.artist">
+          <span class="info-card-label">作者</span>
+          <span class="info-card-value">{{ currentImage.artist }}</span>
+        </div>
+        <div class="info-card-row" v-if="currentImage.year">
+          <span class="info-card-label">年份</span>
+          <span class="info-card-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
+        </div>
+        <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
+          <span class="info-card-label">尺寸</span>
+          <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：分析结果 -->
+    <div class="right-panel">
       <el-card shadow="hover" class="upload-card">
         <template #header>
           <div class="card-header">
@@ -278,7 +349,7 @@
         </div>
       </el-card>
 
-      <!-- 作品库（侧边栏）-->
+      <!-- 作品库 -->
       <el-card shadow="hover" class="history-card">
         <template #header>
           <div class="card-header">
@@ -323,78 +394,6 @@
       </el-card>
     </div>
 
-    <!-- 右侧：分析结果 -->
-    <div class="right-panel">
-      <!-- 原作卡片 -->
-      <el-card shadow="hover" class="original-image-card" v-if="analyzeStatus === 'analyzed' && currentImage?.url">
-        <template #header>
-          <div class="card-header navigation-header">
-            <el-button
-              size="small"
-              :disabled="!prevImage"
-              @click="$emit('navigate', prevImage)"
-              :icon="ArrowLeft"
-            >
-              上一幅
-            </el-button>
-            <el-button
-              size="small"
-              :disabled="!nextImage"
-              @click="$emit('navigate', nextImage)"
-            >
-              下一幅
-              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-            </el-button>
-          </div>
-        </template>
-        <div class="original-image-wrapper">
-          <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url)" title="点击放大查看" />
-          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url)" title="放大查看"><ZoomIn /></el-icon>
-        </div>
-
-        <!-- 册页导航 -->
-        <div v-if="albumNavigation.is_in_album" class="album-navigation">
-          <div class="album-nav-header">
-            <span class="album-nav-title">「{{ albumNavigation.album_name }}」</span>
-            <span class="album-nav-count">第{{ albumNavigation.current_index + 1 }}幅 / 共{{ albumNavigation.total_count }}幅</span>
-          </div>
-          <div class="album-nav-thumbnails">
-            <div
-              v-for="(item, idx) in albumNavigation.items"
-              :key="item.id"
-              :class="['album-nav-thumbnail', { active: item.is_current }]"
-              @click="$emit('navigate-album', item)"
-            >
-              <img
-                v-if="item.thumbnail_url"
-                :src="item.thumbnail_url"
-                @error="e => e.target.style.display='none'"
-              />
-              <div v-else class="thumb-placeholder">{{ item.album_index || idx + 1 }}</div>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- 画作信息卡片（作者/年份/尺寸） -->
-      <div class="artwork-info-cards" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
-        <div class="info-card-row" v-if="currentImage.artist">
-          <span class="info-card-label">作者</span>
-          <span class="info-card-value">{{ currentImage.artist }}</span>
-        </div>
-        <div class="info-card-row" v-if="currentImage.year">
-          <span class="info-card-label">年份</span>
-          <span class="info-card-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
-        </div>
-        <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
-          <span class="info-card-label">尺寸</span>
-          <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
-        </div>
-      </div>
-
-      <!-- (题跋空间分布分析已移至左面板) -->
-    </div>
-
     <!-- 原图放大查看对话框 -->
     <TubiImageZoomDialog
       v-model="imagePreviewVisible"
@@ -406,7 +405,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import {
-  Picture, Edit, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart
+  Picture, Edit, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart, ZoomIn
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
@@ -1004,9 +1003,23 @@ defineExpose({
   white-space: pre-wrap;
 }
 
-/* 导航按钮左右分布 */
+/* 导航按钮左右分布，标题居中 */
 .navigation-header {
-  justify-content: space-between !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
 }
 
 /* 面积占比智能示意图标题与按钮同行 */
