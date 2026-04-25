@@ -478,7 +478,7 @@ const relatedWorks = computed(() => {
 })
 
 function openRanking() {
-  window.open('/tubi/ranking', '_blank')
+  window.open('/#/tubi/ranking', '_blank')
 }
 
 // ── 悬浮示意图 ────────────────────────────────
