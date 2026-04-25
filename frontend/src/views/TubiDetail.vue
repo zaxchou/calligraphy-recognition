@@ -258,12 +258,9 @@
                 <div v-if="currentImage.inscriptionModern" class="inscription-translation">
                   <div class="translation-divider"></div>
                   <div class="translation-label">
-                    <div class="clickable-tag-wrapper" @click="translationExpanded = !translationExpanded">
-                      <el-tag type="success" size="small" class="clickable-tag">白话文</el-tag>
-                      <el-icon class="expand-icon" :class="{ 'rotated': translationExpanded }"><ArrowDown /></el-icon>
-                    </div>
+                    <el-tag type="success" size="small">白话文</el-tag>
                   </div>
-                  <div class="translation-content" v-show="translationExpanded">{{ currentImage.inscriptionModern }}</div>
+                  <div class="translation-content">{{ currentImage.inscriptionModern }}</div>
                 </div>
               </div>
               <div class="seal-note-main">
@@ -466,9 +463,6 @@ const emit = defineEmits([
   'navigate', 'navigate-album', 'open-annotator',
   'filter-by-tag', 'history-item-click'
 ])
-
-// ── 翻译折叠 ──────────────────────────────────
-const translationExpanded = ref(false)
 
 // ── 相关作品（同作者，前3 + 当前 + 后8 = 12条）──
 const relatedWorks = computed(() => {
@@ -889,28 +883,6 @@ defineExpose({
 .translation-label {
   margin-bottom: 8px;
 }
-.clickable-tag-wrapper {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-}
-.clickable-tag-wrapper:hover {
-  transform: translateY(-1px);
-}
-.clickable-tag-wrapper:hover .clickable-tag {
-  box-shadow: 0 2px 8px rgba(90, 138, 74, 0.25);
-}
-.clickable-tag { white-space: nowrap; }
-.expand-icon {
-  transition: transform 0.2s ease;
-  font-size: 12px;
-  color: #5a8a4a;
-  flex-shrink: 0;
-}
-.expand-icon.rotated { transform: rotate(180deg); }
 /* 画作信息卡片（合并作者/年份/尺寸 + 操作按钮） */
 .artwork-info-card {
   padding: 10px 12px;
@@ -1000,10 +972,7 @@ defineExpose({
   font-size: 13px;
   line-height: 1.8;
   color: #3d3d3a;
-  background: #fffef8;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ede9de;
+  font-style: italic;
   white-space: pre-wrap;
 }
 
