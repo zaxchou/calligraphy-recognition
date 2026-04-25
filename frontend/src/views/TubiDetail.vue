@@ -944,6 +944,7 @@ defineExpose({
 .btn-action {
   flex: 1;
   font-size: 12px !important;
+  box-shadow: none !important;
 }
 :deep(.btn-action .el-button__content) {
   font-size: 12px;
