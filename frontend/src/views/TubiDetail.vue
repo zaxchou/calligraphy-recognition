@@ -1169,7 +1169,7 @@ defineExpose({
   vertical-align: middle;
 }
 .diagram-legend-overlay .legend-dot.inscription { background: rgba(201, 100, 66, 0.7); }
-.diagram-legend-overlay .legend-dot.painting { background: rgba(76, 175, 80, 0.7); }
+.diagram-legend-overlay .legend-dot.painting { background: rgba(74, 144, 217, 0.7); }
 .diagram-legend-overlay .legend-dot.blank { background: rgba(144, 164, 174, 0.5); }
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.25s ease;
