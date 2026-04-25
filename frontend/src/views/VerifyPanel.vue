@@ -97,7 +97,7 @@
             <el-input v-model="editContent" type="textarea" :rows="6" placeholder="请输入或修改题跋文本..." class="content-input" />
             <div class="char-count">字数：{{ editContent.length }}（不含标点约 {{ charCountNoPunct }}）</div>
           </div>
-          <div class="text-card translation-card" v-if="currentRecord.inscription_modern || translating">
+          <div class="text-card translation-card" v-if="(currentRecord.inscription_modern && currentRecord.inscription_modern !== currentRecord.inscription_content) || translating">
             <div class="card-header">
               <div class="card-title"><el-icon><ChatDotRound /></el-icon>现代文翻译</div>
               <span class="translation-status" :class="{ translated: currentRecord.inscription_modern, translating: translating }">{{ currentRecord.inscription_modern ? '已翻译' : (translating ? '翻译中...' : '') }}</span>

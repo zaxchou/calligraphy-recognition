@@ -255,7 +255,7 @@
                   <p>暂无款识题跋内容</p>
                   <p class="empty-tip">可在编辑画作信息时添加</p>
                 </div>
-                <div v-if="currentImage.inscriptionModern" class="inscription-translation">
+                <div v-if="currentImage.inscriptionModern && currentImage.inscriptionModern !== currentImage.inscriptionContent" class="inscription-translation">
                   <div class="translation-divider"></div>
                   <div class="translation-label">
                     <el-tag type="success" size="small">白话文</el-tag>
