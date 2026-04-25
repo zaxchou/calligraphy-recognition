@@ -365,6 +365,9 @@
             <div v-else class="history-grid-thumb-placeholder">
               <el-icon size="16"><Picture /></el-icon>
             </div>
+            <div v-if="item.id === currentImage.id" class="history-grid-thumb-overlay">
+              <el-icon><Check /></el-icon>
+            </div>
             <div class="history-grid-title">{{ item.title || '未命名' }}</div>
           </div>
         </div>
