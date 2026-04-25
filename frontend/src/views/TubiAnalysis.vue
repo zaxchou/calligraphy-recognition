@@ -1492,7 +1492,7 @@ async function loadHistoryItem(row) {
         // 滚动到页面顶部
         window.scrollTo({ top: 0, behavior: 'smooth' })
         
-        ElMessage.success('已加载历史记录')
+        ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent' })
       } else {
         ElMessage.error(response.message || '加载失败')
       }
@@ -2734,5 +2734,13 @@ watch(currentImage, (newVal) => {
   font-size: 12px;
   color: #8a8a7a;
   font-weight: 500;
+}
+</style>
+
+<style>
+/* ElMessage 透明样式（非 scoped，因为 ElMessage DOM 在组件外） */
+.toast-transparent {
+  opacity: 0.75 !important;
+  backdrop-filter: blur(4px);
 }
 </style>
