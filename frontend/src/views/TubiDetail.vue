@@ -67,10 +67,10 @@
                   </transition>
                 </div>
               </div>
-              <!-- 题跋空间分布分析（精简版） -->
+              <!-- 题跋布局类型（精简版） -->
               <div class="spatial-analysis-card" v-if="analyzeStatus === 'analyzed' && positionAnalysis">
                 <h4 class="section-title">
-                  <el-icon><DataAnalysis /></el-icon> 题跋空间分布分析
+                  <el-icon><DataAnalysis /></el-icon> 题跋布局类型
                   <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
                     <el-tooltip
                       v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
@@ -176,21 +176,6 @@
               </div>
             </div>
             <div class="analysis-right-col">
-              <!-- 画作信息 -->
-              <div class="artwork-info-inline" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
-                <div class="info-item" v-if="currentImage.artist">
-                  <span class="info-label">作者</span>
-                  <span class="info-value">{{ currentImage.artist }}</span>
-                </div>
-                <div class="info-item" v-if="currentImage.year">
-                  <span class="info-label">年份</span>
-                  <span class="info-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
-                </div>
-                <div class="info-item" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
-                  <span class="info-label">尺寸</span>
-                  <span class="info-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
-                </div>
-              </div>
               <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
                 <div class="detail-tags-list">
                   <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
@@ -390,6 +375,22 @@
           </div>
         </div>
       </el-card>
+
+      <!-- 画作信息卡片（作者/年份/尺寸） -->
+      <div class="artwork-info-cards" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
+        <div class="info-card-row" v-if="currentImage.artist">
+          <span class="info-card-label">作者</span>
+          <span class="info-card-value">{{ currentImage.artist }}</span>
+        </div>
+        <div class="info-card-row" v-if="currentImage.year">
+          <span class="info-card-label">年份</span>
+          <span class="info-card-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
+        </div>
+        <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
+          <span class="info-card-label">尺寸</span>
+          <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
+        </div>
+      </div>
 
       <!-- (题跋空间分布分析已移至左面板) -->
     </div>
@@ -924,12 +925,33 @@ defineExpose({
   font-size: 12px;
 }
 
-/* 作品信息行内（右栏，无卡片包裹） */
-.artwork-info-inline {
+/* 画作信息卡片（右面板，原作图之下） */
+.artwork-info-cards {
   display: flex;
-  gap: 8px;
-  padding: 0 0 4px;
-  margin-bottom: 4px;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.info-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
+}
+.info-card-label {
+  font-size: 11px;
+  color: #8a7a5e;
+  font-weight: 600;
+  flex-shrink: 0;
+  min-width: 28px;
+}
+.info-card-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
 }
 /* 作品信息表格 */
 .image-info-header {
@@ -1142,8 +1164,9 @@ defineExpose({
   opacity: 0;
 }
 
-/* ── 题跋空间分布分析（精简卡片） ── */
+/* ── 题跋布局类型（精简卡片） ── */
 .spatial-analysis-card {
+  margin-top: 10px;
   padding: 10px 12px;
   background: #faf9f7;
   border-radius: 8px;
@@ -1172,7 +1195,8 @@ defineExpose({
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  line-height: 1.7;
 }
 .desc-tag {
   flex-shrink: 0;
