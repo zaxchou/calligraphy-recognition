@@ -664,45 +664,38 @@
   margin: 0;
 }
 
-/* 历史记录列表样式 */
-.history-list {
+/* 作品库网格样式 */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
   padding: 4px 0;
 }
 
-.history-item {
+.history-grid-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 8px;
-  margin-bottom: 6px;
-  border-radius: 10px;
-  background: #f8f9fa;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease;
 }
 
-.history-item:hover {
-  background: #e8f4ff;
-  transform: translateX(4px);
+.history-grid-item:hover {
+  transform: scale(1.05);
 }
 
-.history-item:last-child {
-  margin-bottom: 0;
-}
-
-.history-item-thumb {
-  width: 44px;
-  height: 44px;
+.history-grid-thumb {
+  width: 100%;
+  aspect-ratio: 1;
   object-fit: cover;
   border-radius: 6px;
-  margin-right: 10px;
   border: 1px solid #e4e7ed;
 }
 
-.history-item-thumb-placeholder {
-  width: 44px;
-  height: 44px;
+.history-grid-thumb-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 6px;
-  margin-right: 10px;
   background: #f0f2f5;
   display: flex;
   align-items: center;
@@ -711,43 +704,15 @@
   border: 1px dashed #dcdfe6;
 }
 
-.history-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.history-item-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 2px;
-  font-family: 'Noto Serif SC', 'KaiTi', serif;
+.history-grid-title {
+  font-size: 11px;
+  color: #606266;
+  text-align: center;
+  margin-top: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.history-item-meta {
-  font-size: 11px;
-  color: #909399;
-  margin-bottom: 4px;
-}
-
-.history-item-meta span {
-  margin-right: 8px;
-}
-
-.history-item-stats {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.history-more {
-  text-align: center;
-  padding: 8px;
-  margin-top: 6px;
-  border-top: 1px dashed #dcdfe6;
+  max-width: 100%;
 }
 
 

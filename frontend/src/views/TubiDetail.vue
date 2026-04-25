@@ -353,37 +353,22 @@
             </el-button>
           </div>
         </template>
-        <div class="history-list" v-if="historyList.length > 0">
+        <div class="history-grid" v-if="relatedWorks.length > 0">
           <div
-            v-for="(item, index) in historyList.slice(0, 5)"
+            v-for="item in relatedWorks"
             :key="item.id"
-            class="history-item"
+            class="history-grid-item"
             @click="$emit('history-item-click', item)"
           >
-            <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="history-item-thumb" />
-            <div v-else class="history-item-thumb-placeholder">
-              <el-icon size="20"><Picture /></el-icon>
+            <img v-if="item.thumbnailUrl || item.url" :src="item.thumbnailUrl || item.url" class="history-grid-thumb" />
+            <div v-else class="history-grid-thumb-placeholder">
+              <el-icon size="16"><Picture /></el-icon>
             </div>
-            <div class="history-item-info">
-              <div class="history-item-title">{{ item.title || '未命名' }}</div>
-              <div class="history-item-meta">
-                <span v-if="item.artist">{{ item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</span>
-                <span v-if="item.artist && item.year" class="meta-separator">·</span>
-                <span v-if="item.year">{{ item.year }}年</span>
-              </div>
-              <div class="history-item-stats" v-if="item.inscriptionPercent !== undefined">
-                <el-tag size="small" type="danger">题跋 {{ item.inscriptionPercent?.toFixed(1) }}%</el-tag>
-                <el-tag size="small" type="primary" v-if="item.paintingPercent > 0">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
-                <el-tag size="small" type="success" v-if="item.blankPercent > 0">留白 {{ item.blankPercent?.toFixed(1) }}%</el-tag>
-              </div>
-            </div>
-          </div>
-          <div v-if="historyList.length > 5" class="history-more" @click="$emit('show-history')">
-            <el-link type="primary">查看全部 {{ historyList.length }} 条记录</el-link>
+            <div class="history-grid-title">{{ item.title || '未命名' }}</div>
           </div>
         </div>
         <div class="history-summary empty" v-else>
-          <p>暂无历史记录</p>
+          <p>暂无同作者作品</p>
         </div>
       </el-card>
     </div>
@@ -480,6 +465,17 @@ const emit = defineEmits([
 
 // ── 翻译折叠 ──────────────────────────────────
 const translationExpanded = ref(false)
+
+// ── 相关作品（同作者、ID > 当前作品，最多20条）──
+const relatedWorks = computed(() => {
+  if (!props.currentImage || !props.historyList?.length) return []
+  const currentId = props.currentImage.id
+  const currentArtist = props.currentImage.artist
+  if (!currentId || !currentArtist) return []
+  return props.historyList
+    .filter(item => item.artist === currentArtist && item.id > currentId)
+    .slice(0, 20)
+})
 
 // ── 悬浮示意图 ────────────────────────────────
 const showDiagramOverlay = ref(false)
