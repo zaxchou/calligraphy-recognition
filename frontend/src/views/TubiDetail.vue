@@ -54,8 +54,8 @@
         </div>
       </el-card>
 
-      <!-- 画作信息卡片（作者/年份/尺寸） -->
-      <div class="artwork-info-cards" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
+      <!-- 画作信息卡片（作者/年份/尺寸合并） -->
+      <div class="artwork-info-card" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
         <div class="info-card-row" v-if="currentImage.artist">
           <span class="info-card-label">作者</span>
           <span class="info-card-value">{{ currentImage.artist }}</span>
@@ -68,26 +68,20 @@
           <span class="info-card-label">尺寸</span>
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
         </div>
+        <div class="info-card-actions">
+          <el-button plain size="small" class="btn-edit" @click="$emit('edit-current')">
+            <el-icon><Edit /></el-icon> 编辑
+          </el-button>
+          <el-button plain size="small" class="btn-edit" @click="$emit('back')" :icon="HomeFilled">
+            返回首页
+          </el-button>
+        </div>
       </div>
     </div>
 
     <!-- 右侧：分析结果 -->
     <div class="right-panel">
-      <el-card shadow="hover" class="upload-card">
-        <template #header>
-          <div class="card-header">
-            <span class="card-title-artwork">{{ currentImage.title || '未命名' }}</span>
-            <div class="header-buttons">
-              <el-button plain size="small" class="btn-edit" @click="$emit('edit-current')">
-                <el-icon><Edit /></el-icon> 编辑
-              </el-button>
-              <el-button plain size="small" class="btn-edit" @click="$emit('back')" :icon="HomeFilled">
-                返回首页
-              </el-button>
-            </div>
-          </div>
-        </template>
-
+      <el-card shadow="hover" class="upload-card" :body-style="{ padding: '0' }">
         <div class="image-display">
           <!-- 面积占比智能示意图 + 标签/款识/钤印 并排布局 -->
           <div v-if="analyzeStatus === 'analyzed'" class="analysis-result-layout">
@@ -911,12 +905,6 @@ defineExpose({
   flex-shrink: 0;
 }
 .expand-icon.rotated { transform: rotate(180deg); }
-.card-title-artwork {
-  font-size: 20px;
-  color: #333;
-  font-family: 'Noto Serif SC', 'KaiTi', serif;
-  font-weight: 500;
-}
 .btn-edit {
   font-size: 12px !important;
 }
@@ -924,21 +912,21 @@ defineExpose({
   font-size: 12px;
 }
 
-/* 画作信息卡片（右面板，原作图之下） */
-.artwork-info-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+/* 画作信息卡片（合并作者/年份/尺寸 + 操作按钮） */
+.artwork-info-card {
+  padding: 10px 12px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
 }
 .info-card-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  background: #faf9f7;
-  border-radius: 8px;
-  border: 1px solid #e8e4da;
+  padding: 5px 0;
+}
+.info-card-row + .info-card-row {
+  border-top: 1px solid #ede9de;
 }
 .info-card-label {
   font-size: 11px;
@@ -951,6 +939,13 @@ defineExpose({
   font-size: 13px;
   color: #333;
   font-weight: 500;
+}
+.info-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #ede9de;
 }
 /* 作品信息表格 */
 .image-info-header {
@@ -1009,6 +1004,11 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
 }
+.navigation-header :deep(.el-button) {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  font-size: 12px;
+}
 .nav-title {
   flex: 1;
   text-align: center;
@@ -1019,7 +1019,8 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 8px;
+  padding: 0 6px;
+  min-width: 0;
 }
 
 /* 面积占比智能示意图标题与按钮同行 */
@@ -1167,9 +1168,9 @@ defineExpose({
   margin-right: 3px;
   vertical-align: middle;
 }
-.diagram-legend-overlay .legend-dot.inscription { background: rgba(220, 92, 92, 0.6); }
-.diagram-legend-overlay .legend-dot.painting { background: rgba(74, 144, 217, 0.5); }
-.diagram-legend-overlay .legend-dot.blank { background: rgba(90, 184, 112, 0.5); }
+.diagram-legend-overlay .legend-dot.inscription { background: rgba(201, 100, 66, 0.7); }
+.diagram-legend-overlay .legend-dot.painting { background: rgba(76, 175, 80, 0.7); }
+.diagram-legend-overlay .legend-dot.blank { background: rgba(144, 164, 174, 0.5); }
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.25s ease;
 }
@@ -1188,6 +1189,7 @@ defineExpose({
 .spatial-analysis-card .section-title {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
