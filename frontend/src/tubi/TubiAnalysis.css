@@ -238,6 +238,105 @@
   transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+/* 推导过程 - 结构化分步 */
+.reasoning-steps {
+  margin-top: 6px;
+}
+
+.reasoning-steps .reasoning-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a8070;
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #faf9f7;
+  border-left: 2px solid #e8e4da;
+  transition: background 0.2s;
+}
+
+.step-item:not(:last-child) {
+  border-bottom: 1px solid #f0eeea;
+}
+
+.step-item:hover {
+  background: #f5f3ef;
+}
+
+.step-item.step-final {
+  background: #f0eeea;
+  border-left-color: #b8a47e;
+  font-weight: 600;
+}
+
+.step-icon {
+  font-size: 13px;
+  line-height: 1.4;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.step-offset {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.offset-pos {
+  color: #4e8cff;
+  background: rgba(78, 140, 255, 0.1);
+}
+
+.offset-neg {
+  color: #ff6b35;
+  background: rgba(255, 107, 53, 0.1);
+}
+
+.offset-zero {
+  color: #999;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.step-detail {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+/* 旧版推导文本（兼容） */
 .sentiment-reasoning {
   background: #f0eeea;
   border-radius: 6px;

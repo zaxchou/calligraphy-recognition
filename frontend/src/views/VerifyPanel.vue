@@ -223,7 +223,7 @@
               {{ item.inscription_content.substring(0, 40) }}{{ item.inscription_content.length > 40 ? '...' : '' }}
             </div>
           </div>
-          <el-button plain size="small" class="btn-edit btn-jump" @click.stop="jumpToDetail(item)">
+          <el-button plain size="small" class="btn-edit btn-jump" @click.stop="onSelectSearchResult(item)">
             <el-icon><Position /></el-icon>跳转
           </el-button>
         </div>
@@ -234,7 +234,6 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bottom, RefreshRight, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position } from '@element-plus/icons-vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
@@ -253,8 +252,6 @@ const props = defineProps({
   artist: { type: String, default: 'all' },
 })
 const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title'])
-
-const router = useRouter()
 
 const filterPeriod = ref('')
 const verifyFilter = ref('unverified')
@@ -434,7 +431,7 @@ const progressColor = computed(() => {
 function prevRecord() { if (currentIndex.value > 0) currentIndex.value-- }
 function nextRecord() { if (currentIndex.value < filteredRecords.value.length - 1) currentIndex.value++; else ElMessage.info('已是最后一条') }
 function skipRecord() { nextRecord() }
-function jumpToRecordById(id) {
+async function jumpToRecordById(id) {
   if (!id) return false
   // 先在 filteredRecords 中查找
   let idx = filteredRecords.value.findIndex(r => r.id === id)
@@ -449,6 +446,8 @@ function jumpToRecordById(id) {
   if (rawRec) {
     filterPeriod.value = ''
     verifyFilter.value = ''
+    // 等待 filteredRecords 因筛选清除而重新计算（watch 会异步重置 currentIndex）
+    await nextTick()
     idx = filteredRecords.value.findIndex(r => r.id === id)
     if (idx !== -1) {
       currentIndex.value = idx
@@ -518,7 +517,7 @@ async function doSearch() {
     const numericId = parseInt(kw, 10)
     const found = props.records.find(r => r.id === numericId)
     if (found) {
-      const ok = jumpToRecordById(numericId)
+      const ok = await jumpToRecordById(numericId)
       if (ok) { searchKeyword.value = ''; return }
     }
   }
@@ -543,7 +542,7 @@ async function doSearch() {
 
 async function onSelectSearchResult(item) {
   if (!item?.id) return
-  const ok = jumpToRecordById(item.id)
+  const ok = await jumpToRecordById(item.id)
   if (ok) {
     showSearchDialog.value = false
     searchKeyword.value = ''
@@ -555,11 +554,7 @@ async function onSelectSearchResult(item) {
   ElMessage.info('记录不在当前列表中，请从管理页面重新加载')
 }
 
-function jumpToDetail(item) {
-  if (!item?.image_id) return
-  const route = router.resolve({ name: 'TubiDetail', params: { id: item.image_id } })
-  window.open(route.href, '_blank')
-}
+
 
 function polarityLabel(polarity) { const map = { positive: '积极', negative: '消极', neutral: '中性' }; return map[polarity] || '未知' }
 function handleSave(isReverify) { if (!currentRecord.value) return; emit('save', { id: currentRecord.value.id, inscription_content: editContent.value, seal_content: editSealContent.value, analysis_note: editAnalysisNote.value, isReverify }) }

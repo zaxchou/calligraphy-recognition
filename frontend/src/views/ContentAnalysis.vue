@@ -109,17 +109,6 @@
       </div>
     </el-card>
 
-    <!-- 术语说明 -->
-    <el-card shadow="never" class="legend-card">
-      <div class="legend-grid">
-        <div class="legend-item" v-for="item in LEGEND_ITEMS" :key="item.term">
-          <el-tooltip :content="item.desc" placement="top" :show-after="300">
-            <span class="legend-term">{{ item.term }}</span>
-          </el-tooltip>
-        </div>
-      </div>
-    </el-card>
-
     <el-skeleton v-if="loading" :rows="8" animated />
 
     <div v-else>
@@ -541,14 +530,6 @@ const FEATURE_DIMENSIONS = [
   { name: '社会与民生', words: ['民', '农', '吏', '官', '权', '贵', '霸', '世', '俗', '贾'] },
 ]
 
-const LEGEND_ITEMS = [
-  { term: 'TTR', desc: 'Type-Token Ratio，词汇多样性指数 = 不同词数 / 总词数，值越高说明词汇越丰富' },
-  { term: '卡方检验', desc: '统计方法，验证两组分类变量是否存在显著关联（p<0.05 时认为显著）' },
-  { term: '* / **', desc: '显著性标注：* 表示 p<0.05，** 表示 p<0.01，p 值越小说明结论越可信' },
-  { term: '侵入式布局', desc: '题跋侵占画面主体区域的布局方式，如「侵入画位」「喧宾夺主式」，是李鱓的标志性形式特征' },
-  { term: '以俗为雅', desc: '李鱓将日常生活俗物（葱姜蒜，白菜萝卜）纳入文人画的核心美学追求' },
-]
-
 const invasiveItems = computed(() => {
   return correlationData.value.invasive_analysis?.invasive_items || []
 })
@@ -739,7 +720,7 @@ function renderSentimentPieChart() {
     sentimentTotals[label] = (sentimentTotals[label] || 0) + item.count
   })
   
-  const colorMap = { '积极': '#a65d3f', '消极': '#c96442', '中性': '#8a8070' }
+  const colorMap = { '积极': '#4e8cff', '消极': '#ff6b35', '中性': '#7f7f7f' }
   const data = Object.entries(sentimentTotals).map(([name, value]) => ({
     name, value, itemStyle: { color: colorMap[name] }
   }))
@@ -833,9 +814,9 @@ function renderSentimentChart() {
   const periodOrder = { '早期': 0, '中期': 1, '晚期': 2, '年代不详': 3 }
   const periods = [...new Set(sentDist.map(s => s.period))].sort((a, b) => periodOrder[a] - periodOrder[b])
   const polarities = [
-    { key: 'negative', label: '消极', color: '#c96442' },
-    { key: 'neutral', label: '中性', color: '#8a8070' },
-    { key: 'positive', label: '积极', color: '#a65d3f' },
+    { key: 'negative', label: '消极', color: '#ff6b35' },
+    { key: 'neutral', label: '中性', color: '#7f7f7f' },
+    { key: 'positive', label: '积极', color: '#4e8cff' },
   ]
   const series = polarities.map(p => ({
     name: p.label, type: 'bar', itemStyle: { color: p.color },
@@ -1390,30 +1371,6 @@ async function loadMoreThemePaintings() {
 }
 .claude-select :deep(.el-input__wrapper:hover) {
   box-shadow: 0 0 0 1px #c96442 inset;
-}
-/* 术语说明卡片 */
-.legend-card { 
-  margin-bottom: 24px; 
-  background: #fff;
-  border-radius: 12px;
-}
-.legend-card :deep(.el-card__body) {
-  padding: 16px 20px;
-}
-.legend-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-.legend-term { 
-  font-size: 12px; 
-  color: #c96442; 
-  text-decoration: underline dotted; 
-  cursor: help; 
-  padding: 4px 8px;
-  background: #faf9f5;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-.legend-term:hover {
-  background: #f5f4ed;
-  color: #a8503a;
 }
 
 /* 统计数据卡片 */
