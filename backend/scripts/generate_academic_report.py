@@ -77,6 +77,7 @@ def main():
         if row["id"] not in sample_ids: continue
         r = classify_inscription_v4(text=row["inscription_content"] or "", year=row["year"],
             title=row["title"] or "", analysis_note=row["analysis_note"] or "",
+            inscription_content=row["inscription_content"] or "",
             width_cm=row["artwork_width_cm"], height_cm=row["artwork_height_cm"], artist=ARTIST)
         evidence_records.append({"id":row["id"],"title":row["title"] or "",
             "text":(row["inscription_content"] or "")[:80],"year":row["year"],"period":get_period(row["year"],row["period_phase"]),

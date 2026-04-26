@@ -711,20 +711,68 @@ def get_life_stage(year: int) -> Dict:
     return LIFE_STAGE_TABLE[(1746, 1760)]  # 按晚期处理
 
 
-def match_painting_materials(title: str, analysis_note: str) -> List[Dict]:
+def match_painting_materials(
+    title: str = None,
+    analysis_note: str = None,
+    inscription_content: str = None,
+) -> List[Dict]:
     """
-    查表2：画作标题 + AI画材分析 → 匹配题材规则
-    返回匹配到的规则列表 [{"rule": ..., "matched_keywords": [...]}]
+    查表2：画作标题 + AI画材分析 + 题跋文本 → 匹配题材规则
+    三来源分别匹配，带权重：
+      - 题跋 (inscription_content): 权重 1.0（作者自书，最可信）
+      - 标题 (title):             权重 0.8（通常准确但简短）
+      - 图像分析 (analysis_note): 权重 0.5（AI识别，可能误判）
+    返回：
+      [{
+        "rule": {...},
+        "matched_keywords": [...],
+        "source": "inscription(×1.0)+title(×0.8)" 等,
+        "weight_multiplier": 1.0,
+      }, ...]
     """
-    combined_text = f"{title or ''} {analysis_note or ''}"
+    sources = [
+        (inscription_content, "inscription", 1.0),
+        (title,              "title",        0.8),
+        (analysis_note,      "analysis_note", 0.5),
+    ]
+    # 去重：同一规则可能被多个来源匹配，合并为一条记录
+    rule_best: Dict[int, Dict] = {}  # index in PAINTING_MATERIAL_RULES → merged match
+
+    for text, source_name, weight_multiplier in sources:
+        if not text:
+            continue
+        for idx, rule in enumerate(PAINTING_MATERIAL_RULES):
+            matched_kw = [kw for kw in rule["keywords"] if kw in text]
+            if not matched_kw:
+                continue
+            if idx not in rule_best:
+                rule_best[idx] = {
+                    "rule": rule,
+                    "matched_keywords": list(matched_kw),
+                    "sources": [(source_name, weight_multiplier)],
+                    "max_multiplier": weight_multiplier,
+                }
+            else:
+                existing = rule_best[idx]
+                for kw in matched_kw:
+                    if kw not in existing["matched_keywords"]:
+                        existing["matched_keywords"].append(kw)
+                existing["sources"].append((source_name, weight_multiplier))
+                existing["max_multiplier"] = max(existing["max_multiplier"], weight_multiplier)
+
+    # 转成最终格式
     matches = []
-    for rule in PAINTING_MATERIAL_RULES:
-        matched_kw = [kw for kw in rule["keywords"] if kw in combined_text]
-        if matched_kw:
-            matches.append({
-                "rule": rule,
-                "matched_keywords": matched_kw,
-            })
+    for entry in rule_best.values():
+        final_multiplier = entry["max_multiplier"]
+        source_summary = "+".join(
+            f"{s}(×{w})" for s, w in entry["sources"]
+        )
+        matches.append({
+            "rule": entry["rule"],
+            "matched_keywords": entry["matched_keywords"],
+            "source": source_summary,
+            "weight_multiplier": final_multiplier,
+        })
     return matches
 
 
@@ -764,6 +812,7 @@ def classify_inscription_v4(
     year: int = None,
     title: str = None,
     analysis_note: str = None,
+    inscription_content: str = None,
     width_cm: float = None,
     height_cm: float = None,
     artist: str = None,
@@ -797,6 +846,10 @@ def classify_inscription_v4(
     signals = {"time": {}, "painting": [], "text": {}, "size": {}}
     special_rules = []
 
+    # inscription_content fallback：若未传入，使用 text（题跋正文）
+    if inscription_content is None:
+        inscription_content = text
+
     # ── 维度1：时间信号 ──────────────────────────────────────────
     life_stage = get_life_stage(year)
     signals["time"] = {
@@ -808,7 +861,7 @@ def classify_inscription_v4(
     }
 
     # ── 维度2：画作内容信号 ──────────────────────────────────────
-    painting_matches = match_painting_materials(title, analysis_note)
+    painting_matches = match_painting_materials(title, analysis_note, inscription_content)
     painting_theme_scores = {}
     painting_emotion_offset = 0.0
     for match in painting_matches:
@@ -2008,7 +2061,7 @@ def analyze_tiba_content(text: str, year: int = None, title: str = None, analysi
     ttr = calculate_ttr(words)
 
     # 4. v4多维信号融合分类（纯规则，不调LLM）
-    v4_result = classify_inscription_v4(text, year, title, analysis_note, width_cm, height_cm, artist=artist)
+    v4_result = classify_inscription_v4(text, year, title, analysis_note, None, width_cm, height_cm, artist=artist)
 
     # 5. 特征词提取
     feature_words = extract_feature_words(words)
@@ -2067,7 +2120,7 @@ async def analyze_tiba_content_dual(
     top_words = word_freq.most_common(20)
 
     # ── v4 多维信号融合分类（主通道） ──────────────────────────────
-    v4_result = classify_inscription_v4(text, year, title, analysis_note, width_cm, height_cm, artist=artist)
+    v4_result = classify_inscription_v4(text, year, title, analysis_note, None, width_cm, height_cm, artist=artist)
     v4_themes = v4_result["themes"]
     v4_sentiment = v4_result["sentiment"]
     v4_signals = v4_result["signals"]

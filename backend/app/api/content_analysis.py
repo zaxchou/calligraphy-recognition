@@ -1897,6 +1897,7 @@ async def reclassify_themes_sentiment(
                     if not llm_result.get("success"):
                         # LLM调用失败时，回退到v4本地规则
                         v4_result = classify_inscription_v4(content.strip(), year=year, title=title, analysis_note=analysis_note,
+                                                             inscription_content=content.strip(),
                                                              width_cm=width_cm, height_cm=height_cm, artist=record_artist)
                         themes = v4_result["themes"]
                         sentiment = v4_result["sentiment"]
@@ -1940,6 +1941,7 @@ async def reclassify_themes_sentiment(
                     
                     # v4信号作为参考保存
                     v4_result = classify_inscription_v4(content.strip(), year=year, title=title, analysis_note=analysis_note,
+                                                         inscription_content=content.strip(),
                                                          width_cm=width_cm, height_cm=height_cm, artist=record_artist)
 
                     # 验证themes

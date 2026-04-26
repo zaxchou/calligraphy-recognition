@@ -99,6 +99,7 @@ def main():
                 year=year,
                 title=title,
                 analysis_note=analysis_note,
+                inscription_content=text,
                 width_cm=width_cm,
                 height_cm=height_cm,
                 artist=artist,

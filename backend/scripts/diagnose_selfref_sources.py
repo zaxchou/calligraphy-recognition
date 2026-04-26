@@ -55,6 +55,7 @@ for row in rows:
     # 运行分析
     result = classify_inscription_v4(
         text=text, year=year, title=title, analysis_note=analysis_note,
+        inscription_content=text,
         width_cm=width_cm, height_cm=height_cm, artist=artist
     )
 
