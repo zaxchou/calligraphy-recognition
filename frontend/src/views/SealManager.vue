@@ -114,7 +114,7 @@
     <el-dialog v-model="showArtworksDialog" :title="`使用「${artworksSealName}」的作品（${artworks.length}幅）`" width="640px" class="claude-dialog">
       <div v-loading="artworksLoading" class="artworks-list">
         <div v-for="art in artworks" :key="art.id" class="artwork-item" @click="goToArtwork(art)">
-          <img v-if="art.thumbnail_path" :src="`${API_BASE.replace('/api/v1', '')}/static/${art.thumbnail_path.replace(/^data\//, '').replace(/\\/g, '/')}`" class="artwork-thumb" />
+          <img v-if="art.thumbnail_path" :src="`${API_BASE.replace('/api/v1', '')}/static/${art.thumbnail_path.replace(/\\/g, '/')}`" class="artwork-thumb" />
           <div v-else class="artwork-thumb-placeholder"><el-icon><Picture /></el-icon></div>
           <div class="artwork-info">
             <div class="artwork-title">{{ art.title || '未命名' }}</div>
