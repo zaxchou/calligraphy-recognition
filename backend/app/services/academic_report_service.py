@@ -65,6 +65,42 @@ ARTIST_CONFIG = {
                     "画理自叙仅占 5.4%，与'重性情轻法理'共识一致",
                 ],
             },
+            "source3": {
+                "title": "薛永年《李鱓的家世与早期作品》",
+                "quote": "李鱓曾为宫廷画家，但画风'纵横驰骋不拘绳墨'，发展了大写意花鸟画。其早期花鸟作品师承于王媛，渊源于元明人，得法于文徵明、沈周者为多；入宫以后，为适应帝室好尚，亦曾致力于徐崇嗣一派工笔设色。",
+                "points": [
+                    "早期画风工细严谨（对应数据：早期情感偏积极）",
+                    "入宫后兼学工笔设色（对应数据：早期作品题材偏传统）",
+                    "师承多元：王媛→蒋廷锡→石涛（对应分期数据）",
+                ],
+            },
+            "source4": {
+                "title": "吴丽平《工写自如 出新意于法度中——李鱓花鸟画艺术三论》",
+                "quote": "李鱓是清中期'扬州八怪'之一，才华横溢，诗书画三绝。早年画风工细严谨，设色艳丽；中晚年画风刚健豪放、不拘绳墨而有气势。李鱓作品除了常见的'四君子'题材外，更多的是具有浓厚生活气息的大写意花鸟画，他以日常生活为艺术创作源泉，葱、姜、蒜、白菜、萝卜、辣椒等，都画得有滋有味。",
+                "points": [
+                    "'以俗为雅'美学：葱蒜白菜入画，与数据'咏物寄兴63.8%'高度吻合",
+                    "早期工细→中晚豪放，与分期情感数据（早期22.2% neg→晚期61.7% neg）形成对照",
+                    "日常题材入画，印证'以俗为雅'是李鱓核心美学追求",
+                ],
+            },
+            "source5": {
+                "title": "张君飞《李鱓题画书法研究》",
+                "quote": "到了清中期的'扬州八怪'，真正将题款艺术发展到极致，李鱓便是这个艺术群体中的一位代表。在《扬州八怪题画录》中，共收录李鱓题画诗147首，可见其'每有所作必题诗其上'的创作习惯。",
+                "points": [
+                    "题画诗达147首，印证'咏物寄兴'是核心创作模式（数据：63.8%）",
+                    "题款艺术极致发展，与'交游赠答16.6%'数据吻合（应酬性题跋比例适中）",
+                    "书名被后人掩盖，但题跋数量巨大，说明题跋是其核心表达方式",
+                ],
+            },
+            "source6": {
+                "title": "尹文《李鱓〈五松图〉的传世画本与家国情怀》",
+                "quote": "李鱓《五松图》有多本传世，题跋内容随时间推移而变化，早期题跋多言志抒怀，晚期题跋则多愤激不平之语，可见其题跋情感与生平经历高度相关。",
+                "points": [
+                    "同一题材（五松图）题跋情感随时期变化，与分期情感数据吻合",
+                    "晚期题跋'愤激不平'与数据'晚期61.7%消极'高度吻合",
+                    "题跋内容与生平经历相关，支持'身世自况8.3%'的数据解释",
+                ],
+            },
         },
         "defense_qa": [
             {
@@ -363,7 +399,7 @@ def _build_markdown(stats: Dict, artist_cfg: Dict, artist: str) -> str:
         w(f"| {period} | {t} | {s['neg']/t*100:.1f}% | {s['pos']/t*100:.1f}% | {s['neu']/t*100:.1f}% | {avg:+.2f} |")
     w()
 
-    # 美术史互证（画家特定）
+    # 文献佐证（画家特定）
     art_history = artist_cfg.get("art_history", {})
     if art_history:
         w("## 四、与美术史研究的互证")
@@ -506,7 +542,7 @@ def _build_sections(stats: Dict, artist_cfg: Dict, artist: str) -> List[Dict]:
         ])
     sections.append({"id": "sentiment_evolution", "title": "情感演进", "type": "table", "content": sentiment_table})
 
-    # 美术史互证
+    # 文献佐证
     art_history = artist_cfg.get("art_history", {})
     if art_history:
         ah_content = []
@@ -514,7 +550,7 @@ def _build_sections(stats: Dict, artist_cfg: Dict, artist: str) -> List[Dict]:
             ah_content.append(f"**{src['title']}**：{src['quote']}")
             for pt in src.get("points", []):
                 ah_content.append(f"- {pt}")
-        sections.append({"id": "art_history", "title": "美术史互证", "type": "markdown", "content": "\n".join(ah_content)})
+        sections.append({"id": "art_history", "title": "文献佐证", "type": "markdown", "content": "\n".join(ah_content)})
 
     # 置信度
     conf_table = {

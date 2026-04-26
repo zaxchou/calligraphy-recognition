@@ -194,43 +194,38 @@
 
                   <div class="ts-section" v-if="currentImage.contentAnalysis?.sentiment">
                     <div class="ts-label">情感极性</div>
-                    <div class="sentiment-gauge-row">
-                      <div class="sentiment-gauge">
-                        <svg viewBox="0 0 120 120" class="gauge-svg">
-                          <!-- 背景弧 -->
-                          <circle cx="60" cy="60" r="50" fill="none" stroke="#e8e4da" stroke-width="8"
-                            stroke-dasharray="235.6 78.5" stroke-dashoffset="-39.3" stroke-linecap="round" />
-                          <!-- 强度弧 -->
-                          <circle cx="60" cy="60" r="50" fill="none"
-                            :stroke="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#c96442' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#6b8cae' : '#b8a47e'"
-                            stroke-width="8"
-                            :stroke-dasharray="`${235.6 * currentImage.contentAnalysis.sentiment.intensity} ${235.6 * (1 - currentImage.contentAnalysis.sentiment.intensity) + 78.5}`"
-                            stroke-dashoffset="-39.3" stroke-linecap="round"
-                            class="gauge-arc" />
-                        </svg>
-                        <div class="gauge-center">
-                          <span class="gauge-emoji">{{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '&#x1F31F;' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '&#x1F327;' : '&#x26C5;' }}</span>
-                          <span class="gauge-percent">{{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%</span>
-                        </div>
+                    <div class="sentiment-card">
+                      <div class="sentiment-header">
+                        <span
+                          class="sentiment-dot"
+                          :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#ff6b35' : '#b8a47e' }"
+                        ></span>
+                        <span class="sentiment-polarity-text">{{
+                          currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' :
+                          currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性'
+                        }}</span>
+                        <span class="sentiment-sep">·</span>
+                        <span class="sentiment-score-text">强度 {{
+                          Math.round((currentImage.contentAnalysis.sentiment.intensity || 0) * 100)
+                        }}%</span>
+                        <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                          <span class="sentiment-sep">·</span>
+                          <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
+                        </template>
                       </div>
-                      <div class="sentiment-info">
-                        <el-tag
-                          size="small"
-                          :type="currentImage.contentAnalysis.sentiment.polarity === 'positive' ? 'success' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? 'danger' : 'info'"
-                          class="sentiment-tag"
-                        >
-                          {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
-                        </el-tag>
-                        <span class="sentiment-intensity-label">强度 {{ Math.round(currentImage.contentAnalysis.sentiment.intensity * 100) }}%</span>
+                      <div class="sentiment-bar-track">
+                        <div
+                          class="sentiment-bar-fill"
+                          :style="{
+                            width: Math.round((currentImage.contentAnalysis.sentiment.intensity || 0) * 100) + '%',
+                            background: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#ff6b35' : '#b8a47e'
+                          }"
+                        ></div>
                       </div>
                     </div>
-                    <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.channel2?.reasoning">
+                    <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
                       <div class="reasoning-label">推导过程</div>
-                      <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.channel2.reasoning }}</div>
-                    </div>
-                    <div class="sentiment-reasoning" v-else-if="currentImage.contentAnalysis.sentiment.channel1?.reasoning">
-                      <div class="reasoning-label">推导过程</div>
-                      <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.channel1.reasoning }}</div>
+                      <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.reasoning }}</div>
                     </div>
                   </div>
 
