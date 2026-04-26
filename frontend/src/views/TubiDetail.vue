@@ -1189,7 +1189,7 @@ defineExpose({
 .album-nav-arrow {
   flex-shrink: 0;
   width: 22px;
-  height: 22px;
+  height: 38px;
   border: 1px solid #d4cfc5;
   border-radius: 4px;
   background: #faf9f7;
