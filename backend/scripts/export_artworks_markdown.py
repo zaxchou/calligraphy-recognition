@@ -319,9 +319,26 @@ def export_artworks(artist_filter: str = None, dry_run: bool = False):
         db_id = r.get("id")
         image_id = r.get("image_id") or ""
 
-        # 原图路径
-        filename = r.get("filename") or ""
-        original_src = os.path.join(UPLOADS_DIR, filename) if filename else ""
+        # 原图路径：优先用 filepath 字段（存的是 data/uploads/xxx.jpg），其次用 filename
+        # filepath 是系统内部路径，对应 uploads/ 下的实际文件
+        filepath_raw = r.get("filepath") or ""
+        original_src = ""
+        if filepath_raw:
+            # filepath 如 "data/uploads/e8ab4386-xxx.jpg"，提取文件名去 uploads/ 找
+            fname = os.path.basename(filepath_raw.replace("\\", "/"))
+            candidate = os.path.join(UPLOADS_DIR, fname)
+            if os.path.exists(candidate):
+                original_src = candidate
+            else:
+                # filepath 本身可能是绝对路径
+                if os.path.exists(filepath_raw):
+                    original_src = filepath_raw
+        if not original_src:
+            filename = r.get("filename") or ""
+            if filename:
+                candidate = os.path.join(UPLOADS_DIR, filename)
+                if os.path.exists(candidate):
+                    original_src = candidate
 
         # 标注图路径（优先用 DB 字段，其次按命名规则推断）
         annotated_rel_in_db = r.get("annotated_image_path") or ""
@@ -342,7 +359,8 @@ def export_artworks(artist_filter: str = None, dry_run: bool = False):
         images_rel = {}
 
         if original_src and os.path.exists(original_src):
-            orig_dst = os.path.join(img_dir_artist, "originals", filename)
+            orig_filename = os.path.basename(original_src)
+            orig_dst = os.path.join(img_dir_artist, "originals", orig_filename)
             if copy_image(original_src, orig_dst):
                 # Obsidian 相对路径（从 .md 文件出发）
                 rel = os.path.relpath(orig_dst, artist_dir).replace("\\", "/")
