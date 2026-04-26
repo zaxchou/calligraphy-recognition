@@ -393,7 +393,7 @@ const imageUrl = computed(() => {
   if (normalized.includes('/thumbnails/')) filename = normalized.split('/thumbnails/').pop()
   else if (normalized.includes('\\thumbnails\\')) filename = normalized.split('\\thumbnails\\').pop()
   else filename = normalized.split('/').pop().split('\\').pop()
-  return `${props.baseUrl}/static/uploads/thumbnails/${filename}`
+  return `${props.baseUrl}/static/thumbnails/${filename}`
 })
 const fullImageUrl = computed(() => {
   if (!currentRecord.value) return null
@@ -502,7 +502,7 @@ function getThumbnailUrl(thumbPath) {
   if (normalized.includes('/thumbnails/')) filename = normalized.split('/thumbnails/').pop()
   else if (normalized.includes('\\thumbnails\\')) filename = normalized.split('\\thumbnails\\').pop()
   else filename = normalized.split('/').pop().split('\\').pop()
-  return `${props.baseUrl}/static/uploads/thumbnails/${filename}`
+  return `${props.baseUrl}/static/thumbnails/${filename}`
 }
 
 async function doSearch() {
