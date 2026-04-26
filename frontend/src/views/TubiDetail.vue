@@ -36,20 +36,29 @@
             <span class="album-nav-title">「{{ albumNavigation.album_name }}」</span>
             <span class="album-nav-count">第{{ albumNavigation.current_index + 1 }}幅 / 共{{ albumNavigation.total_count }}幅</span>
           </div>
-          <div class="album-nav-thumbnails" @wheel.prevent="onAlbumThumbnailsWheel">
-            <div
-              v-for="(item, idx) in albumNavigation.items"
-              :key="item.id"
-              :class="['album-nav-thumbnail', { active: item.is_current }]"
-              @click="$emit('navigate-album', item)"
-            >
-              <img
-                v-if="item.thumbnail_url"
-                :src="item.thumbnail_url"
-                @error="e => e.target.style.display='none'"
-              />
-              <div v-else class="thumb-placeholder">{{ item.album_index || idx + 1 }}</div>
+          <div class="album-nav-scroll">
+            <button class="album-nav-arrow left" @click="scrollAlbumThumbs(-1)" title="向左滚动">
+              <el-icon><ArrowLeft /></el-icon>
+            </button>
+            <div class="album-nav-thumbnails" ref="albumThumbsRef" @wheel.prevent="onAlbumThumbnailsWheel">
+              <div
+                v-for="(item, idx) in albumNavigation.items"
+                :key="item.id"
+                :class="['album-nav-thumbnail', { active: item.is_current }]"
+                @click="$emit('navigate-album', item)"
+              >
+                <img
+                  v-if="item.thumbnail_url"
+                  :src="item.thumbnail_url"
+                  @error="e => e.target.style.display='none'"
+                />
+                <div v-else class="thumb-placeholder">{{ item.album_index || idx + 1 }}</div>
+              </div>
             </div>
+            <button class="album-nav-arrow right" @click="scrollAlbumThumbs(1)" title="向右滚动">
+              <el-icon><ArrowRight /></el-icon>
+            </button>
+          </div>
           </div>
         </div>
       </el-card>
@@ -504,11 +513,19 @@ function openRanking() {
 }
 
 // ── 册页缩略图滚轮横向滚动 ──────────────────────
+const albumThumbsRef = ref(null)
+
 function onAlbumThumbnailsWheel(e) {
-  const el = e.currentTarget
+  const el = albumThumbsRef.value || e.currentTarget
   if (e.deltaY !== 0) {
     el.scrollLeft += e.deltaY
   }
+}
+
+function scrollAlbumThumbs(direction) {
+  const el = albumThumbsRef.value
+  if (!el) return
+  el.scrollBy({ left: direction * 120, behavior: 'smooth' })
 }
 
 // ── 悬浮示意图 ────────────────────────────────
@@ -1164,6 +1181,34 @@ defineExpose({
 .album-nav-count {
   font-size: 11px;
   color: #8a8a7a;
+}
+.album-nav-scroll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.album-nav-arrow {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #d4cfc5;
+  border-radius: 4px;
+  background: #faf9f7;
+  color: #8a8a7a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.album-nav-arrow:hover {
+  background: #f0ece3;
+  color: #333;
+  border-color: #b8a47e;
+}
+.album-nav-arrow:active {
+  transform: scale(0.92);
 }
 .album-nav-thumbnails {
   display: flex;
