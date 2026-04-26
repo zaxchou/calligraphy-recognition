@@ -2034,10 +2034,11 @@ class SummaryRequest(BaseModel):
 
 class SummaryResponse(BaseModel):
     success: bool
-    summary: str
+    summary: str  # Markdown 全文（向后兼容）
+    report: Optional[Dict[str, Any]] = None  # 结构化报告数据（新增）
     error: Optional[str] = None
-    cached: bool = False  # 是否来自缓存
-    generated_at: Optional[str] = None  # 生成时间
+    cached: bool = False
+    generated_at: Optional[str] = None
 
 
 @router.post("/summary", response_model=SummaryResponse)
@@ -2045,19 +2046,17 @@ async def generate_summary(
     request: SummaryRequest,
 ):
     """
-    基于当前统计数据，使用 Qwen3.6 生成专业的学术分析总结
-    总结显示在大数据分析页面顶部
+    基于当前统计数据，生成结构化学术分析报告（v5.3 确定性规则引擎）
+    报告显示在大数据分析页面顶部，替代原有的 LLM 洞察
     首次生成后自动缓存，后续直接读取缓存
     支持多画家，根据 artist 参数自动选择对应的背景上下文
     """
-    from app.services.inscription_summary_generator import generate_summary
-    import time
+    from app.services.academic_report_service import generate_academic_report
+    import json
 
-    artist_where, artist_params = build_artist_condition(request.artist)
+    # 确保表存在（兼容旧缓存，新增 report_json 列存储结构化数据）
     conn = get_db_connection()
     cur = conn.cursor()
-
-    # 确保表存在
     cur.execute("""
         CREATE TABLE IF NOT EXISTS analysis_summary (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2068,144 +2067,72 @@ async def generate_summary(
             generated_at TEXT NOT NULL
         )
     """)
+    # 尝试添加 report_json 列（若不存在）
+    try:
+        cur.execute("ALTER TABLE analysis_summary ADD COLUMN report_json TEXT")
+    except Exception:
+        pass
     conn.commit()
 
     # 先查缓存（force_regenerate=False 时直接返回缓存）
     if not request.force_regenerate:
         cur.execute(
-            "SELECT summary, generated_at FROM analysis_summary WHERE artist = ?",
+            "SELECT summary, generated_at, report_json FROM analysis_summary WHERE artist = ?",
             (request.artist,)
         )
         row = cur.fetchone()
         if row:
             conn.close()
+            report_data = None
+            if row[2]:
+                try:
+                    report_data = json.loads(row[2])
+                except Exception:
+                    pass
             return SummaryResponse(
                 success=True,
                 summary=row[0],
+                report=report_data,
                 cached=True,
                 generated_at=row[1],
             )
 
-    # 准备重新生成，重新获取连接
+    # 未命中缓存，生成报告
+    conn.close()
+
+    db_path = "data/calligraphy.db"
+    report = generate_academic_report(request.artist, db_path=db_path)
+
+    # 保存到数据库
     conn = get_db_connection()
     cur = conn.cursor()
-
-    # 获取统计数据（与 /stats 逻辑相同）
-    import json
-    stats_data = {"period_stats": [], "theme_distribution": [], "sentiment_distribution": [], "feature_word_stats": [], "total_count": 0}
-
-    cur.execute(f"""
-        SELECT period_phase, COUNT(*) as cnt,
-               AVG(COALESCE(char_count, 0)) as avg_chars,
-               MAX(COALESCE(char_count, 0)) as max_chars,
-               MIN(CASE WHEN COALESCE(char_count, 0) > 0 THEN char_count END) as min_chars,
-               AVG(COALESCE(word_count, 0)) as avg_words
-        FROM tubi_analyses
-        WHERE {artist_where}
-          AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0
-        GROUP BY period_phase ORDER BY period_phase
-    """, artist_params)
-
-    for row in cur.fetchall():
-        stats_data["period_stats"].append({
-            "period": row[0] or "未分期", "count": row[1],
-            "avg_char_count": round(row[2] or 0, 1), "max_char_count": row[3] or 0,
-            "min_char_count": row[4] or 0, "avg_word_count": round(row[5] or 0, 1),
-        })
-
-    cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {artist_where} AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0",
-                artist_params)
-    stats_data["total_count"] = cur.fetchone()[0]
-
-    # 主题分布
-    cur.execute(f"SELECT period_phase, content_analysis FROM tubi_analyses WHERE {artist_where} AND content_analysis IS NOT NULL",
-                artist_params)
-    theme_counts, sent_counts, feat_words = {}, {}, []
-    for row in cur.fetchall():
-        period = row[0] or "未分期"
-        try:
-            analysis = json.loads(row[1])
-            for t in analysis.get("themes", []):
-                key = (period, t.get("name", "未知"))
-                theme_counts[key] = theme_counts.get(key, 0) + 1
-            pol = analysis.get("sentiment", {}).get("polarity", "neutral")
-            sent_counts[(period, pol)] = sent_counts.get((period, pol), 0) + 1
-            feat_words.extend([
-                {"dimension": dim, "word": w, "count": 1, "period": period}
-                for dim, words in analysis.get("feature_words", {}).items()
-                for w in words
-            ])
-        except:
-            pass
-
-    period_totals = {}
-    for (p, _), c in theme_counts.items():
-        period_totals[p] = period_totals.get(p, 0) + c
-    for (p, t), c in theme_counts.items():
-        stats_data["theme_distribution"].append({
-            "period": p, "theme_name": t, "count": c,
-            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
-        })
-    for (p, pol), c in sent_counts.items():
-        stats_data["sentiment_distribution"].append({
-            "period": p, "polarity": pol, "count": c,
-            "percentage": round(c / max(period_totals.get(p, 1), 1) * 100, 1),
-        })
-    stats_data["feature_word_stats"] = feat_words[:200]  # 限制数量
-
-    # 关联数据
-    corr_data = None
-    cur.execute(f"SELECT content_analysis, position_analysis, period_phase FROM tubi_analyses WHERE {artist_where} AND content_analysis IS NOT NULL AND position_analysis IS NOT NULL",
-                artist_params)
-    _records = []
-    for r in cur.fetchall():
-        try:
-            pos = json.loads(r[1]) if r[1] else {}
-        except Exception:
-            pos = {}
-        _records.append({"content_analysis": r[0], "position_analysis": pos, "period_phase": r[2]})
-
-    if _records:
-        contingency = build_contingency_table(_records)
-        chi2_result = chi_square_test(contingency)
-        corr_data = {
-            "chi2_statistic": chi2_result["chi2"],
-            "p_value": chi2_result["p_value"],
-            "significant": chi2_result["significant"],
-            "highly_significant": chi2_result.get("highly_significant", False),
-        }
-
-    # 调用 AI 总结生成
-    result = await generate_summary(stats_data, corr_data, artist=request.artist)
-
-    if result.success:
-        # 保存到数据库（覆盖旧记录）
-        import json
-        generated_at = datetime.now().isoformat()
-        cur.execute("""
-            INSERT INTO analysis_summary (artist, summary, stats_snapshot, record_count, generated_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(artist) DO UPDATE SET
-                summary = excluded.summary,
-                stats_snapshot = excluded.stats_snapshot,
-                record_count = excluded.record_count,
-                generated_at = excluded.generated_at
-        """, (
-            request.artist,
-            result.summary,
-            json.dumps({"total_count": stats_data["total_count"], "periods": len(stats_data["period_stats"])}, ensure_ascii=False),
-            stats_data["total_count"],
-            generated_at,
-        ))
-        conn.commit()
-
+    generated_at = datetime.now().isoformat()
+    cur.execute("""
+        INSERT INTO analysis_summary (artist, summary, stats_snapshot, record_count, generated_at, report_json)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(artist) DO UPDATE SET
+            summary = excluded.summary,
+            stats_snapshot = excluded.stats_snapshot,
+            record_count = excluded.record_count,
+            generated_at = excluded.generated_at,
+            report_json = excluded.report_json
+    """, (
+        request.artist,
+        report["markdown"],
+        json.dumps(report["stats"], ensure_ascii=False),
+        report["stats"].get("total", 0),
+        generated_at,
+        json.dumps(report, ensure_ascii=False),
+    ))
+    conn.commit()
     conn.close()
+
     return SummaryResponse(
-        success=result.success,
-        summary=result.summary,
-        error=result.error,
+        success=True,
+        summary=report["markdown"],
+        report=report,
         cached=False,
-        generated_at=datetime.now().isoformat() if result.success else None,
+        generated_at=generated_at,
     )
 
 

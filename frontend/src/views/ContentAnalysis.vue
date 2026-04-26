@@ -21,14 +21,13 @@
       </div>
     </div>
 
-    <!-- AI 总结 -->
-    <el-card shadow="never" class="summary-card">
+    <!-- 学术分析报告 -->
+    <el-card shadow="never" class="summary-card report-card">
       <template #header>
         <div class="card-header-title">
           <span class="header-insight-icon">✦</span>
-          <span>AI 数据洞察</span>
-          <span class="model-badge">qwen-plus</span>
-          <el-tag v-if="summaryCached && summaryData" type="success" size="small" class="cached-tag">已缓存</el-tag>
+          <span>学术分析报告</span>
+          <el-tag v-if="summaryCached && reportData" type="success" size="small" class="cached-tag">已缓存</el-tag>
           <el-button
             size="small"
             type="primary"
@@ -37,23 +36,81 @@
             :loading="summaryLoading"
             class="summary-btn"
           >
-            <el-icon><MagicStick /></el-icon>
-            {{ summaryData ? '重新生成' : '生成总结' }}
+            <el-icon><RefreshRight /></el-icon>
+            {{ reportData ? '重新生成' : '生成报告' }}
+          </el-button>
+          <el-button
+            v-if="reportData"
+            size="small"
+            plain
+            @click="exportReportMarkdown"
+            class="summary-btn"
+          >
+            <el-icon><Download /></el-icon>
+            导出 Markdown
           </el-button>
         </div>
       </template>
       <div v-if="summaryLoading" class="summary-loading">
         <el-icon class="is-loading"><Loading /></el-icon>
-        <span>AI 正在分析数据，请稍候...</span>
+        <span>正在生成学术报告，请稍候...</span>
       </div>
-      <div v-else-if="summaryData" class="summary-content">
-        <div
-          class="insight-prose"
-          v-html="'<div class=\'insight-para\'>' + highlightInsight(summaryData) + '</div>'"
-        />
+      <div v-else-if="reportData" class="report-content">
+        <!-- 摘要区 -->
+        <div class="report-abstract">
+          <div class="report-abstract-title">摘要</div>
+          <div class="report-abstract-body" v-html="formatAbstract(reportData.abstract)"></div>
+        </div>
+        <!-- 章节折叠面板 -->
+        <el-collapse v-model="activeReportSections" class="report-collapse">
+          <el-collapse-item
+            v-for="section in reportData.sections"
+            :key="section.id"
+            :name="section.id"
+            :title="section.title"
+          >
+            <!-- markdown 类型 -->
+            <div v-if="section.type === 'markdown'" class="report-section-markdown" v-html="renderMarkdown(section.content)"></div>
+            <!-- table 类型 -->
+            <el-table v-else-if="section.type === 'table'" :data="section.content.rows" size="small" class="report-table">
+              <el-table-column
+                v-for="(header, idx) in section.content.headers"
+                :key="idx"
+                :prop="String(idx)"
+                :label="header"
+                min-width="80"
+              />
+            </el-table>
+            <!-- list 类型（案例列表） -->
+            <div v-else-if="section.type === 'list'" class="report-list">
+              <div v-for="(item, idx) in section.content" :key="idx" class="report-list-item">
+                <div v-if="item.title" class="report-item-title">
+                  {{ item.title }}
+                  <el-tag v-if="item.period" size="small" type="info" class="report-item-tag">{{ item.period }}</el-tag>
+                  <el-tag v-if="item.confidence !== undefined" size="small" :type="item.confidence >= 0.8 ? 'success' : item.confidence >= 0.6 ? 'warning' : 'danger'" class="report-item-tag">
+                    conf={{ item.confidence.toFixed(2) }}
+                  </el-tag>
+                </div>
+                <div v-if="item.theme" class="report-item-meta">
+                  <span class="report-meta-label">主题：</span><span class="report-meta-value">{{ item.theme }}</span>
+                  <span class="report-meta-label">情感：</span><span class="report-meta-value">{{ item.polarity }}（{{ item.emotion_score > 0 ? '+' : '' }}{{ item.emotion_score?.toFixed(2) }}）</span>
+                </div>
+                <div v-if="item.text" class="report-item-text">「{{ item.text }}」</div>
+                <div v-if="item.question" class="report-item-qa">
+                  <div class="report-qa-q">质疑：{{ item.question }}</div>
+                  <div class="report-qa-a">回应：{{ item.answer }}</div>
+                </div>
+                <div v-if="item.special_rules && item.special_rules.length" class="report-item-rules">
+                  <span class="report-rules-label">触发规则：</span>
+                  <span class="report-rules-value">{{ item.special_rules.join('；') }}</span>
+                </div>
+              </div>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
       </div>
       <div v-else class="summary-empty">
-        <span>点击上方按钮，基于当前统计数据生成专业学术洞察</span>
+        <span>点击上方按钮，基于当前统计数据生成结构化学术报告</span>
       </div>
     </el-card>
 
@@ -435,6 +492,8 @@ const correlationData = ref({})
 const summaryData = ref('')
 const summaryCached = ref(false)
 const summaryLoading = ref(false)
+const reportData = ref(null)  // 结构化学术报告数据
+const activeReportSections = ref(['abstract', 'theme_distribution', 'sentiment_evolution'])
 
 // 作者切换处理（下拉选择 + 初始加载共用）
 function onArtistChange(newArtist) {
@@ -533,7 +592,7 @@ async function loadStats() {
   }
 }
 
-// 页面加载时自动读取缓存的总结
+// 页面加载时自动读取缓存的学术报告
 async function loadCachedSummary() {
   try {
     const res = await fetch(`${API_BASE}/content-analysis/summary`, {
@@ -545,6 +604,9 @@ async function loadCachedSummary() {
     if (data.success && data.summary) {
       summaryData.value = data.summary
       summaryCached.value = data.cached || false
+      if (data.report) {
+        reportData.value = data.report
+      }
     }
   } catch (e) {
     // 静默失败，不影响主流程
@@ -562,16 +624,34 @@ async function generateSummary() {
     const data = await res.json()
     if (data.success) {
       summaryData.value = data.summary
+      reportData.value = data.report || null
       summaryCached.value = false
-      ElMessage.success('总结已重新生成并保存')
+      ElMessage.success('学术报告已重新生成并保存')
     } else {
-      ElMessage.error('生成总结失败: ' + (data.error || '未知错误'))
+      ElMessage.error('生成报告失败: ' + (data.error || '未知错误'))
     }
   } catch (e) {
-    ElMessage.error('生成总结失败: ' + e.message)
+    ElMessage.error('生成报告失败: ' + e.message)
   } finally {
     summaryLoading.value = false
   }
+}
+
+// 导出 Markdown
+function exportReportMarkdown() {
+  if (!summaryData.value) {
+    ElMessage.warning('暂无报告可导出')
+    return
+  }
+  const blob = new Blob([summaryData.value], { type: 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const artistName = selectedArtist.value === 'all' ? '全部作者' : selectedArtist.value
+  a.download = `${artistName}题跋分析学术报告.md`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('报告已导出')
 }
 
 function getOrCreateChart(domRef) {
@@ -1192,6 +1272,24 @@ function highlightInsight(text) {
     .replace(/(\d+[\d\.,，]+)(?!<)(?![^<]*<\/span>)/g, '<span class="data-ref">$1</span>')
 }
 
+// 格式化摘要（将 markdown 粗体转为 HTML）
+function formatAbstract(text) {
+  if (!text) return ''
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br/>')
+}
+
+// 简单 markdown 渲染（支持粗体、引用、换行）
+function renderMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/^>\s*(.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br/>')
+}
+
 async function loadMoreThemePaintings() {
   themeDialogLoadingMore.value = true
   try {
@@ -1608,7 +1706,155 @@ async function loadMoreThemePaintings() {
 }
 /* dialog-footer 样式已移至全局 claude-design.css */
 
+/* ── 学术分析报告样式 ─────────────────────────────── */
+.report-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  border: 1px solid #e8e6dc;
+}
+.report-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+.report-card :deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0eee6;
+}
+.report-card :deep(.el-card__body) {
+  padding: 16px 20px;
+}
 
+/* 摘要区 */
+.report-abstract {
+  background: #faf9f7;
+  border: 1px solid #e8e4da;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.report-abstract-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #c96442;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+.report-abstract-body {
+  font-size: 14px;
+  line-height: 2;
+  color: #3d3d3a;
+}
+.report-abstract-body strong {
+  color: #141413;
+}
 
+/* 折叠面板 */
+.report-collapse {
+  border: none;
+}
+.report-collapse :deep(.el-collapse-item__header) {
+  font-size: 14px;
+  font-weight: 600;
+  color: #141413;
+  padding-left: 8px;
+  border-bottom: 1px solid #f0eee6;
+}
+.report-collapse :deep(.el-collapse-item__content) {
+  padding: 12px 8px 16px;
+}
 
+/* 表格 */
+.report-table {
+  font-size: 13px;
+}
+.report-table :deep(.el-table__header th) {
+  background: #faf9f7;
+  color: #5e5d59;
+  font-weight: 600;
+}
+
+/* markdown 渲染 */
+.report-section-markdown {
+  font-size: 14px;
+  line-height: 2;
+  color: #3d3d3a;
+}
+.report-section-markdown blockquote {
+  margin: 0 0 12px;
+  padding: 8px 16px;
+  border-left: 3px solid #c96442;
+  background: #faf9f7;
+  color: #5e5d59;
+  font-style: italic;
+}
+.report-section-markdown strong {
+  color: #141413;
+}
+
+/* 列表项 */
+.report-list-item {
+  padding: 12px 0;
+  border-bottom: 1px dashed #e8e4da;
+}
+.report-list-item:last-child {
+  border-bottom: none;
+}
+.report-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #141413;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.report-item-tag {
+  font-size: 11px;
+}
+.report-item-meta {
+  font-size: 13px;
+  color: #5e5d59;
+  margin-bottom: 6px;
+}
+.report-meta-label {
+  color: #87867f;
+  margin-right: 2px;
+}
+.report-meta-value {
+  color: #3d3d3a;
+  font-weight: 500;
+  margin-right: 12px;
+}
+.report-item-text {
+  font-size: 13px;
+  color: #5e5d59;
+  font-style: italic;
+  line-height: 1.8;
+  padding: 4px 0;
+}
+.report-item-qa {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #faf9f7;
+  border-radius: 6px;
+}
+.report-qa-q {
+  font-size: 13px;
+  color: #c96442;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.report-qa-a {
+  font-size: 13px;
+  color: #3d3d3a;
+  line-height: 1.8;
+}
+.report-item-rules {
+  font-size: 12px;
+  color: #87867f;
+  margin-top: 6px;
+}
+.report-rules-label {
+  font-weight: 500;
+}
 </style>
