@@ -141,17 +141,33 @@ def get_material_tags(material_tags_str: Optional[str], title: Optional[str]) ->
 # 4. 主题标签（从 content_analysis.themes 提取）
 # ────────────────────────────────────────────────────────────────
 THEME_CODE_MAP = {
-    1: "记录创作",
-    2: "即景寄兴",
-    3: "讽喻社会",
-    4: "交游应酬",
-    5: "世俗祈愿",
-    6: "自怜自况",
+    1: "身世自况",
+    2: "咏物寄兴",
+    3: "画理自叙",
+    4: "时事讽喻",
+    5: "吉语祥瑞",
+    6: "交游赠答",
+}
+
+# 旧主题名称 → 新主题名称 兼容映射（处理历史数据）
+THEME_NAME_COMPAT = {
+    "记录创作信息": "身世自况",
+    "记录创作": "身世自况",
+    "即景寄兴与抒怀": "咏物寄兴",
+    "即景寄兴": "咏物寄兴",
+    "讽喻社会与民生": "时事讽喻",
+    "讽喻社会": "时事讽喻",
+    "阐述画理画法": "画理自叙",
+    "世俗祈愿与谐趣": "吉语祥瑞",
+    "世俗祈愿": "吉语祥瑞",
+    "应酬送人与雅交": "交游赠答",
+    "交游应酬": "交游赠答",
+    "自怜自况": "身世自况",
 }
 
 
 def get_theme_tags(content_analysis: Optional[Any]) -> List[str]:
-    """从 content_analysis JSON 提取主题标签"""
+    """从 content_analysis JSON 提取主题标签（v5: 支持新旧主题名称兼容）"""
     if not content_analysis:
         return []
 
@@ -170,6 +186,9 @@ def get_theme_tags(content_analysis: Optional[Any]) -> List[str]:
         if code in THEME_CODE_MAP:
             tags.append(THEME_CODE_MAP[code])
         elif name:
+            # 兼容旧主题名称
+            compat_name = THEME_NAME_COMPAT.get(name, name)
+            tags.append(compat_name)
             tags.append(name)
 
     return tags

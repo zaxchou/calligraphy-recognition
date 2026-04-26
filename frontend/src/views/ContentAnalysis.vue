@@ -1061,12 +1061,12 @@ function invRateClass(rate) {
 }
 
 const THEMES = [
-  { code: 1, name: '记录创作信息',     color: '#c96442' },  // 朱砂
-  { code: 2, name: '即景寄兴与抒怀',   color: '#547a8c' },  // 松石
-  { code: 3, name: '讽喻社会与民生',   color: '#4a4a5a' },  // 苍墨
-  { code: 4, name: '阐述画理画法',     color: '#a65d3f' },  // 赭石
-  { code: 5, name: '世俗祈愿与谐趣',   color: '#8b6f8e' },  // 紫藤
-  { code: 6, name: '应酬送人与雅交',   color: '#b8a47e' },  // 金
+  { code: 1, name: '身世自况',     color: '#c96442' },  // 朱砂（李鱓核心主题）
+  { code: 2, name: '咏物寄兴',   color: '#547a8c' },  // 松石
+  { code: 3, name: '画理自叙',   color: '#a65d3f' },  // 赭石
+  { code: 4, name: '时事讽喻',   color: '#4a4a5a' },  // 苍墨
+  { code: 5, name: '吉语祥瑞',   color: '#8b6f8e' },  // 紫藤
+  { code: 6, name: '交游赠答',   color: '#b8a47e' },  // 金
 ]
 
 function sentimentLabel(p) {

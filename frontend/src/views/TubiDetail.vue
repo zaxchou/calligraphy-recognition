@@ -1092,12 +1092,12 @@ defineExpose({
   background: #f0ece3;
 }
 .album-nav-thumbnail:hover {
-  border-color: #c96442;
+  border-color: #4A90D9;
   transform: translateY(-1px);
 }
 .album-nav-thumbnail.active {
-  border-color: #c96442;
-  box-shadow: 0 0 0 2px rgba(201, 100, 66, 0.25);
+  border-color: #4A90D9;
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.25);
 }
 .album-nav-thumbnail img {
   width: 100%;
