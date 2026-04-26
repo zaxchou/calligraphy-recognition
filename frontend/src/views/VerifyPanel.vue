@@ -223,7 +223,7 @@
               {{ item.inscription_content.substring(0, 40) }}{{ item.inscription_content.length > 40 ? '...' : '' }}
             </div>
           </div>
-          <el-button plain size="small" class="btn-edit btn-jump">
+          <el-button plain size="small" class="btn-edit btn-jump" @click.stop="jumpToDetail(item)">
             <el-icon><Position /></el-icon>跳转
           </el-button>
         </div>
@@ -234,6 +234,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bottom, RefreshRight, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position } from '@element-plus/icons-vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
@@ -252,6 +253,8 @@ const props = defineProps({
   artist: { type: String, default: 'all' },
 })
 const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title'])
+
+const router = useRouter()
 
 const filterPeriod = ref('')
 const verifyFilter = ref('unverified')
@@ -550,6 +553,12 @@ async function onSelectSearchResult(item) {
   showSearchDialog.value = false
   searchKeyword.value = ''
   ElMessage.info('记录不在当前列表中，请从管理页面重新加载')
+}
+
+function jumpToDetail(item) {
+  if (!item?.image_id) return
+  const route = router.resolve({ name: 'TubiDetail', params: { id: item.image_id } })
+  window.open(route.href, '_blank')
 }
 
 function polarityLabel(polarity) { const map = { positive: '积极', negative: '消极', neutral: '中性' }; return map[polarity] || '未知' }
