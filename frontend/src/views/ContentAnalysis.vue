@@ -61,13 +61,13 @@
           <div class="report-abstract-title">摘要</div>
           <div class="report-abstract-body" v-html="formatAbstract(reportData.abstract)"></div>
         </div>
-        <!-- 章节折叠面板 -->
-        <el-collapse v-model="activeReportSections" class="report-collapse">
-          <el-collapse-item
+        <!-- 横向章节 Tab -->
+        <el-tabs v-model="activeReportTab" class="report-tabs" type="border-card" :scrollable="true">
+          <el-tab-pane
             v-for="section in reportData.sections"
             :key="section.id"
+            :label="section.title"
             :name="section.id"
-            :title="section.title"
           >
             <!-- markdown 类型 -->
             <div v-if="section.type === 'markdown'" class="report-section-markdown" v-html="renderMarkdown(section.content)"></div>
@@ -106,8 +106,8 @@
                 </div>
               </div>
             </div>
-          </el-collapse-item>
-        </el-collapse>
+          </el-tab-pane>
+        </el-tabs>
       </div>
       <div v-else class="summary-empty">
         <span>点击上方按钮，基于当前统计数据生成结构化学术报告</span>
@@ -493,7 +493,7 @@ const summaryData = ref('')
 const summaryCached = ref(false)
 const summaryLoading = ref(false)
 const reportData = ref(null)  // 结构化学术报告数据
-const activeReportSections = ref(['abstract', 'theme_distribution', 'sentiment_evolution'])
+const activeReportTab = ref('')
 
 // 作者切换处理（下拉选择 + 初始加载共用）
 function onArtistChange(newArtist) {
@@ -606,6 +606,10 @@ async function loadCachedSummary() {
       summaryCached.value = data.cached || false
       if (data.report) {
         reportData.value = data.report
+        // 默认选中第一个章节
+        if (data.report.sections && data.report.sections.length) {
+          activeReportTab.value = data.report.sections[0].id
+        }
       }
     }
   } catch (e) {
@@ -626,6 +630,10 @@ async function generateSummary() {
       summaryData.value = data.summary
       reportData.value = data.report || null
       summaryCached.value = false
+      // 默认选中第一个章节
+      if (data.report && data.report.sections && data.report.sections.length) {
+        activeReportTab.value = data.report.sections[0].id
+      }
       ElMessage.success('学术报告已重新生成并保存')
     } else {
       ElMessage.error('生成报告失败: ' + (data.error || '未知错误'))
@@ -1747,19 +1755,36 @@ async function loadMoreThemePaintings() {
   color: #141413;
 }
 
-/* 折叠面板 */
-.report-collapse {
-  border: none;
+/* 报告 Tab */
+.report-tabs {
+  border-radius: 12px;
+  overflow: hidden;
 }
-.report-collapse :deep(.el-collapse-item__header) {
-  font-size: 14px;
+.report-tabs :deep(.el-tabs__header) {
+  background: #faf9f7;
+  border-bottom: 1px solid #e8e4da;
+  margin: 0;
+}
+.report-tabs :deep(.el-tabs__item) {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5e5d59;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 16px;
+}
+.report-tabs :deep(.el-tabs__item.is-active) {
+  color: #c96442;
   font-weight: 600;
-  color: #141413;
-  padding-left: 8px;
-  border-bottom: 1px solid #f0eee6;
+  background: #fff;
+  border-radius: 8px 8px 0 0;
 }
-.report-collapse :deep(.el-collapse-item__content) {
-  padding: 12px 8px 16px;
+.report-tabs :deep(.el-tabs__content) {
+  padding: 16px 12px;
+  background: #fff;
+}
+.report-tabs :deep(.el-tabs__nav-wrap) {
+  padding: 0 4px;
 }
 
 /* 表格 */
