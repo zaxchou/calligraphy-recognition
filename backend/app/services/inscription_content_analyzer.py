@@ -1104,6 +1104,10 @@ def classify_inscription_v4(
         "polarity": polarity,
         "emotion_score": round(emotion_score, 2),
         "reasoning": _build_sentiment_reasoning(polarity, emotion_score, life_stage, painting_matches, special_rules),
+        "reasoning_steps": _build_sentiment_reasoning_steps(
+            polarity, round(emotion_score, 2), life_stage, painting_matches,
+            special_rules, text_emotion_score, baseline, artist_name
+        ),
     }
 
     return {
@@ -1115,7 +1119,7 @@ def classify_inscription_v4(
 
 
 def _build_sentiment_reasoning(polarity, emotion_score, life_stage, painting_matches, special_rules) -> str:
-    """构建情感判断理由"""
+    """构建情感判断理由（兼容旧格式）"""
     parts = []
     if life_stage.get("stage") and life_stage["stage"] != "未知":
         parts.append(f"{life_stage['stage']}({life_stage['baseline_emotion']})")
@@ -1126,6 +1130,75 @@ def _build_sentiment_reasoning(polarity, emotion_score, life_stage, painting_mat
     if special_rules:
         parts.append(special_rules[0][:30])
     return "；".join(parts)
+
+
+def _build_sentiment_reasoning_steps(
+    polarity, emotion_score, life_stage, painting_matches,
+    special_rules, text_emotion_score, artist_baseline, artist_name
+) -> list:
+    """
+    构建结构化推导步骤，用于前端分步展示。
+    返回 [{"label": "时期基线", "detail": "...", "offset": +0.63, "icon": "📅"}, ...]
+    """
+    steps = []
+
+    # 步骤1：时期基线
+    if life_stage.get("stage") and life_stage["stage"] != "未知":
+        offset = life_stage.get("emotion_offset", 0)
+        steps.append({
+            "label": "时期基线",
+            "detail": f"{life_stage['stage']}作品，情感偏{life_stage.get('baseline_emotion', '中性')}",
+            "offset": round(offset, 2),
+            "icon": "📅",
+        })
+
+    # 步骤2：画材情感
+    if painting_matches:
+        emotions = list(set(m["rule"]["visual_emotion"] for m in painting_matches))
+        painting_offset = sum(m["rule"].get("emotion_offset", 0) for m in painting_matches)
+        steps.append({
+            "label": "画材情感",
+            "detail": f"画面元素→{'、'.join(emotions)}",
+            "offset": round(painting_offset, 2),
+            "icon": "🎨",
+        })
+
+    # 步骤3：文本情感
+    steps.append({
+        "label": "文本情感",
+        "detail": "题跋用词的情感倾向",
+        "offset": round(text_emotion_score, 2) if text_emotion_score else 0,
+        "icon": "📝",
+    })
+
+    # 步骤4：画家底色
+    if artist_baseline and artist_baseline != 0:
+        steps.append({
+            "label": "画家底色",
+            "detail": f"{artist_name}的创作风格底色",
+            "offset": round(artist_baseline, 2),
+            "icon": "🖌️",
+        })
+
+    # 步骤5：特殊规则
+    if special_rules:
+        steps.append({
+            "label": "特殊规则",
+            "detail": special_rules[0][:40] if special_rules else "",
+            "offset": 0,
+            "icon": "⚡",
+        })
+
+    # 最终判定
+    polarity_cn = {"positive": "积极", "negative": "消极", "neutral": "中性"}.get(polarity, "中性")
+    steps.append({
+        "label": "最终判定",
+        "detail": f"综合得分 {emotion_score:+.2f} → {polarity_cn}",
+        "offset": None,  # 最终结果，不显示偏移
+        "icon": "✅" if polarity == "positive" else "❌" if polarity == "negative" else "➖",
+    })
+
+    return steps
 
 
 @dataclass
