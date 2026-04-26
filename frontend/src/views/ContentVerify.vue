@@ -184,24 +184,10 @@
     />
       </el-tab-pane>
 
-      <!-- 册页管理 -->
-      <el-tab-pane label="册页管理" name="album">
+      <!-- 标注图校对 -->
+      <el-tab-pane label="标注图校对" name="annotation">
         <div class="tab-content full-tab-content">
-          <AlbumManager :artist="selectedArtist" />
-        </div>
-      </el-tab-pane>
-
-      <!-- 标签管理 -->
-      <el-tab-pane label="标签管理" name="tag">
-        <div class="tab-content full-tab-content">
-          <TagManager :artist="selectedArtist" />
-        </div>
-      </el-tab-pane>
-
-      <!-- 条屏管理 -->
-      <el-tab-pane label="条屏管理" name="strip">
-        <div class="tab-content full-tab-content">
-          <StripManager :artist="selectedArtist" />
+          <AnnotationVerify :artist="selectedArtist" />
         </div>
       </el-tab-pane>
 
@@ -212,10 +198,31 @@
         </div>
       </el-tab-pane>
 
-      <!-- 标注校对 -->
-      <el-tab-pane label="标注校对" name="annotation">
+      <!-- 印章管理 -->
+      <el-tab-pane label="印章管理" name="seal">
         <div class="tab-content full-tab-content">
-          <AnnotationVerify :artist="selectedArtist" />
+          <SealManager :artist="selectedArtist" />
+        </div>
+      </el-tab-pane>
+
+      <!-- 册页管理 -->
+      <el-tab-pane label="册页管理" name="album">
+        <div class="tab-content full-tab-content">
+          <AlbumManager :artist="selectedArtist" />
+        </div>
+      </el-tab-pane>
+
+      <!-- 条屏管理 -->
+      <el-tab-pane label="条屏管理" name="strip">
+        <div class="tab-content full-tab-content">
+          <StripManager :artist="selectedArtist" />
+        </div>
+      </el-tab-pane>
+
+      <!-- 标签管理 -->
+      <el-tab-pane label="标签管理" name="tag">
+        <div class="tab-content full-tab-content">
+          <TagManager :artist="selectedArtist" />
         </div>
       </el-tab-pane>
 
@@ -223,13 +230,6 @@
       <el-tab-pane label="作者信息" name="artist-info">
         <div class="tab-content full-tab-content">
           <ArtistInfoManager />
-        </div>
-      </el-tab-pane>
-
-      <!-- 印章管理 -->
-      <el-tab-pane label="印章管理" name="seal">
-        <div class="tab-content full-tab-content">
-          <SealManager :artist="selectedArtist" />
         </div>
       </el-tab-pane>
     </el-tabs>
