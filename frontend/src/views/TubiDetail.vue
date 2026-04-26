@@ -59,7 +59,6 @@
               <el-icon><ArrowRight /></el-icon>
             </button>
           </div>
-          </div>
         </div>
       </el-card>
 
