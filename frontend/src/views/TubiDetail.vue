@@ -206,7 +206,7 @@
                         }}</span>
                         <span class="sentiment-sep">·</span>
                         <span class="sentiment-score-text">强度 {{
-                          Math.round((currentImage.contentAnalysis.sentiment.intensity || 0) * 100)
+                          Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100)
                         }}%</span>
                         <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
                           <span class="sentiment-sep">·</span>
@@ -217,7 +217,7 @@
                         <div
                           class="sentiment-bar-fill"
                           :style="{
-                            width: Math.round((currentImage.contentAnalysis.sentiment.intensity || 0) * 100) + '%',
+                            width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
                             background: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#ff6b35' : '#b8a47e'
                           }"
                         ></div>
@@ -565,6 +565,14 @@ function toDiagramPoints(reg) {
     return rect.map((p) => `${(p.x / w * 100).toFixed(1)},${(p.y / h * viewBoxH).toFixed(1)}`).join(' ')
   }
   return pts.map((p) => `${(p.x / w * 100).toFixed(1)},${(p.y / h * viewBoxH).toFixed(1)}`).join(' ')
+}
+
+// ── 情感强度计算（兼容新旧数据）──
+function getSentimentIntensity(sentiment) {
+  if (!sentiment) return 0
+  if (sentiment.intensity != null) return sentiment.intensity
+  // 旧数据兜底：用 emotion_score 绝对值估算（假设最大范围是2）
+  return Math.min(Math.abs(sentiment.emotion_score || 0) / 2, 1)
 }
 
 function getInscriptionAreaClass() {
