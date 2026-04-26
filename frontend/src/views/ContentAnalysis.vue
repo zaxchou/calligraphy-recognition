@@ -56,11 +56,6 @@
         <span>正在生成学术报告，请稍候...</span>
       </div>
       <div v-else-if="reportData" class="report-content">
-        <!-- 摘要区 -->
-        <div class="report-abstract">
-          <div class="report-abstract-title">摘要</div>
-          <div class="report-abstract-body" v-html="formatAbstract(reportData.abstract)"></div>
-        </div>
         <!-- 横向章节 Tab -->
         <el-tabs v-model="activeReportTab" class="report-tabs" type="border-card" :scrollable="true">
           <el-tab-pane
@@ -1280,13 +1275,6 @@ function highlightInsight(text) {
     .replace(/(\d+[\d\.,，]+)(?!<)(?![^<]*<\/span>)/g, '<span class="data-ref">$1</span>')
 }
 
-// 格式化摘要（将 markdown 粗体转为 HTML）
-function formatAbstract(text) {
-  if (!text) return ''
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br/>')
-}
 
 // 简单 markdown 渲染（支持粗体、引用、换行）
 function renderMarkdown(text) {
@@ -1731,29 +1719,6 @@ async function loadMoreThemePaintings() {
   padding: 16px 20px;
 }
 
-/* 摘要区 */
-.report-abstract {
-  background: #faf9f7;
-  border: 1px solid #e8e4da;
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-}
-.report-abstract-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #c96442;
-  margin-bottom: 10px;
-  letter-spacing: 0.5px;
-}
-.report-abstract-body {
-  font-size: 14px;
-  line-height: 2;
-  color: #3d3d3a;
-}
-.report-abstract-body strong {
-  color: #141413;
-}
 
 /* 报告 Tab */
 .report-tabs {
