@@ -6,9 +6,9 @@
     Starts in order:
       1. Qdrant (port 6333)
       2. Redis (port 6379)
-      3. Celery Worker (async task processing)
-      4. Tubi Worker (tubi analysis queue processing)
-      5. FastAPI backend (port 8001)
+      3. FastAPI backend (port 8001)
+      4. Celery Worker (async task processing)
+      5. Tubi Worker (tubi analysis queue processing)
       6. Frontend dev server (port 3000)
     First run auto-downloads Redis.
     Each service runs in its own window.
@@ -46,7 +46,6 @@ Write-Host ''
 if (-not $SkipQdrant) {
     Write-Host '[1/6] Starting Qdrant ...' -ForegroundColor Yellow
     & (Join-Path $ProjectDir 'start_qdrant_windows.ps1')
-    # Check via port instead of $LASTEXITCODE (unreliable)
     try {
         $conn = New-Object System.Net.Sockets.TcpClient('127.0.0.1', $QdrantPort)
         $conn.Close()
@@ -64,7 +63,6 @@ Write-Host ''
 if (-not $SkipRedis) {
     Write-Host '[2/6] Starting Redis ...' -ForegroundColor Yellow
     & (Join-Path $ProjectDir 'start_redis_windows.ps1')
-    # Check via port instead of $LASTEXITCODE (unreliable)
     try {
         $conn = New-Object System.Net.Sockets.TcpClient('127.0.0.1', $RedisPort)
         $conn.Close()
@@ -79,49 +77,25 @@ if (-not $SkipRedis) {
 
 Write-Host ''
 
-# ========== 3. Celery Worker ==========
-if (-not $SkipCelery) {
-    Write-Host '[3/6] Starting Celery Worker ...' -ForegroundColor Yellow
-    & (Join-Path $ProjectDir 'start_celery_windows.ps1')
-    # Celery starts in a separate window, just trust its output
-    Write-Host '[OK] Celery Worker launched (check its window)' -ForegroundColor Green
-} else {
-    Write-Host '[3/6] Skip Celery Worker (-SkipCelery)' -ForegroundColor DarkGray
-}
-
-Write-Host ''
-
-# ========== 4. Tubi Worker ==========
-if (-not $SkipTubi) {
-    Write-Host '[4/6] Starting Tubi Worker ...' -ForegroundColor Yellow
-    & (Join-Path $ProjectDir 'start_tubi_windows.ps1')
-    Write-Host '[OK] Tubi Worker launched (check its window)' -ForegroundColor Green
-} else {
-    Write-Host '[4/6] Skip Tubi Worker (-SkipTubi)' -ForegroundColor DarkGray
-}
-
-Write-Host ''
-
-# ========== 5. FastAPI Backend ==========
+# ========== 3. FastAPI Backend ==========
+# FastAPI must start BEFORE Celery/Tubi workers to avoid killing them
 if (-not $SkipFastAPI) {
-    Write-Host '[5/6] Starting FastAPI backend ...' -ForegroundColor Yellow
+    Write-Host '[3/6] Starting FastAPI backend ...' -ForegroundColor Yellow
 
-    # Kill ALL Python processes related to this project (comprehensive zombie cleanup)
-    Write-Host "[FastAPI] Cleaning up zombie Python processes ..." -ForegroundColor DarkGray
-    $pythonProcs = Get-CimInstance Win32_Process | Where-Object { 
+    # Kill old uvicorn zombie processes (only uvicorn, not workers)
+    Write-Host "[FastAPI] Cleaning up old uvicorn processes ..." -ForegroundColor DarkGray
+    $uvicornProcs = Get-CimInstance Win32_Process | Where-Object {
         $_.Name -like 'python*.exe' -and (
-            $_.CommandLine -like '*app.main*' -or 
-            $_.CommandLine -like '*uvicorn*' -or
-            $_.CommandLine -like '*fastapi*' -or
-            $_.CommandLine -like '*calligraphy*backend*'
+            $_.CommandLine -like '*uvicorn*app.main*' -or
+            $_.CommandLine -like '*uvicorn*app.main:app*'
         )
     }
-    if ($pythonProcs) {
-        Write-Host "[FastAPI] Found $($pythonProcs.Count) zombie Python process(es), killing ..." -ForegroundColor Yellow
-        $pythonProcs | ForEach-Object {
+    if ($uvicornProcs) {
+        Write-Host "[FastAPI] Found $($uvicornProcs.Count) old uvicorn process(es), killing ..." -ForegroundColor Yellow
+        $uvicornProcs | ForEach-Object {
             try {
                 Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-                Write-Host "[FastAPI]   Killed zombie PID $($_.ProcessId)" -ForegroundColor DarkGray
+                Write-Host "[FastAPI]   Killed PID $($_.ProcessId)" -ForegroundColor DarkGray
             } catch {
                 Write-Host "[FastAPI]   PID $($_.ProcessId) already dead" -ForegroundColor DarkGray
             }
@@ -144,7 +118,7 @@ if (-not $SkipFastAPI) {
         }
         Start-Sleep -Seconds 2
     }
-    
+
     # Re-check port
     $still = Get-NetTCPConnection -LocalPort $ApiPort -State Listen -ErrorAction SilentlyContinue
     if ($still) {
@@ -180,7 +154,29 @@ if (-not $SkipFastAPI) {
         Write-Host '[FastAPI] Backend may still be starting. Check the FastAPI window.' -ForegroundColor Yellow
     }
 } else {
-    Write-Host '[5/6] Skip FastAPI (-SkipFastAPI)' -ForegroundColor DarkGray
+    Write-Host '[3/6] Skip FastAPI (-SkipFastAPI)' -ForegroundColor DarkGray
+}
+
+Write-Host ''
+
+# ========== 4. Celery Worker ==========
+if (-not $SkipCelery) {
+    Write-Host '[4/6] Starting Celery Worker ...' -ForegroundColor Yellow
+    & (Join-Path $ProjectDir 'start_celery_windows.ps1')
+    Write-Host '[OK] Celery Worker launched (check its window)' -ForegroundColor Green
+} else {
+    Write-Host '[4/6] Skip Celery Worker (-SkipCelery)' -ForegroundColor DarkGray
+}
+
+Write-Host ''
+
+# ========== 5. Tubi Worker ==========
+if (-not $SkipTubi) {
+    Write-Host '[5/6] Starting Tubi Worker ...' -ForegroundColor Yellow
+    & (Join-Path $ProjectDir 'start_tubi_windows.ps1')
+    Write-Host '[OK] Tubi Worker launched (check its window)' -ForegroundColor Green
+} else {
+    Write-Host '[5/6] Skip Tubi Worker (-SkipTubi)' -ForegroundColor DarkGray
 }
 
 Write-Host ''
@@ -237,12 +233,12 @@ Write-Host ''
 Write-Host '============================================' -ForegroundColor Cyan
 Write-Host '  All services started!' -ForegroundColor Green
 Write-Host ''
+Write-Host "  Qdrant:     http://localhost:$QdrantPort/dashboard"
 Write-Host "  Redis:      localhost:$RedisPort"
-Write-Host '  Celery:     Worker window'
-Write-Host '  Tubi:       Worker window'
 Write-Host "  FastAPI:    http://localhost:$ApiPort"
 Write-Host "  API Docs:   http://localhost:$ApiPort/docs"
-Write-Host "  Qdrant:     http://localhost:$QdrantPort/dashboard"
+Write-Host '  Celery:     Worker window'
+Write-Host '  Tubi:       Worker window'
 Write-Host "  Frontend:   http://localhost:$FrontendPort"
 Write-Host ''
 Write-Host '  Close each window to stop its service.' -ForegroundColor DarkGray
