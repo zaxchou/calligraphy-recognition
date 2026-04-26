@@ -47,8 +47,10 @@ def main():
     print(f"{'='*70}")
 
     # 统计变量
-    old_themes = Counter()
+    old_themes = Counter()        # all themes (1st+2nd+3rd) — 覆盖率
+    old_primary_themes = Counter()  # 仅第一主题 — 分布
     new_themes = Counter()
+    new_primary_themes = Counter()
     old_polarities = Counter()
     new_polarities = Counter()
     old_emotion_scores = []
@@ -80,11 +82,15 @@ def main():
 
         # 记录旧主题/情感
         if old_ca:
-            for t in old_ca.get("themes", []):
+            themes_list = old_ca.get("themes", [])
+            for t in themes_list:
                 old_name = t.get("name", "")
                 # 兼容旧名称
                 compat_name = THEME_NAME_MIGRATION.get(old_name, old_name)
                 old_themes[compat_name] += 1
+            # primary theme
+            if themes_list:
+                old_primary_themes[THEME_NAME_MIGRATION.get(themes_list[0].get("name",""), themes_list[0].get("name",""))] += 1
             old_sent = old_ca.get("sentiment", {})
             old_pol = old_sent.get("polarity", "neutral")
             old_polarities[old_pol] += 1
@@ -106,8 +112,11 @@ def main():
             )
 
             # 记录新主题/情感
-            for t in result.get("themes", []):
+            new_themes_list = result.get("themes", [])
+            for t in new_themes_list:
                 new_themes[t["name"]] += 1
+            if new_themes_list:
+                new_primary_themes[new_themes_list[0]["name"]] += 1
             new_sent = result.get("sentiment", {})
             new_pol = new_sent.get("polarity", "neutral")
             new_polarities[new_pol] += 1
@@ -168,14 +177,28 @@ def main():
     print(f"重跑完成: {updated_count} 幅更新, {error_count} 幅错误")
     print(f"{'='*70}")
 
-    # 1. 主题分布对比
-    print(f"\n【一、主题分布对比（新 vs 旧）】")
+    # 1. 主题分布对比（all themes = 1st+2nd+3rd 覆盖率）
+    print(f"\n【一、主题覆盖率对比（新 vs 旧，含1st/2nd/3rd）】")
     all_theme_names = sorted(set(list(old_themes.keys()) + list(new_themes.keys())))
     print(f"  {'主题':12s} {'旧':>6s} {'旧%':>6s} {'新':>6s} {'新%':>6s} {'变化':>8s}")
     print(f"  {'-'*50}")
     for name in all_theme_names:
         old_cnt = old_themes.get(name, 0)
         new_cnt = new_themes.get(name, 0)
+        old_pct = old_cnt / total * 100 if total else 0
+        new_pct = new_cnt / total * 100 if total else 0
+        diff = new_cnt - old_cnt
+        sign = "+" if diff > 0 else ""
+        print(f"  {name:12s} {old_cnt:6d} {old_pct:5.1f}% {new_cnt:6d} {new_pct:5.1f}% {sign}{diff:6d}")
+
+    # 1.5. 第一主题分布对比（Primary Themes，与美术史预期比较）
+    print(f"\n【一.5、第一主题分布对比（新 vs 旧）】")
+    primary_names = sorted(set(list(old_primary_themes.keys()) + list(new_primary_themes.keys())))
+    print(f"  {'主题':12s} {'旧':>6s} {'旧%':>6s} {'新':>6s} {'新%':>6s} {'变化':>8s}")
+    print(f"  {'-'*50}")
+    for name in primary_names:
+        old_cnt = old_primary_themes.get(name, 0)
+        new_cnt = new_primary_themes.get(name, 0)
         old_pct = old_cnt / total * 100 if total else 0
         new_pct = new_cnt / total * 100 if total else 0
         diff = new_cnt - old_cnt
@@ -206,21 +229,21 @@ def main():
     for (old_t, new_t), cnt in theme_changes.most_common(10):
         print(f"  {old_t:12s} → {new_t:12s}: {cnt:3d} 幅")
 
-    # 5. 偏差检测与调整建议
-    print(f"\n【五、偏差检测与调整建议】")
+    # 5. 偏差检测与调整建议（基于第一主题）
+    print(f"\n【五、偏差检测与调整建议（基于第一主题）】")
 
-    # 预期分布（基于美术史研究）
+    # 预期分布（基于美术史研究）— primary theme 百分比
     expected = {
-        "身世自况": (20, 30),
-        "咏物寄兴": (25, 35),
-        "画理自叙": (8, 15),
-        "时事讽喻": (10, 18),
-        "吉语祥瑞": (5, 12),
-        "交游赠答": (10, 18),
+        "身世自况": (5, 15),      # 节点性主题，不应太高
+        "咏物寄兴": (55, 70),     # 文人画核心功能，应占主导
+        "画理自叙": (5, 12),
+        "时事讽喻": (5, 15),
+        "吉语祥瑞": (3, 10),
+        "交游赠答": (8, 18),
     }
 
     for name, (low, high) in expected.items():
-        cnt = new_themes.get(name, 0)
+        cnt = new_primary_themes.get(name, 0)
         pct = cnt / total * 100 if total else 0
         if pct < low:
             print(f"  [!] {name}: {pct:.1f}% 低于预期下限 {low}% -- 建议增加关键词权重或补充关键词")

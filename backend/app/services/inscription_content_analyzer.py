@@ -867,14 +867,17 @@ def classify_inscription_v4(
     for match in painting_matches:
         rule = match["rule"]
         code = rule["theme_tendency"]
-        # 画作内容信号：0.7*weight（画作是辅助信号，文本为主）
-        painting_theme_scores[code] = painting_theme_scores.get(code, 0) + rule["weight"] * 0.7
-        painting_emotion_offset += rule["emotion_offset"]
+        # 画作内容信号：0.7 * weight * weight_multiplier（题跋命中权重更高）
+        multiplier = match.get("weight_multiplier", 1.0)
+        painting_theme_scores[code] = painting_theme_scores.get(code, 0) + rule["weight"] * 0.7 * multiplier
+        painting_emotion_offset += rule["emotion_offset"] * multiplier
         signals["painting"].append({
             "matched_keywords": match["matched_keywords"],
             "visual_emotion": rule["visual_emotion"],
             "theme_tendency": THEMES[code]["name"],
             "weight": rule["weight"],
+            "source": match.get("source", "unknown"),
+            "weight_multiplier": multiplier,
         })
 
     # ── 维度3：文本信号 ──────────────────────────────────────────
