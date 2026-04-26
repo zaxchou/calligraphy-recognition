@@ -159,7 +159,7 @@
 
 /* TubiAnalysis 文字色覆盖 */
 .tubi-analysis .page-title {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   color: var(--near-black);
   font-weight: 500;
   letter-spacing: 0.06em;
@@ -367,6 +367,10 @@
   border: 1px solid var(--border-cream) !important;
   box-shadow: var(--shadow-whisper) !important;
 }
+/* 原作图卡片阴影与其他卡片一致 */
+.tubi-analysis .el-card.original-image-card {
+  box-shadow: var(--shadow-whisper) !important;
+}
 .tubi-analysis .el-card__header {
   border-bottom: 1px solid var(--border-cream) !important;
 }
@@ -395,7 +399,7 @@
   color: var(--near-black);
   font-size: 16px;
   font-weight: 600;
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   letter-spacing: 0.08em;
   line-height: 1;
 }
@@ -444,7 +448,7 @@
 .tubi-analysis .comparison-dashboard-card .el-card__header { border-bottom-color: var(--border-cream); background: var(--ivory); }
 
 /* 文字色覆盖 */
-.tubi-analysis .module-title { color: var(--near-black); font-family: var(--font-serif); }
+.tubi-analysis .module-title { color: var(--near-black); font-family: 'Noto Serif SC', 'KaiTi', serif; }
 .tubi-analysis .history-item-title { color: var(--near-black); }
 .tubi-analysis .history-item-meta { color: var(--stone-gray); }
 .tubi-analysis .gallery-title { color: var(--near-black); }
@@ -522,7 +526,7 @@
 .tubi-analysis .modern-upload .el-upload-dragger:hover { border-color: var(--cinnabar); background: var(--ivory); }
 .tubi-analysis .modern-form .el-textarea__inner:hover { border-color: var(--cinnabar); }
 .tubi-analysis .modern-form .el-textarea__inner:focus { border-color: var(--cinnabar); box-shadow: 0 0 0 3px rgba(201,100,66,0.1); }
-.tubi-analysis .form-section-title { color: var(--near-black); font-family: var(--font-serif); }
+.tubi-analysis .form-section-title { color: var(--near-black); font-family: 'Noto Serif SC', 'KaiTi', serif; }
 .tubi-analysis .form-section-title::after { background: var(--cinnabar); }
 .tubi-analysis .modern-upload .el-upload__text em { color: var(--cinnabar); }
 .tubi-analysis .btn-cancel:hover { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--ivory); }
@@ -547,7 +551,7 @@
 .page-title,
 h1.page-title,
 h1.welcome-title {
-  font-family: var(--font-serif) !important;
+  font-family: 'Noto Serif SC', 'KaiTi', serif !important;
   font-weight: 500 !important;
   color: var(--near-black) !important;
   letter-spacing: 0.06em !important;
@@ -610,7 +614,7 @@ p.welcome-subtitle {
 }
 
 .steles-page .stele-name {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   color: var(--near-black);
 }
 
@@ -811,7 +815,7 @@ p.welcome-subtitle {
 
 .composition-analyze .page-title,
 .composition-page .page-title {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   color: var(--near-black);
 }
 
@@ -853,7 +857,7 @@ p.welcome-subtitle {
 /* CompositionAnalyze — Drawer 抽屉 */
 .composition-analyze .el-drawer__header,
 .composition-page .el-drawer__header {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   color: var(--near-black);
 }
 
@@ -879,7 +883,7 @@ p.welcome-subtitle {
 
 /* CompositionPrint 打印页面 — 保持简洁 */
 .composition-print {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   background: var(--pure-white);
 }
 

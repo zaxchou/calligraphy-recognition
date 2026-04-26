@@ -511,7 +511,7 @@ defineExpose({ open })
   color: var(--parchment);
   font-size: 16px;
   font-weight: 500;
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   letter-spacing: 0.08em;
   line-height: 1;
 }
@@ -557,7 +557,7 @@ defineExpose({ open })
 .form-section-title {
   font-size: 16px;
   font-weight: 500;
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   color: var(--near-black);
   margin: 0 0 20px 0;
   padding-bottom: 12px;

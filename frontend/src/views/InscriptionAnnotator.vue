@@ -1120,7 +1120,7 @@ onBeforeUnmount(() => {
   font-size: 15px;
   font-weight: 600;
   color: var(--near-black, #141413);
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
 }
 
 .toolbar-controls {

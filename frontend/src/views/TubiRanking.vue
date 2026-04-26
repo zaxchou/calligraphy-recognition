@@ -525,7 +525,7 @@ onMounted(() => {
 }
 
 .tubi-header h1 {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-size: 28px;
   color: var(--near-black);
   font-weight: 500;
@@ -821,7 +821,7 @@ onMounted(() => {
 }
 
 .form-section-title {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-size: 15px;
   color: var(--near-black);
   margin-bottom: 16px;

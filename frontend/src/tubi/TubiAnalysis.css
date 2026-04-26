@@ -801,7 +801,7 @@
 
 .history-grid-item.is-current .history-grid-title {
   color: #5ba4f5;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .history-grid-thumb {
@@ -833,6 +833,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
+  font-weight: 700;
 }
 
 
@@ -1215,7 +1217,7 @@
   color: var(--parchment);
   font-size: 16px;
   font-weight: 500;
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   letter-spacing: 0.08em;
   line-height: 1;
 }
@@ -1261,7 +1263,7 @@
 .form-section-title {
   font-size: 16px;
   font-weight: 500;
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   color: var(--near-black);
   margin: 0 0 20px 0;
   padding-bottom: 12px;

@@ -58,7 +58,7 @@ function retryAll() {
   font-size: 20px;
   font-weight: 600;
   color: var(--near-black, #141413);
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   margin-bottom: 28px;
   letter-spacing: 0.04em;
 }

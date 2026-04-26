@@ -68,7 +68,7 @@ body {
 
 /* 标题全局使用衬线体 */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-weight: 500;
   line-height: var(--leading-snug);
   color: var(--near-black);
@@ -199,7 +199,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo-main {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-size: 16px;
   font-weight: 500;
   color: var(--near-black);
@@ -299,7 +299,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .footer-text {
-  font-family: var(--font-serif);
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-size: var(--text-caption);
   color: var(--warm-silver);
   letter-spacing: 0.15em;

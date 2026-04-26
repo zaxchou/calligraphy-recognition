@@ -3,7 +3,7 @@
     <!-- 左侧：原作图 + 作品信息（sticky） -->
     <div class="left-panel">
       <!-- 原作卡片 -->
-      <el-card shadow="hover" class="original-image-card" v-if="analyzeStatus === 'analyzed' && currentImage?.url">
+      <el-card shadow="always" class="original-image-card" v-if="analyzeStatus === 'analyzed' && currentImage?.url">
         <template #header>
           <div class="card-header navigation-header">
             <el-button
@@ -36,7 +36,7 @@
             <span class="album-nav-title">「{{ albumNavigation.album_name }}」</span>
             <span class="album-nav-count">第{{ albumNavigation.current_index + 1 }}幅 / 共{{ albumNavigation.total_count }}幅</span>
           </div>
-          <div class="album-nav-thumbnails">
+          <div class="album-nav-thumbnails" @wheel.prevent="onAlbumThumbnailsWheel">
             <div
               v-for="(item, idx) in albumNavigation.items"
               :key="item.id"
@@ -263,11 +263,6 @@
               </div>
             </div>
             <div class="analysis-right-col">
-              <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
-                <div class="detail-tags-list">
-                  <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
-                </div>
-              </div>
               <div class="inscription-note-main">
                 <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
                 <div v-if="currentImage.inscriptionContent" class="inscription-content">
@@ -301,6 +296,11 @@
                   </div>
                 </div>
                 <div v-else class="seal-empty"><p>暂无钤印内容</p></div>
+              </div>
+              <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
+                <div class="detail-tags-list">
+                  <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
+                </div>
               </div>
               <!-- 题跋占比分析 -->
               <div class="stats-section">
@@ -501,6 +501,14 @@ const relatedWorks = computed(() => {
 
 function openRanking() {
   window.open('/#/tubi/ranking', '_blank')
+}
+
+// ── 册页缩略图滚轮横向滚动 ──────────────────────
+function onAlbumThumbnailsWheel(e) {
+  const el = e.currentTarget
+  if (e.deltaY !== 0) {
+    el.scrollLeft += e.deltaY
+  }
 }
 
 // ── 悬浮示意图 ────────────────────────────────
@@ -900,6 +908,68 @@ defineExpose({
 <style src="../tubi/TubiAnalysis.css" scoped></style>
 
 <style scoped>
+/* upload-card 去背景/边框/阴影，避免双层卡片感 */
+:deep(.upload-card) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+:deep(.upload-card .el-card__body) {
+  padding: 0 !important;
+  overflow: visible;
+}
+:deep(.upload-card) {
+  overflow: visible;
+}
+:deep(.upload-card .image-display) {
+  padding: 0;
+}
+:deep(.upload-card .analysis-result-layout) {
+  margin: 0;
+}
+
+/* 卡片背景调亮，与页面背景拉开层次 */
+:deep(.annotated-image-section) {
+  background: #faf9f7;
+}
+:deep(.analysis-right-col .inscription-note-main),
+:deep(.analysis-right-col .seal-note-main),
+:deep(.analysis-right-col .stats-section),
+:deep(.analysis-right-col .detail-tags-section) {
+  background: #fff;
+}
+.artwork-info-card,
+.spatial-analysis-card {
+  background: #fff;
+}
+
+/* 所有卡片统一默认阴影，hover 加深 */
+:deep(.annotated-image-section),
+:deep(.analysis-right-col .inscription-note-main),
+:deep(.analysis-right-col .seal-note-main),
+:deep(.analysis-right-col .stats-section),
+:deep(.analysis-right-col .detail-tags-section),
+.artwork-info-card,
+.spatial-analysis-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease;
+}
+:deep(.annotated-image-section:hover),
+:deep(.analysis-right-col .inscription-note-main:hover),
+:deep(.analysis-right-col .seal-note-main:hover),
+:deep(.analysis-right-col .stats-section:hover),
+:deep(.analysis-right-col .detail-tags-section:hover),
+.artwork-info-card:hover,
+.spatial-analysis-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+:deep(.theme-sentiment-card) {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+:deep(.theme-sentiment-card:hover) {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
 /* 现代文翻译样式 */
 .inscription-translation {
   margin-top: 10px;
@@ -1021,7 +1091,7 @@ defineExpose({
   flex: 1;
   text-align: center;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 700;
   color: #333;
   font-family: 'Noto Serif SC', 'KaiTi', serif;
   overflow: hidden;
@@ -1101,12 +1171,10 @@ defineExpose({
   overflow-x: auto;
   padding: 3px 0;
   scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none; /* Firefox */
 }
-.album-nav-thumbnails::-webkit-scrollbar { height: 4px; }
-.album-nav-thumbnails::-webkit-scrollbar-thumb {
-  background: #d4cfc5;
-  border-radius: 2px;
-}
+.album-nav-thumbnails::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
 .album-nav-thumbnail {
   flex-shrink: 0;
   width: 38px;
@@ -1120,6 +1188,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   background: #f0ece3;
+  scroll-snap-align: start;
 }
 .album-nav-thumbnail:hover {
   border-color: #4A90D9;
@@ -1200,7 +1269,7 @@ defineExpose({
   flex-wrap: wrap;
   gap: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #333;
   margin-bottom: 8px;
 }
