@@ -841,12 +841,13 @@ def match_painting_materials(
     return matches
 
 
-def score_text_keywords(text: str) -> Tuple[Dict[int, float], float]:
+def score_text_keywords(text: str) -> Tuple[Dict[int, float], float, List[Dict]]:
     """
-    查表3：文本关键词扫描 → 主题得分 + 情感分值
-    返回 (theme_scores, emotion_score)
+    查表3：文本关键词扫描 → 主题得分 + 情感分值 + 情感明细
+    返回 (theme_scores, emotion_score, emotion_details)
     - theme_scores: {theme_code: score, ...}
     - emotion_score: 连续值（正=积极，负=消极）
+    - emotion_details: [{"word": "...", "score": -1.8, "category": "negative_life"}, ...]
     """
     theme_scores = {}
     # 各主题基础分
@@ -862,14 +863,20 @@ def score_text_keywords(text: str) -> Tuple[Dict[int, float], float]:
             if kw in text:
                 theme_scores[code] = theme_scores.get(code, 0) + score
 
-    # 情感分值计算
+    # 情感分值计算 + 明细记录
     emotion_score = 0.0
+    emotion_details: List[Dict] = []
     for category, config in EMOTION_SCORING.items():
         for word in config["words"]:
             if word in text:
                 emotion_score += config["score"]
+                emotion_details.append({
+                    "word": word,
+                    "score": config["score"],
+                    "category": category,
+                })
 
-    return theme_scores, emotion_score
+    return theme_scores, emotion_score, emotion_details
 
 
 def classify_inscription_v4(
@@ -946,7 +953,7 @@ def classify_inscription_v4(
         })
 
     # ── 维度3：文本信号 ──────────────────────────────────────────
-    text_theme_scores, text_emotion_score = score_text_keywords(text or "")
+    text_theme_scores, text_emotion_score, text_emotion_details = score_text_keywords(text or "")
     signals["text"] = {
         "theme_scores": {str(k): v for k, v in text_theme_scores.items()},
         "emotion_score": text_emotion_score,
@@ -1227,7 +1234,8 @@ def classify_inscription_v4(
         "reasoning": _build_sentiment_reasoning(polarity, emotion_score, life_stage, painting_matches, special_rules),
         "reasoning_steps": _build_sentiment_reasoning_steps(
             polarity, round(emotion_score, 2), life_stage, painting_matches,
-            special_rules, text_emotion_score, baseline, artist_name
+            special_rules, text_emotion_score, baseline, artist_name,
+            text_emotion_details
         ),
     }
 
@@ -1255,7 +1263,8 @@ def _build_sentiment_reasoning(polarity, emotion_score, life_stage, painting_mat
 
 def _build_sentiment_reasoning_steps(
     polarity, emotion_score, life_stage, painting_matches,
-    special_rules, text_emotion_score, artist_baseline, artist_name
+    special_rules, text_emotion_score, artist_baseline, artist_name,
+    text_emotion_details=None
 ) -> list:
     """
     构建结构化推导步骤，用于前端分步展示。
@@ -1284,10 +1293,17 @@ def _build_sentiment_reasoning_steps(
             "icon": "🎨",
         })
 
-    # 步骤3：文本情感
+    # 步骤3：文本情感 —— 用具体词替代硬编码说明
+    if text_emotion_details:
+        # 按分数绝对值排序，取前5个最具代表性的词
+        sorted_details = sorted(text_emotion_details, key=lambda d: abs(d["score"]), reverse=True)[:5]
+        word_parts = [f'"{d["word"]}"({d["score"]:+.1f})' for d in sorted_details]
+        detail_text = f"题跋中出现 {'、'.join(word_parts)}"
+    else:
+        detail_text = "题跋中无明显情感倾向词"
     steps.append({
         "label": "文本情感",
-        "detail": "题跋用词的情感倾向",
+        "detail": detail_text,
         "offset": round(text_emotion_score, 2) if text_emotion_score else 0,
         "icon": "📝",
     })
