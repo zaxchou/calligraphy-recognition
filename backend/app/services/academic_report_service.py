@@ -20,7 +20,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-from app.services.inscription_content_analyzer import classify_inscription_v4, THEMES
+from app.services.inscription_content_analyzer import THEMES
 
 THEME_ORDER = ["咏物寄兴", "身世自况", "吉语祥瑞", "交游赠答", "时事讽喻", "画理自叙"]
 
@@ -202,13 +202,26 @@ def _aggregate_stats(cur, artist: str) -> Dict[str, Any]:
 
 # ── 证据链采样 ───────────────────────────────────────────────────
 def _sample_evidence(rows, high_cases, low_cases, artist: str) -> List[Dict]:
-    """采样证据链（每类主题 + 高低置信度）"""
+    """采样证据链（每类主题 + 高低置信度）
+
+    优化：直接使用 rows 中已解析的 content_analysis JSON，
+    不再重复调用 classify_inscription_v4，避免性能问题。
+    """
+    # 预解析所有 content_analysis，建立 id → parsed 映射
+    parsed_cache = {}
+    for row in rows:
+        try:
+            parsed_cache[row["id"]] = json.loads(row["content_analysis"] or "{}")
+        except Exception:
+            parsed_cache[row["id"]] = {}
+
+    # 采样：每类主题找一个代表 + 高低置信度案例
     sample_ids = set()
     for theme_name in THEME_ORDER:
         for row in rows:
             if row["id"] in sample_ids:
                 continue
-            ca = json.loads(row["content_analysis"] or "{}")
+            ca = parsed_cache.get(row["id"], {})
             th = ca.get("themes", [])
             if th and th[0]["name"] == theme_name:
                 sample_ids.add(row["id"])
@@ -219,30 +232,25 @@ def _sample_evidence(rows, high_cases, low_cases, artist: str) -> List[Dict]:
         sample_ids.add(c["id"])
     sample_ids = list(sample_ids)[:30]
 
+    # 构建证据记录（直接使用缓存的解析结果）
     evidence_records = []
     for row in rows:
         if row["id"] not in sample_ids:
             continue
-        r = classify_inscription_v4(
-            text=row["inscription_content"] or "",
-            year=row["year"],
-            title=row["title"] or "",
-            analysis_note=row["analysis_note"] or "",
-            width_cm=row["artwork_width_cm"],
-            height_cm=row["artwork_height_cm"],
-            artist=artist,
-        )
+        ca = parsed_cache.get(row["id"], {})
+        themes = ca.get("themes", [])
+        sentiment = ca.get("sentiment", {})
         evidence_records.append({
             "id": row["id"], "title": row["title"] or "",
             "text": (row["inscription_content"] or "")[:80],
             "year": row["year"], "period": _get_period(row["year"], row["period_phase"]),
-            "primary_theme": r["themes"][0]["name"] if r["themes"] else "未分类",
-            "confidence": r["themes"][0]["confidence"] if r["themes"] else 0,
-            "score": r["themes"][0]["score"] if r["themes"] else 0,
-            "polarity": r["sentiment"].get("polarity", "neutral"),
-            "emotion_score": r["sentiment"].get("emotion_score"),
-            "special_rules": r.get("special_rules", []),
-            "signals": r.get("signals", {}),
+            "primary_theme": themes[0]["name"] if themes else "未分类",
+            "confidence": themes[0].get("confidence", 0) if themes else 0,
+            "score": themes[0].get("score", 0) if themes else 0,
+            "polarity": sentiment.get("polarity", "neutral"),
+            "emotion_score": sentiment.get("emotion_score"),
+            "special_rules": ca.get("special_rules", []),
+            "signals": ca.get("signals", {}),
         })
     return evidence_records
 
