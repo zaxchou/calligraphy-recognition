@@ -333,7 +333,7 @@ def _build_markdown(stats: Dict, artist_cfg: Dict, artist: str) -> str:
     w(f"1. **主题分布**：「咏物寄兴」占第一主题 {_fmt_pct(primary_themes.get('咏物寄兴', 0), total)}；「身世自况」仅占 {_fmt_pct(primary_themes.get('身世自况', 0), total)}。")
     if "早期" in period_sentiment and period_sentiment["早期"]["total"] > 0:
         w(f"2. **情感演进**：整体均值 {avg_emotion:+.2f}，早期积极（pos {period_sentiment['早期']['pos']/period_sentiment['早期']['total']*100:.1f}%）、晚期消极（neg {period_sentiment['晚期']['neg']/period_sentiment['晚期']['total']*100:.1f}%）。")
-    w(f"3. **可信度**：高置信度占 {_fmt_pct(confidence_dist['high'], total)}（≥0.70），中置信度 {_fmt_pct(confidence_dist['medium'], total)}（0.40–0.69），低置信度 {_fmt_pct(confidence_dist['low'], total)}（<0.40）。")
+    w(f"3. **可信度**：高可信度占 {_fmt_pct(confidence_dist['high'], total)}（≥0.70），中可信度 {_fmt_pct(confidence_dist['medium'], total)}（0.40–0.69），低可信度 {_fmt_pct(confidence_dist['low'], total)}（<0.40）。")
     w()
 
     # 方法论
@@ -418,9 +418,9 @@ def _build_markdown(stats: Dict, artist_cfg: Dict, artist: str) -> str:
                 w(f"- {pt}")
             w()
 
-    # 置信度与证据链
-    w("## 五、置信度分析与证据链")
-    w("### 5.1 置信度分级")
+    # 可信度与证据链
+    w("## 五、可信度分析与证据链")
+    w("### 5.1 可信度分级")
     w("| 级别 | 范围 | 依据 | 占比 |")
     w("|------|------|------|------|")
     w(f"| 高 | ≥0.70 | 多维度强信号一致或规则锁定 | {_fmt_pct(confidence_dist['high'], total)} |")
@@ -429,7 +429,7 @@ def _build_markdown(stats: Dict, artist_cfg: Dict, artist: str) -> str:
     w()
 
     if high_cases:
-        w("### 5.2 高置信度典型案例")
+        w("### 5.2 高可信度典型案例")
         for i, case in enumerate(high_cases[:8], 1):
             w(f"**案例{i}**：{case['title']}（{case['period']}，conf={case['confidence']:.2f}）")
             w(f"- 主题：**{case['theme']}** | 情感：{case['polarity']}（{case['emotion_score']:+.2f}）")
@@ -437,13 +437,13 @@ def _build_markdown(stats: Dict, artist_cfg: Dict, artist: str) -> str:
             w()
 
     if low_cases:
-        w("### 5.3 低置信度边界案例（需人工复核）")
+        w("### 5.3 低可信度边界案例（需人工复核）")
         for i, case in enumerate(low_cases[:8], 1):
             w(f"**案例{i}**：{case['title']}（{case['period']}，conf={case['confidence']:.2f}）")
             w(f"- 主题：**{case['theme']}** | 情感：{case['polarity']}（{case['emotion_score']:+.2f}）")
             w(f"- 题跋：*{case['text']}*")
             w()
-        w("> 低置信度成因：（1）题跋过短；（2）多主题得分接近；（3）内容模糊/残损。")
+        w("> 低可信度成因：（1）题跋过短；（2）多主题得分接近；（3）内容模糊/残损。")
         w()
 
     if evidence_records:
@@ -519,7 +519,7 @@ def _build_sections(stats: Dict, artist_cfg: Dict, artist: str) -> List[Dict]:
             f"2. **情感演进**：整体均值 {avg_emotion:+.2f}，早期积极（pos {period_sentiment['早期']['pos']/period_sentiment['早期']['total']*100:.1f}%）、晚期消极（neg {period_sentiment['晚期']['neg']/period_sentiment['晚期']['total']*100:.1f}%）。"
         )
     abstract_lines.append(
-        f"3. **可信度**：高置信度占 {_fmt_pct(confidence_dist['high'], total)}（≥0.70），中置信度 {_fmt_pct(confidence_dist['medium'], total)}（0.40–0.69），低置信度 {_fmt_pct(confidence_dist['low'], total)}（<0.40）。"
+        f"3. **可信度**：高可信度占 {_fmt_pct(confidence_dist['high'], total)}（≥0.70），中可信度 {_fmt_pct(confidence_dist['medium'], total)}（0.40–0.69），低可信度 {_fmt_pct(confidence_dist['low'], total)}（<0.40）。"
     )
     sections.append({"id": "abstract", "title": "摘要", "type": "markdown", "content": "\n".join(abstract_lines)})
 
@@ -569,7 +569,7 @@ def _build_sections(stats: Dict, artist_cfg: Dict, artist: str) -> List[Dict]:
             ["低", "<0.40", "信号弱或维度冲突", _fmt_pct(confidence_dist['low'], total)],
         ],
     }
-    sections.append({"id": "confidence", "title": "置信度分析", "type": "table", "content": conf_table})
+    sections.append({"id": "confidence", "title": "可信度分析", "type": "table", "content": conf_table})
 
     # 高置信度案例
     if high_cases:
@@ -584,7 +584,7 @@ def _build_sections(stats: Dict, artist_cfg: Dict, artist: str) -> List[Dict]:
                 "confidence": case["confidence"],
                 "text": case["text"],
             })
-        sections.append({"id": "high_confidence", "title": "高置信度案例", "type": "list", "content": cases})
+        sections.append({"id": "high_confidence", "title": "高可信度案例", "type": "list", "content": cases})
 
     # 低置信度案例
     if low_cases:
@@ -599,7 +599,7 @@ def _build_sections(stats: Dict, artist_cfg: Dict, artist: str) -> List[Dict]:
                 "confidence": case["confidence"],
                 "text": case["text"],
             })
-        sections.append({"id": "low_confidence", "title": "低置信度边界案例", "type": "list", "content": cases})
+        sections.append({"id": "low_confidence", "title": "低可信度边界案例", "type": "list", "content": cases})
 
     # 证据链
     if evidence_records:
