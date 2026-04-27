@@ -35,7 +35,7 @@
           <el-icon><Bottom /></el-icon>翻译
         </el-button>
         <el-button plain size="small" class="btn-edit" @click="showAnalyzeModeDialog = true" :loading="analyzing">
-          <el-icon><RefreshRight /></el-icon>分析
+          <el-icon><Refresh /></el-icon>批量重跑
         </el-button>
         <el-button plain size="small" class="btn-edit" @click="router.push('/content-analysis')">
           <el-icon><HomeFilled /></el-icon>返回
@@ -106,16 +106,16 @@
       </template>
     </el-dialog>
 
-    <!-- 批量重新分析确认弹窗 -->
+    <!-- 批量重跑确认弹窗 -->
     <el-dialog
       v-model="showAnalyzeModeDialog"
-      title="批量重新分析"
+      title="批量重跑"
       width="420px"
       class="translate-mode-dialog claude-dialog"
     >
       <div style="padding: 12px 0; color: #666; line-height: 1.8;">
         <p>使用<b>本地规则引擎</b>重新分析所有作品的主题和情感。</p>
-        <p style="color: #999; font-size: 13px;">• 不调用 LLM API，速度很快<br>• 会覆盖已有分析结果<br>• 基于 v5.3 规则引擎</p>
+        <p style="color: #999; font-size: 13px;">• 不调用 LLM API，速度很快<br>• 会覆盖已有分析结果<br>• 基于 v5.4 规则引擎</p>
       </div>
       <template #footer>
         <el-button @click="showAnalyzeModeDialog = false">取消</el-button>
@@ -294,7 +294,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, RefreshRight, HomeFilled, Upload } from '@element-plus/icons-vue'
+import { Bottom, Refresh, RefreshRight, HomeFilled, Upload } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 
 import VerifyPanel from './VerifyPanel.vue'
