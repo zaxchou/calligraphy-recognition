@@ -1234,6 +1234,71 @@ def analyze_with_llm(image_path: str, text: str, api_key: str = None) -> Dict:
     }
 
 
+async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
+    """
+    组合LLM分析：一次API调用同时返回主题+情感
+    返回格式：{"success": bool, "themes": [...], "sentiment": {...}, "error": str}
+    """
+    from app.core.config import get_settings
+    settings = get_settings()
+    api_key = settings.QWEN_API_KEY
+    base_url = settings.QWEN_BASE_URL
+
+    if not api_key:
+        return {"success": False, "error": "未配置 QWEN_API_KEY", "themes": [], "sentiment": {}}
+
+    note, _ = _get_artist_theme_note(artist)
+    prompt = LLM_COMBINED_PROMPT_V1.format(text=text[:500], artist_note=note)
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+            response = await client.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "qwen3.5-plus",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 300,
+                    "temperature": 0.1,
+                    "enable_thinking": False
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            raw = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            parsed = json.loads(raw)
+            
+            themes = parsed.get("themes", [])
+            sentiment = parsed.get("sentiment", {})
+            
+            # 标准化主题格式
+            standardized_themes = []
+            for t in themes:
+                standardized_themes.append({
+                    "code": t.get("code", 0),
+                    "name": t.get("name", "未分类"),
+                    "confidence": float(t.get("confidence", 0.0))
+                })
+            
+            # 标准化情感格式
+            if "polarity" not in sentiment:
+                sentiment["polarity"] = "neutral"
+            if "intensity" not in sentiment:
+                sentiment["intensity"] = 0.5
+            
+            return {
+                "success": True,
+                "themes": standardized_themes,
+                "sentiment": sentiment,
+                "overall_reasoning": parsed.get("overall_reasoning", "")
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e), "themes": [], "sentiment": {}}
+
+
 if __name__ == "__main__":
     # 测试
     test_text = "八大山人长于笔，清湘大涤子长于墨，至予则长于水。水为笔墨之介绍，而今人不知也。"

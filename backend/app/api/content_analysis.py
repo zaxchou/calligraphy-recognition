@@ -2027,6 +2027,121 @@ async def reclassify_themes_sentiment(
     )
 
 
+@router.post("/batch-reanalyze")
+async def batch_reanalyze(
+    artist: str = Query(default="all", description="画家名称，all 表示全部"),
+):
+    """
+    批量重跑本地规则引擎（classify_inscription_v4）
+    不调用 LLM API，纯本地计算，适合规则迭代校准
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    from app.services.inscription_content_analyzer import classify_inscription_v4
+    from app.services.auto_tags import compute_tags
+    import json
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 构建查询条件
+    if artist and artist != "all":
+        where_clause = "WHERE artist = ?"
+        params = (artist,)
+    else:
+        where_clause = ""
+        params = ()
+    
+    cur.execute(f"""
+        SELECT id, inscription_content, year, title, analysis_note,
+               artwork_width_cm, artwork_height_cm, artist, content_analysis, period_phase
+        FROM tubi_analyses
+        {where_clause}
+        ORDER BY id
+    """, params)
+    rows = cur.fetchall()
+    total = len(rows)
+    
+    updated = 0
+    errors = 0
+    
+    for row in rows:
+        record_id = row["id"]
+        text = row["inscription_content"] or ""
+        year = row["year"]
+        title = row["title"]
+        analysis_note = row["analysis_note"]
+        width_cm = row["artwork_width_cm"]
+        height_cm = row["artwork_height_cm"]
+        record_artist = row["artist"]
+        
+        # 解析旧 content_analysis
+        old_ca = None
+        if row["content_analysis"]:
+            try:
+                old_ca = json.loads(row["content_analysis"])
+            except Exception:
+                pass
+        
+        try:
+            # 用本地规则引擎重跑
+            result = classify_inscription_v4(
+                text=text,
+                year=year,
+                title=title,
+                analysis_note=analysis_note,
+                inscription_content=text,
+                width_cm=width_cm,
+                height_cm=height_cm,
+                artist=record_artist,
+            )
+            
+            # 构建新 content_analysis
+            new_ca = dict(old_ca) if old_ca else {}
+            new_ca["themes"] = result.get("themes", [])
+            new_ca["sentiment"] = result.get("sentiment", {})
+            new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
+            
+            # 更新数据库
+            theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
+            cur.execute("""
+                UPDATE tubi_analyses
+                SET content_analysis = ?, theme_tags = ?
+                WHERE id = ?
+            """, (json.dumps(new_ca, ensure_ascii=False), theme_tags, record_id))
+            
+            # 重新计算自动标签
+            record_for_tags = {
+                "title": title,
+                "period_phase": row["period_phase"],
+                "artwork_height_cm": height_cm,
+                "artwork_width_cm": width_cm,
+                "content_analysis": json.dumps(new_ca, ensure_ascii=False),
+                "material_tags": None,
+            }
+            auto_tags = compute_tags(record_for_tags)
+            if auto_tags:
+                cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
+                           (json.dumps(auto_tags, ensure_ascii=False), record_id))
+            
+            updated += 1
+        except Exception as e:
+            errors += 1
+            if errors <= 5:
+                logger.error(f"批量重跑错误 id={record_id}: {e}")
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "success": True,
+        "total": total,
+        "updated": updated,
+        "errors": errors,
+        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误"
+    }
+
+
 # ============ AI 总结 API ============
 
 class SummaryRequest(BaseModel):

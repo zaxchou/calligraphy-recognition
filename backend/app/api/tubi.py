@@ -4,7 +4,7 @@ import json
 from typing import List, Optional
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import logging
 import os
 import uuid
@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path
 from app.models.tubi_analysis import TubiAnalysis
 from app.services.auto_tags import compute_tags
+from app.services.inscription_content_analyzer import get_period_phase
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -651,6 +652,9 @@ async def upload_image(
 
         # 保存到数据库
         logger.info("保存到数据库...")
+        # 自动计算分期（period_phase）
+        period_phase = get_period_phase(year, artist)
+        
         db_analysis = TubiAnalysis(
             image_id=file_id,
             filename=file.filename,
@@ -660,6 +664,7 @@ async def upload_image(
             artist=artist,
             year=year,
             period=period,
+            period_phase=period_phase,
             notes=notes,
             image_width=width,
             image_height=height,
@@ -1273,6 +1278,8 @@ async def save_year_data(request: YearDataRequest, db: Session = Depends(get_db)
 
     db_analysis.year = request.year
     db_analysis.period = request.period
+    # 自动计算分期（period_phase）
+    db_analysis.period_phase = get_period_phase(db_analysis.year, db_analysis.artist)
     db.commit()
 
     return {
@@ -1316,6 +1323,9 @@ async def update_image_info(
         db_analysis.painting_percent = request.painting_percent
     if request.blank_percent is not None:
         db_analysis.blank_percent = request.blank_percent
+
+    # 自动重新计算分期（period_phase）
+    db_analysis.period_phase = get_period_phase(db_analysis.year, db_analysis.artist)
 
     db.commit()
     db.refresh(db_analysis)
@@ -1584,7 +1594,7 @@ async def search_images(
     """
     搜索画作
 
-    - **keyword**: 搜索关键词（支持标题、作者、年代、备注模糊搜索）
+    - **keyword**: 搜索关键词（支持标题、作者、年代、备注、题跋原文、题跋翻译、印章、主题标签、画材标签模糊搜索，年份精确匹配）
     """
     try:
         if not keyword:
@@ -1597,15 +1607,27 @@ async def search_images(
         # 构建查询
         query = db.query(TubiAnalysis)
 
-        # 关键词搜索（标题、作者、年代、备注）
+        # 关键词搜索（标题、作者、年代、备注、题跋、印章、标签、年份）
         keyword_filter = f"%{keyword}%"
-        query = query.filter(
-            (TubiAnalysis.title.ilike(keyword_filter)) |
-            (TubiAnalysis.artist.ilike(keyword_filter)) |
-            (TubiAnalysis.period.ilike(keyword_filter)) |
-            (TubiAnalysis.notes.ilike(keyword_filter)) |
-            (TubiAnalysis.analysis_note.ilike(keyword_filter))
-        )
+        filters = [
+            TubiAnalysis.title.ilike(keyword_filter),
+            TubiAnalysis.artist.ilike(keyword_filter),
+            TubiAnalysis.period.ilike(keyword_filter),
+            TubiAnalysis.notes.ilike(keyword_filter),
+            TubiAnalysis.analysis_note.ilike(keyword_filter),
+            TubiAnalysis.inscription_content.ilike(keyword_filter),
+            TubiAnalysis.inscription_modern.ilike(keyword_filter),
+            TubiAnalysis.seal_content.ilike(keyword_filter),
+            TubiAnalysis.theme_tags.ilike(keyword_filter),
+            TubiAnalysis.material_tags.ilike(keyword_filter),
+        ]
+        # 年份精确匹配（keyword 为纯数字时）
+        try:
+            year_val = int(keyword)
+            filters.append(TubiAnalysis.year == year_val)
+        except (ValueError, TypeError):
+            pass
+        query = query.filter(or_(*filters))
 
         # 按创建时间倒序
         analyses = query.order_by(TubiAnalysis.created_at.desc()).all()
@@ -1672,6 +1694,7 @@ async def search_images(
                 "is_manual_annotated": bool(analysis.is_manual_annotated) if analysis.is_manual_annotated is not None else False,
                 "analysis_note": analysis.analysis_note,
                 "inscription_content": analysis.inscription_content,
+                "inscription_modern": analysis.inscription_modern,
                 "seal_content": analysis.seal_content
             })
 
