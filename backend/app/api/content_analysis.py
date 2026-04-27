@@ -2175,21 +2175,21 @@ async def batch_reanalyze(
                         v4_primary = result["themes"][0] if result.get("themes") else None
                         theme_diverge = llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code")
                         if theme_diverge:
-                             # 分歧 → 采纳 LLM 结果
-                             llm_overrides = llm_raw
-                             llm_corrected += 1
-                             # 替换主题
-                             result["themes"] = llm_raw["themes"]
-                             result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
-                         # 情感分歧也采纳
-                         llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
-                         v4_pol = result["sentiment"].get("polarity", "")
-                         if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
-                             result["sentiment"]["polarity"] = llm_pol
-                             result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
-                             result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
-                 except Exception:
-                     pass  # LLM 不可用则静默降级
+                            # 分歧 → 采纳 LLM 结果
+                            llm_overrides = llm_raw
+                            llm_corrected += 1
+                            # 替换主题
+                            result["themes"] = llm_raw["themes"]
+                            result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
+                        # 情感分歧也采纳
+                        llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
+                        v4_pol = result["sentiment"].get("polarity", "")
+                        if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
+                            result["sentiment"]["polarity"] = llm_pol
+                            result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
+                            result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
+                except Exception:
+                    pass  # LLM 不可用则静默降级
 
             if conf < 0.6:
                 low_conf_records.append(record_id)
@@ -2431,7 +2431,319 @@ async def batch_reanalyze(
             "low_conf_count": len(low_conf_records),
             "llm_corrected": llm_corrected,
         }
-    }
+}
+
+
+# ============ 批量重跑（SSE 流式进度） ============
+
+@router.post("/batch-reanalyze/stream")
+async def batch_reanalyze_stream(
+    artist: str = Query(default="all", description="画家名称，all 表示全部"),
+    incremental: bool = Query(default=False, description="增量模式"),
+):
+    """
+    批量重跑 SSE 流式版本：实时推送每条记录的进度。
+    与 /batch-reanalyze 逻辑完全相同，区别在于通过 SSE 推送进度事件。
+    """
+    from starlette.responses import StreamingResponse
+
+    async def event_generator():
+        import logging, json as _json
+        logger = logging.getLogger(__name__)
+        from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION, _load_artist_rules, llm_analyze_combined
+        from app.services.tibi_analysis_rules import EXPECTED_THEME_DISTRIBUTION as _DEFAULT_EXPECTED_THEME
+        from app.services.tibi_analysis_rules import EXPECTED_SENTIMENT_DISTRIBUTION as _DEFAULT_EXPECTED_SENTIMENT
+        from app.services.auto_tags import compute_tags
+        from collections import Counter
+        from datetime import datetime
+
+        def sse(event_type: str, data: dict):
+            return f"data: {_json.dumps({'type': event_type, **data}, ensure_ascii=False)}\n\n"
+
+        artist_rules = _load_artist_rules(artist if artist and artist != "all" else "李鱓")
+        EXPECTED_THEME_DISTRIBUTION = artist_rules.get("expected_theme_distribution", _DEFAULT_EXPECTED_THEME)
+        EXPECTED_SENTIMENT_DISTRIBUTION = artist_rules.get("expected_sentiment_distribution", _DEFAULT_EXPECTED_SENTIMENT)
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        where_clauses = []
+        params = []
+        if artist and artist != "all":
+            where_clauses.append("artist = ?")
+            params.append(artist)
+        if incremental:
+            where_clauses.append(
+                "(content_analysis IS NULL OR content_analysis = '' OR json_extract(content_analysis, '$.rules_version') IS NULL OR json_extract(content_analysis, '$.rules_version') < '5.5')"
+            )
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        cur.execute(f"""
+            SELECT id, inscription_content, year, title, analysis_note,
+                   artwork_width_cm, artwork_height_cm, artist, content_analysis, period_phase
+            FROM tubi_analyses {where_sql}
+            ORDER BY id
+        """, params)
+        rows = cur.fetchall()
+        total = len(rows)
+
+        yield sse("total", {"total": total, "incremental": incremental})
+
+        # 统计变量
+        old_themes = Counter()
+        old_primary_themes = Counter()
+        new_themes = Counter()
+        new_primary_themes = Counter()
+        old_polarities = Counter()
+        new_polarities = Counter()
+        old_emotion_scores = []
+        new_emotion_scores = []
+        theme_changes = Counter()
+        confidences = []
+        low_conf_records = []
+        llm_corrected = 0
+        updated = 0
+        errors = 0
+
+        for idx, row in enumerate(rows):
+            record_id = row["id"]
+            text = row["inscription_content"] or ""
+            year = row["year"]
+            title = row["title"]
+            analysis_note = row["analysis_note"]
+            width_cm = row["artwork_width_cm"]
+            height_cm = row["artwork_height_cm"]
+            record_artist = row["artist"]
+
+            # 解析旧 content_analysis
+            old_ca = None
+            if row["content_analysis"]:
+                try:
+                    old_ca = _json.loads(row["content_analysis"])
+                except Exception:
+                    pass
+
+            if old_ca:
+                themes_list = old_ca.get("themes", [])
+                for t in themes_list:
+                    old_name = t.get("name", "")
+                    compat_name = THEME_NAME_MIGRATION.get(old_name, old_name)
+                    old_themes[compat_name] += 1
+                if themes_list:
+                    old_primary_themes[THEME_NAME_MIGRATION.get(themes_list[0].get("name",""), themes_list[0].get("name",""))] += 1
+                old_sent = old_ca.get("sentiment", {})
+                old_pol = old_sent.get("polarity", "neutral")
+                old_polarities[old_pol] += 1
+                old_score = old_sent.get("emotion_score")
+                if old_score is not None:
+                    old_emotion_scores.append(old_score)
+
+            try:
+                result = classify_inscription_v4(
+                    text=text, year=year, title=title, analysis_note=analysis_note,
+                    inscription_content=text, width_cm=width_cm, height_cm=height_cm,
+                    artist=record_artist,
+                )
+
+                conf = result.get("confidence", 0)
+                confidences.append(conf)
+
+                # 低可信度 → 调 DeepSeek
+                fixed_by_llm = False
+                if conf < 0.6 and text and len(text) > 3:
+                    try:
+                        import asyncio
+                        llm_raw = asyncio.run(llm_analyze_combined(text, artist=record_artist))
+                        if llm_raw.get("success"):
+                            llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
+                            v4_primary = result["themes"][0] if result.get("themes") else None
+                            theme_diverge = llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code")
+                            if theme_diverge:
+                                llm_corrected += 1
+                                fixed_by_llm = True
+                                result["themes"] = llm_raw["themes"]
+                                result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
+                                yield sse("llm_fix", {
+                                    "record_id": record_id,
+                                    "from_theme": v4_primary['name'],
+                                    "to_theme": llm_primary['name'],
+                                    "confidence": conf,
+                                })
+                            # 情感分歧
+                            llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
+                            v4_pol = result["sentiment"].get("polarity", "")
+                            if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
+                                result["sentiment"]["polarity"] = llm_pol
+                                result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
+                                result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
+                    except Exception:
+                        pass
+
+                if conf < 0.6:
+                    low_conf_records.append(record_id)
+
+                # 记录新主题/情感
+                new_themes_list = result.get("themes", [])
+                for t in new_themes_list:
+                    new_themes[t["name"]] += 1
+                if new_themes_list:
+                    new_primary_themes[new_themes_list[0]["name"]] += 1
+                new_sent = result.get("sentiment", {})
+                new_pol = new_sent.get("polarity", "neutral")
+                new_polarities[new_pol] += 1
+                new_score = new_sent.get("emotion_score")
+                if new_score is not None:
+                    new_emotion_scores.append(new_score)
+
+                old_main = ""
+                if old_ca and old_ca.get("themes"):
+                    old_main = old_ca["themes"][0].get("name", "")
+                    old_main = THEME_NAME_MIGRATION.get(old_main, old_main)
+                new_main = result["themes"][0]["name"] if result.get("themes") else ""
+                if old_main and new_main and old_main != new_main:
+                    theme_changes[(old_main, new_main)] += 1
+
+                new_ca = dict(old_ca) if old_ca else {}
+                new_ca["themes"] = result.get("themes", [])
+                new_ca["sentiment"] = new_sent
+                new_ca["v4_confidence"] = result.get("confidence", 0)
+                new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
+                new_ca["rules_version"] = "5.5"
+
+                theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
+                cur.execute("""
+                    UPDATE tubi_analyses
+                    SET content_analysis = ?, theme_tags = ?
+                    WHERE id = ?
+                """, (_json.dumps(new_ca, ensure_ascii=False), theme_tags, record_id))
+
+                record_for_tags = {
+                    "title": title,
+                    "period_phase": row["period_phase"],
+                    "artwork_height_cm": height_cm,
+                    "artwork_width_cm": width_cm,
+                    "content_analysis": _json.dumps(new_ca, ensure_ascii=False),
+                    "material_tags": None,
+                }
+                auto_tags = compute_tags(record_for_tags)
+                if auto_tags:
+                    cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?", (auto_tags, record_id))
+
+                updated += 1
+
+            except Exception as e:
+                errors += 1
+                logger.error(f"记录 {record_id} 重跑失败: {str(e)[:80]}")
+
+            # 每处理一条推送进度
+            yield sse("progress", {
+                "current": idx + 1,
+                "total": total,
+                "record_id": record_id,
+                "confidence": conf,
+                "fixed_by_llm": fixed_by_llm,
+            })
+
+        conn.commit()
+
+        # 构建报告
+        theme_coverage = []
+        all_theme_names = sorted(set(list(old_themes.keys()) + list(new_themes.keys())))
+        for name in all_theme_names:
+            old_cnt = old_themes.get(name, 0)
+            new_cnt = new_themes.get(name, 0)
+            old_pct = round(old_cnt / total * 100, 1) if total else 0
+            new_pct = round(new_cnt / total * 100, 1) if total else 0
+            diff = new_cnt - old_cnt
+            theme_coverage.append({"name": name, "old_count": old_cnt, "old_percent": old_pct, "new_count": new_cnt, "new_percent": new_pct, "change": diff})
+
+        primary_names = sorted(set(list(old_primary_themes.keys()) + list(new_primary_themes.keys())))
+        primary_theme_dist = []
+        for name in primary_names:
+            old_cnt = old_primary_themes.get(name, 0)
+            new_cnt = new_primary_themes.get(name, 0)
+            old_pct = round(old_cnt / total * 100, 1) if total else 0
+            new_pct = round(new_cnt / total * 100, 1) if total else 0
+            diff = new_cnt - old_cnt
+            primary_theme_dist.append({"name": name, "old_count": old_cnt, "old_percent": old_pct, "new_count": new_cnt, "new_percent": new_pct, "change": diff})
+
+        sentiment_dist = []
+        for pol in ["positive", "negative", "neutral"]:
+            old_cnt = old_polarities.get(pol, 0)
+            new_cnt = new_polarities.get(pol, 0)
+            old_pct = round(old_cnt / total * 100, 1) if total else 0
+            new_pct = round(new_cnt / total * 100, 1) if total else 0
+            diff = new_cnt - old_cnt
+            sentiment_dist.append({"polarity": pol, "old_count": old_cnt, "old_percent": old_pct, "new_count": new_cnt, "new_percent": new_pct, "change": diff})
+
+        emotion_score_stats = {}
+        if new_emotion_scores:
+            new_avg = sum(new_emotion_scores) / len(new_emotion_scores)
+            old_avg = sum(old_emotion_scores) / len(old_emotion_scores) if old_emotion_scores else None
+            emotion_score_stats = {"new_average": round(new_avg, 2), "old_average": round(old_avg, 2) if old_avg is not None else None, "new_min": round(min(new_emotion_scores), 2), "new_max": round(max(new_emotion_scores), 2)}
+
+        theme_change_paths = []
+        for (old_t, new_t), cnt in theme_changes.most_common(10):
+            theme_change_paths.append({"from": old_t, "to": new_t, "count": cnt})
+
+        confidence_stats = None
+        if confidences:
+            high_conf = sum(1 for c in confidences if c >= 0.7)
+            mid_conf = sum(1 for c in confidences if 0.4 <= c < 0.7)
+            low_conf = sum(1 for c in confidences if c < 0.4)
+            avg_conf = round(sum(confidences) / len(confidences), 2)
+            confidence_stats = {"average": avg_conf, "high": high_conf, "high_percent": round(high_conf / total * 100, 1) if total else 0, "mid": mid_conf, "mid_percent": round(mid_conf / total * 100, 1) if total else 0, "low": low_conf, "low_percent": round(low_conf / total * 100, 1) if total else 0}
+
+        deviation_checks = []
+        for name, (low, high) in EXPECTED_THEME_DISTRIBUTION.items():
+            cnt = new_primary_themes.get(name, 0)
+            pct = round(cnt / total * 100, 1) if total else 0
+            if pct < low:
+                status, suggestion = "warning", f"低于预期下限 {low}% -- 建议增加关键词权重或补充关键词"
+            elif pct > high:
+                status, suggestion = "warning", f"高于预期上限 {high}% -- 建议收紧定义或降低权重"
+            else:
+                status, suggestion = "ok", f"在预期范围内 [{low}%-{high}%]"
+            deviation_checks.append({"theme": name, "percent": pct, "status": status, "suggestion": suggestion, "expected_range": [low, high]})
+
+        if sentiment_dist:
+            neg_pct = sentiment_dist[1]["new_percent"] if sentiment_dist[1]["polarity"] == "negative" else 0
+            pos_pct = sentiment_dist[0]["new_percent"] if sentiment_dist[0]["polarity"] == "positive" else 0
+            neg_min = EXPECTED_SENTIMENT_DISTRIBUTION["negative_min"]
+            pos_max = EXPECTED_SENTIMENT_DISTRIBUTION["positive_max"]
+            if neg_pct < neg_min:
+                deviation_checks.append({"theme": "消极情感", "percent": neg_pct, "status": "warning", "suggestion": f"低于预期 {neg_min}% -- 李鱓底色应偏阴", "expected_range": [neg_min, 100]})
+            if pos_pct > pos_max:
+                deviation_checks.append({"theme": "积极情感", "percent": pos_pct, "status": "warning", "suggestion": f"高于预期 {pos_max}% -- 可能被花鸟题材误导", "expected_range": [0, pos_max]})
+            if emotion_score_stats.get("new_average") is not None:
+                avg = emotion_score_stats["new_average"]
+                emotion_mean_max = EXPECTED_SENTIMENT_DISTRIBUTION["emotion_mean_max"]
+                if avg > emotion_mean_max:
+                    deviation_checks.append({"theme": "情感均值", "percent": avg, "status": "warning", "suggestion": f"{avg:+.2f} 偏阳 -- 李鱓整体应偏阴(预期 < {emotion_mean_max})", "expected_range": [-100, emotion_mean_max]})
+
+        report = {
+            "theme_coverage": theme_coverage,
+            "primary_theme_distribution": primary_theme_dist,
+            "sentiment_distribution": sentiment_dist,
+            "emotion_score_stats": emotion_score_stats,
+            "theme_change_paths": theme_change_paths,
+            "deviation_checks": deviation_checks,
+            "confidence_stats": confidence_stats,
+            "low_conf_count": len(low_conf_records),
+            "llm_corrected": llm_corrected,
+        }
+
+        yield sse("complete", {
+            "total": total,
+            "updated": updated,
+            "errors": errors,
+            "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误" + (f"，LLM修正 {llm_corrected} 幅" if llm_corrected > 0 else ""),
+            "report": report,
+        })
+
+        conn.close()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # ============ AI 总结 API ============

@@ -430,6 +430,7 @@ import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { Bottom, Refresh, RefreshRight, HomeFilled, Upload, CopyDocument, MagicStick } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
+import { useSSEStream } from '../composables/useSSEStream'
 
 import VerifyPanel from './VerifyPanel.vue'
 import AlbumManager from './AlbumManager.vue'
@@ -520,40 +521,56 @@ const {
   closeBatchResultDialog,
 } = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => selectedArtist.value })
 
-// 增量智能处理：只跑新记录 + 低可信度自动调 DeepSeek 修复
+// 增量智能处理：SSE 流式版，带进度显示
 async function startIncrementalSmartProcess() {
   const artist = selectedArtist.value
   incrementalProcessing.value = true
+  showAnalyzeProgress.value = true
+  analyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
   try {
     const response = await fetch(
-      `${API_BASE}/content-analysis/batch-reanalyze?artist=${encodeURIComponent(artist)}&incremental=true`,
+      `${API_BASE}/content-analysis/batch-reanalyze/stream?artist=${encodeURIComponent(artist)}&incremental=true`,
       { method: 'POST' }
     )
-    const data = await response.json()
-    if (data.success) {
-      batchResultData.value = {
-        total: data.total,
-        updated: data.updated,
-        errors: data.errors,
-        message: data.message,
-        report: data.report,
-      }
-      showBatchResultDialog.value = true
-      if (data.report?.llm_corrected > 0) {
-        ElMessage.success(`完成！DeepSeek 自动修正了 ${data.report.llm_corrected} 幅`)
-      } else if (data.total > 0) {
-        ElMessage.success(`完成！共处理 ${data.total} 幅新作品`)
-      } else {
-        ElMessage.info('没有新作品需要处理')
-      }
-      fetchRecords()
-    } else {
-      ElMessage.error(data.detail || '处理失败')
-    }
+    const { streamSSE } = useSSEStream()
+    let report = null
+    await streamSSE(response, {
+      onEvent: (event) => {
+        if (event.type === 'total') {
+          analyzeProgress.value = { current: 0, total: event.total, status: 'analyzing', percent: 0 }
+        } else if (event.type === 'progress') {
+          const pct = Math.round((event.current / event.total) * 100)
+          analyzeProgress.value = { current: event.current, total: event.total, status: 'analyzing', percent: pct }
+        } else if (event.type === 'complete') {
+          report = event
+          batchResultData.value = {
+            total: event.total,
+            updated: event.updated,
+            errors: event.errors,
+            message: event.message,
+            report: event.report,
+          }
+          analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
+          showBatchResultDialog.value = true
+          if (event.report?.llm_corrected > 0) {
+            ElMessage.success(`完成！DeepSeek 自动修正了 ${event.report.llm_corrected} 幅`)
+          } else if (event.total > 0) {
+            ElMessage.success(`完成！共处理 ${event.total} 幅作品`)
+          } else {
+            ElMessage.info('没有新作品需要处理')
+          }
+          fetchRecords()
+        }
+      },
+      onError: (err) => {
+        ElMessage.error('处理失败: ' + err.message)
+      },
+    })
   } catch (err) {
     ElMessage.error('处理失败: ' + (err.message || err))
   } finally {
     incrementalProcessing.value = false
+    showAnalyzeProgress.value = false
   }
 }
 
