@@ -106,31 +106,21 @@
       </template>
     </el-dialog>
 
-    <!-- 批量重新分析选项弹窗 -->
+    <!-- 批量重新分析确认弹窗 -->
     <el-dialog
       v-model="showAnalyzeModeDialog"
-      title="批量重新分析选项"
+      title="批量重新分析"
       width="420px"
       class="translate-mode-dialog claude-dialog"
     >
-      <div class="translate-mode-options">
-        <div class="mode-option" @click="startBatchAnalyze('incremental')">
-          <div class="mode-icon"><el-icon><Bottom /></el-icon></div>
-          <div class="mode-info">
-            <div class="mode-title">仅分析未校验的（增量）</div>
-            <div class="mode-desc">只分析尚未完成内容分析的记录，跳过已分析的结果</div>
-          </div>
-          <el-icon class="mode-arrow"><Right /></el-icon>
-        </div>
-        <div class="mode-option" @click="startBatchAnalyze('full')">
-          <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
-          <div class="mode-info">
-            <div class="mode-title">重新分析全部（含已校验）</div>
-            <div class="mode-desc">强制重跑所有记录的分析，会覆盖已有结果（消耗更多 API 配额）</div>
-          </div>
-          <el-icon class="mode-arrow"><Right /></el-icon>
-        </div>
+      <div style="padding: 12px 0; color: #666; line-height: 1.8;">
+        <p>使用<b>本地规则引擎</b>重新分析所有作品的主题和情感。</p>
+        <p style="color: #999; font-size: 13px;">• 不调用 LLM API，速度很快<br>• 会覆盖已有分析结果<br>• 基于 v5.3 规则引擎</p>
       </div>
+      <template #footer>
+        <el-button @click="showAnalyzeModeDialog = false">取消</el-button>
+        <el-button type="primary" @click="startBatchAnalyze('full')" :loading="analyzing">确定重跑</el-button>
+      </template>
     </el-dialog>
 
     <!-- 批量重新分析进度弹窗 -->
@@ -161,6 +151,46 @@
       <template #footer>
         <el-button plain @click="cancelBatchAnalyze" :disabled="analyzeProgress.status === 'done'">取消</el-button>
         <el-button plain class="btn-edit" @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 批量重跑结果弹窗 -->
+    <el-dialog
+      v-model="showBatchResultDialog"
+      title="批量重跑结果"
+      width="780px"
+      class="claude-dialog"
+      @close="closeBatchResultDialog"
+    >
+      <div v-if="batchResultData" class="batch-result-body">
+        <el-alert
+          :title="`共处理 ${batchResultData.total} 幅，更新 ${batchResultData.updated} 幅，错误 ${batchResultData.errors} 幅`"
+          type="success"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px;"
+        />
+        <el-table :data="batchResultData.records" size="small" max-height="420" border>
+          <el-table-column prop="id" label="ID" width="70" />
+          <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
+          <el-table-column label="主题" min-width="180">
+            <template #default="{ row }">
+              <el-tag v-for="t in (row.themes || [])" :key="t.name" size="small" style="margin-right:4px">{{ t.name }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="情感" width="140">
+            <template #default="{ row }">
+              {{ row.sentiment?.polarity || '-' }}
+              <span style="color:#999; margin-left:4px;">{{ row.sentiment?.intensity ? row.sentiment.intensity.toFixed(2) : '' }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <p v-if="(batchResultData.records?.length || 0) >= 50" style="color:#999; font-size:12px; margin-top:8px;">
+          仅展示前 50 条，完整数据共 {{ batchResultData.updated }} 条
+        </p>
+      </div>
+      <template #footer>
+        <el-button @click="closeBatchResultDialog">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -349,6 +379,9 @@ const {
   cancelBatchAnalyze,
   startBatchTranslate,
   cancelBatchTranslate,
+  batchResultData,
+  showBatchResultDialog,
+  closeBatchResultDialog,
 } = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => selectedArtist.value })
 
 // 生命周期

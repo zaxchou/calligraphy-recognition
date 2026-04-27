@@ -34,6 +34,15 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
   const { streamSSE: streamAnalyzeSSE, cancel: cancelAnalyzeStream } = useSSEStream()
   const { streamSSE: streamTranslateSSE, cancel: cancelTranslateStream } = useSSEStream()
 
+  // 批量重跑结果展示
+  const batchResultData = ref<any>(null)
+  const showBatchResultDialog = ref(false)
+
+  function closeBatchResultDialog() {
+    showBatchResultDialog.value = false
+    batchResultData.value = null
+  }
+
   const translateProgressColor = computed(() => {
     const pct = translateProgress.value.percent
     if (pct < 30) return '#b8a47e'
@@ -42,46 +51,43 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
   })
 
   async function startBatchAnalyze(mode: 'incremental' | 'full') {
-    const forceReanalyze = mode === 'full'
-
+    // mode 参数保留兼容性，但本地规则引擎始终全量重跑
     showAnalyzeModeDialog.value = false
     analyzing.value = true
     showAnalyzeProgress.value = true
-    analyzeProgress.value = { current: 0, total: 0, status: '', percent: 0 }
+    analyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
 
     try {
       const artist = getArtist()
       const response = await fetch(
-        `${apiBase}/content-analysis/reclassify/stream?artist=${encodeURIComponent(artist)}&force_reanalyze=${forceReanalyze}`,
+        `${apiBase}/content-analysis/batch-reanalyze?artist=${encodeURIComponent(artist)}`,
         { method: 'POST' }
       )
+      const data = await response.json()
 
-      await streamAnalyzeSSE(response, {
-        onEvent: (event) => {
-          if (event.type === 'start') {
-            analyzeProgress.value.total = event.total
-            analyzeProgress.value.status = 'analyzing'
-          } else if (event.type === 'progress' || event.type === 'record_done') {
-            analyzeProgress.value.current = event.current
-            analyzeProgress.value.total = event.total
-            analyzeProgress.value.status = 'analyzing'
-            analyzeProgress.value.percent = Math.round((event.current / event.total) * 100)
-          } else if (event.type === 'done') {
-            analyzeProgress.value.current = event.total
-            analyzeProgress.value.percent = 100
-            analyzeProgress.value.status = 'done'
-            ElMessage.success(`批量分析完成：成功 ${event.analyzed_count} 条`)
-            fetchRecords()
+      if (data.success) {
+        analyzeProgress.value = { current: data.total, total: data.total, status: 'done', percent: 100 }
+
+        // 存储结果供前端调试展示
+        if (data.updated_records && data.updated_records.length > 0) {
+          batchResultData.value = {
+            total: data.total,
+            updated: data.updated,
+            errors: data.errors,
+            records: data.updated_records,
           }
-        },
-        onError: (err) => {
-          ElMessage.error('批量分析失败: ' + err.message)
-        },
-        onComplete: () => {
-          analyzing.value = false
-        },
-      })
-    } catch {
+          showBatchResultDialog.value = true
+        } else {
+          ElMessage.success(`批量重跑完成：${data.updated} 幅更新，${data.errors} 幅错误`)
+        }
+
+        fetchRecords()
+      } else {
+        ElMessage.error(data.detail || '批量重跑失败')
+      }
+    } catch (err: any) {
+      ElMessage.error('批量重跑失败: ' + (err.message || err))
+    } finally {
       analyzing.value = false
     }
   }
@@ -157,6 +163,10 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
     showTranslateProgress,
     analyzeProgress,
     translateProgress,
+    // 批量重跑结果弹窗
+    batchResultData,
+    showBatchResultDialog,
+    closeBatchResultDialog,
     // computed
     translateProgressColor,
     // 方法

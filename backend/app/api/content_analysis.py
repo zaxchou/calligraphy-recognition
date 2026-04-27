@@ -2064,6 +2064,7 @@ async def batch_reanalyze(
     
     updated = 0
     errors = 0
+    updated_records = []   # 收集已更新记录的详情，供前端调试展示
     
     for row in rows:
         record_id = row["id"]
@@ -2125,6 +2126,15 @@ async def batch_reanalyze(
                            (json.dumps(auto_tags, ensure_ascii=False), record_id))
             
             updated += 1
+
+            # 收集已更新记录的详情，供前端调试（最多50条，避免响应过大）
+            if len(updated_records) < 50:
+                updated_records.append({
+                    "id": record_id,
+                    "title": title,
+                    "themes": result.get("themes", []),
+                    "sentiment": result.get("sentiment", {}),
+                })
         except Exception as e:
             errors += 1
             if errors <= 5:
@@ -2138,6 +2148,7 @@ async def batch_reanalyze(
         "total": total,
         "updated": updated,
         "errors": errors,
+        "updated_records": updated_records,   # 前端调试用：已更新记录的详情（最多50条）
         "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误"
     }
 

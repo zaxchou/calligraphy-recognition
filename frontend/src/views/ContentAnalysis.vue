@@ -437,6 +437,45 @@
   </div>
 </el-dialog>
 
+    <!-- 批量重跑结果弹窗 -->
+    <el-dialog
+      v-model="showBatchResultDialog"
+      title="批量重跑结果"
+      width="780px"
+      class="claude-dialog"
+      @close="closeBatchResultDialog"
+    >
+      <div v-if="batchResultData" class="batch-result-body">
+        <el-alert
+          :title="`共处理 ${batchResultData.total} 幅，更新 ${batchResultData.updated} 幅，错误 ${batchResultData.errors} 幅`"
+          type="success"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px;"
+        />
+        <el-table :data="batchResultData.records" size="small" max-height="420" border>
+          <el-table-column prop="id" label="ID" width="70" />
+          <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
+          <el-table-column label="主题" min-width="180">
+            <template #default="{ row }">
+              <el-tag v-for="t in (row.themes || [])" :key="t.name" size="small" style="margin-right:4px;">{{ t.name }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="情感" width="140">
+            <template #default="{ row }">
+              {{ row.sentiment?.polarity || '-' }}
+              <span style="color:#999; margin-left:4px;">{{ row.sentiment?.intensity ? row.sentiment.intensity.toFixed(2) : '' }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <p v-if="(batchResultData.records?.length || 0) >= 50" style="color:#999; font-size:12px; margin-top:8px;">
+          仅展示前 50 条，完整数据共 {{ batchResultData.updated }} 条
+        </p>
+      </div>
+      <template #footer>
+        <el-button @click="closeBatchResultDialog">关闭</el-button>
+      </template>
+    </el-dialog>
 
 </template>
 
@@ -489,6 +528,14 @@ const reportData = ref(null)  // 结构化学术报告数据
 const activeReportTab = ref('')
 const batchReanalyzeLoading = ref(false)
 
+// 批量重跑结果弹窗
+const batchResultData = ref(null)
+const showBatchResultDialog = ref(false)
+function closeBatchResultDialog() {
+  showBatchResultDialog.value = false
+  batchResultData.value = null
+}
+
 // 作者切换处理（下拉选择 + 初始加载共用）
 function onArtistChange(newArtist) {
   if (newArtist) {
@@ -520,7 +567,18 @@ async function batchReanalyze() {
     })
     const data = await resp.json()
     if (data.success) {
-      ElMessage.success(`批量重跑完成：${data.updated} 幅更新，${data.errors} 幅错误`)
+      // 存储结果供调试展示
+      if (data.updated_records && data.updated_records.length > 0) {
+        batchResultData.value = {
+          total: data.total,
+          updated: data.updated,
+          errors: data.errors,
+          records: data.updated_records,
+        }
+        showBatchResultDialog.value = true
+      } else {
+        ElMessage.success(`批量重跑完成：${data.updated} 幅更新，${data.errors} 幅错误`)
+      }
       loadStats() // 刷新统计数据
     } else {
       ElMessage.error(data.detail || '批量重跑失败')
