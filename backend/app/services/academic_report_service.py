@@ -22,7 +22,8 @@ from typing import Dict, List, Any, Optional
 
 from app.services.inscription_content_analyzer import THEMES
 
-THEME_ORDER = ["咏物寄兴", "身世自况", "吉语祥瑞", "交游赠答", "时事讽喻", "画理自叙"]
+# 报告主题展示顺序（从规则中心同步名称，避免硬编码主题名）
+THEME_ORDER = [THEMES[i]["name"] for i in [2, 1, 5, 6, 4, 3]]
 
 
 def _get_period(year: Optional[int], period_phase: Optional[str]) -> str:

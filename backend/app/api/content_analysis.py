@@ -2039,6 +2039,7 @@ async def batch_reanalyze(
     import logging
     logger = logging.getLogger(__name__)
     from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION
+    from app.services.tibi_analysis_rules import EXPECTED_THEME_DISTRIBUTION, EXPECTED_SENTIMENT_DISTRIBUTION
     from app.services.auto_tags import compute_tags
     from collections import Counter
     import json
@@ -2263,17 +2264,9 @@ async def batch_reanalyze(
         })
     
     # 5. 偏差检测与调整建议（基于第一主题）
-    expected = {
-        "身世自况": (5, 15),
-        "咏物寄兴": (55, 70),
-        "画理自叙": (5, 12),
-        "时事讽喻": (5, 15),
-        "吉语祥瑞": (3, 10),
-        "交游赠答": (8, 18),
-    }
-    
+    # 从规则中心读取预期分布，保证与算法版本同步
     deviation_checks = []
-    for name, (low, high) in expected.items():
+    for name, (low, high) in EXPECTED_THEME_DISTRIBUTION.items():
         cnt = new_primary_themes.get(name, 0)
         pct = round(cnt / total * 100, 1) if total else 0
         if pct < low:
@@ -2293,42 +2286,43 @@ async def batch_reanalyze(
             "expected_range": [low, high]
         })
     
-    # 情感偏差检测
+    # 情感偏差检测（从规则中心读取阈值）
     neg_pct = round(new_polarities.get("negative", 0) / total * 100, 1) if total else 0
     pos_pct = round(new_polarities.get("positive", 0) / total * 100, 1) if total else 0
-    if neg_pct < 20:
+    if neg_pct < EXPECTED_SENTIMENT_DISTRIBUTION["negative_min"]:
         deviation_checks.append({
             "theme": "消极情感",
             "percent": neg_pct,
             "status": "warning",
-            "suggestion": f"低于预期20% -- 李鱓'懊道人'底色应更偏阴",
-            "expected_range": [20, 100]
+            "suggestion": f"低于预期{EXPECTED_SENTIMENT_DISTRIBUTION['negative_min']}% -- 李鱓'懊道人'底色应更偏阴",
+            "expected_range": [EXPECTED_SENTIMENT_DISTRIBUTION["negative_min"], 100]
         })
-    if pos_pct > 35:
+    if pos_pct > EXPECTED_SENTIMENT_DISTRIBUTION["positive_max"]:
         deviation_checks.append({
             "theme": "积极情感",
             "percent": pos_pct,
             "status": "warning",
-            "suggestion": f"高于预期35% -- 可能被花鸟题材误导",
-            "expected_range": [0, 35]
+            "suggestion": f"高于预期{EXPECTED_SENTIMENT_DISTRIBUTION['positive_max']}% -- 可能被花鸟题材误导",
+            "expected_range": [0, EXPECTED_SENTIMENT_DISTRIBUTION["positive_max"]]
         })
     if emotion_score_stats.get("new_average") is not None:
         avg = emotion_score_stats["new_average"]
-        if avg > 0.5:
+        emotion_mean_max = EXPECTED_SENTIMENT_DISTRIBUTION["emotion_mean_max"]
+        if avg > emotion_mean_max:
             deviation_checks.append({
                 "theme": "情感均值",
                 "percent": avg,
                 "status": "warning",
-                "suggestion": f"{avg:+.2f} 偏阳 -- 李鱓整体应偏阴(预期 < -0.3)",
-                "expected_range": [-100, -0.3]
+                "suggestion": f"{avg:+.2f} 偏阳 -- 李鱓整体应偏阴(预期 < {emotion_mean_max})",
+                "expected_range": [-100, emotion_mean_max]
             })
-        elif avg < -0.5:
+        else:
             deviation_checks.append({
                 "theme": "情感均值",
                 "percent": avg,
                 "status": "ok",
                 "suggestion": f"{avg:+.2f} 符合李鱓偏阴底色",
-                "expected_range": [-100, -0.3]
+                "expected_range": [-100, emotion_mean_max]
             })
     
     return {

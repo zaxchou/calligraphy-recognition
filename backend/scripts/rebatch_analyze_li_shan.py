@@ -20,6 +20,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.inscription_content_analyzer import (
     classify_inscription_v4, THEMES, THEME_NAME_MIGRATION
 )
+from app.services.tibi_analysis_rules import (
+    EXPECTED_THEME_DISTRIBUTION, EXPECTED_SENTIMENT_DISTRIBUTION
+)
 from app.services.auto_tags import compute_tags
 
 DB_PATH = "data/calligraphy.db"
@@ -233,16 +236,8 @@ def main():
     print(f"\n【五、偏差检测与调整建议（基于第一主题）】")
 
     # 预期分布（基于美术史研究）— primary theme 百分比
-    expected = {
-        "身世自况": (5, 15),      # 节点性主题，不应太高
-        "咏物寄兴": (55, 70),     # 文人画核心功能，应占主导
-        "画理自叙": (5, 12),
-        "时事讽喻": (5, 15),
-        "吉语祥瑞": (3, 10),
-        "交游赠答": (8, 18),
-    }
-
-    for name, (low, high) in expected.items():
+    # 从规则中心读取，保证与算法版本同步
+    for name, (low, high) in EXPECTED_THEME_DISTRIBUTION.items():
         cnt = new_primary_themes.get(name, 0)
         pct = cnt / total * 100 if total else 0
         if pct < low:
@@ -252,18 +247,19 @@ def main():
         else:
             print(f"  [OK] {name}: {pct:.1f}% 在预期范围内 [{low}%-{high}%]")
 
-    # 情感偏差检测
+    # 情感偏差检测（从规则中心读取阈值）
     neg_pct = new_polarities.get("negative", 0) / total * 100 if total else 0
     pos_pct = new_polarities.get("positive", 0) / total * 100 if total else 0
-    if neg_pct < 20:
-        print(f"  [!] 消极情感 {neg_pct:.1f}% 低于预期20% -- 李鱓'懊道人'底色应更偏阴")
-    if pos_pct > 35:
-        print(f"  [!] 积极情感 {pos_pct:.1f}% 高于预期35% -- 可能被花鸟题材误导")
+    if neg_pct < EXPECTED_SENTIMENT_DISTRIBUTION["negative_min"]:
+        print(f"  [!] 消极情感 {neg_pct:.1f}% 低于预期{EXPECTED_SENTIMENT_DISTRIBUTION['negative_min']}% -- 李鱓'懊道人'底色应更偏阴")
+    if pos_pct > EXPECTED_SENTIMENT_DISTRIBUTION["positive_max"]:
+        print(f"  [!] 积极情感 {pos_pct:.1f}% 高于预期{EXPECTED_SENTIMENT_DISTRIBUTION['positive_max']}% -- 可能被花鸟题材误导")
     if new_emotion_scores:
         avg = sum(new_emotion_scores) / len(new_emotion_scores)
-        if avg > 0.5:
-            print(f"  [!] 情感均值 {avg:+.2f} 偏阳 -- 李鱓整体应偏阴(预期 < -0.3)")
-        elif avg < -0.5:
+        emotion_mean_max = EXPECTED_SENTIMENT_DISTRIBUTION["emotion_mean_max"]
+        if avg > emotion_mean_max:
+            print(f"  [!] 情感均值 {avg:+.2f} 偏阳 -- 李鱓整体应偏阴(预期 < {emotion_mean_max})")
+        else:
             print(f"  [OK] 情感均值 {avg:+.2f} 符合李鱓偏阴底色")
 
     conn.close()

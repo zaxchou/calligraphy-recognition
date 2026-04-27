@@ -102,8 +102,8 @@ MATERIAL_CATEGORIES = {
               "峰", "岭", "洲", "岛", "岸", "帆", "舟", "桥", "亭", "寺", "塔", "楼", "阁"],
 }
 
-# 画材关键词 → 直接作为标签
-MATERIAL_KEYWORDS = [
+# 画材关键词 → 直接作为标签（自动标签系统专用，与规则中心 MATERIAL_KEYWORDS 区分）
+AUTO_TAG_MATERIAL_KEYWORDS = [
     "墨荷", "枯木", "芭蕉", "竹", "兰", "梅", "松", "菊", "牡丹", "芍药",
     "藤蔓", "紫藤", "凌霄", "葡萄", "葫芦", "瓜", "蔬果", "白菜", "萝卜", "葱", "蒜", "姜",
     "鱼", "虾", "蟹", "蛙", "龟", "蝶", "蜻蜓", "虫", "鸟", "雀", "燕", "鹦鹉",
@@ -127,7 +127,7 @@ def get_material_tags(material_tags_str: Optional[str], title: Optional[str]) ->
 
     # 从 title 补充关键词（排除"鸟"字，避免"花鸟册"标题误匹配）
     if title:
-        for kw in MATERIAL_KEYWORDS:
+        for kw in AUTO_TAG_MATERIAL_KEYWORDS:
             # "鸟"字不从 title 里匹配，避免"花鸟册"标题误标
             if kw == "鸟":
                 continue
@@ -140,30 +140,13 @@ def get_material_tags(material_tags_str: Optional[str], title: Optional[str]) ->
 # ────────────────────────────────────────────────────────────────
 # 4. 主题标签（从 content_analysis.themes 提取）
 # ────────────────────────────────────────────────────────────────
-THEME_CODE_MAP = {
-    1: "身世自况",
-    2: "咏物寄兴",
-    3: "画理自叙",
-    4: "时事讽喻",
-    5: "吉语祥瑞",
-    6: "交游赠答",
-}
+# 从规则中心导入主题映射，保证全局统一
+from app.services.tibi_analysis_rules import THEMES, THEME_NAME_MIGRATION
+
+THEME_CODE_MAP = {code: info["name"] for code, info in THEMES.items()}
 
 # 旧主题名称 → 新主题名称 兼容映射（处理历史数据）
-THEME_NAME_COMPAT = {
-    "记录创作信息": "身世自况",
-    "记录创作": "身世自况",
-    "即景寄兴与抒怀": "咏物寄兴",
-    "即景寄兴": "咏物寄兴",
-    "讽喻社会与民生": "时事讽喻",
-    "讽喻社会": "时事讽喻",
-    "阐述画理画法": "画理自叙",
-    "世俗祈愿与谐趣": "吉语祥瑞",
-    "世俗祈愿": "吉语祥瑞",
-    "应酬送人与雅交": "交游赠答",
-    "交游应酬": "交游赠答",
-    "自怜自况": "身世自况",
-}
+THEME_NAME_COMPAT = dict(THEME_NAME_MIGRATION)  # 从规则中心同步
 
 
 def get_theme_tags(content_analysis: Optional[Any]) -> List[str]:
