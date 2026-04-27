@@ -2034,11 +2034,13 @@ async def batch_reanalyze(
     """
     批量重跑本地规则引擎（classify_inscription_v4）
     不调用 LLM API，纯本地计算，适合规则迭代校准
+    返回详细对比报告（与 rebatch_analyze_li_shan.py 脚本格式一致）
     """
     import logging
     logger = logging.getLogger(__name__)
-    from app.services.inscription_content_analyzer import classify_inscription_v4
+    from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION
     from app.services.auto_tags import compute_tags
+    from collections import Counter
     import json
     
     conn = get_db_connection()
@@ -2062,9 +2064,19 @@ async def batch_reanalyze(
     rows = cur.fetchall()
     total = len(rows)
     
+    # 统计变量（用于生成对比报告）
+    old_themes = Counter()           # all themes (1st+2nd+3rd) — 覆盖率
+    old_primary_themes = Counter()   # 仅第一主题 — 分布
+    new_themes = Counter()
+    new_primary_themes = Counter()
+    old_polarities = Counter()
+    new_polarities = Counter()
+    old_emotion_scores = []
+    new_emotion_scores = []
+    theme_changes = Counter()        # (旧主题→新主题) 变化统计
+    
     updated = 0
     errors = 0
-    updated_records = []   # 收集已更新记录的详情，供前端调试展示
     
     for row in rows:
         record_id = row["id"]
@@ -2084,6 +2096,22 @@ async def batch_reanalyze(
             except Exception:
                 pass
         
+        # 记录旧主题/情感
+        if old_ca:
+            themes_list = old_ca.get("themes", [])
+            for t in themes_list:
+                old_name = t.get("name", "")
+                compat_name = THEME_NAME_MIGRATION.get(old_name, old_name)
+                old_themes[compat_name] += 1
+            if themes_list:
+                old_primary_themes[THEME_NAME_MIGRATION.get(themes_list[0].get("name",""), themes_list[0].get("name",""))] += 1
+            old_sent = old_ca.get("sentiment", {})
+            old_pol = old_sent.get("polarity", "neutral")
+            old_polarities[old_pol] += 1
+            old_score = old_sent.get("emotion_score")
+            if old_score is not None:
+                old_emotion_scores.append(old_score)
+        
         try:
             # 用本地规则引擎重跑
             result = classify_inscription_v4(
@@ -2097,10 +2125,32 @@ async def batch_reanalyze(
                 artist=record_artist,
             )
             
+            # 记录新主题/情感
+            new_themes_list = result.get("themes", [])
+            for t in new_themes_list:
+                new_themes[t["name"]] += 1
+            if new_themes_list:
+                new_primary_themes[new_themes_list[0]["name"]] += 1
+            new_sent = result.get("sentiment", {})
+            new_pol = new_sent.get("polarity", "neutral")
+            new_polarities[new_pol] += 1
+            new_score = new_sent.get("emotion_score")
+            if new_score is not None:
+                new_emotion_scores.append(new_score)
+            
+            # 记录主题变化
+            old_main = ""
+            if old_ca and old_ca.get("themes"):
+                old_main = old_ca["themes"][0].get("name", "")
+                old_main = THEME_NAME_MIGRATION.get(old_main, old_main)
+            new_main = result["themes"][0]["name"] if result.get("themes") else ""
+            if old_main and new_main and old_main != new_main:
+                theme_changes[(old_main, new_main)] += 1
+            
             # 构建新 content_analysis
             new_ca = dict(old_ca) if old_ca else {}
             new_ca["themes"] = result.get("themes", [])
-            new_ca["sentiment"] = result.get("sentiment", {})
+            new_ca["sentiment"] = new_sent
             new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
             
             # 更新数据库
@@ -2126,15 +2176,6 @@ async def batch_reanalyze(
                            (json.dumps(auto_tags, ensure_ascii=False), record_id))
             
             updated += 1
-
-            # 收集已更新记录的详情，供前端调试（最多50条，避免响应过大）
-            if len(updated_records) < 50:
-                updated_records.append({
-                    "id": record_id,
-                    "title": title,
-                    "themes": result.get("themes", []),
-                    "sentiment": result.get("sentiment", {}),
-                })
         except Exception as e:
             errors += 1
             if errors <= 5:
@@ -2143,13 +2184,168 @@ async def batch_reanalyze(
     conn.commit()
     conn.close()
     
+    # ═══════════════════════════════════════════════════════════════════
+    # 生成对比报告（与 rebatch_analyze_li_shan.py 脚本格式一致）
+    # ═══════════════════════════════════════════════════════════════════
+    
+    # 1. 主题覆盖率对比（all themes = 1st+2nd+3rd 覆盖率）
+    all_theme_names = sorted(set(list(old_themes.keys()) + list(new_themes.keys())))
+    theme_coverage = []
+    for name in all_theme_names:
+        old_cnt = old_themes.get(name, 0)
+        new_cnt = new_themes.get(name, 0)
+        old_pct = round(old_cnt / total * 100, 1) if total else 0
+        new_pct = round(new_cnt / total * 100, 1) if total else 0
+        diff = new_cnt - old_cnt
+        theme_coverage.append({
+            "name": name,
+            "old_count": old_cnt,
+            "old_percent": old_pct,
+            "new_count": new_cnt,
+            "new_percent": new_pct,
+            "change": diff
+        })
+    
+    # 1.5. 第一主题分布对比（Primary Themes）
+    primary_names = sorted(set(list(old_primary_themes.keys()) + list(new_primary_themes.keys())))
+    primary_theme_dist = []
+    for name in primary_names:
+        old_cnt = old_primary_themes.get(name, 0)
+        new_cnt = new_primary_themes.get(name, 0)
+        old_pct = round(old_cnt / total * 100, 1) if total else 0
+        new_pct = round(new_cnt / total * 100, 1) if total else 0
+        diff = new_cnt - old_cnt
+        primary_theme_dist.append({
+            "name": name,
+            "old_count": old_cnt,
+            "old_percent": old_pct,
+            "new_count": new_cnt,
+            "new_percent": new_pct,
+            "change": diff
+        })
+    
+    # 2. 情感分布对比
+    sentiment_dist = []
+    for pol in ["positive", "negative", "neutral"]:
+        old_cnt = old_polarities.get(pol, 0)
+        new_cnt = new_polarities.get(pol, 0)
+        old_pct = round(old_cnt / total * 100, 1) if total else 0
+        new_pct = round(new_cnt / total * 100, 1) if total else 0
+        diff = new_cnt - old_cnt
+        sentiment_dist.append({
+            "polarity": pol,
+            "old_count": old_cnt,
+            "old_percent": old_pct,
+            "new_count": new_cnt,
+            "new_percent": new_pct,
+            "change": diff
+        })
+    
+    # 3. 情感分数对比
+    emotion_score_stats = {}
+    if new_emotion_scores:
+        new_avg = sum(new_emotion_scores) / len(new_emotion_scores)
+        old_avg = sum(old_emotion_scores) / len(old_emotion_scores) if old_emotion_scores else None
+        emotion_score_stats = {
+            "new_average": round(new_avg, 2),
+            "old_average": round(old_avg, 2) if old_avg is not None else None,
+            "new_min": round(min(new_emotion_scores), 2),
+            "new_max": round(max(new_emotion_scores), 2),
+        }
+    
+    # 4. 主题变化路径（Top 10）
+    theme_change_paths = []
+    for (old_t, new_t), cnt in theme_changes.most_common(10):
+        theme_change_paths.append({
+            "from": old_t,
+            "to": new_t,
+            "count": cnt
+        })
+    
+    # 5. 偏差检测与调整建议（基于第一主题）
+    expected = {
+        "身世自况": (5, 15),
+        "咏物寄兴": (55, 70),
+        "画理自叙": (5, 12),
+        "时事讽喻": (5, 15),
+        "吉语祥瑞": (3, 10),
+        "交游赠答": (8, 18),
+    }
+    
+    deviation_checks = []
+    for name, (low, high) in expected.items():
+        cnt = new_primary_themes.get(name, 0)
+        pct = round(cnt / total * 100, 1) if total else 0
+        if pct < low:
+            status = "warning"
+            suggestion = f"低于预期下限 {low}% -- 建议增加关键词权重或补充关键词"
+        elif pct > high:
+            status = "warning"
+            suggestion = f"高于预期上限 {high}% -- 建议收紧定义或降低权重"
+        else:
+            status = "ok"
+            suggestion = f"在预期范围内 [{low}%-{high}%]"
+        deviation_checks.append({
+            "theme": name,
+            "percent": pct,
+            "status": status,
+            "suggestion": suggestion,
+            "expected_range": [low, high]
+        })
+    
+    # 情感偏差检测
+    neg_pct = round(new_polarities.get("negative", 0) / total * 100, 1) if total else 0
+    pos_pct = round(new_polarities.get("positive", 0) / total * 100, 1) if total else 0
+    if neg_pct < 20:
+        deviation_checks.append({
+            "theme": "消极情感",
+            "percent": neg_pct,
+            "status": "warning",
+            "suggestion": f"低于预期20% -- 李鱓'懊道人'底色应更偏阴",
+            "expected_range": [20, 100]
+        })
+    if pos_pct > 35:
+        deviation_checks.append({
+            "theme": "积极情感",
+            "percent": pos_pct,
+            "status": "warning",
+            "suggestion": f"高于预期35% -- 可能被花鸟题材误导",
+            "expected_range": [0, 35]
+        })
+    if emotion_score_stats.get("new_average") is not None:
+        avg = emotion_score_stats["new_average"]
+        if avg > 0.5:
+            deviation_checks.append({
+                "theme": "情感均值",
+                "percent": avg,
+                "status": "warning",
+                "suggestion": f"{avg:+.2f} 偏阳 -- 李鱓整体应偏阴(预期 < -0.3)",
+                "expected_range": [-100, -0.3]
+            })
+        elif avg < -0.5:
+            deviation_checks.append({
+                "theme": "情感均值",
+                "percent": avg,
+                "status": "ok",
+                "suggestion": f"{avg:+.2f} 符合李鱓偏阴底色",
+                "expected_range": [-100, -0.3]
+            })
+    
     return {
         "success": True,
         "total": total,
         "updated": updated,
         "errors": errors,
-        "updated_records": updated_records,   # 前端调试用：已更新记录的详情（最多50条）
-        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误"
+        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误",
+        # 详细对比报告数据
+        "report": {
+            "theme_coverage": theme_coverage,
+            "primary_theme_distribution": primary_theme_dist,
+            "sentiment_distribution": sentiment_dist,
+            "emotion_score_stats": emotion_score_stats,
+            "theme_change_paths": theme_change_paths,
+            "deviation_checks": deviation_checks,
+        }
     }
 
 

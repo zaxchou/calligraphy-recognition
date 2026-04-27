@@ -158,36 +158,128 @@
     <el-dialog
       v-model="showBatchResultDialog"
       title="批量重跑结果"
-      width="780px"
-      class="claude-dialog"
+      width="860px"
+      class="claude-dialog batch-result-dialog"
       @close="closeBatchResultDialog"
     >
       <div v-if="batchResultData" class="batch-result-body">
-        <el-alert
-          :title="`共处理 ${batchResultData.total} 幅，更新 ${batchResultData.updated} 幅，错误 ${batchResultData.errors} 幅`"
-          type="success"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 16px;"
-        />
-        <el-table :data="batchResultData.records" size="small" max-height="420" border>
-          <el-table-column prop="id" label="ID" width="70" />
-          <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
-          <el-table-column label="主题" min-width="180">
-            <template #default="{ row }">
-              <el-tag v-for="t in (row.themes || [])" :key="t.name" size="small" style="margin-right:4px">{{ t.name }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="情感" width="140">
-            <template #default="{ row }">
-              {{ row.sentiment?.polarity || '-' }}
-              <span style="color:#999; margin-left:4px;">{{ row.sentiment?.intensity ? row.sentiment.intensity.toFixed(2) : '' }}</span>
-            </template>
-          </el-table-column>
-        </el-table>
-        <p v-if="(batchResultData.records?.length || 0) >= 50" style="color:#999; font-size:12px; margin-top:8px;">
-          仅展示前 50 条，完整数据共 {{ batchResultData.updated }} 条
-        </p>
+        <!-- 概览 -->
+        <div class="report-header">
+          <div class="report-title">李鱓作品批量重跑（v5 意图导向分类）— 共 {{ batchResultData.total }} 幅</div>
+          <div class="report-summary">
+            重跑完成: <span class="highlight">{{ batchResultData.updated }}</span> 幅更新,
+            <span :class="batchResultData.errors > 0 ? 'error' : ''">{{ batchResultData.errors }}</span> 幅错误
+          </div>
+        </div>
+
+        <!-- 一、主题覆盖率对比 -->
+        <div class="report-section" v-if="batchResultData.report?.theme_coverage?.length">
+          <div class="section-title">一、主题覆盖率对比（新 vs 旧，含1st/2nd/3rd）</div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>主题</th>
+                <th>旧</th>
+                <th>旧%</th>
+                <th>新</th>
+                <th>新%</th>
+                <th>变化</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in batchResultData.report.theme_coverage" :key="item.name">
+                <td>{{ item.name }}</td>
+                <td>{{ item.old_count }}</td>
+                <td>{{ item.old_percent }}%</td>
+                <td>{{ item.new_count }}</td>
+                <td>{{ item.new_percent }}%</td>
+                <td :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
+                  {{ item.change > 0 ? '+' : '' }}{{ item.change }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 一.5、第一主题分布对比 -->
+        <div class="report-section" v-if="batchResultData.report?.primary_theme_distribution?.length">
+          <div class="section-title">一.5、第一主题分布对比（新 vs 旧）</div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>主题</th>
+                <th>旧</th>
+                <th>旧%</th>
+                <th>新</th>
+                <th>新%</th>
+                <th>变化</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in batchResultData.report.primary_theme_distribution" :key="item.name">
+                <td>{{ item.name }}</td>
+                <td>{{ item.old_count }}</td>
+                <td>{{ item.old_percent }}%</td>
+                <td>{{ item.new_count }}</td>
+                <td>{{ item.new_percent }}%</td>
+                <td :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
+                  {{ item.change > 0 ? '+' : '' }}{{ item.change }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 二、情感分布对比 -->
+        <div class="report-section" v-if="batchResultData.report?.sentiment_distribution?.length">
+          <div class="section-title">二、情感分布对比（新 vs 旧）</div>
+          <div class="sentiment-row" v-for="item in batchResultData.report.sentiment_distribution" :key="item.polarity">
+            <span class="sentiment-label" :class="item.polarity">{{ item.polarity }}</span>
+            <span>: 旧 {{ item.old_count }}({{ item.old_percent }}%) → 新 {{ item.new_count }}({{ item.new_percent }}%)</span>
+            <span :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
+              {{ item.change > 0 ? '+' : '' }}{{ item.change }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 三、情感分数对比 -->
+        <div class="report-section" v-if="batchResultData.report?.emotion_score_stats?.new_average !== undefined">
+          <div class="section-title">三、情感分数对比</div>
+          <div class="score-row">
+            新均值: <span class="highlight">{{ batchResultData.report.emotion_score_stats.new_average > 0 ? '+' : '' }}{{ batchResultData.report.emotion_score_stats.new_average }}</span>
+            <span v-if="batchResultData.report.emotion_score_stats.old_average !== null">
+              (旧: {{ batchResultData.report.emotion_score_stats.old_average > 0 ? '+' : '' }}{{ batchResultData.report.emotion_score_stats.old_average }})
+            </span>
+          </div>
+          <div class="score-row">
+            新范围: {{ batchResultData.report.emotion_score_stats.new_min }} ~ {{ batchResultData.report.emotion_score_stats.new_max }}
+          </div>
+        </div>
+
+        <!-- 四、主题变化路径 -->
+        <div class="report-section" v-if="batchResultData.report?.theme_change_paths?.length">
+          <div class="section-title">四、主题变化路径（Top 10）</div>
+          <div class="change-path" v-for="(item, idx) in batchResultData.report.theme_change_paths" :key="idx">
+            {{ item.from }} → {{ item.to }}: {{ item.count }} 幅
+          </div>
+          <div v-if="batchResultData.report.theme_change_paths.length === 0" class="no-change">无主题变化</div>
+        </div>
+
+        <!-- 五、偏差检测与调整建议 -->
+        <div class="report-section" v-if="batchResultData.report?.deviation_checks?.length">
+          <div class="section-title">五、偏差检测与调整建议（基于第一主题）</div>
+          <div class="deviation-item" v-for="(item, idx) in batchResultData.report.deviation_checks" :key="idx">
+            <span :class="item.status === 'ok' ? 'status-ok' : 'status-warn'">
+              [{{ item.status === 'ok' ? 'OK' : '!' }}]
+            </span>
+            <span class="deviation-theme">{{ item.theme }}:</span>
+            <span>{{ item.suggestion }}</span>
+          </div>
+        </div>
+
+        <div class="report-footer">
+          重跑完成。请根据偏差检测结果调整规则，然后重新运行。
+        </div>
       </div>
       <template #footer>
         <el-button @click="closeBatchResultDialog">关闭</el-button>
@@ -881,5 +973,192 @@ function openUploadDialog() {
   padding: 12px 32px;
   font-size: 16px;
   border-radius: 10px;
+}
+
+/* 批量重跑结果报告样式 */
+.batch-result-dialog :deep(.el-dialog__body) {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.batch-result-body {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.report-header {
+  background: linear-gradient(135deg, #faf9f7 0%, #f5f4ed 100%);
+  padding: 16px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #e8e4da;
+}
+
+.report-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #141413;
+  margin-bottom: 8px;
+}
+
+.report-summary {
+  font-size: 14px;
+  color: #5e5d59;
+}
+
+.report-summary .highlight {
+  color: #c96442;
+  font-weight: 600;
+}
+
+.report-summary .error {
+  color: #d32f2f;
+  font-weight: 600;
+}
+
+.report-section {
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e8e4da;
+}
+
+.section-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #141413;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0eee6;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.report-table th {
+  background: #f5f4ed;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #3d3d3a;
+  border-bottom: 2px solid #e8e4da;
+}
+
+.report-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0eee6;
+}
+
+.report-table tr:hover {
+  background: #faf9f7;
+}
+
+.report-table .up {
+  color: #c96442;
+  font-weight: 600;
+}
+
+.report-table .down {
+  color: #5a7d5a;
+  font-weight: 600;
+}
+
+.sentiment-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0eee6;
+}
+
+.sentiment-row:last-child {
+  border-bottom: none;
+}
+
+.sentiment-label {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.sentiment-label.positive {
+  color: #4e8cff;
+}
+
+.sentiment-label.negative {
+  color: #ff6b35;
+}
+
+.sentiment-label.neutral {
+  color: #7f7f7f;
+}
+
+.sentiment-row .up {
+  color: #c96442;
+  font-weight: 600;
+}
+
+.sentiment-row .down {
+  color: #5a7d5a;
+  font-weight: 600;
+}
+
+.score-row {
+  padding: 6px 0;
+  color: #3d3d3a;
+}
+
+.score-row .highlight {
+  color: #c96442;
+  font-weight: 600;
+}
+
+.change-path {
+  padding: 6px 0;
+  color: #5e5d59;
+}
+
+.no-change {
+  color: #87867f;
+  font-style: italic;
+}
+
+.deviation-item {
+  padding: 8px 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.status-ok {
+  color: #5a7d5a;
+  font-weight: 600;
+}
+
+.status-warn {
+  color: #c96442;
+  font-weight: 600;
+}
+
+.deviation-theme {
+  font-weight: 600;
+  color: #141413;
+}
+
+.report-footer {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: #fdf8f6;
+  border-radius: 8px;
+  border: 1px solid #f0d4c8;
+  color: #c96442;
+  font-size: 13px;
+  text-align: center;
 }
 </style>

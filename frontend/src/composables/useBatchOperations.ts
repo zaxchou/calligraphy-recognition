@@ -68,18 +68,15 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
       if (data.success) {
         analyzeProgress.value = { current: data.total, total: data.total, status: 'done', percent: 100 }
 
-        // 存储结果供前端调试展示
-        if (data.updated_records && data.updated_records.length > 0) {
-          batchResultData.value = {
-            total: data.total,
-            updated: data.updated,
-            errors: data.errors,
-            records: data.updated_records,
-          }
-          showBatchResultDialog.value = true
-        } else {
-          ElMessage.success(`批量重跑完成：${data.updated} 幅更新，${data.errors} 幅错误`)
+        // 存储详细对比报告数据
+        batchResultData.value = {
+          total: data.total,
+          updated: data.updated,
+          errors: data.errors,
+          message: data.message,
+          report: data.report,  // 详细对比报告
         }
+        showBatchResultDialog.value = true
 
         fetchRecords()
       } else {
