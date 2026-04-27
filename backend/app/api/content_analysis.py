@@ -2164,7 +2164,9 @@ async def batch_reanalyze(
             new_ca = dict(old_ca) if old_ca else {}
             new_ca["themes"] = result.get("themes", [])
             new_ca["sentiment"] = new_sent
+            new_ca["v4_confidence"] = result.get("confidence", 0)  # v5.5: 整体置信度
             new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
+            new_ca["rules_version"] = "5.5"  # v5.5: 规则版本标记
             
             # 更新数据库
             theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
