@@ -40,7 +40,6 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
 
   function closeBatchResultDialog() {
     showBatchResultDialog.value = false
-    batchResultData.value = null
   }
 
   const translateProgressColor = computed(() => {
@@ -84,7 +83,7 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
               updated: event.updated,
               errors: event.errors,
               message: event.message,
-              report: event.report,
+              report: { ...event.report, updated_at: new Date().toLocaleString() },
             }
             analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
             showBatchResultDialog.value = true

@@ -34,7 +34,7 @@
         <el-button plain size="small" class="btn-edit" @click="showTranslateModeDialog = true" :loading="batchTranslating">
           <el-icon><Bottom /></el-icon>翻译
         </el-button>
-        <el-button plain size="small" class="btn-edit" @click="showAnalyzeModeDialog = true" :loading="analyzing">
+        <el-button plain size="small" class="btn-edit" @click="openBatchReanalyze" :loading="analyzing">
           <el-icon><Refresh /></el-icon>批量重跑
         </el-button>
         <el-button plain size="small" class="btn-edit" @click="startIncrementalSmartProcess" :loading="incrementalProcessing">
@@ -117,8 +117,16 @@
       class="translate-mode-dialog claude-dialog"
     >
       <div style="padding: 12px 0; color: #666; line-height: 1.8;">
-        <p>使用<b>本地规则引擎</b>重新分析所有作品的主题和情感。</p>
-        <p style="color: #999; font-size: 13px;">• 不调用 LLM API，速度很快<br>• 会覆盖已有分析结果<br>• 基于 v5.4 规则引擎</p>
+        <p>使用<b>统一混合引擎</b>重新分析所有作品的主题和情感。</p>
+        <p style="color: #999; font-size: 13px;">• 规则引擎 → 低可信度自动调 DeepSeek 修正<br>• 会覆盖已有分析结果<br>• 基于 v5.6 规则引擎</p>
+        <div v-if="batchResultData" style="margin-top:12px; padding:10px; background:#f5f7fa; border-radius:6px; font-size:13px; color:#333;">
+          <p style="margin:0 0 6px; font-weight:600;">📋 上次结果</p>
+          <p style="margin:2px 0;">{{ batchResultData.message }}</p>
+          <p v-if="batchResultData.report" style="margin:2px 0; color:#999;">
+            可信度 {{ batchResultData.report.confidence_stats?.average || '?' }} | LLM修正 {{ batchResultData.report.llm_corrected || 0 }} 幅 | {{ batchResultData.report.updated_at || '' }}
+          </p>
+          <el-button text size="small" type="primary" @click="showAnalyzeModeDialog = false; showBatchResultDialog = true" style="margin-top:4px;">查看完整报告</el-button>
+        </div>
       </div>
       <template #footer>
         <el-button @click="showAnalyzeModeDialog = false">取消</el-button>
@@ -522,6 +530,15 @@ const {
   showBatchResultDialog,
   closeBatchResultDialog,
 } = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => selectedArtist.value })
+
+// 智能打开：有缓存结果直接显示，无则弹确认
+function openBatchReanalyze() {
+  if (batchResultData.value) {
+    showBatchResultDialog.value = true
+  } else {
+    showAnalyzeModeDialog.value = true
+  }
+}
 
 // 增量智能处理：SSE 流式版，带进度显示
 async function startIncrementalSmartProcess() {
