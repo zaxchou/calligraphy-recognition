@@ -2693,7 +2693,8 @@ async def batch_reanalyze_stream(
                 }
                 auto_tags = compute_tags(record_for_tags)
                 if auto_tags:
-                    cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?", (auto_tags, record_id))
+                    cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
+                                (_json.dumps(auto_tags, ensure_ascii=False), record_id))
 
                 updated += 1
 
