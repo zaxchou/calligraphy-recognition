@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Set
 
 # ── 版本号 ─────────────────────────────────────────────────────────────
 # 升级算法版本时只改此文件即可保证全局统一。
-RULES_VERSION = "5.5"
+RULES_VERSION = "5.6"
 
 STOP_WORDS = set("的 了 在 是 我 有 和 就 不 人 都 一 一个 上 也 很 到 说 要 去 你 会 着 没有 看 好 自己 这 那".split())
 
@@ -128,8 +128,13 @@ HARDCODED_ARTIST_RULES = {
         "theme_exceptions": {
             "5": {"override_if_contains": ["世味", "辣", "苦"], "override_to": "negative"}
         },
-        "expected_theme_distribution": dict(EXPECTED_THEME_DISTRIBUTION),
-        "expected_sentiment_distribution": dict(EXPECTED_SENTIMENT_DISTRIBUTION),
+        "expected_theme_distribution": {
+            "身世自况": (15, 45), "咏物寄兴": (35, 55), "画理自叙": (3, 10),
+            "时事讽喻": (3, 10), "吉语祥瑞": (3, 10), "交游赠答": (3, 10),
+        },
+        "expected_sentiment_distribution": {
+            "negative_min": 40, "positive_max": 40, "emotion_mean_max": -0.3,
+        },
         "rules_version": RULES_VERSION,
     },
     "郑燮": {
