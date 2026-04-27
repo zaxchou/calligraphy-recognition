@@ -526,7 +526,7 @@ async function startIncrementalSmartProcess() {
   incrementalProcessing.value = true
   try {
     const response = await fetch(
-      `${API_BASE}/content-analysis/batch-reanalyze?artist=${encodeURIComponent(artist)}&use_llm=true&incremental=true`,
+      `${API_BASE}/content-analysis/batch-reanalyze?artist=${encodeURIComponent(artist)}&incremental=true`,
       { method: 'POST' }
     )
     const data = await response.json()

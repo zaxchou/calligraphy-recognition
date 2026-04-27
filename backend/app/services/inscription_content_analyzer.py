@@ -1126,7 +1126,7 @@ async def llm_theme_classification_v3(text: str, artist: str = None) -> List[Dic
     prompt = LLM_THEME_PROMPT_V3.format(text=text[:500], artist_note=note, artist_se_names=se_names)
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 headers={
@@ -1167,7 +1167,7 @@ async def llm_sentiment_analysis_v3(text: str, artist: str = None) -> Dict:
     prompt = LLM_SENTIMENT_PROMPT_V3.format(text=text[:500], artist_note=artist_note)
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 headers={
@@ -1387,7 +1387,7 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
         else:
             request_body["enable_thinking"] = False
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 headers={
@@ -1400,11 +1400,18 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
             result = response.json()
             raw = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
-            # 提取 JSON：去除 markdown 代码块包裹
-            json_match = re.search(r'\{[\s\S]*\}', raw)
-            if json_match:
-                raw = json_match.group()
-            parsed = json.loads(raw)
+            # 提取 JSON：支持 markdown 代码块、多余文本等边缘情况
+            raw_clean = raw.strip()
+            # 去除 markdown 代码块
+            if raw_clean.startswith("```"):
+                raw_clean = raw_clean.split("\n", 1)[-1] if "\n" in raw_clean else raw_clean
+                raw_clean = raw_clean.rsplit("```", 1)[0] if "```" in raw_clean else raw_clean
+            # 取第一个 { 到最后一个 }
+            brace_start = raw_clean.find("{")
+            brace_end = raw_clean.rfind("}")
+            if brace_start >= 0 and brace_end > brace_start:
+                raw_clean = raw_clean[brace_start:brace_end+1]
+            parsed = json.loads(raw_clean)
             
             themes = parsed.get("themes", [])
             sentiment = parsed.get("sentiment", {})

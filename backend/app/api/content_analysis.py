@@ -2039,15 +2039,19 @@ async def reclassify_themes_sentiment(
 @router.post("/batch-reanalyze")
 async def batch_reanalyze(
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
-    use_llm: bool = Query(default=False, description="混合模式：低可信度时自动调 DeepSeek 修复"),
-    incremental: bool = Query(default=False, description="增量模式：只处理尚未批量重跑过的记录"),
+    incremental: bool = Query(default=False, description="增量模式：跳过已处理的记录（已有 v4_confidence + rules_version ≥ 5.5）"),
 ):
     """
-    批量重跑分析引擎。
+    统一分析引擎（规则 + 低可信度自动 DeepSeek 修正）。
 
-    - use_llm=false（默认）：纯本地规则引擎，秒级完成
-    - use_llm=true：对可信度<0.6的作品自动调 DeepSeek，分歧时采纳LLM结果（更准但需API调用）
-    - incremental=true：跳过已处理过的记录（已有 content_analysis 且 rules_version ≥ "5.5"）
+    每条记录经过统一管道：
+      1. 规则引擎 classify_inscription_v4 → 算出可信度
+      2. 可信度 < 0.6 → 自动调 DeepSeek 二次判断
+      3. 若有分歧 → 采纳 LLM 结论，标记 [LLM采纳]
+      4. 保存到 DB
+
+    incremental=true 时跳过已完整分析过的记录（已有 content_analysis.rules_version ≥ 5.5）。
+    不存在覆盖问题——每条记录只用此管道跑一次。
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -2158,9 +2162,9 @@ async def batch_reanalyze(
             conf = result.get("confidence", 0)
             confidences.append(conf)
 
-            # ── 混合模式：低可信度时调 DeepSeek ──────────────
+            # ── 统一混合引擎：低可信度自动调 DeepSeek ─────────
             llm_overrides = None
-            if use_llm and conf < 0.6 and text and len(text) > 3:
+            if conf < 0.6 and text and len(text) > 3:
                 try:
                     import asyncio
                     from app.services.inscription_content_analyzer import llm_analyze_combined
@@ -2177,15 +2181,15 @@ async def batch_reanalyze(
                              # 替换主题
                              result["themes"] = llm_raw["themes"]
                              result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
-                        # 情感分歧也采纳
-                        llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
-                        v4_pol = result["sentiment"].get("polarity", "")
-                        if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
-                            result["sentiment"]["polarity"] = llm_pol
-                            result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
-                            result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
-                except Exception:
-                    pass  # LLM 不可用则静默降级
+                         # 情感分歧也采纳
+                         llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
+                         v4_pol = result["sentiment"].get("polarity", "")
+                         if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
+                             result["sentiment"]["polarity"] = llm_pol
+                             result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
+                             result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
+                 except Exception:
+                     pass  # LLM 不可用则静默降级
 
             if conf < 0.6:
                 low_conf_records.append(record_id)
