@@ -50,6 +50,13 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
     return '#5a7d5a'
   })
 
+  const analyzeProgressColor = computed(() => {
+    const pct = analyzeProgress.value.percent
+    if (pct < 30) return '#4e8cff'
+    if (pct < 70) return '#ff9800'
+    return '#67c23a'
+  })
+
   async function startBatchAnalyze(mode: 'incremental' | 'full') {
     showAnalyzeModeDialog.value = false
     analyzing.value = true
@@ -175,6 +182,7 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
     closeBatchResultDialog,
     // computed
     translateProgressColor,
+    analyzeProgressColor,
     // 方法
     startBatchAnalyze,
     cancelBatchAnalyze,

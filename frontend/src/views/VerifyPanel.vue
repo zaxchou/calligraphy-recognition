@@ -77,6 +77,7 @@
           <span class="nav-indicator">{{ currentIndex + 1 }} / {{ filteredRecords.length }}</span>
           <el-button plain size="small" class="btn-edit" @click="nextRecord" :disabled="currentIndex === filteredRecords.length - 1">下一条<el-icon><ArrowRight /></el-icon></el-button>
           <el-button plain size="small" class="btn-edit" @click="openAnnotator"><el-icon><Edit /></el-icon>手动标注</el-button>
+          <el-button plain size="small" class="btn-edit" @click="reanalyzeRecord" :loading="reanalyzing"><el-icon><Refresh /></el-icon>重分析(v5.5)</el-button>
         </div>
       </div>
       <div class="verify-body">
@@ -235,7 +236,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Bottom, RefreshRight, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position } from '@element-plus/icons-vue'
+import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position } from '@element-plus/icons-vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
 import { tubiApi, sealsApi } from '../api'
 
@@ -251,7 +252,7 @@ const props = defineProps({
   apiBase: { type: String, default: 'http://localhost:8001/api/v1' },
   artist: { type: String, default: 'all' },
 })
-const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title'])
+const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title', 'reanalyze'])
 
 const filterPeriod = ref('')
 const verifyFilter = ref('unverified')
@@ -260,6 +261,7 @@ const editContent = ref('')
 const editSealContent = ref('')
 const editAnalysisNote = ref('')
 const showFullImage = ref(false)
+const reanalyzing = ref(false)
 
 // 印章标签模式
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
@@ -458,6 +460,7 @@ async function jumpToRecordById(id) {
   return false
 }
 function openAnnotator() { if (!currentRecord.value?.id) return; emit('open-annotator', currentRecord.value.id) }
+function reanalyzeRecord() { if (!currentRecord.value?.id) return; emit('reanalyze', currentRecord.value.id) }
 
 // ── 作品名内联编辑 ────────────────────────────────
 function startEditTitle() {

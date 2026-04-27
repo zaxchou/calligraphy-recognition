@@ -142,7 +142,7 @@
         </div>
         <el-progress
           :percentage="analyzeProgress.percent"
-          :color="translateProgressColor"
+          :color="analyzeProgressColor"
           :stroke-width="8"
           class="translate-progress-bar"
         />
@@ -338,6 +338,7 @@
       @analyze="onAnalyze"
       @open-annotator="onOpenAnnotator"
       @update-title="onTitleUpdated"
+      @reanalyze="onReanalyze"
     />
       </el-tab-pane>
 
@@ -512,6 +513,7 @@ const {
   analyzeProgress,
   translateProgress,
   translateProgressColor,
+  analyzeProgressColor,
   startBatchAnalyze,
   cancelBatchAnalyze,
   startBatchTranslate,
@@ -695,6 +697,27 @@ async function onAnalyze(payload) {
 function onOpenAnnotator(id) {
   if (!id) return
   router.push(`/annotate/${id}`)
+}
+
+async function onReanalyze(recordId) {
+  try {
+    const resp = await fetch(`${API_BASE}/content-analysis/reanalyze-one/${recordId}`, { method: 'POST' })
+    const data = await resp.json()
+    if (data.success) {
+      if (data.llm_fixed) {
+        ElMessage.success(`分析完成！DeepSeek修正: ${data.llm_detail}`)
+      } else if (data.llm_error) {
+        ElMessage.warning(`分析完成（LLM调用失败: ${data.llm_error.slice(0, 50)}），使用规则引擎结果`)
+      } else {
+        ElMessage.success('分析完成！')
+      }
+      fetchRecords()
+    } else {
+      ElMessage.error(data.detail || '分析失败')
+    }
+  } catch (err) {
+    ElMessage.error('分析失败: ' + (err.message || err))
+  }
 }
 
 function onTitleUpdated({ id, image_id, title }) {
