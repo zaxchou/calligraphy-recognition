@@ -2178,16 +2178,49 @@ async def batch_reanalyze(
                             # 分歧 → 采纳 LLM 结果
                             llm_overrides = llm_raw
                             llm_corrected += 1
-                            # 替换主题
-                            result["themes"] = llm_raw["themes"]
+                            # 标准化主题名+code
+                            normalized = []
+                            for t in llm_raw["themes"]:
+                                name = t.get("name", "")
+                                norm_name = THEME_NAME_MIGRATION.get(name, name)
+                                code = t.get("code", 0)
+                                normalized.append({"code": code, "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
+                            result["themes"] = normalized
                             result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
+                            # LLM修正后的推导步骤追加
+                            result["sentiment"]["reasoning_steps"].append({
+                                "label": "LLM复核",
+                                "detail": f"低可信度({conf:.2f})触AutoDeepSeek二次判断，原规则判[v4_primary['name']]，LLM判[llm_primary['name']]",
+                                "offset": 0,
+                                "icon": "🤖",
+                            })
+
                         # 情感分歧也采纳
                         llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
                         v4_pol = result["sentiment"].get("polarity", "")
                         if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
                             result["sentiment"]["polarity"] = llm_pol
-                            result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
+                            # LLM返回intensity(0-1)转emotion_score(±5范围)
+                            llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
+                            if llm_pol == "positive":
+                                result["sentiment"]["emotion_score"] = llm_intensity * 5
+                            elif llm_pol == "negative":
+                                result["sentiment"]["emotion_score"] = -llm_intensity * 5
                             result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
+                            # 情感修正推导步骤
+                            result["sentiment"]["reasoning_steps"].append({
+                                "label": "LLM复核",
+                                "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
+                                "offset": 0,
+                                "icon": "🤖",
+                            })
+                        # LLM无分歧时也同步emotion_score
+                        elif llm_pol == v4_pol and llm_pol != "neutral":
+                            llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
+                            if llm_pol == "positive":
+                                result["sentiment"]["emotion_score"] = max(result["sentiment"].get("emotion_score", 0), llm_intensity * 4)
+                            elif llm_pol == "negative":
+                                result["sentiment"]["emotion_score"] = min(result["sentiment"].get("emotion_score", 0), -llm_intensity * 4)
                 except Exception:
                     pass  # LLM 不可用则静默降级
 
@@ -2561,8 +2594,22 @@ async def batch_reanalyze_stream(
                             if theme_diverge:
                                 llm_corrected += 1
                                 fixed_by_llm = True
-                                result["themes"] = llm_raw["themes"]
+                                # 标准化主题名+code
+                                normalized = []
+                                for t in llm_raw["themes"]:
+                                    name = t.get("name", "")
+                                    norm_name = THEME_NAME_MIGRATION.get(name, name)
+                                    code = t.get("code", 0)
+                                    normalized.append({"code": code, "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
+                                result["themes"] = normalized
                                 result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
+                                # LLM修正后推导步骤追加
+                                result["sentiment"]["reasoning_steps"].append({
+                                    "label": "LLM复核",
+                                    "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，LLM判[{llm_primary['name']}]",
+                                    "offset": 0,
+                                    "icon": "🤖",
+                                })
                                 yield sse("llm_fix", {
                                     "record_id": record_id,
                                     "from_theme": v4_primary['name'],
@@ -2574,8 +2621,27 @@ async def batch_reanalyze_stream(
                             v4_pol = result["sentiment"].get("polarity", "")
                             if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
                                 result["sentiment"]["polarity"] = llm_pol
-                                result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
+                                # LLM返回intensity(0-1)转emotion_score(±5范围)
+                                llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
+                                if llm_pol == "positive":
+                                    result["sentiment"]["emotion_score"] = llm_intensity * 5
+                                elif llm_pol == "negative":
+                                    result["sentiment"]["emotion_score"] = -llm_intensity * 5
                                 result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
+                                # 情感修正推导步骤
+                                result["sentiment"]["reasoning_steps"].append({
+                                    "label": "LLM复核",
+                                    "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
+                                    "offset": 0,
+                                    "icon": "🤖",
+                                })
+                            # LLM无分歧时也同步emotion_score（用intensity换算）
+                            elif llm_pol == v4_pol and llm_pol != "neutral":
+                                llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
+                                if llm_pol == "positive":
+                                    result["sentiment"]["emotion_score"] = max(result["sentiment"].get("emotion_score", 0), llm_intensity * 4)
+                                elif llm_pol == "negative":
+                                    result["sentiment"]["emotion_score"] = min(result["sentiment"].get("emotion_score", 0), -llm_intensity * 4)
                     except Exception:
                         pass
 
