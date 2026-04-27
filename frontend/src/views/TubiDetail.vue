@@ -226,7 +226,7 @@
                             class="sentiment-score-text confidence-tag"
                             :class="currentImage.contentAnalysis.v4_confidence >= 0.7 ? 'conf-high' : currentImage.contentAnalysis.v4_confidence >= 0.4 ? 'conf-mid' : 'conf-low'"
                           >
-                            置信度 {{ Math.round(currentImage.contentAnalysis.v4_confidence * 100) }}%
+                            可信度 {{ Math.round(currentImage.contentAnalysis.v4_confidence * 100) }}%
                           </span>
                         </template>
                       </div>

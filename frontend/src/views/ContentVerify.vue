@@ -265,9 +265,9 @@
           <div v-if="batchResultData.report.theme_change_paths.length === 0" class="no-change">无主题变化</div>
         </div>
 
-        <!-- 四.五、置信度分布（v2.1） -->
+        <!-- 四.五、可信度分布（v2.1） -->
         <div class="report-section" v-if="batchResultData.report?.confidence_stats">
-          <div class="section-title">四.五、置信度分布</div>
+          <div class="section-title">四.五、可信度分布</div>
           <div class="confidence-grid">
             <div class="conf-bar-row">
               <span class="conf-label">高 (≥0.7)</span>
@@ -285,9 +285,9 @@
               <span class="conf-count">{{ batchResultData.report.confidence_stats.low }} 幅 ({{ batchResultData.report.confidence_stats.low_percent }}%)</span>
             </div>
           </div>
-          <div class="conf-avg">平均置信度：{{ batchResultData.report.confidence_stats.average }}</div>
+          <div class="conf-avg">平均可信度：{{ batchResultData.report.confidence_stats.average }}</div>
           <div v-if="batchResultData.report.low_conf_count > 0" class="conf-hint">
-            ⚠️ {{ batchResultData.report.low_conf_count }} 幅作品置信度 &lt; 0.6，建议运行分歧检测以校准规则
+            ⚠️ {{ batchResultData.report.low_conf_count }} 幅作品可信度 &lt; 0.6，建议运行分歧检测以校准规则
           </div>
         </div>
 
@@ -709,14 +709,14 @@ function copyReportAsMarkdown() {
   }
 
   if (report.confidence_stats) {
-    md += `## 四.五、置信度分布\n`
+    md += `## 四.五、可信度分布\n`
     md += `| 级别 | 数量 | 占比 |\n|------|------|------|\n`
     md += `| 高 (≥0.7) | ${report.confidence_stats.high} 幅 | ${report.confidence_stats.high_percent}% |\n`
     md += `| 中 (0.4~0.7) | ${report.confidence_stats.mid} 幅 | ${report.confidence_stats.mid_percent}% |\n`
     md += `| 低 (<0.4) | ${report.confidence_stats.low} 幅 | ${report.confidence_stats.low_percent}% |\n`
-    md += `\n平均置信度：${report.confidence_stats.average}\n`
+    md += `\n平均可信度：${report.confidence_stats.average}\n`
     if (r.report.low_conf_count > 0) {
-      md += `\n⚠️ ${r.report.low_conf_count} 幅作品置信度 < 0.6\n`
+      md += `\n⚠️ ${r.report.low_conf_count} 幅作品可信度 < 0.6\n`
     }
     md += `\n`
   }
