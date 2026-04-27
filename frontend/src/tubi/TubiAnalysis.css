@@ -225,6 +225,19 @@
   color: #666;
 }
 
+.sentiment-score-text.confidence-tag {
+  font-weight: 600;
+}
+.sentiment-score-text.confidence-tag.conf-high {
+  color: #67c23a;
+}
+.sentiment-score-text.confidence-tag.conf-mid {
+  color: #e6a23c;
+}
+.sentiment-score-text.confidence-tag.conf-low {
+  color: #f56c6c;
+}
+
 .sentiment-bar-track {
   height: 4px;
   background: #e8e4da;

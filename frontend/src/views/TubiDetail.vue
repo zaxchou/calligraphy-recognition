@@ -220,6 +220,15 @@
                           <span class="sentiment-sep">·</span>
                           <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
                         </template>
+                        <template v-if="currentImage.contentAnalysis.v4_confidence != null">
+                          <span class="sentiment-sep">·</span>
+                          <span
+                            class="sentiment-score-text confidence-tag"
+                            :class="currentImage.contentAnalysis.v4_confidence >= 0.7 ? 'conf-high' : currentImage.contentAnalysis.v4_confidence >= 0.4 ? 'conf-mid' : 'conf-low'"
+                          >
+                            置信度 {{ Math.round(currentImage.contentAnalysis.v4_confidence * 100) }}%
+                          </span>
+                        </template>
                       </div>
                       <div class="sentiment-bar-track">
                         <div

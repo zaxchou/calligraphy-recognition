@@ -1514,7 +1514,8 @@ async def analyze_single(
     from app.services.inscription_content_analyzer import (
         analyze_tiba_content,
         analyze_tiba_content_dual,
-        get_period_phase
+        get_period_phase,
+        classify_inscription_v4
     )
 
     conn = get_db_connection()
@@ -1559,6 +1560,14 @@ async def analyze_single(
         "feature_words": result.feature_words,
         "objects_mentioned": result.objects_mentioned,
     }
+    # v5.5: 附加整体置信度（从规则引擎取出）
+    if not request.use_llm:
+        raw_v4 = classify_inscription_v4(
+            content, year=year, title=title, analysis_note=analysis_note,
+            width_cm=width_cm, height_cm=height_cm, artist=record_artist
+        )
+        content_analysis["v4_confidence"] = raw_v4.get("confidence", 0)
+    content_analysis["rules_version"] = "5.5"
     theme_tags = ",".join([t["name"] for t in result.themes])
 
     # 更新数据库
