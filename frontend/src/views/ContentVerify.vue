@@ -308,6 +308,9 @@
         </div>
       </div>
       <template #footer>
+        <el-button plain size="small" @click="copyReportAsMarkdown" :disabled="!batchResultData">
+          <el-icon><CopyDocument /></el-icon>复制报告(MD)
+        </el-button>
         <el-button @click="closeBatchResultDialog">关闭</el-button>
       </template>
     </el-dialog>
@@ -419,7 +422,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, Refresh, RefreshRight, HomeFilled, Upload } from '@element-plus/icons-vue'
+import { Bottom, Refresh, RefreshRight, HomeFilled, Upload, CopyDocument } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 
 import VerifyPanel from './VerifyPanel.vue'
@@ -650,6 +653,86 @@ function onUploaded(newImages) {
 
 function openUploadDialog() {
   uploadDialogRef.value?.open()
+}
+
+function copyReportAsMarkdown() {
+  const r = batchResultData.value
+  if (!r) return
+  const report = r.report
+  if (!report) return
+
+  let md = `批量重跑报告 — 共 ${r.total} 幅，${r.updated} 幅更新，${r.errors} 幅错误\n\n`
+
+  if (report.theme_coverage?.length) {
+    md += `## 一、主题覆盖率对比\n`
+    md += `| 主题 | 旧 | 旧% | 新 | 新% | 变化 |\n|------|-----|------|-----|------|------|\n`
+    for (const t of report.theme_coverage) {
+      md += `| ${t.name} | ${t.old_count} | ${t.old_percent}% | ${t.new_count} | ${t.new_percent}% | ${t.change >= 0 ? '+' : ''}${t.change} |\n`
+    }
+    md += `\n`
+  }
+
+  if (report.primary_theme_distribution?.length) {
+    md += `## 一.五、第一主题分布对比\n`
+    md += `| 主题 | 旧 | 旧% | 新 | 新% | 变化 |\n|------|-----|------|-----|------|------|\n`
+    for (const t of report.primary_theme_distribution) {
+      md += `| ${t.name} | ${t.old_count} | ${t.old_percent}% | ${t.new_count} | ${t.new_percent}% | ${t.change >= 0 ? '+' : ''}${t.change} |\n`
+    }
+    md += `\n`
+  }
+
+  if (report.sentiment_distribution?.length) {
+    md += `## 二、情感分布对比\n`
+    for (const s of report.sentiment_distribution) {
+      md += `- **${s.polarity}**: 旧 ${s.old_count}(${s.old_percent}%) → 新 ${s.new_count}(${s.new_percent}%) (${s.change >= 0 ? '+' : ''}${s.change})\n`
+    }
+    md += `\n`
+  }
+
+  if (report.emotion_score_stats?.new_average !== undefined) {
+    md += `## 三、情感分数对比\n`
+    md += `| 指标 | 值 |\n|------|----|\n`
+    md += `| 新均值 | ${report.emotion_score_stats.new_average} |\n`
+    if (report.emotion_score_stats.old_average !== null && report.emotion_score_stats.old_average !== undefined) {
+      md += `| 旧均值 | ${report.emotion_score_stats.old_average} |\n`
+    }
+    md += `| 新范围 | ${report.emotion_score_stats.new_min} ~ ${report.emotion_score_stats.new_max} |\n`
+    md += `\n`
+  }
+
+  if (report.theme_change_paths?.length) {
+    md += `## 四、主题变化路径（Top 10）\n`
+    for (const p of report.theme_change_paths) {
+      md += `- ${p.from} → ${p.to}: ${p.count} 幅\n`
+    }
+    md += `\n`
+  }
+
+  if (report.confidence_stats) {
+    md += `## 四.五、置信度分布\n`
+    md += `| 级别 | 数量 | 占比 |\n|------|------|------|\n`
+    md += `| 高 (≥0.7) | ${report.confidence_stats.high} 幅 | ${report.confidence_stats.high_percent}% |\n`
+    md += `| 中 (0.4~0.7) | ${report.confidence_stats.mid} 幅 | ${report.confidence_stats.mid_percent}% |\n`
+    md += `| 低 (<0.4) | ${report.confidence_stats.low} 幅 | ${report.confidence_stats.low_percent}% |\n`
+    md += `\n平均置信度：${report.confidence_stats.average}\n`
+    if (r.report.low_conf_count > 0) {
+      md += `\n⚠️ ${r.report.low_conf_count} 幅作品置信度 < 0.6\n`
+    }
+    md += `\n`
+  }
+
+  if (report.deviation_checks?.length) {
+    md += `## 五、偏差检测与调整建议\n`
+    for (const d of report.deviation_checks) {
+      md += `- [${d.status === 'ok' ? 'OK' : '!'}] **${d.theme}**: ${d.suggestion}\n`
+    }
+    md += `\n`
+  }
+
+  navigator.clipboard.writeText(md).then(
+    () => ElMessage.success('报告已复制到剪贴板'),
+    () => ElMessage.error('复制失败，请手动复制')
+  )
 }
 
 </script>
