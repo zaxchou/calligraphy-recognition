@@ -213,6 +213,15 @@ async def ai_discover_rules(artist_name: str):
     """
     conn = get_db_connection()
     try:
+        # 获取画家的元数据（出生年份等）
+        artist_meta = conn.execute(
+            "SELECT birth_year, background FROM artists WHERE name = ?",
+            (artist_name,)
+        ).fetchone()
+        birth_year_hint = ""
+        if artist_meta and artist_meta["birth_year"]:
+            birth_year_hint = f"\n该画家的已知出生年份：{artist_meta['birth_year']}年。请以此为基础推算其生命周期。"
+
         samples = conn.execute("""
             SELECT inscription_content FROM tubi_analyses
             WHERE artist LIKE ? AND inscription_verified = 1
@@ -251,15 +260,15 @@ async def ai_discover_rules(artist_name: str):
   "theme_note": "该画家主题倾向说明（50字以内，用于LLM prompt注入）",
   "theme_exceptions": {{}},
   "life_stages": [
-    {{"name": "早期", "year_start": 1660, "year_end": 1680, "weight": 1.0, "mood_offset": 0.0}},
-    {{"name": "中期", "year_start": 1680, "year_end": 1700, "weight": 1.5, "mood_offset": -0.2}},
-    {{"name": "晚期", "year_start": 1700, "year_end": 1730, "weight": 2.0, "mood_offset": -0.4}}
+    {{"name": "早期", "year_start": 1980, "year_end": 2000, "weight": 1.0, "mood_offset": 0.0}},
+    {{"name": "中期", "year_start": 2000, "year_end": 2010, "weight": 1.5, "mood_offset": -0.2}},
+    {{"name": "晚期", "year_start": 2010, "year_end": 2025, "weight": 2.0, "mood_offset": -0.4}}
   ],
   "expected_theme_distribution": {{"身世自况": [5,15], "咏物寄兴": [50,70], "画理自叙": [5,12], "时事讽喻": [5,15], "吉语祥瑞": [3,10], "交游赠答": [8,18]}},
   "expected_sentiment_distribution": {{"negative_min": 20, "positive_max": 35, "emotion_mean_max": -0.3}}
 }}
 
-只返回JSON，不要其他文字。life_stages 请根据该画家的实际生平填写年份（如无法确定年份范围，用合理估计）。"""
+只返回JSON，不要其他文字。life_stages 请根据该画家的实际生平填写年份。{birth_year_hint}"""
 
         response = call_qwen_chat(
             messages=[{"role": "user", "content": prompt}],
