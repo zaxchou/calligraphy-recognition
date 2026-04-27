@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">作品上传 · 题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息</p>
+        <p class="page-subtitle">题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息 · 作品上传</p>
       </div>
       <div class="header-center">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
@@ -45,23 +45,6 @@
 
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" class="admin-tabs">
-      <!-- 作品上传 -->
-      <el-tab-pane label="作品上传" name="upload">
-        <div class="tab-content full-tab-content upload-tab-content">
-          <div class="upload-entry">
-            <div class="upload-entry-icon">
-              <el-icon size="64" color="#c96442"><Upload /></el-icon>
-            </div>
-            <h3 class="upload-entry-title">上传作品图片</h3>
-            <p class="upload-entry-desc">支持批量拖拽上传，可选择直接入库、AI文本分析或AI标注图分析</p>
-            <el-button type="primary" size="large" @click="openUploadDialog" class="btn-primary upload-entry-btn">
-              <el-icon><Upload /></el-icon>
-              开始上传
-            </el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-
       <!-- 题跋校对 -->
       <el-tab-pane label="题跋校对" name="verify">
 
@@ -249,6 +232,23 @@
           <ArtistInfoManager />
         </div>
       </el-tab-pane>
+
+      <!-- 作品上传 -->
+      <el-tab-pane label="作品上传" name="upload">
+        <div class="tab-content full-tab-content upload-tab-content">
+          <div class="upload-entry">
+            <div class="upload-entry-icon">
+              <el-icon size="64" color="#c96442"><Upload /></el-icon>
+            </div>
+            <h3 class="upload-entry-title">上传作品图片</h3>
+            <p class="upload-entry-desc">支持批量拖拽上传，可选择直接入库、AI文本分析或AI标注图分析</p>
+            <el-button type="primary" size="large" @click="openUploadDialog" class="btn-primary upload-entry-btn">
+              <el-icon><Upload /></el-icon>
+              开始上传
+            </el-button>
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 上传弹窗 -->
@@ -280,7 +280,7 @@ import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
 const router = useRouter()
 const route = useRoute()
 
-const VALID_TABS = ['upload', 'verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'seal']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'seal', 'upload']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
 const verifyPanelRef = ref(null)
 const uploadDialogRef = ref(null)
