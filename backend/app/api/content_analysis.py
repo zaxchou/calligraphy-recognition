@@ -2037,7 +2037,7 @@ async def reclassify_themes_sentiment(
 
 
 @router.post("/batch-reanalyze")
-async def batch_reanalyze(
+def batch_reanalyze(
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式：跳过已处理的记录（已有 v4_confidence + rules_version ≥ 5.5）"),
 ):
@@ -2470,7 +2470,7 @@ async def batch_reanalyze(
 # ============ 批量重跑（SSE 流式进度） ============
 
 @router.post("/batch-reanalyze/stream")
-async def batch_reanalyze_stream(
+def batch_reanalyze_stream(
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式"),
 ):
@@ -2480,7 +2480,7 @@ async def batch_reanalyze_stream(
     """
     from starlette.responses import StreamingResponse
 
-    async def event_generator():
+    def event_generator():
         import logging, json as _json
         logger = logging.getLogger(__name__)
         from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION, _load_artist_rules, llm_analyze_combined
