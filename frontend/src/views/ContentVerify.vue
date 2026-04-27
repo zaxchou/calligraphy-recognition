@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">题跋校对 · 册页管理 · 标签管理 · 条屏管理 · 尺寸录入 · 作者信息 · 印章管理</p>
+        <p class="page-subtitle">作品上传 · 题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息</p>
       </div>
       <div class="header-center">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
@@ -45,6 +45,23 @@
 
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" class="admin-tabs">
+      <!-- 作品上传 -->
+      <el-tab-pane label="作品上传" name="upload">
+        <div class="tab-content full-tab-content upload-tab-content">
+          <div class="upload-entry">
+            <div class="upload-entry-icon">
+              <el-icon size="64" color="#c96442"><Upload /></el-icon>
+            </div>
+            <h3 class="upload-entry-title">上传作品图片</h3>
+            <p class="upload-entry-desc">支持批量拖拽上传，可选择直接入库、AI文本分析或AI标注图分析</p>
+            <el-button type="primary" size="large" @click="openUploadDialog" class="btn-primary upload-entry-btn">
+              <el-icon><Upload /></el-icon>
+              开始上传
+            </el-button>
+          </div>
+        </div>
+      </el-tab-pane>
+
       <!-- 题跋校对 -->
       <el-tab-pane label="题跋校对" name="verify">
 
@@ -233,6 +250,13 @@
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 上传弹窗 -->
+    <TubiUploadDialog
+      ref="uploadDialogRef"
+      @uploaded="onUploaded"
+      @refresh="fetchRecords"
+    />
   </div>
 </template>
 
@@ -240,7 +264,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, RefreshRight, HomeFilled } from '@element-plus/icons-vue'
+import { Bottom, RefreshRight, HomeFilled, Upload } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 
 import VerifyPanel from './VerifyPanel.vue'
@@ -251,13 +275,15 @@ import DimensionInput from './DimensionInput.vue'
 import AnnotationVerify from './AnnotationVerify.vue'
 import ArtistInfoManager from './ArtistInfoManager.vue'
 import SealManager from './SealManager.vue'
+import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'seal']
+const VALID_TABS = ['upload', 'verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'seal']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
 const verifyPanelRef = ref(null)
+const uploadDialogRef = ref(null)
 
 // 切换标签时同步到 URL query（用 replace 避免污染历史）
 watch(activeTab, (tab) => {
@@ -454,6 +480,17 @@ function onTitleUpdated({ id, image_id, title }) {
     records.value[idx].title = title
     ElMessage.success('作品名已更新')
   }
+}
+
+// 上传完成回调
+function onUploaded(newImages) {
+  // 上传完成后刷新记录列表
+  fetchRecords()
+  ElMessage.success(`已上传 ${newImages.length} 张作品`)
+}
+
+function openUploadDialog() {
+  uploadDialogRef.value?.open()
 }
 
 </script>
@@ -763,5 +800,53 @@ function onTitleUpdated({ id, image_id, title }) {
 .status-text.done {
   color: #5a7d5a;
   font-weight: 600;
+}
+
+/* 作品上传入口 */
+.upload-tab-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.upload-entry {
+  text-align: center;
+  padding: 60px 40px;
+  background: #fff;
+  border-radius: 16px;
+  border: 2px dashed #e8e6dc;
+  max-width: 480px;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+.upload-entry:hover {
+  border-color: #c96442;
+}
+
+.upload-entry-icon {
+  margin-bottom: 20px;
+}
+
+.upload-entry-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #141413;
+  margin: 0 0 10px;
+}
+
+.upload-entry-desc {
+  font-size: 14px;
+  color: #87867f;
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+.upload-entry-btn {
+  padding: 12px 32px;
+  font-size: 16px;
+  border-radius: 10px;
 }
 </style>

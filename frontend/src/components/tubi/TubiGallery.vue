@@ -21,9 +21,6 @@
             搜索
           </el-button>
           <el-tag type="info" size="small" style="margin-left: 8px;">共 {{ historyList.length }} 幅作品</el-tag>
-          <el-button plain size="small" @click="showBatchUploadDialog" :icon="Plus" style="margin-left: 8px;">
-            添加画作
-          </el-button>
         </div>
       </div>
     </template>
@@ -145,7 +142,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['item-click', 'edit', 'delete', 'search', 'load-more', 'clear-tag-filter', 'show-batch-upload'])
+const emit = defineEmits(['item-click', 'edit', 'delete', 'search', 'load-more', 'clear-tag-filter'])
 
 // Local state
 const searchKeyword = ref('')
@@ -199,10 +196,6 @@ function handleLoadMore() {
 
 function clearTagFilter() {
   emit('clear-tag-filter')
-}
-
-function showBatchUploadDialog() {
-  emit('show-batch-upload')
 }
 </script>
 

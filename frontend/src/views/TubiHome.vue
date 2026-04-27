@@ -29,7 +29,6 @@
       @search="$emit('search', $event)"
       @load-more="$emit('load-more')"
       @clear-tag-filter="$emit('clear-tag-filter')"
-      @show-batch-upload="$emit('show-batch-upload')"
     />
 
     <!-- 名家对比区域（始终显示全部作者数据） -->
@@ -73,7 +72,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'item-click', 'edit', 'delete', 'search',
-  'load-more', 'clear-tag-filter', 'show-batch-upload',
+  'load-more', 'clear-tag-filter',
   'more', 'trend-click', 'artist-change'
 ])
 

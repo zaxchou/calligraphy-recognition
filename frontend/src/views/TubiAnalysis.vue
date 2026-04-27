@@ -32,7 +32,6 @@
       @search="handleSearch"
       @load-more="loadMoreGallery"
       @clear-tag-filter="clearTagFilter"
-      @show-batch-upload="openUploadDialog"
       @more="navigateToRanking"
       @artist-change="onArtistChange"
       @trend-click="(id) =&gt; loadHistoryItem(historyList.find(h =&gt; h.id === id))"
@@ -57,7 +56,6 @@
       :get-detail-all-tags="getDetailAllTags"
       @back="backToHome"
       @edit-current="editCurrentImage"
-      @open-upload="openUploadDialog"
       @auto-analyze="autoAnalyze"
       @navigate="navigateToImage"
       @navigate-album="navigateToAlbumItem"
@@ -103,12 +101,6 @@
 
 
 
-    <!-- 上传弹窗 -->
-    <TubiUploadDialog
-      ref="uploadDialogRef"
-      @uploaded="onUploaded"
-      @refresh="loadHistory"
-    />
   </div>
 </template>
 
@@ -133,7 +125,6 @@ import TubiRankingCard from '../components/tubi/TubiRankingCard.vue'
 import TubiGallery from '../components/tubi/TubiGallery.vue'
 import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
 import TubiComparison from '../components/tubi/TubiComparison.vue'
-import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
 import TubiSearchDialog from '../components/tubi/TubiSearchDialog.vue'
 import TubiImagePreviewDialog from '../components/tubi/TubiImagePreviewDialog.vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
@@ -150,7 +141,6 @@ const initialLoading = ref(false)
 
 const canvasRef = ref(null)
 const editDialogRef = ref(null)
-const uploadDialogRef = ref(null)
 const tubiHomeRef = ref(null)
 const tubiDetailRef = ref(null)
 let canvas = null
@@ -571,13 +561,6 @@ function backToHome() {
 
 // ============ 上传回调 ============
 
-function openUploadDialog() {
-  uploadDialogRef.value.open()
-}
-
-function onUploaded(newImages) {
-  uploadedImages.value.push(...newImages)
-}
 
 // ============ 后台轮询：检测历史列表中未完成的作品 ============
 let _historyPollTimer = null
