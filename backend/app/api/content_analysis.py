@@ -2470,7 +2470,7 @@ def batch_reanalyze(
 # ============ 批量重跑（SSE 流式进度） ============
 
 @router.post("/batch-reanalyze/stream")
-def batch_reanalyze_stream(
+async def batch_reanalyze_stream(
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式"),
 ):
@@ -2480,7 +2480,7 @@ def batch_reanalyze_stream(
     """
     from starlette.responses import StreamingResponse
 
-    def event_generator():
+    async def event_generator():
         import logging, json as _json
         logger = logging.getLogger(__name__)
         from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION, _load_artist_rules, llm_analyze_combined
@@ -2586,7 +2586,7 @@ def batch_reanalyze_stream(
                 if conf < 0.6 and text and len(text) > 3:
                     try:
                         import asyncio
-                        llm_raw = asyncio.run(llm_analyze_combined(text, artist=record_artist))
+                        llm_raw = await llm_analyze_combined(text, artist=record_artist)
                         if llm_raw.get("success"):
                             llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
                             v4_primary = result["themes"][0] if result.get("themes") else None

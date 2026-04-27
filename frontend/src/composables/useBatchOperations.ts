@@ -51,7 +51,6 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
   })
 
   async function startBatchAnalyze(mode: 'incremental' | 'full') {
-    // mode 参数保留兼容性，但本地规则引擎始终全量重跑
     showAnalyzeModeDialog.value = false
     analyzing.value = true
     showAnalyzeProgress.value = true
@@ -59,29 +58,39 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
 
     try {
       const artist = getArtist()
+      const incremental = mode === 'incremental'
       const response = await fetch(
-        `${apiBase}/content-analysis/batch-reanalyze?artist=${encodeURIComponent(artist)}`,
+        `${apiBase}/content-analysis/batch-reanalyze/stream?artist=${encodeURIComponent(artist)}&incremental=${incremental}`,
         { method: 'POST' }
       )
-      const data = await response.json()
 
-      if (data.success) {
-        analyzeProgress.value = { current: data.total, total: data.total, status: 'done', percent: 100 }
-
-        // 存储详细对比报告数据
-        batchResultData.value = {
-          total: data.total,
-          updated: data.updated,
-          errors: data.errors,
-          message: data.message,
-          report: data.report,  // 详细对比报告
-        }
-        showBatchResultDialog.value = true
-
-        fetchRecords()
-      } else {
-        ElMessage.error(data.detail || '批量重跑失败')
-      }
+      await streamAnalyzeSSE(response, {
+        onEvent: (event) => {
+          if (event.type === 'total') {
+            analyzeProgress.value = { current: 0, total: event.total, status: 'analyzing', percent: 0 }
+          } else if (event.type === 'progress') {
+            const pct = Math.round((event.current / event.total) * 100)
+            analyzeProgress.value = { current: event.current, total: event.total, status: 'analyzing', percent: pct }
+          } else if (event.type === 'complete') {
+            batchResultData.value = {
+              total: event.total,
+              updated: event.updated,
+              errors: event.errors,
+              message: event.message,
+              report: event.report,
+            }
+            analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
+            showBatchResultDialog.value = true
+            if (event.report?.llm_corrected > 0) {
+              ElMessage.success(`完成！DeepSeek 自动修正了 ${event.report.llm_corrected} 幅`)
+            }
+            fetchRecords()
+          }
+        },
+        onError: (err) => {
+          ElMessage.error('批量重跑失败: ' + err.message)
+        },
+      })
     } catch (err: any) {
       ElMessage.error('批量重跑失败: ' + (err.message || err))
     } finally {
