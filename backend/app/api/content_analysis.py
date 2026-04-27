@@ -2278,13 +2278,14 @@ def batch_reanalyze(
             if auto_tags:
                 cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
                            (json.dumps(auto_tags, ensure_ascii=False), record_id))
-            
+            conn.commit()  # 每条记录提交一次，避免长时间锁库
+
             updated += 1
         except Exception as e:
             errors += 1
             if errors <= 5:
                 logger.error(f"批量重跑错误 id={record_id}: {e}")
-    
+
     conn.commit()
     conn.close()
     
@@ -2695,6 +2696,8 @@ async def batch_reanalyze_stream(
                 if auto_tags:
                     cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
                                 (_json.dumps(auto_tags, ensure_ascii=False), record_id))
+
+                conn.commit()  # 每条记录提交一次，避免长时间锁库
 
                 updated += 1
 
