@@ -37,6 +37,9 @@
         <el-button plain size="small" class="btn-edit" @click="showAnalyzeModeDialog = true" :loading="analyzing">
           <el-icon><Refresh /></el-icon>批量重跑
         </el-button>
+        <el-button plain size="small" class="btn-edit" @click="startIncrementalSmartProcess" :loading="incrementalProcessing">
+          <el-icon><MagicStick /></el-icon>增量智能处理
+        </el-button>
         <el-button plain size="small" class="btn-edit" @click="router.push('/content-analysis')">
           <el-icon><HomeFilled /></el-icon>返回
         </el-button>
@@ -165,7 +168,7 @@
       <div v-if="batchResultData" class="batch-result-body">
         <!-- 概览 -->
         <div class="report-header">
-          <div class="report-title">李鱓作品批量重跑（v5 意图导向分类）— 共 {{ batchResultData.total }} 幅</div>
+          <div class="report-title">{{ batchResultData.message }}</div>
           <div class="report-summary">
             重跑完成: <span class="highlight">{{ batchResultData.updated }}</span> 幅更新,
             <span :class="batchResultData.errors > 0 ? 'error' : ''">{{ batchResultData.errors }}</span> 幅错误
@@ -288,6 +291,9 @@
           <div class="conf-avg">平均可信度：{{ batchResultData.report.confidence_stats.average }}</div>
           <div v-if="batchResultData.report.low_conf_count > 0" class="conf-hint">
             ⚠️ {{ batchResultData.report.low_conf_count }} 幅作品可信度 &lt; 0.6，建议运行分歧检测以校准规则
+          </div>
+          <div v-if="batchResultData.report.llm_corrected > 0" class="conf-hint" style="color:#67c23a">
+            ✅ DeepSeek 自动修正了 {{ batchResultData.report.llm_corrected }} 幅低可信度作品
           </div>
         </div>
 
@@ -422,7 +428,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, Refresh, RefreshRight, HomeFilled, Upload, CopyDocument } from '@element-plus/icons-vue'
+import { Bottom, Refresh, RefreshRight, HomeFilled, Upload, CopyDocument, MagicStick } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 
 import VerifyPanel from './VerifyPanel.vue'
@@ -461,6 +467,7 @@ const totalCount = ref(0)
 const translatedCount = ref(0)
 const analyzedCount = ref(0)
 const annotatedCount = ref(0)
+const incrementalProcessing = ref(false)
 
 // 作者列表
 const artistList = ref([])
@@ -512,6 +519,43 @@ const {
   showBatchResultDialog,
   closeBatchResultDialog,
 } = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => selectedArtist.value })
+
+// 增量智能处理：只跑新记录 + 低可信度自动调 DeepSeek 修复
+async function startIncrementalSmartProcess() {
+  const artist = selectedArtist.value
+  incrementalProcessing.value = true
+  try {
+    const response = await fetch(
+      `${API_BASE}/content-analysis/batch-reanalyze?artist=${encodeURIComponent(artist)}&use_llm=true&incremental=true`,
+      { method: 'POST' }
+    )
+    const data = await response.json()
+    if (data.success) {
+      batchResultData.value = {
+        total: data.total,
+        updated: data.updated,
+        errors: data.errors,
+        message: data.message,
+        report: data.report,
+      }
+      showBatchResultDialog.value = true
+      if (data.report?.llm_corrected > 0) {
+        ElMessage.success(`完成！DeepSeek 自动修正了 ${data.report.llm_corrected} 幅`)
+      } else if (data.total > 0) {
+        ElMessage.success(`完成！共处理 ${data.total} 幅新作品`)
+      } else {
+        ElMessage.info('没有新作品需要处理')
+      }
+      fetchRecords()
+    } else {
+      ElMessage.error(data.detail || '处理失败')
+    }
+  } catch (err) {
+    ElMessage.error('处理失败: ' + (err.message || err))
+  } finally {
+    incrementalProcessing.value = false
+  }
+}
 
 // 生命周期
 onMounted(async () => {
@@ -717,6 +761,9 @@ function copyReportAsMarkdown() {
     md += `\n平均可信度：${report.confidence_stats.average}\n`
     if (r.report.low_conf_count > 0) {
       md += `\n⚠️ ${r.report.low_conf_count} 幅作品可信度 < 0.6\n`
+    }
+    if (r.report.llm_corrected > 0) {
+      md += `\n✅ DeepSeek 修正 ${r.report.llm_corrected} 幅\n`
     }
     md += `\n`
   }

@@ -2039,11 +2039,15 @@ async def reclassify_themes_sentiment(
 @router.post("/batch-reanalyze")
 async def batch_reanalyze(
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
+    use_llm: bool = Query(default=False, description="混合模式：低可信度时自动调 DeepSeek 修复"),
+    incremental: bool = Query(default=False, description="增量模式：只处理尚未批量重跑过的记录"),
 ):
     """
-    批量重跑本地规则引擎（classify_inscription_v4）
-    不调用 LLM API，纯本地计算，适合规则迭代校准
-    返回详细对比报告（与 rebatch_analyze_li_shan.py 脚本格式一致）
+    批量重跑分析引擎。
+
+    - use_llm=false（默认）：纯本地规则引擎，秒级完成
+    - use_llm=true：对可信度<0.6的作品自动调 DeepSeek，分歧时采纳LLM结果（更准但需API调用）
+    - incremental=true：跳过已处理过的记录（已有 content_analysis 且 rules_version ≥ "5.5"）
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -2061,19 +2065,27 @@ async def batch_reanalyze(
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 构建查询条件
+    # ── 构建查询条件 ──────────────────────────────────
+    where_clauses = []
+    params = []
+
     if artist and artist != "all":
-        where_clause = "WHERE artist = ?"
-        params = (artist,)
-    else:
-        where_clause = ""
-        params = ()
-    
+        where_clauses.append("artist = ?")
+        params.append(artist)
+
+    if incremental:
+        # 增量模式：跳过已处理过的记录
+        where_clauses.append(
+            "(content_analysis IS NULL OR content_analysis = '' OR json_extract(content_analysis, '$.rules_version') IS NULL OR json_extract(content_analysis, '$.rules_version') < '5.5')"
+        )
+
+    where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
     cur.execute(f"""
         SELECT id, inscription_content, year, title, analysis_note,
                artwork_width_cm, artwork_height_cm, artist, content_analysis, period_phase
         FROM tubi_analyses
-        {where_clause}
+        {where_sql}
         ORDER BY id
     """, params)
     rows = cur.fetchall()
@@ -2089,9 +2101,10 @@ async def batch_reanalyze(
     old_emotion_scores = []
     new_emotion_scores = []
     theme_changes = Counter()        # (旧主题→新主题) 变化统计
-    confidences = []                 # v2.1: 置信度分布
-    low_conf_records = []            # v2.2: 低置信度记录（record_id 列表）
-    
+    confidences = []                 # v2.1: 可信度分布
+    low_conf_records = []            # v2.2: 低可信度记录（record_id 列表）
+    llm_corrected = 0    # 混合模式下LLM修正的数量
+
     updated = 0
     errors = 0
     
@@ -2104,7 +2117,7 @@ async def batch_reanalyze(
         width_cm = row["artwork_width_cm"]
         height_cm = row["artwork_height_cm"]
         record_artist = row["artist"]
-        
+
         # 解析旧 content_analysis
         old_ca = None
         if row["content_analysis"]:
@@ -2112,7 +2125,7 @@ async def batch_reanalyze(
                 old_ca = json.loads(row["content_analysis"])
             except Exception:
                 pass
-        
+
         # 记录旧主题/情感
         if old_ca:
             themes_list = old_ca.get("themes", [])
@@ -2128,7 +2141,7 @@ async def batch_reanalyze(
             old_score = old_sent.get("emotion_score")
             if old_score is not None:
                 old_emotion_scores.append(old_score)
-        
+
         try:
             # 用本地规则引擎重跑
             result = classify_inscription_v4(
@@ -2144,6 +2157,36 @@ async def batch_reanalyze(
 
             conf = result.get("confidence", 0)
             confidences.append(conf)
+
+            # ── 混合模式：低可信度时调 DeepSeek ──────────────
+            llm_overrides = None
+            if use_llm and conf < 0.6 and text and len(text) > 3:
+                try:
+                    import asyncio
+                    from app.services.inscription_content_analyzer import llm_analyze_combined
+                    llm_raw = asyncio.run(llm_analyze_combined(text, artist=record_artist))
+                    if llm_raw.get("success"):
+                        # 对比分歧
+                        llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
+                        v4_primary = result["themes"][0] if result.get("themes") else None
+                        theme_diverge = llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code")
+                        if theme_diverge:
+                             # 分歧 → 采纳 LLM 结果
+                             llm_overrides = llm_raw
+                             llm_corrected += 1
+                             # 替换主题
+                             result["themes"] = llm_raw["themes"]
+                             result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
+                        # 情感分歧也采纳
+                        llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
+                        v4_pol = result["sentiment"].get("polarity", "")
+                        if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
+                            result["sentiment"]["polarity"] = llm_pol
+                            result["sentiment"]["emotion_score"] = llm_raw["sentiment"].get("emotion_score", result["sentiment"]["emotion_score"])
+                            result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
+                except Exception:
+                    pass  # LLM 不可用则静默降级
+
             if conf < 0.6:
                 low_conf_records.append(record_id)
 
@@ -2371,7 +2414,7 @@ async def batch_reanalyze(
         "total": total,
         "updated": updated,
         "errors": errors,
-        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误",
+        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误" + (f"，LLM修正 {llm_corrected} 幅" if llm_corrected > 0 else ""),
         # 详细对比报告数据
         "report": {
             "theme_coverage": theme_coverage,
@@ -2382,6 +2425,7 @@ async def batch_reanalyze(
             "deviation_checks": deviation_checks,
             "confidence_stats": confidence_stats,
             "low_conf_count": len(low_conf_records),
+            "llm_corrected": llm_corrected,
         }
     }
 
