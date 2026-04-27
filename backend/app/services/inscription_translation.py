@@ -45,9 +45,9 @@ async def translate_inscription(inscription: str) -> TranslationResult:
         TranslationResult: 翻译结果
     """
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
+    from app.services.qwen_llm_client import get_text_llm_config
+    api_key, base_url, default_model = get_text_llm_config()
     model = settings.QWEN_TRANSLATION_MODEL
-    base_url = settings.QWEN_BASE_URL
     
     if not api_key:
         return TranslationResult(
@@ -141,9 +141,9 @@ def translate_inscription_sync(inscription: str) -> TranslationResult:
     同步版本的翻译函数（用于worker等非异步环境）
     """
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
+    from app.services.qwen_llm_client import get_text_llm_config
+    api_key, base_url, default_model = get_text_llm_config()
     model = settings.QWEN_TRANSLATION_MODEL
-    base_url = settings.QWEN_BASE_URL
     
     if not api_key:
         return TranslationResult(

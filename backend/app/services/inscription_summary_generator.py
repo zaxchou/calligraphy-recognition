@@ -171,12 +171,12 @@ async def generate_summary(stats_data: Dict[str, Any], corr_data: Optional[Dict[
         artist: 画家名字，用于选择对应的背景上下文
     """
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
+    from app.services.qwen_llm_client import get_text_llm_config
+    api_key, base_url, default_model = get_text_llm_config()
     model = settings.QWEN_INSIGHT_MODEL
-    base_url = settings.QWEN_BASE_URL
 
     if not api_key:
-        return SummaryResult(success=False, error="未配置 QWEN_API_KEY")
+        return SummaryResult(success=False, error="未配置 API Key")
     
     # 获取画家背景上下文
     artist_context = get_artist_context(artist)

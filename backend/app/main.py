@@ -5,7 +5,7 @@ import os
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
-from app.api import recognition, steles, tubi, seals, artists
+from app.api import recognition, steles, tubi, seals, artists, artist_rules
 
 try:
     from app.api import composition
@@ -91,6 +91,12 @@ app.include_router(
     artists.router,
     prefix=settings.API_V1_STR,
     tags=["画家管理"]
+)
+
+app.include_router(
+    artist_rules.router,
+    prefix=settings.API_V1_STR,
+    tags=["画家规则"]
 )
 
 if composition is not None:

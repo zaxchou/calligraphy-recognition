@@ -33,8 +33,8 @@
       </div>
     </div>
 
-    <!-- 创建/编辑弹窗（扩大） -->
-    <el-dialog v-model="showEditDialog" :title="editingArtist ? '编辑画家' : '新增画家'" width="720px" class="claude-dialog">
+    <!-- 创建/编辑弹窗 -->
+    <el-dialog v-model="showEditDialog" :title="editingArtist ? '编辑画家' : '新增画家'" width="520px" class="claude-dialog">
       <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
         <div class="form-row">
           <el-form-item label="画家姓名" required class="form-item-half">
@@ -50,22 +50,8 @@
         <el-form-item label="背景简介">
           <el-input v-model="editForm.background" type="textarea" :rows="3" placeholder="画家背景简介" />
         </el-form-item>
-        <el-form-item label="情感倾向说明">
-          <el-input v-model="editForm.sentiment_note" type="textarea" :rows="3" placeholder="如：晚年多悲凉之感" />
-        </el-form-item>
-        <el-form-item label="主题倾向说明">
-          <el-input v-model="editForm.theme_note" type="textarea" :rows="3" placeholder="如：善画花鸟虫鱼" />
-        </el-form-item>
-        <div class="form-row">
-          <el-form-item label="主题别名（逗号分隔）" class="form-item-half">
-            <el-input v-model="editForm.theme_aliases" placeholder="如：花鸟,虫鱼,兰竹" />
-          </el-form-item>
-          <el-form-item label="专长" class="form-item-half">
-            <el-input v-model="editForm.specialties" placeholder="如：写意花鸟" />
-          </el-form-item>
-        </div>
-        <el-form-item label="关键词规则（JSON）">
-          <el-input v-model="editForm.keyword_rules" type="textarea" :rows="4" placeholder='{"positive": ["..."], "negative": ["..."]}' />
+        <el-form-item label="专长">
+          <el-input v-model="editForm.specialties" placeholder="如：写意花鸟" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -94,14 +80,9 @@ const editForm = ref({
   name: '',
   birth_year: null,
   background: '',
-  sentiment_note: '',
-  theme_note: '',
-  theme_aliases: '',
-  specialties: '',
-  keyword_rules: ''
+  specialties: ''
 })
 
-// 已启用的排前面，否则按创建顺序
 const sortedArtists = computed(() => {
   return [...artists.value].sort((a, b) => {
     if (a.enabled && !b.enabled) return -1
@@ -125,10 +106,7 @@ async function loadArtists() {
 
 function openCreate() {
   editingArtist.value = null
-  editForm.value = {
-    name: '', birth_year: null, background: '', sentiment_note: '',
-    theme_note: '', theme_aliases: '', specialties: '', keyword_rules: ''
-  }
+  editForm.value = { name: '', birth_year: null, background: '', specialties: '' }
   showEditDialog.value = true
 }
 
@@ -138,11 +116,7 @@ function openEdit(artist) {
     name: artist.name,
     birth_year: artist.birth_year,
     background: artist.background || '',
-    sentiment_note: artist.sentiment_note || '',
-    theme_note: artist.theme_note || '',
-    theme_aliases: artist.theme_aliases || '',
-    specialties: artist.specialties || '',
-    keyword_rules: artist.keyword_rules || ''
+    specialties: artist.specialties || ''
   }
   showEditDialog.value = true
 }
@@ -153,7 +127,6 @@ async function handleSave() {
     return
   }
 
-  // 如果修改了姓名，确认同步
   if (editingArtist.value && editForm.value.name !== editingArtist.value.name) {
     try {
       await ElMessageBox.confirm(
@@ -161,9 +134,7 @@ async function handleSave() {
         '确认修改姓名',
         { confirmButtonText: '确认修改', cancelButtonText: '取消', type: 'warning' }
       )
-    } catch {
-      return
-    }
+    } catch { return }
   }
 
   saving.value = true
@@ -179,7 +150,6 @@ async function handleSave() {
     })
     const data = await res.json()
     if (data.success) {
-      // 如果修改了姓名，后端需要同步更新 tubi_analyses 中的 artist 字段
       if (editingArtist.value && editForm.value.name !== editingArtist.value.name) {
         try {
           await fetch(`${API_BASE}/artists/${editingArtist.value.id}/sync-name`, {
@@ -187,9 +157,7 @@ async function handleSave() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ old_name: editingArtist.value.name, new_name: editForm.value.name })
           })
-        } catch (e) {
-          console.error('同步画家姓名失败', e)
-        }
+        } catch (e) { console.error('同步画家姓名失败', e) }
       }
       ElMessage.success(editingArtist.value ? '画家信息已更新' : '画家创建成功')
       showEditDialog.value = false
@@ -243,7 +211,7 @@ async function handleAiFill(artist) {
     const res = await fetch(`${API_BASE}/artists/${artist.id}/ai-fill`, { method: 'POST' })
     const data = await res.json()
     if (data.success) {
-      ElMessage.success('AI查询完成，信息已填充')
+      ElMessage.success(data.message || 'AI查询完成')
       await loadArtists()
     } else {
       ElMessage.error(data.detail || data.message || 'AI查询失败')
@@ -259,84 +227,18 @@ onMounted(() => loadArtists())
 </script>
 
 <style scoped>
-.artist-info-manager {
-  padding: 0;
-}
-
-.toolbar {
-  margin-bottom: 16px;
-}
-
-.artist-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 200px;
-}
-
-.artist-card {
-  background: white;
-  border-radius: 10px;
-  padding: 14px 18px;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
-}
-
-.artist-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.artist-main {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.artist-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-}
-
-.artist-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.artist-actions :deep(.el-button) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.artist-actions :deep(.el-button__content) {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.empty-state {
-  padding: 40px 0;
-}
-
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-
-.form-item-half {
-  flex: 1;
-}
-
-.artist-edit-form :deep(.el-textarea__inner) {
-  min-height: 60px !important;
-}
-
-.rename-warning {
-  font-size: 12px;
-  color: #e6a23c;
-  margin-top: 4px;
-}
+.artist-info-manager { padding: 0; }
+.toolbar { margin-bottom: 16px; }
+.artist-list { display: flex; flex-direction: column; gap: 8px; min-height: 200px; }
+.artist-card { background: white; border-radius: 10px; padding: 14px 18px; box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05); }
+.artist-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.artist-main { display: flex; align-items: center; gap: 8px; }
+.artist-name { font-size: 15px; font-weight: 600; color: #333; }
+.artist-actions { display: flex; gap: 6px; }
+.artist-actions :deep(.el-button) { display: inline-flex; align-items: center; justify-content: center; }
+.artist-actions :deep(.el-button__content) { display: inline-flex; align-items: center; gap: 4px; }
+.empty-state { padding: 40px 0; }
+.form-row { display: flex; gap: 16px; }
+.form-item-half { flex: 1; }
+.rename-warning { font-size: 12px; color: #e6a23c; margin-top: 4px; }
 </style>

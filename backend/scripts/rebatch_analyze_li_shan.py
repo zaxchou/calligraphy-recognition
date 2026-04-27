@@ -18,10 +18,11 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services.inscription_content_analyzer import (
-    classify_inscription_v4, THEMES, THEME_NAME_MIGRATION
+    classify_inscription_v4, THEMES, THEME_NAME_MIGRATION, _load_artist_rules
 )
 from app.services.tibi_analysis_rules import (
-    EXPECTED_THEME_DISTRIBUTION, EXPECTED_SENTIMENT_DISTRIBUTION
+    EXPECTED_THEME_DISTRIBUTION as _DEFAULT_EXPECTED_THEME,
+    EXPECTED_SENTIMENT_DISTRIBUTION as _DEFAULT_EXPECTED_SENTIMENT
 )
 from app.services.auto_tags import compute_tags
 
@@ -45,6 +46,11 @@ def main():
     """, (ARTIST,))
     rows = cur.fetchall()
     total = len(rows)
+
+    artist_rules = _load_artist_rules(ARTIST)
+    EXPECTED_THEME_DISTRIBUTION = artist_rules.get("expected_theme_distribution", _DEFAULT_EXPECTED_THEME)
+    EXPECTED_SENTIMENT_DISTRIBUTION = artist_rules.get("expected_sentiment_distribution", _DEFAULT_EXPECTED_SENTIMENT)
+
     print(f"\n{'='*70}")
     print(f"李鱓作品批量重跑（v5 意图导向分类）— 共 {total} 幅")
     print(f"{'='*70}")

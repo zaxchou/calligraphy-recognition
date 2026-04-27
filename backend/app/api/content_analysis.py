@@ -2038,11 +2038,16 @@ async def batch_reanalyze(
     """
     import logging
     logger = logging.getLogger(__name__)
-    from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION
-    from app.services.tibi_analysis_rules import EXPECTED_THEME_DISTRIBUTION, EXPECTED_SENTIMENT_DISTRIBUTION
+    from app.services.inscription_content_analyzer import classify_inscription_v4, THEME_NAME_MIGRATION, _load_artist_rules
+    from app.services.tibi_analysis_rules import EXPECTED_THEME_DISTRIBUTION as _DEFAULT_EXPECTED_THEME
+    from app.services.tibi_analysis_rules import EXPECTED_SENTIMENT_DISTRIBUTION as _DEFAULT_EXPECTED_SENTIMENT
     from app.services.auto_tags import compute_tags
     from collections import Counter
     import json
+
+    artist_rules = _load_artist_rules(artist if artist and artist != "all" else "李鱓")
+    EXPECTED_THEME_DISTRIBUTION = artist_rules.get("expected_theme_distribution", _DEFAULT_EXPECTED_THEME)
+    EXPECTED_SENTIMENT_DISTRIBUTION = artist_rules.get("expected_sentiment_distribution", _DEFAULT_EXPECTED_SENTIMENT)
     
     conn = get_db_connection()
     cur = conn.cursor()

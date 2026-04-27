@@ -1,14 +1,16 @@
 """
 画家信息管理 API
-- CRUD
-- AI一键查询填充
+- CRUD（仅元数据：姓名/出生年/背景/专长/启用状态）
+- AI一键查询填充（同时写 artists 表 + artist_rules 表）
+- 画家规则独立管理：/api/v1/artist-rules
 """
 import os
 import json
+import re
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
@@ -22,10 +24,6 @@ class ArtistCreate(BaseModel):
     name: str
     birth_year: Optional[int] = None
     background: Optional[str] = ""
-    sentiment_note: Optional[str] = ""
-    theme_note: Optional[str] = ""
-    theme_aliases: Optional[str] = ""
-    keyword_rules: Optional[str] = ""
     specialties: Optional[str] = ""
     enabled: Optional[int] = 1
 
@@ -33,10 +31,6 @@ class ArtistUpdate(BaseModel):
     name: Optional[str] = None
     birth_year: Optional[int] = None
     background: Optional[str] = None
-    sentiment_note: Optional[str] = None
-    theme_note: Optional[str] = None
-    theme_aliases: Optional[str] = None
-    keyword_rules: Optional[str] = None
     specialties: Optional[str] = None
     enabled: Optional[int] = None
 
@@ -88,11 +82,9 @@ async def create_artist(artist: ArtistCreate):
     try:
         now = datetime.now().isoformat()
         cursor = conn.execute(
-            "INSERT INTO artists (name, birth_year, background, sentiment_note, theme_note, "
-            "theme_aliases, keyword_rules, specialties, enabled, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (artist.name, artist.birth_year, artist.background, artist.sentiment_note,
-             artist.theme_note, artist.theme_aliases, artist.keyword_rules,
+            "INSERT INTO artists (name, birth_year, background, specialties, enabled, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (artist.name, artist.birth_year, artist.background,
              artist.specialties, artist.enabled, now, now)
         )
         conn.commit()
@@ -114,8 +106,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate):
             raise HTTPException(status_code=404, detail="画家不存在")
 
         updates = {}
-        for field in ["name", "birth_year", "background", "sentiment_note", "theme_note",
-                       "theme_aliases", "keyword_rules", "specialties", "enabled"]:
+        for field in ["name", "birth_year", "background", "specialties", "enabled"]:
             val = getattr(artist, field, None)
             if val is not None:
                 updates[field] = val
@@ -174,14 +165,12 @@ async def sync_artist_name(artist_id: int, req: SyncNameRequest):
         if not artist:
             raise HTTPException(status_code=404, detail="画家不存在")
 
-        # 更新 tubi_analyses 中的 artist 字段
         result = conn.execute(
             "UPDATE tubi_analyses SET artist = ? WHERE artist = ?",
             (req.new_name, req.old_name)
         )
         updated = result.rowcount
 
-        # 更新 seals 中的 artist_name 字段
         result2 = conn.execute(
             "UPDATE seals SET artist_name = ? WHERE artist_name = ?",
             (req.new_name, req.old_name)
@@ -204,7 +193,7 @@ async def sync_artist_name(artist_id: int, req: SyncNameRequest):
 
 @router.post("/{artist_id}/ai-fill")
 async def ai_fill_artist(artist_id: int):
-    """AI一键查询画家信息并填充"""
+    """AI一键查询画家信息并填充（元数据→artists表，规则→artist_rules表）"""
     conn = get_db_connection()
     try:
         artist = conn.execute("SELECT * FROM artists WHERE id = ?", (artist_id,)).fetchone()
@@ -213,65 +202,92 @@ async def ai_fill_artist(artist_id: int):
 
         artist_name = artist["name"]
 
-        # 调用 LLM 查询画家信息
         try:
-            from openai import OpenAI
-            from app.core.config import get_settings
-            settings = get_settings()
-            client = OpenAI(
-                api_key=settings.QWEN_API_KEY,
-                base_url=settings.QWEN_BASE_URL
-            )
-            prompt = f"""请简要介绍清代画家{artist_name}的以下信息，用JSON格式返回：
+            from app.services.qwen_llm_client import call_qwen_chat
+
+            has_rules = conn.execute(
+                "SELECT id FROM artist_rules WHERE artist_name = ?", (artist_name,)
+            ).fetchone()
+
+            if has_rules:
+                prompt = f"""请简要介绍清代画家{artist_name}的以下信息，用JSON格式返回：
 {{
   "birth_year": 出生年份（整数），
   "background": "背景简介（50字以内）",
-  "sentiment_note": "情感倾向说明（如：晚年多悲凉之感）",
-  "theme_note": "主题倾向说明（如：善画花鸟虫鱼）",
   "specialties": "专长（如：写意花鸟）"
 }}
 只返回JSON，不要其他文字。"""
+            else:
+                prompt = f"""请简要介绍画家{artist_name}的以下信息，用JSON格式返回：
+{{
+  "birth_year": 出生年份（整数），
+  "background": "背景简介（50字以内）",
+  "specialties": "专长（如：写意花鸟）",
+  "sentiment_note": "情感倾向说明（如：晚年多悲凉之感，50字以内）",
+  "theme_note": "主题倾向说明（如：善画花鸟虫鱼，50字以内）",
+  "emotion_baseline": 情感基线值（-1.0~1.0之间的浮点数）
+}}
+只返回JSON，不要其他文字。"""
 
-            response = client.chat.completions.create(
-                model="qwen-turbo",
+            response = call_qwen_chat(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=500
+                max_tokens=500,
             )
-            result = response.choices[0].message.content
-            # 解析JSON
-            import re
+            if "error" in response:
+                return {"success": False, "message": f"AI调用失败: {response['error']}"}
+            result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
             json_match = re.search(r'\{[^}]+\}', result, re.DOTALL)
             if json_match:
                 info = json.loads(json_match.group())
-                updates = {}
-                if info.get("birth_year") and not artist["birth_year"]:
-                    updates["birth_year"] = int(info["birth_year"])
-                if info.get("background") and not artist["background"]:
-                    updates["background"] = info["background"]
-                if info.get("sentiment_note") and not artist["sentiment_note"]:
-                    updates["sentiment_note"] = info["sentiment_note"]
-                if info.get("theme_note") and not artist["theme_note"]:
-                    updates["theme_note"] = info["theme_note"]
-                if info.get("specialties") and not artist["specialties"]:
-                    updates["specialties"] = info["specialties"]
 
-                if updates:
-                    updates["updated_at"] = datetime.now().isoformat()
-                    set_clause = ", ".join(f"{k} = ?" for k in updates)
+                artist_updates = {}
+                if info.get("birth_year") and not artist["birth_year"]:
+                    artist_updates["birth_year"] = int(info["birth_year"])
+                if info.get("background") and not artist["background"]:
+                    artist_updates["background"] = info["background"]
+                if info.get("specialties") and not artist["specialties"]:
+                    artist_updates["specialties"] = info["specialties"]
+
+                if artist_updates:
+                    artist_updates["updated_at"] = datetime.now().isoformat()
+                    set_clause = ", ".join(f"{k} = ?" for k in artist_updates)
                     conn.execute(
                         f"UPDATE artists SET {set_clause} WHERE id = ?",
-                        (*updates.values(), artist_id)
+                        (*artist_updates.values(), artist_id)
                     )
-                    conn.commit()
-                    return {"success": True, "message": "AI查询完成，信息已填充", "updates": updates}
-                else:
-                    return {"success": True, "message": "AI查询完成，无需更新"}
+
+                rules_created = False
+                if not has_rules and (info.get("sentiment_note") or info.get("emotion_baseline") is not None):
+                    now = datetime.now().isoformat()
+                    conn.execute(
+                        """INSERT OR IGNORE INTO artist_rules (
+                            artist_name, emotion_baseline, life_stages, sentiment_note,
+                            theme_note, theme_exceptions, expected_theme_distribution,
+                            expected_sentiment_distribution, rules_version, created_at, updated_at
+                        ) VALUES (?, ?, '[]', ?, ?, '{}', '{}', '{}', '5.5-ai', ?, ?)""",
+                        (
+                            artist_name,
+                            float(info.get("emotion_baseline", 0.0)),
+                            info.get("sentiment_note", ""),
+                            info.get("theme_note", ""),
+                            now, now
+                        )
+                    )
+                    rules_created = True
+
+                conn.commit()
+
+                msg = "AI查询完成"
+                if artist_updates:
+                    msg += "，元数据已填充"
+                if rules_created:
+                    msg += "，规则包已创建"
+                if not artist_updates and not rules_created:
+                    msg += "，无需更新"
+                return {"success": True, "message": msg, "updates": artist_updates, "rules_created": rules_created}
             else:
                 return {"success": True, "message": "AI查询完成，但无法解析结果"}
-        except ImportError:
-            # qwen_service 不可用时，返回提示
-            return {"success": False, "message": "AI服务不可用"}
         except Exception as e:
             return {"success": False, "message": f"AI查询失败: {str(e)}"}
     except HTTPException:

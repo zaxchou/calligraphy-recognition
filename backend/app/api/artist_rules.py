@@ -1,0 +1,322 @@
+"""
+画家规则管理 API
+- CRUD（规则增删改查）
+- AI 规则发现（为新画家生成规则包）
+"""
+import json
+import re
+from datetime import datetime
+from typing import Optional, Dict, List
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from app.core.database import get_db_connection
+
+router = APIRouter(prefix="/artist-rules", tags=["artist-rules"])
+
+
+# ============ 数据模型 ============
+
+class ArtistRuleCreate(BaseModel):
+    artist_name: str
+    emotion_baseline: float = 0.0
+    life_stages: Optional[List[Dict]] = None
+    sentiment_note: Optional[str] = ""
+    theme_note: Optional[str] = ""
+    theme_exceptions: Optional[Dict] = None
+    expected_theme_distribution: Optional[Dict] = None
+    expected_sentiment_distribution: Optional[Dict] = None
+    rules_version: str = "5.4"
+
+
+class ArtistRuleUpdate(BaseModel):
+    artist_name: Optional[str] = None
+    emotion_baseline: Optional[float] = None
+    life_stages: Optional[List[Dict]] = None
+    sentiment_note: Optional[str] = None
+    theme_note: Optional[str] = None
+    theme_exceptions: Optional[Dict] = None
+    expected_theme_distribution: Optional[Dict] = None
+    expected_sentiment_distribution: Optional[Dict] = None
+    rules_version: Optional[str] = None
+
+
+def _row_to_dict(row) -> Dict:
+    """将数据库行转为字典，解析 JSON 字段"""
+    d = dict(row)
+    for field in ["life_stages", "theme_exceptions", "expected_theme_distribution",
+                   "expected_sentiment_distribution"]:
+        if d.get(field) and isinstance(d[field], str):
+            try:
+                d[field] = json.loads(d[field])
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return d
+
+
+# ============ API 端点 ============
+
+@router.get("")
+async def list_artist_rules():
+    """列出所有画家规则"""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute("SELECT * FROM artist_rules ORDER BY id").fetchall()
+        rules = [_row_to_dict(row) for row in rows]
+        return {"success": True, "rules": rules}
+    finally:
+        conn.close()
+
+
+@router.get("/{rule_id}")
+async def get_artist_rule(rule_id: int):
+    """获取单条画家规则"""
+    conn = get_db_connection()
+    try:
+        row = conn.execute("SELECT * FROM artist_rules WHERE id = ?", (rule_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="规则不存在")
+        return {"success": True, "rule": _row_to_dict(row)}
+    finally:
+        conn.close()
+
+
+@router.get("/by-name/{artist_name}")
+async def get_artist_rule_by_name(artist_name: str):
+    """按画家名称获取规则"""
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM artist_rules WHERE artist_name = ?", (artist_name,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="该画家规则不存在")
+        return {"success": True, "rule": _row_to_dict(row)}
+    finally:
+        conn.close()
+
+
+@router.post("")
+async def create_artist_rule(rule: ArtistRuleCreate):
+    """创建画家规则"""
+    conn = get_db_connection()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM artist_rules WHERE artist_name = ?", (rule.artist_name,)
+        ).fetchone()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"画家 {rule.artist_name} 的规则已存在")
+
+        now = datetime.now().isoformat()
+        conn.execute(
+            """INSERT INTO artist_rules (
+                artist_name, emotion_baseline, life_stages, sentiment_note,
+                theme_note, theme_exceptions, expected_theme_distribution,
+                expected_sentiment_distribution, rules_version, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                rule.artist_name,
+                rule.emotion_baseline,
+                json.dumps(rule.life_stages or [], ensure_ascii=False),
+                rule.sentiment_note or "",
+                rule.theme_note or "",
+                json.dumps(rule.theme_exceptions or {}, ensure_ascii=False),
+                json.dumps(rule.expected_theme_distribution or {}, ensure_ascii=False),
+                json.dumps(rule.expected_sentiment_distribution or {}, ensure_ascii=False),
+                rule.rules_version,
+                now, now
+            )
+        )
+        conn.commit()
+        return {"success": True, "message": f"画家 {rule.artist_name} 规则创建成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.put("/{rule_id}")
+async def update_artist_rule(rule_id: int, rule: ArtistRuleUpdate):
+    """更新画家规则"""
+    conn = get_db_connection()
+    try:
+        existing = conn.execute(
+            "SELECT * FROM artist_rules WHERE id = ?", (rule_id,)
+        ).fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail="规则不存在")
+
+        updates = {}
+        for field in ["artist_name", "emotion_baseline", "sentiment_note", "theme_note",
+                       "rules_version"]:
+            val = getattr(rule, field, None)
+            if val is not None:
+                updates[field] = val
+
+        for field in ["life_stages", "theme_exceptions", "expected_theme_distribution",
+                       "expected_sentiment_distribution"]:
+            val = getattr(rule, field, None)
+            if val is not None:
+                updates[field] = json.dumps(val, ensure_ascii=False)
+
+        if updates:
+            updates["updated_at"] = datetime.now().isoformat()
+            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            conn.execute(
+                f"UPDATE artist_rules SET {set_clause} WHERE id = ?",
+                (*updates.values(), rule_id)
+            )
+            conn.commit()
+
+        return {"success": True, "message": "规则更新成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.delete("/{rule_id}")
+async def delete_artist_rule(rule_id: int):
+    """删除画家规则"""
+    conn = get_db_connection()
+    try:
+        existing = conn.execute(
+            "SELECT id FROM artist_rules WHERE id = ?", (rule_id,)
+        ).fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail="规则不存在")
+
+        conn.execute("DELETE FROM artist_rules WHERE id = ?", (rule_id,))
+        conn.commit()
+        return {"success": True, "message": "规则已删除"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.post("/ai-discover/{artist_name}")
+async def ai_discover_rules(artist_name: str):
+    """
+    AI 规则发现：为新画家分析样本书法，生成初始规则包。
+    从 tubi_analyses 中取该画家的已校对题跋作为样本，调用 LLM 生成规则。
+    """
+    conn = get_db_connection()
+    try:
+        samples = conn.execute("""
+            SELECT inscription_content FROM tubi_analyses
+            WHERE artist LIKE ? AND inscription_verified = 1
+            AND inscription_content IS NOT NULL AND LENGTH(inscription_content) > 5
+            LIMIT 30
+        """, (f"%{artist_name}%",)).fetchall()
+
+        if not samples:
+            return {
+                "success": False,
+                "message": f"画家 {artist_name} 没有已校对的题跋样本，请先校对后再试"
+            }
+
+        sample_texts = [row["inscription_content"][:300] for row in samples]
+        combined_samples = "\n---\n".join(sample_texts[:15])
+
+        from app.services.qwen_llm_client import call_qwen_chat
+        from app.services.tibi_analysis_rules import THEMES
+
+        theme_names = "\n".join(
+            f"  {k}: {v['name']} - {v['description']}" for k, v in THEMES.items()
+        )
+
+        prompt = f"""你是中国古代书画题跋研究专家。请分析以下画家 {artist_name} 的 {len(sample_texts)} 条题跋样本，为其生成分析规则包。
+
+【六大主题定义】
+{theme_names}
+
+【题跋样本】
+{combined_samples}
+
+【要求】返回严格JSON格式（不要markdown包裹）：
+{{
+  "emotion_baseline": 该画家情感基线（-1.0~1.0之间的浮点数，负值偏消极），
+  "sentiment_note": "该画家题跋情感特点（50字以内，用于LLM prompt注入）",
+  "theme_note": "该画家主题倾向说明（50字以内，用于LLM prompt注入）",
+  "theme_exceptions": {{}},
+  "life_stages": [
+    {{"name": "早期", "year_start": 1660, "year_end": 1680, "weight": 1.0, "mood_offset": 0.0}},
+    {{"name": "中期", "year_start": 1680, "year_end": 1700, "weight": 1.5, "mood_offset": -0.2}},
+    {{"name": "晚期", "year_start": 1700, "year_end": 1730, "weight": 2.0, "mood_offset": -0.4}}
+  ],
+  "expected_theme_distribution": {{"身世自况": [5,15], "咏物寄兴": [50,70], "画理自叙": [5,12], "时事讽喻": [5,15], "吉语祥瑞": [3,10], "交游赠答": [8,18]}},
+  "expected_sentiment_distribution": {{"negative_min": 20, "positive_max": 35, "emotion_mean_max": -0.3}}
+}}
+
+只返回JSON，不要其他文字。life_stages 请根据该画家的实际生平填写年份（如无法确定年份范围，用合理估计）。"""
+
+        response = call_qwen_chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=1500,
+        )
+
+        if "error" in response:
+            return {"success": False, "message": f"AI调用失败: {response['error']}"}
+
+        result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        json_match = re.search(r'\{[\s\S]*\}', result)
+        if not json_match:
+            return {"success": False, "message": "LLM 返回无法解析", "raw": result[:500]}
+
+        info = json.loads(json_match.group())
+
+        now = datetime.now().isoformat()
+        conn.execute(
+            """INSERT INTO artist_rules (
+                artist_name, emotion_baseline, life_stages, sentiment_note,
+                theme_note, theme_exceptions, expected_theme_distribution,
+                expected_sentiment_distribution, rules_version, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                artist_name,
+                float(info.get("emotion_baseline", 0.0)),
+                json.dumps(info.get("life_stages", []), ensure_ascii=False),
+                info.get("sentiment_note", ""),
+                info.get("theme_note", ""),
+                json.dumps(info.get("theme_exceptions", {}), ensure_ascii=False),
+                json.dumps(info.get("expected_theme_distribution", {}), ensure_ascii=False),
+                json.dumps(info.get("expected_sentiment_distribution", {}), ensure_ascii=False),
+                "5.4-ai",
+                now, now
+            )
+        )
+        conn.commit()
+
+        return {
+            "success": True,
+            "message": f"AI 规则发现完成，已为 {artist_name} 创建规则包",
+            "rule": {
+                "artist_name": artist_name,
+                "emotion_baseline": info.get("emotion_baseline"),
+                "sentiment_note": info.get("sentiment_note"),
+                "theme_note": info.get("theme_note"),
+            }
+        }
+
+    except HTTPException:
+        raise
+    except ImportError:
+        return {"success": False, "message": "AI服务不可用，请检查 QWEN_API_KEY 配置"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()

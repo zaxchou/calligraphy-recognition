@@ -309,4 +309,29 @@ export const sealsApi = {
   }
 }
 
+// ── 画家规则 API ───────────────────────────────────────────────────────────
+export const artistRulesApi = {
+  list() {
+    return api.get('/artist-rules')
+  },
+  get(ruleId) {
+    return api.get(`/artist-rules/${ruleId}`)
+  },
+  getByName(artistName) {
+    return api.get(`/artist-rules/by-name/${encodeURIComponent(artistName)}`)
+  },
+  create(data) {
+    return api.post('/artist-rules', data)
+  },
+  update(ruleId, data) {
+    return api.put(`/artist-rules/${ruleId}`, data)
+  },
+  delete(ruleId) {
+    return api.delete(`/artist-rules/${ruleId}`)
+  },
+  aiDiscover(artistName) {
+    return api.post(`/artist-rules/ai-discover/${encodeURIComponent(artistName)}`)
+  }
+}
+
 export default api

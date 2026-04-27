@@ -29,19 +29,60 @@ from app.services.tibi_analysis_rules import (
     LLM_COMBINED_PROMPT_V1, LLM_CONFLICT_RETRY_PROMPT, LLM_THEME_PROMPT_V3,
     ARTIST_SENTIMENT_NOTES, ARTIST_THEME_NOTES,
     RECIPIENT_MARKERS, SOCIAL_NO_RECIPIENT_DISCOUNT,
+    DEFAULT_ARTIST_RULES, HARDCODED_ARTIST_RULES,
 )
 
 
+_cache_artist_rules: Dict[str, Dict] = {}
+
+
+def _load_artist_rules(artist_name: str) -> Dict:
+    """加载画家规则：DB 优先 → 硬编码兜底 → 系统默认值"""
+    if not artist_name:
+        return dict(DEFAULT_ARTIST_RULES)
+    if artist_name in _cache_artist_rules:
+        return _cache_artist_rules[artist_name]
+
+    try:
+        from app.core.database import get_db_connection
+        conn = get_db_connection()
+        try:
+            row = conn.execute(
+                "SELECT * FROM artist_rules WHERE artist_name = ?", (artist_name,)
+            ).fetchone()
+            if row:
+                rules = dict(row)
+                for field in ["life_stages", "theme_exceptions",
+                               "expected_theme_distribution", "expected_sentiment_distribution"]:
+                    if rules.get(field) and isinstance(rules[field], str):
+                        try:
+                            rules[field] = json.loads(rules[field])
+                        except (json.JSONDecodeError, TypeError):
+                            rules[field] = DEFAULT_ARTIST_RULES.get(field, {})
+                _cache_artist_rules[artist_name] = rules
+                return rules
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+    rules = HARDCODED_ARTIST_RULES.get(artist_name, dict(DEFAULT_ARTIST_RULES))
+    _cache_artist_rules[artist_name] = rules
+    return rules
+
+
 def _get_artist_sentiment_note(artist: str = None) -> str:
-    """根据画家返回情感分析的特殊注意事项（从规则中心读取）"""
+    """根据画家返回情感分析的特殊注意事项（DB优先 → 硬编码兜底）"""
     name = get_artist_display_name(artist) if artist else ""
-    return ARTIST_SENTIMENT_NOTES.get(name, "")
+    rules = _load_artist_rules(name)
+    return rules.get("sentiment_note", "")
 
 
 def _get_artist_theme_note(artist: str = None) -> Tuple[str, str]:
-    """根据画家返回主题分析的特殊注意事项（从规则中心读取）"""
+    """根据画家返回主题分析的特殊注意事项（DB优先 → 硬编码兜底）"""
     name = get_artist_display_name(artist) if artist else ""
-    return ARTIST_THEME_NOTES.get(name, ("", ""))
+    rules = _load_artist_rules(name)
+    return (rules.get("theme_note", ""), "")
 
 # jieba 中文分词
 import jieba
@@ -93,11 +134,29 @@ def _extract_material_category_from_title(title: str, analysis_note: str = None)
 # v4 核心函数
 # ══════════════════════════════════════════════════════════════════════
 
-def get_life_stage(year: int) -> Dict:
+def get_life_stage(year: int, artist: str = None) -> Dict:
     """
     查表1：年份 → 人生阶段 + 基线情感 + 权重
+    优先使用 DB 中画家的 life_stages 规则，兜底用 LIFE_STAGE_TABLE
     返回 {"stage": ..., "baseline_emotion": ..., "emotion_offset": ..., "weight": ..., "description": ...}
     """
+    artist_name = get_artist_display_name(artist) if artist else ""
+    rules = _load_artist_rules(artist_name)
+    life_stages = rules.get("life_stages", [])
+
+    if year is not None and life_stages:
+        for stage in life_stages:
+            start = stage.get("year_start", 0)
+            end = stage.get("year_end", 0)
+            if start <= year <= end:
+                return {
+                    "stage": stage.get("name", "未知"),
+                    "baseline_emotion": "中立",
+                    "emotion_offset": stage.get("mood_offset", 0.0),
+                    "weight": stage.get("weight", 1.0),
+                    "description": stage.get("description", ""),
+                }
+
     if year is None:
         return {
             "stage": "未知",
@@ -109,10 +168,9 @@ def get_life_stage(year: int) -> Dict:
     for (start, end), info in LIFE_STAGE_TABLE.items():
         if start <= year <= end:
             return info
-    # 超出已知范围
     if year < 1714:
-        return LIFE_STAGE_TABLE[(1714, 1722)]  # 按早期处理
-    return LIFE_STAGE_TABLE[(1746, 1760)]  # 按晚期处理
+        return LIFE_STAGE_TABLE[(1714, 1722)]
+    return LIFE_STAGE_TABLE[(1746, 1760)]
 
 
 def match_painting_materials(
@@ -263,7 +321,7 @@ def classify_inscription_v4(
         inscription_content = text
 
     # ── 维度1：时间信号 ──────────────────────────────────────────
-    life_stage = get_life_stage(year)
+    life_stage = get_life_stage(year, artist)
     signals["time"] = {
         "year": year,
         "stage": life_stage["stage"],
@@ -459,7 +517,8 @@ def classify_inscription_v4(
     # ── 画家情感基线修正 ─────────────────────────────────────────────
     # v5.4: 基线修正系数按分期差异化——晚期更强，早期更弱
     artist_name = get_artist_display_name(artist) if artist else ""
-    baseline = ARTIST_EMOTION_BASELINE.get(artist_name, ARTIST_EMOTION_BASELINE.get("default", 0.0))
+    artist_rules = _load_artist_rules(artist_name)
+    baseline = artist_rules.get("emotion_baseline", 0.0)
     if baseline != 0.0:
         if abs(text_emotion_score) < 1.5:
             stage_name = life_stage.get("stage", "")
@@ -528,19 +587,22 @@ def classify_inscription_v4(
     theme_sentiment_applied = False
     if main_theme_code and main_theme_code in THEME_SENTIMENT_OVERRIDE:
         override_rule = THEME_SENTIMENT_OVERRIDE[main_theme_code]
-        
-        # v5: 检查画家特殊例外（如李鱓的"假吉祥真讽喻"）
-        artist_exception = override_rule.get("artist_exception", {})
-        if artist_name in artist_exception:
-            exc = artist_exception[artist_name]
+
+        # v5.5: 合并 DB 中的画家特殊例外优先级高于规则中心
+        db_exceptions = artist_rules.get("theme_exceptions", {})
+        merged_exception = dict(override_rule.get("artist_exception", {}))
+        if str(main_theme_code) in db_exceptions:
+            db_exc = db_exceptions[str(main_theme_code)]
+            merged_exception[artist_name] = db_exc
+
+        if artist_name in merged_exception:
+            exc = merged_exception[artist_name]
             if any(kw in (text or "") for kw in exc.get("override_if_contains", [])):
-                # 例外触发：反转极性
                 special_rules.append(f"画家特殊例外: {artist_name} 含{exc['override_if_contains']}，极性反转")
-                emotion_score -= 3.0  # 大幅偏阴
+                emotion_score -= 3.0
                 emotion_rules.append({"text": f"画家例外反转 {artist_name}", "offset": -3.0})
                 theme_sentiment_applied = True
             else:
-                # 正常应用主题情感修正
                 special_rules.append(override_rule["note"])
                 _bonus = override_rule["override_bonus"]
                 emotion_score += _bonus
@@ -549,7 +611,6 @@ def classify_inscription_v4(
                     emotion_score = min(emotion_score, override_rule["min_score"])
                 theme_sentiment_applied = True
         else:
-            # 无特殊例外，正常应用
             special_rules.append(override_rule["note"])
             _bonus = override_rule["override_bonus"]
             emotion_score += _bonus
@@ -569,10 +630,12 @@ def classify_inscription_v4(
     # 主题强制极性（兜底）
     if theme_sentiment_applied and main_theme_code in THEME_SENTIMENT_OVERRIDE:
         override_rule = THEME_SENTIMENT_OVERRIDE[main_theme_code]
-        # 检查画家例外是否已反转
-        artist_exception = override_rule.get("artist_exception", {})
-        if artist_name in artist_exception and any(kw in (text or "") for kw in artist_exception[artist_name].get("override_if_contains", [])):
-            polarity = "negative"  # 反讽→消极
+        merged_exception = dict(override_rule.get("artist_exception", {}))
+        db_exceptions = artist_rules.get("theme_exceptions", {})
+        if str(main_theme_code) in db_exceptions:
+            merged_exception[artist_name] = db_exceptions[str(main_theme_code)]
+        if artist_name in merged_exception and any(kw in (text or "") for kw in merged_exception[artist_name].get("override_if_contains", [])):
+            polarity = "negative"
         else:
             polarity = override_rule["polarity"]
 
@@ -934,9 +997,9 @@ async def llm_retry_with_conflict(text: str, llm_themes: List[Dict], llm_sentime
     当检测到矛盾时，用更详细的 prompt 让 LLM 重新判断
     """
     from app.core.config import get_settings
+    from app.services.qwen_llm_client import get_text_llm_config
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
-    base_url = settings.QWEN_BASE_URL
+    api_key, base_url, text_model = get_text_llm_config()
 
     if not api_key:
         return {"success": False, "error": "未配置API Key"}
@@ -961,7 +1024,7 @@ async def llm_retry_with_conflict(text: str, llm_themes: List[Dict], llm_sentime
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "qwen3.5-plus",
+                    "model": text_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 300,
                     "temperature": 0.1,
@@ -987,13 +1050,13 @@ async def llm_retry_with_conflict(text: str, llm_themes: List[Dict], llm_sentime
 
 async def llm_theme_classification_v3(text: str, artist: str = None) -> List[Dict]:
     """
-    调用 Qwen Turbo 分析主题分类（v3多标签版本）
+    调用 LLM 分析主题分类（v3多标签版本）
     返回格式： [{"code": 3, "name": "讽喻社会与民生", "confidence": 0.9}, ...]
     """
     from app.core.config import get_settings
+    from app.services.qwen_llm_client import get_text_llm_config
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
-    base_url = settings.QWEN_BASE_URL
+    api_key, base_url, text_model = get_text_llm_config()
 
     if not api_key:
         return [{"code": 0, "name": "未分类", "confidence": 0.0}]
@@ -1010,7 +1073,7 @@ async def llm_theme_classification_v3(text: str, artist: str = None) -> List[Dic
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "qwen3.5-plus",
+                    "model": text_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 200,
                     "temperature": 0.1,
@@ -1030,12 +1093,12 @@ async def llm_theme_classification_v3(text: str, artist: str = None) -> List[Dic
 
 async def llm_sentiment_analysis_v3(text: str, artist: str = None) -> Dict:
     """
-    调用 Qwen Turbo 分析情感（v3详细版本）
+    调用 LLM 分析情感（v3详细版本）
     """
     from app.core.config import get_settings
+    from app.services.qwen_llm_client import get_text_llm_config
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
-    base_url = settings.QWEN_BASE_URL
+    api_key, base_url, text_model = get_text_llm_config()
 
     if not api_key:
         return {"polarity": "neutral", "reasoning": "未配置API Key"}
@@ -1052,7 +1115,7 @@ async def llm_sentiment_analysis_v3(text: str, artist: str = None) -> Dict:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "qwen3.5-plus",
+                    "model": text_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 100,
                     "temperature": 0.1,
@@ -1240,12 +1303,12 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
     返回格式：{"success": bool, "themes": [...], "sentiment": {...}, "error": str}
     """
     from app.core.config import get_settings
+    from app.services.qwen_llm_client import get_text_llm_config
     settings = get_settings()
-    api_key = settings.QWEN_API_KEY
-    base_url = settings.QWEN_BASE_URL
+    api_key, base_url, text_model = get_text_llm_config()
 
     if not api_key:
-        return {"success": False, "error": "未配置 QWEN_API_KEY", "themes": [], "sentiment": {}}
+        return {"success": False, "error": "未配置 API Key", "themes": [], "sentiment": {}}
 
     note, _ = _get_artist_theme_note(artist)
     prompt = LLM_COMBINED_PROMPT_V1.format(text=text[:500], artist_note=note)
@@ -1259,7 +1322,7 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "qwen3.5-plus",
+                    "model": text_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 300,
                     "temperature": 0.1,

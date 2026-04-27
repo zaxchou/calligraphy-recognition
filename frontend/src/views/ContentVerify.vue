@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息 · 作品上传</p>
+        <p class="page-subtitle">题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息 · 画家规则 · 作品上传</p>
       </div>
       <div class="header-center">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
@@ -355,6 +355,13 @@
         </div>
       </el-tab-pane>
 
+      <!-- 画家规则 -->
+      <el-tab-pane label="画家规则" name="artist-rules">
+        <div class="tab-content full-tab-content">
+          <ArtistRulesManager :artist="selectedArtist" />
+        </div>
+      </el-tab-pane>
+
       <!-- 作品上传 -->
       <el-tab-pane label="作品上传" name="upload">
         <div class="tab-content full-tab-content upload-tab-content">
@@ -396,13 +403,14 @@ import StripManager from './StripManager.vue'
 import DimensionInput from './DimensionInput.vue'
 import AnnotationVerify from './AnnotationVerify.vue'
 import ArtistInfoManager from './ArtistInfoManager.vue'
+import ArtistRulesManager from './ArtistRulesManager.vue'
 import SealManager from './SealManager.vue'
 import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'seal', 'upload']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
 const verifyPanelRef = ref(null)
 const uploadDialogRef = ref(null)

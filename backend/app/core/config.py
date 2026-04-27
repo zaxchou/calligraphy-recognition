@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     SILICONFLOW_MODEL: str = "Pro/moonshotai/Kimi-K2.5"
     SILICONFLOW_ENABLED: bool = os.getenv("SILICONFLOW_ENABLED", "true").lower() in ("1", "true", "yes", "y")
 
-    # Aliyun DashScope Qwen（OpenAI Compatible Mode）
+    # Aliyun DashScope Qwen（保留 — 仅图像/视觉模型使用）
     QWEN_API_KEY: str = os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY", "")
     QWEN_BASE_URL: str = (
         os.getenv("QWEN_BASE_URL")
@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     QWEN_TRANSLATION_MODEL: str = os.getenv("QWEN_TRANSLATION_MODEL", "qwen3.5-plus")
     QWEN_INSIGHT_MODEL: str = os.getenv("QWEN_INSIGHT_MODEL", "qwen3.5-plus")
 
+    # DeepSeek V4 Flash（文本 LLM 主模型）
+    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_BASE_URL: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    DEEPSEEK_TEXT_MODEL: str = os.getenv("DEEPSEEK_TEXT_MODEL", "deepseek-v4-flash")
+
     ZHIPU_API_KEY: str = os.getenv("ZHIPU_API_KEY", "")
     ZHIPU_BASE_URL: str = os.getenv("ZHIPU_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
     ZHIPU_MODEL: str = os.getenv("ZHIPU_MODEL", "glm-5v-turbo")
@@ -140,7 +145,7 @@ class Settings(BaseSettings):
     # DashScope 多模态 Embedding 开关（图像向量化用 multimodal-embedding-v1）
     DASHSCOPE_MULTIMODAL_ENABLED: bool = os.getenv("DASHSCOPE_MULTIMODAL_ENABLED", "true").lower() in ("1", "true", "yes", "y")
 
-    COMPOSITION_LLM_MODEL: str = os.getenv("COMPOSITION_LLM_MODEL", "qwen3.5-plus")
+    COMPOSITION_LLM_MODEL: str = os.getenv("COMPOSITION_LLM_MODEL", "qwen3-vl-flash")
     COMPOSITION_LLM_MAX_TOKENS: int = int(os.getenv("COMPOSITION_LLM_MAX_TOKENS", "16384"))
     
     class Config:
