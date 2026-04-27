@@ -14,7 +14,7 @@
       <div v-else-if="results.length === 0" class="search-empty">
         <el-icon size="64" color="var(--ring-warm, #d1cfc5)"><Search /></el-icon>
         <p>未找到匹配「{{ keyword }}」的画作</p>
-        <p class="search-tip">试试搜索：竹、梅、兰、菊、山、水、花鸟等关键词</p>
+        <p class="search-tip">试试搜索：竹、梅、兰、菊、题跋内容、印章文字、1750等关键词</p>
       </div>
       <el-table v-else :data="results" style="width: 100%">
         <el-table-column label="图片" width="100">
@@ -38,6 +38,25 @@
             <div class="search-artist">
               {{ scope.row.artist || '-' }}
               <el-tag v-if="scope.row.artist && scope.row.artist.toLowerCase().includes(keywordLowerCase)" type="warning" size="small" effect="plain">作者匹配</el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="年份" width="80">
+          <template #default="scope">
+            <div class="search-year">
+              {{ scope.row.year || '-' }}
+              <el-tag v-if="scope.row.year && String(scope.row.year) === keyword" type="info" size="small" effect="plain">年份匹配</el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="题跋" min-width="180">
+          <template #default="scope">
+            <div class="search-inscription">
+              <span v-if="scope.row.inscriptionContent" class="inscription-preview">{{ truncateText(scope.row.inscriptionContent, 30) }}</span>
+              <span v-else class="inscription-empty">-</span>
+              <el-tag v-if="scope.row.inscriptionContent && scope.row.inscriptionContent.toLowerCase().includes(keywordLowerCase)" type="primary" size="small" effect="plain">题跋匹配</el-tag>
+              <el-tag v-else-if="scope.row.inscriptionModern && scope.row.inscriptionModern.toLowerCase().includes(keywordLowerCase)" type="" size="small" effect="plain">翻译匹配</el-tag>
+              <el-tag v-if="scope.row.sealContent && scope.row.sealContent.toLowerCase().includes(keywordLowerCase)" type="danger" size="small" effect="plain">印章匹配</el-tag>
             </div>
           </template>
         </el-table-column>
@@ -133,6 +152,11 @@ function formatDate(dateStr) {
   const d = new Date(dateStr)
   return d.toLocaleString('zh-CN')
 }
+
+function truncateText(text, maxLen) {
+  if (!text) return ''
+  return text.length > maxLen ? text.slice(0, maxLen) + '...' : text
+}
 </script>
 
 <style scoped>
@@ -157,10 +181,21 @@ function formatDate(dateStr) {
   margin-top: 8px;
 }
 
-.search-title, .search-artist {
+.search-title, .search-artist, .search-year, .search-inscription {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inscription-preview {
+  font-size: 12px;
+  color: #6b6b66;
+  line-height: 1.4;
+}
+
+.inscription-empty {
+  color: #c0c0b8;
 }
 
 .history-thumb {

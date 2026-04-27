@@ -1277,7 +1277,10 @@ async function handleSearch() {
         annotatedImageUrl: item.annotated_image_url,
         isManualAnnotated: item.is_manual_annotated,
         thumbnailUrl: item.thumbnail_url,
-        analysisNote: item.analysis_note
+        analysisNote: item.analysis_note,
+        inscriptionContent: item.inscription_content,
+        inscriptionModern: item.inscription_modern,
+        sealContent: item.seal_content
       }))
       if (searchResults.value.length === 0) {
         ElMessage.info('未找到匹配的画作')

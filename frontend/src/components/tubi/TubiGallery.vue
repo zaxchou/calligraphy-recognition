@@ -165,7 +165,9 @@ const displayedHistoryList = computed(() => {
         (item.artist && item.artist.toLowerCase().includes(keyword)) ||
         (item.year && String(item.year).includes(keyword)) ||
         (item.notes && item.notes.toLowerCase().includes(keyword)) ||
-        (item.analysisNote && item.analysisNote.toLowerCase().includes(keyword))
+        (item.analysisNote && item.analysisNote.toLowerCase().includes(keyword)) ||
+        (item.inscriptionContent && item.inscriptionContent.toLowerCase().includes(keyword)) ||
+        (item.sealContent && item.sealContent.toLowerCase().includes(keyword))
       )
     })
   }
