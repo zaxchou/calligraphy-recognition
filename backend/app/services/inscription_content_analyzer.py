@@ -655,7 +655,69 @@ def classify_inscription_v4(
         "sentiment": sentiment_result,
         "signals": signals,
         "special_rules": special_rules,
+        "confidence": compute_confidence(themes_result, sentiment_result, signals, special_rules),
     }
+
+
+def compute_confidence(themes: list, sentiment: dict, signals: dict, special_rules: list) -> float:
+    """
+    计算规则引擎输出的综合置信度（0~1）。
+    用于决定是否需要 LLM 二次分析。
+
+    六个维度：
+    1. 主题信号差距（权重 0.25）：最高主题分与第二高分的差距
+    2. 情感信号强度（权重 0.20）：emotion_score 绝对值
+    3. 信号来源多样性（权重 0.15）：time/painting/text/size 触发数
+    4. 特殊规则触发（权重 0.15）：人工先验加持
+    5. 文本有效信号量（权重 0.15）：实际匹配的关键词和信号数
+    6. 推导步骤完整性（权重 0.10）：reasoning_steps 数量
+    """
+    score = 0.0
+
+    # 1. 主题信号差距（25%）
+    top_scores = sorted([t.get("score", 0) for t in themes], reverse=True)
+    if len(top_scores) >= 2:
+        gap = top_scores[0] - top_scores[1]
+    elif top_scores:
+        gap = top_scores[0]
+    else:
+        gap = 0
+    score += min(gap / 5.0, 1.0) * 0.25
+
+    # 2. 情感信号强度（20%）
+    es = abs(sentiment.get("emotion_score", 0))
+    score += min(es / 4.0, 1.0) * 0.20
+
+    # 3. 信号来源多样性（15%）
+    sig_count = 0
+    if signals.get("time", {}).get("year"):
+        sig_count += 1
+    if signals.get("painting") and len(signals["painting"]) > 0:
+        sig_count += 1
+    text_scores = signals.get("text", {}).get("theme_scores", {})
+    if text_scores and any(float(v) > 0 for v in text_scores.values()):
+        sig_count += 1
+    if signals.get("size", {}).get("width_cm") or signals.get("size", {}).get("height_cm"):
+        sig_count += 1
+    score += min(sig_count / 4.0, 1.0) * 0.15
+
+    # 4. 文本有效信号量（15%）—— 实际匹配到的关键词和规则数，惩罚空文本
+    text_emotion_score = abs(float(signals.get("text", {}).get("emotion_score", 0)))
+    # 统计 theme_scores 中有多少主题非零
+    active_theme_count = sum(1 for v in text_scores.values() if float(v) > 0) if text_scores else 0
+    # 信号越丰富得分越高，0 个活跃主题 → 0
+    signal_richness = (min(active_theme_count / 4.0, 1.0) * 0.6 + min(text_emotion_score / 3.0, 1.0) * 0.4)
+    score += signal_richness * 0.15
+
+    # 5. 特殊规则触发（15%）
+    has_special = len(special_rules) > 0
+    score += (1.0 if has_special else 0.3) * 0.15
+
+    # 6. 推导步骤完整性（10%）
+    steps = len(sentiment.get("reasoning_steps", []))
+    score += min(steps / 5.0, 1.0) * 0.10
+
+    return round(score, 2)
 
 
 def _build_sentiment_reasoning(polarity, emotion_score, life_stage, painting_matches, special_rules) -> str:
