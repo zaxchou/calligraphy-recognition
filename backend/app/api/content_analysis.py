@@ -2080,6 +2080,8 @@ async def batch_reanalyze(
     old_emotion_scores = []
     new_emotion_scores = []
     theme_changes = Counter()        # (旧主题→新主题) 变化统计
+    confidences = []                 # v2.1: 置信度分布
+    low_conf_records = []            # v2.2: 低置信度记录（record_id 列表）
     
     updated = 0
     errors = 0
@@ -2130,7 +2132,12 @@ async def batch_reanalyze(
                 height_cm=height_cm,
                 artist=record_artist,
             )
-            
+
+            conf = result.get("confidence", 0)
+            confidences.append(conf)
+            if conf < 0.6:
+                low_conf_records.append(record_id)
+
             # 记录新主题/情感
             new_themes_list = result.get("themes", [])
             for t in new_themes_list:
@@ -2267,7 +2274,25 @@ async def batch_reanalyze(
             "to": new_t,
             "count": cnt
         })
-    
+
+    # 4.5. 置信度分布（v2.1）
+    if confidences:
+        high_conf = sum(1 for c in confidences if c >= 0.7)
+        mid_conf = sum(1 for c in confidences if 0.4 <= c < 0.7)
+        low_conf = sum(1 for c in confidences if c < 0.4)
+        avg_conf = round(sum(confidences) / len(confidences), 2)
+        confidence_stats = {
+            "average": avg_conf,
+            "high": high_conf,
+            "high_percent": round(high_conf / total * 100, 1) if total else 0,
+            "mid": mid_conf,
+            "mid_percent": round(mid_conf / total * 100, 1) if total else 0,
+            "low": low_conf,
+            "low_percent": round(low_conf / total * 100, 1) if total else 0,
+        }
+    else:
+        confidence_stats = None
+
     # 5. 偏差检测与调整建议（基于第一主题）
     # 从规则中心读取预期分布，保证与算法版本同步
     deviation_checks = []
@@ -2344,6 +2369,8 @@ async def batch_reanalyze(
             "emotion_score_stats": emotion_score_stats,
             "theme_change_paths": theme_change_paths,
             "deviation_checks": deviation_checks,
+            "confidence_stats": confidence_stats,
+            "low_conf_count": len(low_conf_records),
         }
     }
 

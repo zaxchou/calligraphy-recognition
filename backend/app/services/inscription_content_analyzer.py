@@ -1424,6 +1424,90 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
         return {"success": False, "error": str(e), "themes": [], "sentiment": {}}
 
 
+def hybrid_analyze_with_divergence(
+    text: str,
+    year: int = None,
+    title: str = None,
+    analysis_note: str = None,
+    width_cm: float = None,
+    height_cm: float = None,
+    artist: str = None,
+    record_id: int = None,
+    image_id: str = None,
+) -> Dict:
+    """
+    混合推理 + 分歧检测。
+    1. 先跑规则引擎（快）
+    2. 置信度 >= 0.6 → 直接返回
+    3. 置信度 < 0.6 → 调 DeepSeek LLM 二次判断
+    4. 对比结果，返回分歧信息
+
+    返回：
+    {
+        "v4_result": {...},         # 规则引擎完整结果
+        "llm_result": {...},        # LLM 结果（仅低置信度时有）
+        "used_llm": bool,
+        "divergence": {...} | None, # 分歧信息
+    }
+    """
+    import asyncio
+
+    v4_result = classify_inscription_v4(
+        text, year=year, title=title, analysis_note=analysis_note,
+        width_cm=width_cm, height_cm=height_cm, artist=artist
+    )
+    confidence = v4_result.get("confidence", 0)
+
+    result = {
+        "v4_result": v4_result,
+        "llm_result": None,
+        "used_llm": False,
+        "divergence": None,
+    }
+
+    if confidence >= 0.6:
+        return result
+
+    # 低置信度 → 调 LLM
+    llm_raw = asyncio.run(llm_analyze_combined(text, artist=artist))
+    if not llm_raw.get("success"):
+        return result
+
+    result["used_llm"] = True
+    result["llm_result"] = llm_raw
+
+    # 对比分歧
+    v4_primary = v4_result["themes"][0] if v4_result.get("themes") else None
+    llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
+
+    v4_polarity = v4_result.get("sentiment", {}).get("polarity", "")
+    llm_polarity = llm_raw.get("sentiment", {}).get("polarity", "")
+
+    theme_diverge = v4_primary and llm_primary and v4_primary.get("code") != llm_primary.get("code")
+    sentiment_diverge = v4_polarity and llm_polarity and v4_polarity != llm_polarity
+
+    if theme_diverge or sentiment_diverge:
+        div_type = "both" if (theme_diverge and sentiment_diverge) else ("theme" if theme_diverge else "sentiment")
+        detail_parts = []
+        if theme_diverge:
+            detail_parts.append(
+                f"主题: 规则={v4_primary['name']}(c={v4_primary.get('confidence',0):.2f}) "
+                f"vs LLM={llm_primary.get('name','?')}(c={llm_primary.get('confidence',0):.2f})"
+            )
+        if sentiment_diverge:
+            detail_parts.append(
+                f"情感极性: 规则={v4_polarity}({v4_result['sentiment'].get('emotion_score',0):.1f}) "
+                f"vs LLM={llm_polarity}"
+            )
+        result["divergence"] = {
+            "type": div_type,
+            "detail": " | ".join(detail_parts),
+            "v4_confidence": confidence,
+        }
+
+    return result
+
+
 if __name__ == "__main__":
     # 测试
     test_text = "八大山人长于笔，清湘大涤子长于墨，至予则长于水。水为笔墨之介绍，而今人不知也。"

@@ -265,6 +265,32 @@
           <div v-if="batchResultData.report.theme_change_paths.length === 0" class="no-change">无主题变化</div>
         </div>
 
+        <!-- 四.五、置信度分布（v2.1） -->
+        <div class="report-section" v-if="batchResultData.report?.confidence_stats">
+          <div class="section-title">四.五、置信度分布</div>
+          <div class="confidence-grid">
+            <div class="conf-bar-row">
+              <span class="conf-label">高 (≥0.7)</span>
+              <div class="conf-bar-track"><div class="conf-bar high" :style="{ width: batchResultData.report.confidence_stats.high_percent + '%' }"></div></div>
+              <span class="conf-count">{{ batchResultData.report.confidence_stats.high }} 幅 ({{ batchResultData.report.confidence_stats.high_percent }}%)</span>
+            </div>
+            <div class="conf-bar-row">
+              <span class="conf-label">中 (0.4~0.7)</span>
+              <div class="conf-bar-track"><div class="conf-bar mid" :style="{ width: batchResultData.report.confidence_stats.mid_percent + '%' }"></div></div>
+              <span class="conf-count">{{ batchResultData.report.confidence_stats.mid }} 幅 ({{ batchResultData.report.confidence_stats.mid_percent }}%)</span>
+            </div>
+            <div class="conf-bar-row">
+              <span class="conf-label">低 (&lt;0.4)</span>
+              <div class="conf-bar-track"><div class="conf-bar low" :style="{ width: batchResultData.report.confidence_stats.low_percent + '%' }"></div></div>
+              <span class="conf-count">{{ batchResultData.report.confidence_stats.low }} 幅 ({{ batchResultData.report.confidence_stats.low_percent }}%)</span>
+            </div>
+          </div>
+          <div class="conf-avg">平均置信度：{{ batchResultData.report.confidence_stats.average }}</div>
+          <div v-if="batchResultData.report.low_conf_count > 0" class="conf-hint">
+            ⚠️ {{ batchResultData.report.low_conf_count }} 幅作品置信度 &lt; 0.6，建议运行分歧检测以校准规则
+          </div>
+        </div>
+
         <!-- 五、偏差检测与调整建议 -->
         <div class="report-section" v-if="batchResultData.report?.deviation_checks?.length">
           <div class="section-title">五、偏差检测与调整建议（基于第一主题）</div>
@@ -1169,4 +1195,16 @@ function openUploadDialog() {
   font-size: 13px;
   text-align: center;
 }
+
+.confidence-grid { padding: 8px 0; }
+.conf-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+.conf-label { width: 70px; color: #666; }
+.conf-bar-track { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+.conf-bar { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.conf-bar.high { background: #67c23a; }
+.conf-bar.mid { background: #e6a23c; }
+.conf-bar.low { background: #f56c6c; }
+.conf-count { width: 120px; text-align: right; color: #999; font-family: monospace; font-size: 11px; }
+.conf-avg { font-size: 13px; color: #666; text-align: center; margin-top: 6px; font-family: monospace; }
+.conf-hint { font-size: 12px; color: #e6a23c; text-align: center; margin-top: 6px; }
 </style>
