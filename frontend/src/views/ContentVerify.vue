@@ -325,7 +325,8 @@
         <el-button plain size="small" @click="copyReportAsMarkdown" :disabled="!batchResultData">
           <el-icon><CopyDocument /></el-icon>复制报告(MD)
         </el-button>
-        <el-button @click="closeBatchResultDialog">关闭</el-button>
+        <el-button @click="closeBatchResultDialog">取消</el-button>
+        <el-button type="primary" @click="rerunFromResult" :loading="analyzing">重新分析</el-button>
       </template>
     </el-dialog>
 
@@ -540,6 +541,12 @@ function openBatchReanalyze() {
   }
 }
 
+// 从结果弹窗重新分析
+function rerunFromResult() {
+  showBatchResultDialog.value = false
+  startBatchAnalyze('full')
+}
+
 // 增量智能处理：SSE 流式版，带进度显示
 async function startIncrementalSmartProcess() {
   const artist = selectedArtist.value
@@ -567,8 +574,9 @@ async function startIncrementalSmartProcess() {
             updated: event.updated,
             errors: event.errors,
             message: event.message,
-            report: event.report,
+            report: { ...event.report, updated_at: new Date().toLocaleString() },
           }
+          try { localStorage.setItem(`batch-reanalyze-result_${selectedArtist.value}`, JSON.stringify(batchResultData.value)) } catch {}
           analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
           showBatchResultDialog.value = true
           if (event.report?.llm_corrected > 0) {

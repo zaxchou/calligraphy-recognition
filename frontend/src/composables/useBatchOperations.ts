@@ -34,8 +34,15 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
   const { streamSSE: streamAnalyzeSSE, cancel: cancelAnalyzeStream } = useSSEStream()
   const { streamSSE: streamTranslateSSE, cancel: cancelTranslateStream } = useSSEStream()
 
-  // 批量重跑结果展示
-  const batchResultData = ref<any>(null)
+  // 批量重跑结果展示 —— 持久化到 localStorage，页面刷新不丢失
+  const getCacheKey = () => `batch-reanalyze-result_${getArtist()}`
+  const _loadCached = () => { try { const v = localStorage.getItem(getCacheKey()); return v ? JSON.parse(v) : null } catch { return null } }
+  const batchResultData = ref<any>(_loadCached())
+
+  function _saveToStorage(data: any) {
+    try { localStorage.setItem(getCacheKey(), JSON.stringify(data)) } catch { /* quota exceeded, ignore */ }
+  }
+
   const showBatchResultDialog = ref(false)
 
   function closeBatchResultDialog() {
@@ -85,6 +92,7 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
               message: event.message,
               report: { ...event.report, updated_at: new Date().toLocaleString() },
             }
+            _saveToStorage(batchResultData.value)
             analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
             showBatchResultDialog.value = true
             if (event.report?.llm_corrected > 0) {
