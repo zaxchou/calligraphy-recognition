@@ -1090,7 +1090,6 @@ async def llm_retry_with_conflict(text: str, llm_themes: List[Dict], llm_sentime
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 300,
                     "temperature": 0.1,
-                    "enable_thinking": False
                 }
             )
             response.raise_for_status()
@@ -1139,7 +1138,6 @@ async def llm_theme_classification_v3(text: str, artist: str = None) -> List[Dic
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 200,
                     "temperature": 0.1,
-                    "enable_thinking": False
                 }
             )
             response.raise_for_status()
@@ -1181,7 +1179,6 @@ async def llm_sentiment_analysis_v3(text: str, artist: str = None) -> Dict:
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 100,
                     "temperature": 0.1,
-                    "enable_thinking": False
                 }
             )
             response.raise_for_status()
@@ -1373,9 +1370,23 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
         return {"success": False, "error": "未配置 API Key", "themes": [], "sentiment": {}}
 
     note, _ = _get_artist_theme_note(artist)
-    prompt = LLM_COMBINED_PROMPT_V1.format(text=text[:500], artist_note=note)
+    # 无画家信息时不注入过长注释（避免 prompt 溢出）
+    artist_context = artist or ""
+    prompt = LLM_COMBINED_PROMPT_V1.format(text=text[:500], artist_note=note if artist_context else "")
 
     try:
+        request_body = {
+            "model": text_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 500,
+            "temperature": 0.1,
+        }
+        # DeepSeek 用 thinking 参数，Qwen 用 enable_thinking
+        if "deepseek" in base_url.lower() or "deepseek" in text_model.lower():
+            request_body["thinking"] = {"type": "disabled"}
+        else:
+            request_body["enable_thinking"] = False
+
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
@@ -1383,17 +1394,16 @@ async def llm_analyze_combined(text: str, artist: str = None) -> Dict:
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 },
-                json={
-                    "model": text_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 300,
-                    "temperature": 0.1,
-                    "enable_thinking": False
-                }
+                json=request_body
             )
             response.raise_for_status()
             result = response.json()
             raw = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+            # 提取 JSON：去除 markdown 代码块包裹
+            json_match = re.search(r'\{[\s\S]*\}', raw)
+            if json_match:
+                raw = json_match.group()
             parsed = json.loads(raw)
             
             themes = parsed.get("themes", [])
@@ -1469,7 +1479,11 @@ def hybrid_analyze_with_divergence(
         return result
 
     # 低置信度 → 调 LLM
-    llm_raw = asyncio.run(llm_analyze_combined(text, artist=artist))
+    try:
+        llm_raw = asyncio.run(llm_analyze_combined(text, artist=artist))
+    except Exception as e:
+        # LLM 不可用，静默降级
+        return result
     if not llm_raw.get("success"):
         return result
 
