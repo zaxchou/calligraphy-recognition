@@ -642,8 +642,10 @@ defineExpose({
   flex-direction: column;
   justify-content: center;
   gap: 12px;
-  border-left: 4px solid #c96442;
-  padding: 10px 18px 10px 18px;
+  background: #faf9f7;
+  border: 1px solid #e8e4da;
+  border-radius: 10px;
+  padding: 20px 22px;
   min-width: 0;
 }
 .insight-headline {
