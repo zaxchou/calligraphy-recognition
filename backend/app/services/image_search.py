@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SearchHit:
-    record_id: int
+    id: int
     title: str
     artist: str
     score: float
@@ -167,7 +167,7 @@ class ImageSearchEngine:
                     fn = os.path.basename(r["thumbnail_path"].replace("\\", "/"))
                     thumb_url = f"/static/thumbnails/{fn}"
                 hits.append(SearchHit(
-                    record_id=r["id"],
+                    id=r["id"],
                     title=r["title"] or "未命名",
                     artist=r["artist"] or "",
                     score=round(float(dist), 4),

@@ -69,12 +69,13 @@ async def search_similar(
 
         engine = get_search_engine()
         hits = engine.search(tmp.name, top_k=top_k)
+        total = engine.total_indexed
     finally:
         os.unlink(tmp.name)
 
     return SearchResponse(
         hits=[SearchResult(**{k: v for k, v in h.__dict__.items() if k in SearchResult.model_fields}) for h in hits],
-        total_indexed=engine.total_indexed,
+        total_indexed=total,
     )
 
 
