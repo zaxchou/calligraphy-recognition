@@ -85,8 +85,8 @@
             </div>
           </div>
           <div class="insight-compact" v-if="areaThemeData.insights.length">
-            <div class="insight-label">洞察</div>
-            <div class="insight-item" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
+            <div class="insight-headline" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
+              <span class="headline-marker">{{ ['壹', '贰'][idx] }}</span>
               <span>{{ insight }}</span>
             </div>
           </div>
@@ -641,23 +641,26 @@ defineExpose({
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
-  background: transparent;
-  border-left: 3px solid #c96442;
-  padding: 6px 0 6px 16px;
+  gap: 12px;
+  border-left: 4px solid #c96442;
+  padding: 10px 0 10px 18px;
   min-width: 0;
 }
-.insight-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #c96442;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.insight-headline {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2a2a2a;
+  line-height: 1.5;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
-.insight-item {
+.headline-marker {
   font-size: 14px;
-  color: #444;
-  line-height: 1.7;
+  font-weight: 800;
+  color: #c96442;
+  flex-shrink: 0;
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
 }
 
 @media (max-width: 900px) {
