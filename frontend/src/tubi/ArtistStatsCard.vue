@@ -650,7 +650,7 @@ defineExpose({
 }
 .insight-headline {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   color: #2a2a2a;
   line-height: 1.5;
   display: flex;
