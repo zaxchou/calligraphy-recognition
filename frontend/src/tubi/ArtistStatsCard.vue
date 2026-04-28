@@ -643,17 +643,18 @@ defineExpose({
   justify-content: center;
   gap: 12px;
   border-left: 4px solid #c96442;
-  padding: 10px 0 10px 18px;
+  padding: 10px 18px 10px 18px;
   min-width: 0;
 }
 .insight-headline {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #2a2a2a;
   line-height: 1.5;
   display: flex;
   align-items: baseline;
   gap: 8px;
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
 }
 .headline-marker {
   font-size: 14px;
