@@ -81,7 +81,7 @@ async def search_similar(
 
 @router.get("/duplicates", response_model=List[DuplicatePair])
 async def find_duplicates(
-    threshold: float = Query(default=0.95, ge=0.80, le=1.0),
+    threshold: float = Query(default=0.995, ge=0.80, le=1.0),
 ):
     engine = get_search_engine()
     pairs = engine.find_duplicates(threshold=threshold)

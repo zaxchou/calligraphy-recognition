@@ -63,7 +63,7 @@
               题跋占比 {{ hit.inscription_percent.toFixed(1) }}%
             </div>
           </div>
-          <div class="result-score" :style="{ color: hit.score > 0.95 ? '#c96442' : hit.score > 0.85 ? '#b8a47e' : '#888' }">
+          <div class="result-score" :style="{ color: hit.score > 0.995 ? '#c96442' : hit.score > 0.95 ? '#b8a47e' : '#888' }">
             {{ (hit.score * 100).toFixed(1) }}%
           </div>
         </div>
@@ -85,7 +85,7 @@
             <div class="dup-name">{{ pair.a.title }}</div>
           </div>
           <div class="dup-pair-center">
-            <div class="dup-score" :style="{ color: pair.score > 0.98 ? '#c96442' : '#b8a47e' }">
+            <div class="dup-score" :style="{ color: pair.score > 0.998 ? '#c96442' : '#b8a47e' }">
               {{ (pair.score * 100).toFixed(1) }}%
             </div>
             <el-icon class="dup-arrow"><Right /></el-icon>
@@ -172,7 +172,7 @@ async function doSearch() {
 async function checkDuplicates() {
   dupLoading.value = true
   try {
-    const res = await fetch(`${API_BASE}/image-search/duplicates?threshold=0.95`)
+    const res = await fetch(`${API_BASE}/image-search/duplicates?threshold=0.995`)
     const data = await res.json()
     duplicates.value = data || []
     dupExpanded.value = true
