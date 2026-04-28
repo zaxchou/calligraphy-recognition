@@ -329,6 +329,7 @@
                   <div class="stat-item inscription">
                     <span class="stat-dot" style="background: #d4846a;"></span>
                     <span class="stat-name">题跋区域</span>
+                    <span class="stat-percentile" v-if="areaPercentile !== null">高于{{ currentImage.artist || '该画家' }} {{ areaPercentile }}% 的作品</span>
                     <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
                   </div>
                   <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
@@ -496,6 +497,15 @@ const analyzingStep = computed(() => props.analysis?.step || '准备分析...')
 const areaStats = computed(() => props.analysis?.areaStats || { inscriptionPercent: 0, paintingPercent: 0, blankPercent: 0 })
 const analysisNote = computed(() => props.analysis?.note || '')
 const positionAnalysis = computed(() => props.analysis?.positionAnalysis || null)
+
+const areaPercentile = computed(() => {
+  const myPct = areaStats.value.inscriptionPercent
+  if (!myPct || !props.currentImage?.artist || !props.historyList?.length) return null
+  const sameArtist = props.historyList.filter(i => i.artist === props.currentImage.artist && i.inscriptionPercent != null && i.inscriptionPercent > 0)
+  if (sameArtist.length < 5) return null
+  const below = sameArtist.filter(i => i.inscriptionPercent < myPct).length
+  return Math.round(below / sameArtist.length * 100)
+})
 
 const emit = defineEmits([
   'back', 'edit-current', 'open-upload', 'auto-analyze',
@@ -1395,5 +1405,12 @@ defineExpose({
 .seal-display-type {
   font-size: 10px;
   color: #aaa;
+}
+
+.stat-percentile {
+  font-size: 11px;
+  color: #c96442;
+  margin-left: 6px;
+  font-weight: 500;
 }
 </style>

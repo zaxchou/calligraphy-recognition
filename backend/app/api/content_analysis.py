@@ -3339,3 +3339,125 @@ async def generate_insight_report(
         sections=result.sections,
         error=result.error,
     )
+
+
+# ============ 内容×空间 关联分析 ============
+
+class ThemeAreaItem(BaseModel):
+    theme: str
+    n: int
+    avg_area: float
+    avg_words: float
+
+
+class PeriodTrendItem(BaseModel):
+    period: str
+    n: int
+    avg_area: float
+
+
+class AreaThemeStatsResponse(BaseModel):
+    sample_total: int
+    theme_area: List[ThemeAreaItem]
+    period_trend: List[PeriodTrendItem]
+    insights: List[str]
+
+
+@router.get("/area-theme-stats", response_model=AreaThemeStatsResponse)
+async def get_area_theme_stats(
+    artist: str = Query(default="李鱓", description="画家名称"),
+):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    artist_where, artist_params = build_artist_condition(artist)
+
+    cur.execute(f"""
+        SELECT content_analysis, inscription_percent, period_phase, word_count
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+          AND content_analysis != ''
+          AND content_analysis != '{{}}'
+          AND inscription_percent IS NOT NULL
+    """, artist_params)
+
+    rows = cur.fetchall()
+    conn.close()
+
+    if not rows:
+        return AreaThemeStatsResponse(
+            sample_total=0, theme_area=[], period_trend=[], insights=[]
+        )
+
+    from collections import defaultdict
+    import statistics
+
+    theme_data = defaultdict(list)
+    period_data = defaultdict(list)
+    all_areas = []
+
+    for row in rows:
+        content_json, insc, period, wc = row
+        try:
+            ca = json.loads(content_json)
+        except Exception:
+            continue
+        themes = ca.get("themes", [])
+        main_theme = themes[0].get("name", "") if themes else ""
+        if main_theme:
+            theme_data[main_theme].append({
+                "area": insc or 0,
+                "words": wc or 0,
+            })
+        p = period or "未分期"
+        period_data[p].append(insc or 0)
+        all_areas.append(insc or 0)
+
+    theme_area = []
+    for name in theme_data:
+        items = theme_data[name]
+        areas = [i["area"] for i in items]
+        words = [i["words"] for i in items]
+        theme_area.append(ThemeAreaItem(
+            theme=name,
+            n=len(items),
+            avg_area=round(statistics.mean(areas), 1),
+            avg_words=round(statistics.mean(words), 1),
+        ))
+    theme_area.sort(key=lambda x: -x.avg_area)
+
+    period_order = {"早期": 0, "中期": 1, "晚期": 2, "未分期": 3}
+    period_trend = []
+    for p in sorted(period_data.keys(), key=lambda x: period_order.get(x, 99)):
+        vals = period_data[p]
+        period_trend.append(PeriodTrendItem(
+            period=p,
+            n=len(vals),
+            avg_area=round(statistics.mean(vals), 1),
+        ))
+
+    insights = []
+    if len(theme_area) >= 2:
+        top = theme_area[0]
+        bottom = theme_area[-1]
+        if top.n >= 3 and bottom.n >= 3 and bottom.avg_area > 0:
+            ratio = round(top.avg_area / bottom.avg_area, 1)
+            insights.append(
+                f"{top.theme}类作品题跋面积是{bottom.theme}的{ratio}倍，批判越尖锐，落字越密"
+            )
+
+    if len(period_trend) >= 2:
+        early_avg = next((p.avg_area for p in period_trend if p.period == "早期"), None)
+        late_avg = next((p.avg_area for p in period_trend if p.period == "晚期"), None)
+        if early_avg is not None and late_avg is not None and early_avg > 0:
+            pct_increase = round((late_avg - early_avg) / early_avg * 100)
+            insights.append(
+                f"晚年题跋面积比早期高{pct_increase}%，衰年变法在空间上亦可见证"
+            )
+
+    return AreaThemeStatsResponse(
+        sample_total=len(rows),
+        theme_area=theme_area,
+        period_trend=period_trend,
+        insights=insights,
+    )

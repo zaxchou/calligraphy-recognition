@@ -196,9 +196,9 @@
         </el-card>
       </div>
 
-      <!-- 画材/题材标签统计 & 尺寸统计 & 面积-主题堆叠柱状图 -->
-      <div class="charts-row">
-        <el-card shadow="hover" class="chart-card material-chart-card" style="height: 420px">
+      <!-- 画材/题材标签统计 & 尺寸统计 & 题跋闯入率 -->
+      <div class="charts-row charts-row-triple">
+        <el-card shadow="hover" class="chart-card material-chart-card">
           <template #header>
             <div class="card-header-title">
               <span>画材/题材标签统计</span>
@@ -209,7 +209,7 @@
             从作品标题和AI分析中提取的画材标签，反映李鱓的创作题材偏好
           </div>
         </el-card>
-        <el-card shadow="hover" class="chart-card size-chart-card" style="height: 420px">
+        <el-card shadow="hover" class="chart-card size-chart-card">
           <template #header>
             <div class="card-header-title">
               <span>作品尺寸统计</span>
@@ -221,117 +221,81 @@
             小幅（&lt;70cm）/中幅（70-150cm）/大幅（&gt;150cm）
           </div>
         </el-card>
-        <el-card shadow="hover" class="chart-card" style="height: 420px">
+        <el-card shadow="hover" class="compact-inv-card">
           <template #header>
-            <div class="card-header-title">
-              <span>面积-主题堆叠柱状图</span>
+            <div class="card-header-title" style="font-size: 13px;">
+              <span>题跋闯入率</span>
+              <el-tooltip content="有些题跋闯入了画面中央，有些只在边角——各主题的闯入比例">
+                <span class="hint-icon">?</span>
+              </el-tooltip>
             </div>
           </template>
-          <div ref="areaThemeChartRef" class="chart-container" />
-          <div class="chart-note">
-            不同主题下，李鱓如何分配画面空间（题跋/绘画/留白）
+          <table class="inv-table inv-table-compact">
+            <thead>
+              <tr>
+                <th>主题</th>
+                <th>闯入</th>
+                <th>边角</th>
+                <th>闯入率</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in invasiveItems"
+                :key="item.theme"
+                :class="{ 'highlight-row': item.invasive_count > 0 && item.non_invasive_count === 0 }"
+              >
+                <td><strong>{{ item.theme }}</strong></td>
+                <td class="num">{{ item.invasive_count }}</td>
+                <td class="num">{{ item.non_invasive_count }}</td>
+                <td class="num">
+                  <span :class="invRateClass(item.invasive_rate)">
+                    {{ (item.invasive_rate * 100).toFixed(0) }}%
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="inv-conclusion">
+            {{ correlationData.significant
+              ? (correlationData.highly_significant
+                  ? '✓ 不同主题的闯入率确实不同（p<0.01）'
+                  : '✓ 不同主题的闯入率可能不同（p<0.05）')
+              : '✗ 样本偏少，差异可能只是巧合'
+            }}
           </div>
         </el-card>
       </div>
-
-      <!-- 内容-形式关联 -->
-      <el-card shadow="hover" class="correlation-card">
-        <template #header>
-          <div class="card-header-title">
-            <span>内容-形式关联分析（侵入式布局）</span>
-            <el-tag v-if="correlationData.significant" type="success" size="small">
-              {{ correlationData.highly_significant ? '** 显著' : '* 显著' }}
-            </el-tag>
-            <el-tooltip content="分析「内容激昂→侵入式布局」「内容淡雅→边角规整式」的协同规律">
-              <span class="hint-icon">?</span>
-            </el-tooltip>
-          </div>
-        </template>
-
-        <div class="correlation-body">
-          <div class="inv-table-section">
-            <table class="inv-table">
-              <thead>
-                <tr>
-                  <th>主题</th>
-                  <th>侵入式布局</th>
-                  <th>非侵入式</th>
-                  <th>侵入率</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="item in invasiveItems"
-                  :key="item.theme"
-                  :class="{ 'highlight-row': item.invasive_count > 0 && item.non_invasive_count === 0 }"
-                >
-                  <td><strong>{{ item.theme }}</strong></td>
-                  <td class="num">{{ item.invasive_count }}</td>
-                  <td class="num">{{ item.non_invasive_count }}</td>
-                  <td class="num">
-                    <span :class="invRateClass(item.invasive_rate)">
-                      {{ (item.invasive_rate * 100).toFixed(1) }}%
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="chi2-result">
-            <div class="chi2-title">卡方检验结果</div>
-            <div class="chi2-stats">
-              <span class="stat-item">
-                <span class="stat-name">χ²</span>
-                <span class="stat-val">{{ correlationData.chi2_statistic?.toFixed(4) || '—' }}</span>
-              </span>
-              <span class="stat-item">
-                <span class="stat-name">p 值</span>
-                <span class="stat-val" :class="{ 'sig-star': correlationData.significant }">
-                  {{ correlationData.p_value?.toFixed(4) || '—' }}
-                  {{ correlationData.significant ? (correlationData.highly_significant ? '**' : '*') : '' }}
-                </span>
-              </span>
-              <span class="stat-item">
-                <span class="stat-name">自由度</span>
-                <span class="stat-val">{{ correlationData.dof ?? '—' }}</span>
-              </span>
-            </div>
-            <div class="chi2-note">
-              {{ correlationData.significant
-                ? (correlationData.highly_significant
-                    ? '在1%显著性水平上，内容主题与布局形式存在显著关联（p<0.01）'
-                    : '在5%显著性水平上，内容主题与布局形式存在显著关联（p<0.05）')
-                : '样本量偏小，结论需谨慎解读，建议增加数据量后复验'
-              }}
-            </div>
-          </div>
-        </div>
-      </el-card>
 
       <!-- 面积数据可视化（2列） -->
       <div class="charts-row area-charts-row">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>面积分布直方图</span>
+              <span>题跋面积分布</span>
+              <el-tooltip content="每幅作品的题跋面积落在哪个区间？大多数人题跋占多少？">
+                <span class="hint-icon">?</span>
+              </el-tooltip>
             </div>
           </template>
           <div ref="areaDistChartRef" class="chart-container" />
           <div class="chart-note">
-            题跋/绘画/留白的面积区间分布，看李鱓倾向于用多大比例题跋
+            {{ areaDistInsight || '多数作品的题跋面积集中在10-20%区间' }}
           </div>
         </el-card>
 
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>面积-尺寸相关性散点图</span>
+              <span>画幅大小 vs 题跋占比</span>
+              <el-tooltip content="大画是否题跋更多？还是小画反而写得更密？每个点是一幅作品，颜色代表创作时期">
+                <span class="hint-icon">?</span>
+              </el-tooltip>
             </div>
           </template>
           <div ref="areaSizeChartRef" class="chart-container" />
           <div class="chart-note">
-            作品尺寸与题跋面积的关系，看大画和小画的题跋策略
+            {{ areaSizeInsight || '画幅大小与题跋占比无明显关联，题跋策略不因尺幅而异' }}
           </div>
         </el-card>
       </div>
@@ -524,7 +488,6 @@ const sizeChartRef = ref(null)
 const sizeStats = ref(null)
 
 const areaDistChartRef = ref(null)
-const areaThemeChartRef = ref(null)
 const areaSizeChartRef = ref(null)
 
 
@@ -535,7 +498,8 @@ const FEATURE_DIMENSIONS = [
 ]
 
 const invasiveItems = computed(() => {
-  return correlationData.value.invasive_analysis?.invasive_items || []
+  const items = correlationData.value.invasive_analysis?.invasive_items || []
+  return [...items].sort((a, b) => b.invasive_rate - a.invasive_rate)
 })
 
 onMounted(() => {
@@ -663,7 +627,6 @@ function renderCharts() {
 
 function renderAreaCharts() {
   renderAreaDistChart()
-  renderAreaThemeChart()
   renderAreaSizeChart()
 }
 
@@ -981,47 +944,7 @@ function renderAreaDistChart() {
 
   const ranges = areaDist.map(d => d.range)
   const inscData = areaDist.map(d => d.inscription_count)
-  const paintData = areaDist.map(d => d.painting_count)
-  const blankData = areaDist.map(d => d.blank_count)
-  console.log('[面积分布直方图] ranges:', ranges, 'areaDist:', areaDist)
-
-  chart.setOption({
-    title: { show: false },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { data: ['题跋', '绘画', '留白'], bottom: 0 },
-    grid: { left: '10%', right: '5%', bottom: '20%', top: '10%', containLabel: true },
-    xAxis: { type: 'category', data: ranges, axisLabel: { fontSize: 11 }, name: '面积占比区间', nameLocation: 'middle', nameGap: 40 },
-    yAxis: { type: 'value', name: '作品数', nameLocation: 'middle', nameGap: 45 },
-    animationDuration: 800,
-    animationEasing: 'cubicOut',
-    animationDelay: function(idx) { return idx * 50 },
-    series: [
-      { name: '题跋', type: 'bar', itemStyle: { color: '#c96442' }, data: inscData },
-      { name: '绘画', type: 'bar', itemStyle: { color: '#547a8c' }, data: paintData },
-      { name: '留白', type: 'bar', itemStyle: { color: '#8a8070' }, data: blankData }
-    ]
-  })
-  chart.resize()
-}
-
-// ============ 面积-主题堆叠柱状图 ============
-function renderAreaThemeChart() {
-  if (!areaThemeChartRef.value) return
-  const chart = getOrCreateChart(areaThemeChartRef)
-  let areaTheme = statsData.value?.area_theme_stats || []
-  if (!areaTheme.length) {
-    chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } } })
-    chart.resize()
-    return
-  }
-
-  // 按题跋比例从低到高排序
-  areaTheme = [...areaTheme].sort((a, b) => a.avg_inscription_percent - b.avg_inscription_percent)
-
-  const themes = areaTheme.map(t => t.theme_name)
-  const inscData = areaTheme.map(t => t.avg_inscription_percent)
-  const paintData = areaTheme.map(t => t.avg_painting_percent)
-  const blankData = areaTheme.map(t => t.avg_blank_percent)
+  const maxIdx = inscData.indexOf(Math.max(...inscData))
 
   chart.setOption({
     title: { show: false },
@@ -1029,33 +952,58 @@ function renderAreaThemeChart() {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       formatter: function(params) {
-        let result = params[0].name + '<br/>'
-        let total = 0
-        params.forEach(p => {
-          total += p.value
-          result += `${p.marker} ${p.seriesName}: ${p.value.toFixed(1)}%<br/>`
-        })
-        result += `总计: ${total.toFixed(0)}%`
-        return result
-      }
+        const p = params[0]
+        return `${p.name}<br/>题跋在此区间的作品: <b>${p.value}</b> 幅`
+      },
     },
-    legend: { data: ['题跋', '绘画', '留白'], bottom: 0 },
-    grid: { left: '3%', right: '4%', bottom: '20%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: themes, axisLabel: { interval: 0, rotate: 30, fontSize: 11 } },
-    yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
+    grid: { left: '10%', right: '5%', bottom: '18%', top: '10%', containLabel: true },
+    xAxis: {
+      type: 'category', data: ranges,
+      axisLabel: { fontSize: 11 },
+      name: '题跋面积占比', nameLocation: 'middle', nameGap: 40,
+    },
+    yAxis: { type: 'value', name: '作品数', nameLocation: 'middle', nameGap: 45 },
     animationDuration: 800,
     animationEasing: 'cubicOut',
-    animationDelay: function(idx) { return idx * 50 },
-    series: [
-      { name: '题跋', type: 'bar', stack: 'total', itemStyle: { color: '#c96442' }, data: inscData },
-      { name: '绘画', type: 'bar', stack: 'total', itemStyle: { color: '#547a8c' }, data: paintData },
-      { name: '留白', type: 'bar', stack: 'total', itemStyle: { color: '#8a8070' }, data: blankData }
-    ]
+    series: [{
+      type: 'bar',
+      data: inscData.map((v, idx) => ({
+        value: v,
+        itemStyle: {
+          color: idx === maxIdx
+            ? { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#c96442' }, { offset: 1, color: '#e8a87c' }] }
+            : '#d4c5b5',
+          borderRadius: [3, 3, 0, 0],
+        },
+      })),
+      barWidth: '60%',
+      label: {
+        show: true, position: 'top',
+        formatter: '{c}幅', fontSize: 10, color: '#666',
+      },
+    }],
   })
   chart.resize()
+
+  const totalInsc = inscData.reduce((a, b) => a + b, 0)
+  if (totalInsc > 0) {
+    const peakRange = ranges[maxIdx]
+    const peakPct = ((inscData[maxIdx] / totalInsc) * 100).toFixed(0)
+    areaDistInsight.value = `最多作品的题跋面积在${peakRange}（${peakPct}%），${inscData[maxIdx]}幅作品集中于此`
+  }
 }
 
 // ============ 面积-尺寸相关性散点图 ============
+const areaSizeInsight = ref('')
+const areaDistInsight = ref('')
+
+const PERIOD_COLORS = [
+  { name: '早期', color: '#c96442' },
+  { name: '中期', color: '#547a8c' },
+  { name: '晚期', color: '#4a4a5a' },
+  { name: '未分期', color: '#ccc' },
+]
+
 function renderAreaSizeChart() {
   if (!areaSizeChartRef.value) return
   const chart = getOrCreateChart(areaSizeChartRef)
@@ -1066,60 +1014,100 @@ function renderAreaSizeChart() {
     return
   }
 
-  const themeColorMap = {}
-  THEMES.forEach(t => { themeColorMap[t.name] = t.color })
+  const periodGroups = {}
+  corrData.forEach(d => {
+    const p = d.period || '未分期'
+    if (!periodGroups[p]) periodGroups[p] = []
+    periodGroups[p].push(d)
+  })
+
+  const sortedPeriods = Object.keys(periodGroups).sort((a, b) => {
+    const order = { '早期': 0, '中期': 1, '晚期': 2 }
+    return (order[a] ?? 9) - (order[b] ?? 9)
+  })
+
+  const heights = corrData.map(d => d.artwork_height_cm).filter(Boolean)
+  const medianH = heights.length ? heights.sort((a, b) => a - b)[Math.floor(heights.length / 2)] : 100
 
   chart.setOption({
     title: { show: false },
     tooltip: {
       formatter: function(params) {
         const d = params.data
-        return `${d.title || '未命名'}<br/>` +
-               `高度: ${d.height}cm<br/>` +
-               `题跋占比: ${d.insc.toFixed(1)}%<br/>` +
-               `时期: ${d.period}<br/>` +
-               `主题: ${d.theme || '未知'}`
+        const size = d.height > medianH * 1.5 ? '大幅' : d.height < medianH * 0.6 ? '小幅' : '中幅'
+        return `<b>${d.title || '未命名'}</b><br/>` +
+               `画高 ${d.height}cm（${size}）<br/>` +
+               `题跋占 ${d.insc.toFixed(1)}%<br/>` +
+               `${d.period} · ${d.theme || '未知主题'}`
       }
     },
-    legend: { data: THEMES.map(t => t.name), bottom: 0, type: 'scroll' },
-    grid: { left: '10%', right: '5%', bottom: '24%', top: '10%', containLabel: true },
-    xAxis: { type: 'value', name: '作品高度 (cm)', nameLocation: 'middle', nameGap: 45 },
-    yAxis: { type: 'value', name: '题跋面积占比 (%)', max: 100, nameLocation: 'middle', nameGap: 55 },
-    animationDuration: 1000,
-    animationEasing: 'elasticOut',
-    series: THEMES.map(t => ({
-      name: t.name,
-      type: 'scatter',
-      symbolSize: 10,
-      itemStyle: { color: t.color, opacity: 0.7 },
-      data: corrData
-        .filter(d => d.theme_name === t.name)
-        .map(d => ({
+    legend: { data: sortedPeriods.filter(p => p !== '未分期'), bottom: 0 },
+    grid: { left: '10%', right: '5%', bottom: '16%', top: '8%', containLabel: true },
+    xAxis: {
+      type: 'value',
+      name: '画幅高度 (cm)',
+      nameLocation: 'middle', nameGap: 40,
+      axisLabel: { formatter: '{value}cm' },
+      splitLine: { lineStyle: { type: 'dashed', color: 'rgba(0,0,0,0.06)' } },
+    },
+    yAxis: {
+      type: 'value',
+      name: '题跋占比 (%)',
+      nameLocation: 'middle', nameGap: 50,
+      axisLabel: { formatter: '{value}%' },
+      splitLine: { lineStyle: { type: 'dashed', color: 'rgba(0,0,0,0.06)' } },
+    },
+    animationDuration: 800,
+    animationEasing: 'cubicOut',
+    series: sortedPeriods.map(pName => {
+      const pColor = PERIOD_COLORS.find(p => p.name === pName)?.color || '#ccc'
+      return {
+        name: pName,
+        type: 'scatter',
+        symbolSize: 10,
+        itemStyle: { color: pColor, opacity: 0.75, borderColor: '#fff', borderWidth: 1 },
+        data: periodGroups[pName].map(d => ({
           value: [d.artwork_height_cm, d.inscription_percent],
           title: d.title,
           height: d.artwork_height_cm,
           insc: d.inscription_percent,
           period: d.period,
-          theme: d.theme_name
-        }))
-    })).concat([{
-      name: '其他',
-      type: 'scatter',
-      symbolSize: 10,
-      itemStyle: { color: '#8a8070', opacity: 0.7 },
-      data: corrData
-        .filter(d => !d.theme_name || !THEMES.find(t => t.name === d.theme_name))
-        .map(d => ({
-          value: [d.artwork_height_cm, d.inscription_percent],
-          title: d.title,
-          height: d.artwork_height_cm,
-          insc: d.inscription_percent,
-          period: d.period,
-          theme: d.theme_name
-        }))
-    }])
+          theme: d.theme_name || d.theme || '未知',
+        })),
+      }
+    }),
   })
   chart.resize()
+
+  computeAreaSizeInsight(corrData)
+}
+
+function computeAreaSizeInsight(corrData) {
+  if (corrData.length < 10) { areaSizeInsight.value = ''; return }
+  const n = corrData.length
+  const sumH = corrData.reduce((s, d) => s + (d.artwork_height_cm || 0), 0)
+  const meanH = sumH / n
+  const sumI = corrData.reduce((s, d) => s + (d.inscription_percent || 0), 0)
+  const meanI = sumI / n
+  let num = 0, denH = 0, denI = 0
+  corrData.forEach(d => {
+    const h = (d.artwork_height_cm || 0) - meanH
+    const i = (d.inscription_percent || 0) - meanI
+    num += h * i; denH += h * h; denI += i * i
+  })
+  const r = denH && denI ? num / Math.sqrt(denH * denI) : 0
+  const absR = Math.abs(r)
+  if (absR < 0.15) {
+    areaSizeInsight.value = '画幅大小与题跋占比几乎无关——无论大画小画，李鱓的题跋策略始终如一'
+  } else if (absR < 0.3) {
+    areaSizeInsight.value = r > 0
+      ? '大画略多题跋，但关联不强——题跋策略主要不取决于尺幅'
+      : '小幅作品略多题跋，但关联不强——题跋策略主要不取决于尺幅'
+  } else {
+    areaSizeInsight.value = r > 0
+      ? `大画题跋明显更多（相关系数 ${r.toFixed(2)}），尺幅影响了题跋策略`
+      : `小幅作品题跋反而更多（相关系数 ${r.toFixed(2)}），小画写得更密`
+  }
 }
 
 function invRateClass(rate) {
@@ -1489,14 +1477,64 @@ async function loadMoreThemePaintings() {
   color: #fff;
   border-color: #c96442;
 }
-.correlation-card { 
-  margin-bottom: 24px; 
+.charts-row-triple {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+.charts-row-triple > .el-card,
+.charts-row-triple > .compact-inv-card {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 1100px) {
+  .charts-row-triple {
+    flex-wrap: wrap;
+  }
+  .charts-row-triple > .el-card,
+  .charts-row-triple > .compact-inv-card {
+    flex: 1 1 300px;
+  }
+}
+.compact-inv-card {
   background: #fff;
   border-radius: 12px;
   border: 1px solid #e8e6dc;
 }
-.correlation-body { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: start; }
-@media (max-width: 900px) { .correlation-body { grid-template-columns: 1fr; } }
+.compact-inv-card .el-card__body {
+  padding: 0 12px 12px;
+}
+.inv-table-compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.inv-table-compact th {
+  text-align: left;
+  padding: 8px 10px;
+  background: #f5f4ed;
+  color: #3d3d3a;
+  font-weight: 600;
+  font-size: 11px;
+}
+.inv-table-compact td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #f0eee6;
+  font-size: 12px;
+}
+.inv-table-compact .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.inv-conclusion {
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #5e5d59;
+  background: #faf9f5;
+  border-radius: 6px;
+  text-align: center;
+}
 .inv-table { 
   width: 100%; 
   border-collapse: collapse; 
@@ -1522,31 +1560,6 @@ async function loadMoreThemePaintings() {
 .rate-high { color: #c96442; font-weight: 600; }
 .rate-mid { color: #b8a47e; }
 .rate-low { color: #87867f; }
-.chi2-result { 
-  min-width: 280px; 
-  background: #faf9f5; 
-  border-radius: 12px; 
-  padding: 20px;
-  border: 1px solid #f0eee6;
-}
-.chi2-title { 
-  font-size: 14px; 
-  font-weight: 600; 
-  color: #141413; 
-  margin-bottom: 16px;
-  font-family: "Noto Serif SC", serif;
-}
-.chi2-stats { display: flex; gap: 24px; margin-bottom: 16px; }
-.stat-item { display: flex; flex-direction: column; gap: 4px; }
-.stat-name { font-size: 12px; color: #87867f; }
-.stat-val { 
-  font-size: 18px; 
-  font-weight: 600; 
-  font-variant-numeric: tabular-nums;
-  color: #141413;
-}
-.stat-val.sig-star { color: #5a8a4a; }
-.chi2-note { font-size: 13px; color: #5e5d59; line-height: 1.6; }
 
 /* AI 总结卡片 */
 .summary-card {
