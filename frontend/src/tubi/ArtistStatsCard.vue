@@ -87,7 +87,7 @@
           <div class="insight-compact" v-if="areaThemeData.insights.length">
             <div class="insight-headline" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
               <span class="headline-marker">{{ ['壹', '贰'][idx] }}</span>
-              <span>{{ insight }}</span>
+              <span v-html="boldNumbers(insight)"></span>
             </div>
           </div>
         </div>
@@ -256,6 +256,10 @@ function onArtistChange() {
 
 function navigateToTheme(themeName) {
   window.location.href = `/#/content-analysis?theme=${encodeURIComponent(themeName)}`
+}
+
+function boldNumbers(text) {
+  return text.replace(/(\d+[\.\d]*%?)/g, '<strong>$1</strong>')
 }
 
 // ── 内容×空间 图表 ──
