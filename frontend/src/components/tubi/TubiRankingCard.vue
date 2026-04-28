@@ -196,14 +196,14 @@ function handleMore() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 18px 16px;
+  padding: 22px 20px;
 }
 
 .ranking-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  justify-content: space-between;
 }
 
 /* 前三名样式 */
@@ -218,7 +218,7 @@ function handleMore() {
 .skeleton-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  justify-content: space-between;
   flex: 1;
 }
 
