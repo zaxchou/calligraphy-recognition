@@ -38,7 +38,6 @@
               <span class="stat-words-value">平均 {{ charStatsOverall.avg }}</span>
               <span class="stat-words-sep">·</span>
               <span class="stat-words-value">最高 {{ charStatsOverall.max }}</span>
-              <span class="stat-words-count">{{ charStatsOverall.totalInscriptions }}条</span>
             </div>
           </div>
           <div class="stat-bar-right">
@@ -507,10 +506,6 @@ defineExpose({
 }
 .stat-words-sep {
   color: #d0c8b8;
-}
-.stat-words-count {
-  color: #9a8a78;
-  margin-left: 4px;
 }
 .stat-bar-right {
   display: flex;
