@@ -16,34 +16,6 @@
       />
     </div>
 
-    <!-- 内容×空间 关联分析卡片 -->
-    <el-card shadow="hover" class="area-theme-card" v-if="areaThemeData.sample_total > 0">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">内容 × 空间</span>
-          <el-tag type="info" size="small">{{ areaThemeData.sample_total }} 幅样本</el-tag>
-        </div>
-      </template>
-      <div class="area-theme-body">
-        <div class="area-theme-charts">
-          <div class="area-theme-bar-section">
-            <div class="area-theme-section-label">主题 × 题跋面积</div>
-            <div ref="themeBarChartRef" class="area-theme-chart"></div>
-          </div>
-          <div class="area-theme-trend-section">
-            <div class="area-theme-section-label">分期 × 题跋面积</div>
-            <div ref="periodTrendChartRef" class="area-theme-chart"></div>
-          </div>
-        </div>
-        <div class="area-theme-insights" v-if="areaThemeData.insights.length > 0">
-          <div class="insight-item" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
-            <el-icon><InfoFilled /></el-icon>
-            <span>{{ insight }}</span>
-          </div>
-        </div>
-      </div>
-    </el-card>
-
     <!-- 作品库列表 -->
     <TubiGallery
       :history-list="filteredHistoryList"
@@ -86,7 +58,6 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { InfoFilled } from '@element-plus/icons-vue'
 import { getDisplayAge } from '../tubi/utils'
 import ArtistStatsCard from '../tubi/ArtistStatsCard.vue'
 import TubiRankingCard from '../components/tubi/TubiRankingCard.vue'
@@ -397,153 +368,6 @@ function updateTrendChart() {
   })
 }
 
-// ── 内容×空间 关联分析 ──────────────────────────────
-const themeBarChartRef = ref(null)
-const periodTrendChartRef = ref(null)
-let themeBarChart = null
-let periodTrendChart = null
-
-const areaThemeData = reactive({
-  sample_total: 0,
-  theme_area: [],
-  period_trend: [],
-  insights: [],
-})
-
-async function fetchAreaThemeStats() {
-  try {
-    const artist = homeArtistFilter.value === 'all' ? 'all' : homeArtistFilter.value
-    const res = await fetch(`${API_BASE}/content-analysis/area-theme-stats?artist=${encodeURIComponent(artist)}`)
-    const data = await res.json()
-    areaThemeData.sample_total = data.sample_total || 0
-    areaThemeData.theme_area = data.theme_area || []
-    areaThemeData.period_trend = (data.period_trend || []).filter(p => p.period !== '未分期' && p.period !== '年代不详')
-    areaThemeData.insights = data.insights || []
-    nextTick(() => {
-      renderThemeBarChart()
-      renderPeriodTrendChart()
-    })
-  } catch (e) {
-    console.error('获取内容×空间数据失败', e)
-  }
-}
-
-function renderThemeBarChart() {
-  if (!themeBarChartRef.value || areaThemeData.theme_area.length === 0) return
-  if (!themeBarChart) {
-    themeBarChart = echarts.init(themeBarChartRef.value)
-  }
-  const items = areaThemeData.theme_area
-  const themeColors = ['#c96442', '#b8a47e', '#6B5B95', '#4ecdc4', '#667eea', '#ff6b6b']
-  const maxVal = Math.max(...items.map(i => i.avg_area))
-
-  themeBarChart.setOption({
-    animation: true,
-    animationDuration: 600,
-    grid: { left: '3%', right: '12%', bottom: '3%', top: '8%', containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: items.map(i => i.theme),
-      axisLabel: { color: '#8a8070', fontSize: 11, interval: 0, rotate: items.length > 4 ? 20 : 0 },
-      axisLine: { show: false },
-      axisTick: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      name: '面积(%)',
-      nameTextStyle: { color: '#8a8070', fontSize: 10 },
-      axisLabel: { color: '#8a8070', fontSize: 10, formatter: '{value}%' },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: 'rgba(139,124,179,0.12)', type: 'dashed' } },
-    },
-    series: [{
-      type: 'bar',
-      data: items.map((i, idx) => ({
-        value: i.avg_area,
-        itemStyle: { color: themeColors[idx % themeColors.length], borderRadius: [4, 4, 0, 0] },
-      })),
-      barWidth: '50%',
-      label: {
-        show: true, position: 'top',
-        formatter: '{c}%', fontSize: 10, color: '#666',
-      },
-    }],
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params) => {
-        const d = params[0]
-        const item = items[d.dataIndex]
-        return `<b>${item.theme}</b><br/>平均面积: ${item.avg_area}%<br/>样本: ${item.n}幅<br/>平均词数: ${item.avg_words}`
-      },
-    },
-  }, true)
-}
-
-function renderPeriodTrendChart() {
-  if (!periodTrendChartRef.value || areaThemeData.period_trend.length === 0) return
-  if (!periodTrendChart) {
-    periodTrendChart = echarts.init(periodTrendChartRef.value)
-  }
-  const items = areaThemeData.period_trend
-
-  periodTrendChart.setOption({
-    animation: true,
-    animationDuration: 600,
-    grid: { left: '3%', right: '8%', bottom: '3%', top: '12%', containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: items.map(i => i.period),
-      axisLabel: { color: '#8a8070', fontSize: 12 },
-      axisLine: { lineStyle: { color: '#d1cfc5' } },
-      axisTick: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      name: '面积(%)',
-      nameTextStyle: { color: '#8a8070', fontSize: 10 },
-      axisLabel: { color: '#8a8070', fontSize: 10, formatter: '{value}%' },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: 'rgba(139,124,179,0.12)', type: 'dashed' } },
-    },
-    series: [{
-      type: 'line',
-      data: items.map(i => i.avg_area),
-      smooth: 0.3,
-      symbol: 'circle',
-      symbolSize: 12,
-      lineStyle: { width: 3, color: '#c96442' },
-      itemStyle: { color: '#c96442', borderColor: '#fff', borderWidth: 2 },
-      label: {
-        show: true, position: 'top',
-        formatter: (p) => `${p.value}%`, fontSize: 11, color: '#c96442', fontWeight: 600,
-      },
-      areaStyle: {
-        color: {
-          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(201,100,66,0.3)' },
-            { offset: 1, color: 'rgba(201,100,66,0.02)' },
-          ],
-        },
-      },
-    }],
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params) => {
-        const d = params[0]
-        const item = items[d.dataIndex]
-        return `<b>${item.period}</b><br/>平均面积: ${item.avg_area}%<br/>样本: ${item.n}幅`
-      },
-    },
-  }, true)
-}
-
-watch(homeArtistFilter, () => {
-  fetchAreaThemeStats()
-})
-
 // 监听 historyList 和 trendArtistFilter 变化
 watch([() => props.historyList, trendArtistFilter], () => {
   updateTrendChart()
@@ -551,13 +375,10 @@ watch([() => props.historyList, trendArtistFilter], () => {
 
 function handleResize() {
   trendChart?.resize()
-  themeBarChart?.resize()
-  periodTrendChart?.resize()
 }
 
 onMounted(() => {
   fetchArtistList()
-  fetchAreaThemeStats()
   window.addEventListener('resize', handleResize)
   updateTrendChart()
 })
@@ -566,10 +387,6 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   trendChart?.dispose()
   trendChart = null
-  themeBarChart?.dispose()
-  themeBarChart = null
-  periodTrendChart?.dispose()
-  periodTrendChart = null
 })
 
 defineExpose({
@@ -591,74 +408,5 @@ defineExpose({
 
 .trend-card .card-header .card-title {
   font-family: 'Noto Serif SC', 'KaiTi', serif;
-}
-
-/* 内容×空间 关联分析卡片 */
-.area-theme-card .card-header .card-title {
-  font-family: 'Noto Serif SC', 'KaiTi', serif;
-}
-
-.area-theme-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.area-theme-charts {
-  display: flex;
-  gap: 20px;
-}
-
-.area-theme-bar-section,
-.area-theme-trend-section {
-  flex: 1;
-  min-width: 0;
-}
-
-.area-theme-section-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #8a8070;
-  margin-bottom: 6px;
-  letter-spacing: 0.04em;
-}
-
-.area-theme-chart {
-  width: 100%;
-  height: 220px;
-}
-
-.area-theme-insights {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 14px;
-  background: #faf9f7;
-  border-radius: 8px;
-  border: 1px solid #e8e4da;
-}
-
-.insight-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  color: #555;
-  line-height: 1.6;
-}
-
-.insight-item .el-icon {
-  color: #c96442;
-  margin-top: 3px;
-  flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-  .area-theme-charts {
-    flex-direction: column;
-  }
-  .area-theme-chart {
-    height: 180px;
-  }
 }
 </style>

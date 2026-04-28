@@ -1,171 +1,121 @@
 <template>
   <div class="stats-module">
-    <!-- 页面标题栏 -->
     <div class="stats-header">
       <h3 class="stats-title">{{ displayArtistName }}题跋数据概览</h3>
       <el-select v-model="currentArtist" size="default" @change="onArtistChange" style="width: 120px;">
         <el-option value="all" label="全部作者" />
-        <el-option
-          v-for="artist in artistList"
-          :key="artist"
-          :label="artist"
-          :value="artist"
-        />
+        <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
       </el-select>
     </div>
 
     <div class="stats-content" v-loading="loading">
-      <!-- 空状态 -->
       <div v-if="!loading && totalCount === 0" class="stats-empty">
         <el-icon size="48" color="#dcdfe6"><DataAnalysis /></el-icon>
         <p>暂无分析数据</p>
         <p class="empty-tip">上传画作后将自动生成统计数据</p>
       </div>
 
-      <!-- 三块独立卡片 -->
-      <div v-else class="stats-cards-row">
-
-        <!-- 卡片1：总量 -->
-        <div class="stat-card stat-card-total">
-          <div class="card-inner">
-            <div class="card-label">收录画作总数</div>
-            <div class="card-big-num">{{ displayTotalCount }}</div>
-            <div class="card-sub">幅</div>
-            <div class="card-divider"></div>
-            <div class="card-meta">
-              <span class="meta-item">
-                <span class="meta-num">{{ periodStats.early }}</span>
-                <span class="meta-label">早期</span>
-              </span>
-              <span class="meta-sep">·</span>
-              <span class="meta-item">
-                <span class="meta-num">{{ periodStats.mid }}</span>
-                <span class="meta-label">中期</span>
-              </span>
-              <span class="meta-sep">·</span>
-              <span class="meta-item">
-                <span class="meta-num">{{ periodStats.late }}</span>
-                <span class="meta-label">晚期</span>
-              </span>
-              <span v-if="periodStats.unknown > 0" class="meta-sep">·</span>
-              <span v-if="periodStats.unknown > 0" class="meta-item">
-                <span class="meta-num">{{ periodStats.unknown }}</span>
-                <span class="meta-label">年代不详</span>
+      <template v-else>
+        <!-- 紧凑统计行 -->
+        <div class="stat-bar">
+          <div class="stat-bar-left">
+            <div class="stat-total-group">
+              <span class="stat-total-num">{{ displayTotalCount }}</span>
+              <span class="stat-total-unit">幅</span>
+            </div>
+            <div class="stat-period-group">
+              <span class="period-chip" v-if="periodStats.early">早 {{ periodStats.early }}</span>
+              <span class="period-chip" v-if="periodStats.mid">中 {{ periodStats.mid }}</span>
+              <span class="period-chip" v-if="periodStats.late">晚 {{ periodStats.late }}</span>
+              <span class="period-chip chip-unknown" v-if="periodStats.unknown">未分 {{ periodStats.unknown }}</span>
+            </div>
+          </div>
+          <div class="stat-bar-center">
+            <div class="stat-words">
+              <span class="stat-words-label">字数</span>
+              <span class="stat-words-value">最低 {{ charStatsOverall.min }}</span>
+              <span class="stat-words-sep">·</span>
+              <span class="stat-words-value">平均 {{ charStatsOverall.avg }}</span>
+              <span class="stat-words-sep">·</span>
+              <span class="stat-words-value">最高 {{ charStatsOverall.max }}</span>
+              <span class="stat-words-count">{{ charStatsOverall.totalInscriptions }}条</span>
+            </div>
+          </div>
+          <div class="stat-bar-right">
+            <div class="stat-sentiment" v-if="sentimentBars.length">
+              <span
+                v-for="(bar, i) in sentimentBars"
+                :key="i"
+                class="sentiment-chip"
+                :style="{ '--chip-color': bar.color }"
+              >
+                <span class="sentiment-chip-dot" :style="{ background: bar.color }"></span>
+                {{ bar.label }} {{ bar.percent }}%
               </span>
             </div>
           </div>
         </div>
 
-        <!-- 卡片2：题跋字数统计 -->
-        <div class="stat-card">
-          <div class="card-inner">
-            <div class="card-section-title">题跋字数</div>
-            <div class="char-stats-area" :key="barsKey + '-char'">
-              <div class="char-bars">
-                <div class="char-bar-group" v-for="(bar, i) in charStatBars" :key="i">
-                  <div class="char-bar-label">{{ bar.label }}</div>
-                  <div class="char-bar-track">
-                    <div
-                      class="char-bar-fill"
-                      :style="{
-                        width: bar.percent + '%',
-                        background: bar.color
-                      }"
-                    ></div>
-                  </div>
-                  <div class="char-bar-value">{{ bar.value }}<span class="char-bar-unit">字</span></div>
+        <!-- 图表行 -->
+        <div class="chart-row">
+          <div class="chart-col">
+            <div class="chart-col-label">主题 × 题跋面积</div>
+            <div ref="themeBarChartRef" class="chart-col-canvas"></div>
+          </div>
+          <div class="chart-col">
+            <div class="chart-col-label">分期 × 题跋面积</div>
+            <div ref="periodTrendChartRef" class="chart-col-canvas"></div>
+          </div>
+        </div>
+
+        <!-- 主题占比 + 洞察 行 -->
+        <div class="bottom-row">
+          <div class="theme-bar-compact">
+            <div class="theme-bar-compact-label">主题占比</div>
+            <div class="theme-bar-compact-body">
+              <div v-for="(item, i) in topThemes" :key="i" class="theme-bar-compact-row">
+                <span class="tbc-label theme-link" @click="navigateToTheme(item.name)">{{ item.name }}</span>
+                <div class="tbc-track">
+                  <div
+                    class="tbc-fill"
+                    :style="{ width: item.percent + '%', background: themeColors[i % themeColors.length] }"
+                  ></div>
                 </div>
-              </div>
-              <div class="char-stats-meta">
-                <span class="char-meta-item">
-                  <span class="char-meta-num">{{ charStatsOverall.totalChars }}</span>
-                  <span class="char-meta-label">总字数</span>
-                </span>
-                <span class="char-meta-sep">·</span>
-                <span class="char-meta-item">
-                  <span class="char-meta-num">{{ charStatsOverall.totalInscriptions }}</span>
-                  <span class="char-meta-label">题跋条数</span>
-                </span>
+                <span class="tbc-value">{{ item.count }}<span class="tbc-pct">({{ item.percent }}%)</span></span>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- 卡片3：情感极性 -->
-        <div class="stat-card">
-          <div class="card-inner">
-            <div class="card-section-title">情感极性</div>
-            <div class="sentiment-bars-area" :key="barsKey + '-sentiment'">
-              <div class="sentiment-bars">
-                <div class="sentiment-bar-group" v-for="(bar, i) in sentimentBars" :key="i">
-                  <div class="sentiment-bar-label">{{ bar.label }}</div>
-                  <div class="sentiment-bar-track">
-                    <div
-                      class="sentiment-bar-fill"
-                      :style="{
-                        width: bar.percent + '%',
-                        background: bar.color
-                      }"
-                    ></div>
-                  </div>
-                  <div class="sentiment-bar-value">{{ bar.percent }}<span class="sentiment-bar-unit">%</span></div>
-                </div>
-              </div>
-              <div class="sentiment-bars-meta">
-                <div v-for="item in sentimentItems" :key="item.key" class="sentiment-meta-chip">
-                  <span class="sentiment-meta-dot" :style="{ background: sentimentColors[item.key] }"></span>
-                  <span class="sentiment-meta-label">{{ sentimentLabels[item.key] }}</span>
-                  <span class="sentiment-meta-count">{{ item.count }}条</span>
-                </div>
-              </div>
+          <div class="insight-compact" v-if="areaThemeData.insights.length">
+            <div class="insight-item" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
+              <span class="insight-icon">ℹ</span>
+              <span>{{ insight }}</span>
             </div>
           </div>
         </div>
-
-      </div>
-
-      <!-- 主题占比条形图（单独一行） -->
-      <div v-if="!loading && totalCount > 0" class="theme-bars-section" :key="barsKey">
-        <div class="bars-header">主题占比</div>
-        <div class="bars-row">
-          <div v-for="(item, i) in topThemes" :key="i" class="bar-row">
-            <span class="bar-label theme-link" @click="navigateToTheme(item.name)">{{ item.name }}</span>
-            <div class="bar-track">
-              <div
-                class="bar-fill"
-                :style="{
-                  width: item.percent + '%',
-                  background: themeColors[i % themeColors.length]
-                }"
-              ></div>
-            </div>
-            <span class="bar-value">{{ item.count }}<span class="bar-pct">({{ item.percent }}%)</span></span>
-          </div>
-        </div>
-      </div>
-
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { DataAnalysis } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 
 const emit = defineEmits(['artist-change'])
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+
+// ── 作者列表 ──
 const artistList = ref([])
 const currentArtist = ref('李鱓')
 
-// 标题显示名：all → 全部，其他显示画家名
 const displayArtistName = computed(() => {
   return currentArtist.value === 'all' ? '全部' : currentArtist.value
 })
 
-// 从 API 动态获取作者列表
 async function fetchArtistList() {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
     const res = await fetch(`${API_BASE}/content-analysis/artists`)
     const data = await res.json()
     artistList.value = data.artists || []
@@ -174,33 +124,19 @@ async function fetchArtistList() {
   }
 }
 
-// 数据
+// ── 统计数据 ──
 const loading = ref(false)
 const totalCount = ref(0)
-const displayTotalCount = ref(0) // 动画显示用的计数
-const themeDistribution = ref([])   // [{ theme_name, count }]
-const sentimentDistribution = ref([]) // [{ polarity, count }] (已按polarity聚合)
-const periodDistribution = ref([])  // [{ period, count }]
-const barsKey = ref(0) // 主题占比区域 key，变化时强制重建以触发动画
-let totalCountRafId = null // 数字动画 requestAnimationFrame id
+const displayTotalCount = ref(0)
+const themeDistribution = ref([])
+const sentimentDistribution = ref([])
+const periodDistribution = ref([])
+let totalCountRafId = null
 
-// 颜色配置
 const themeColors = ['#c96442', '#a65d3f', '#547a8c', '#8b6f8e', '#4a4a5a', '#b8a47e']
-const sentimentColors = {
-  positive: '#c96442',
-  neutral: '#9090A0',
-  negative: '#3A3A3A'
-}
-const sentimentLabels = {
-  positive: '积极',
-  neutral: '中性',
-  negative: '消极'
-}
+const sentimentColors = { positive: '#c96442', neutral: '#9090A0', negative: '#3A3A3A' }
+const sentimentLabels = { positive: '积极', neutral: '中性', negative: '消极' }
 
-const circumference = 2 * Math.PI * 46 // ≈ 289
-const circumference2 = 2 * Math.PI * 62 // ≈ 390（用于更大的环形图）
-
-// 分期统计
 const periodStats = computed(() => {
   const map = { early: 0, mid: 0, late: 0, unknown: 0 }
   for (const item of periodDistribution.value) {
@@ -212,7 +148,6 @@ const periodStats = computed(() => {
   return map
 })
 
-// 主题排行（取全部，按数量降序）
 const topThemes = computed(() => {
   return [...themeDistribution.value]
     .sort((a, b) => b.count - a.count)
@@ -222,7 +157,6 @@ const topThemes = computed(() => {
     }))
 })
 
-// 题跋字数统计（从 period_stats 聚合整体 min/avg/max）
 const charStatsOverall = computed(() => {
   const ps = periodDistribution.value
   if (!ps || ps.length === 0) return { min: 0, avg: 0, max: 0, totalChars: 0, totalInscriptions: 0 }
@@ -246,35 +180,6 @@ const charStatsOverall = computed(() => {
   }
 })
 
-// 字数柱状图数据
-const charStatBars = computed(() => {
-  const s = charStatsOverall.value
-  const maxVal = Math.max(s.max, 1)
-  return [
-    { label: '最低', value: s.min, percent: (s.min / maxVal) * 100, color: '#b8a47e' },
-    { label: '平均', value: s.avg, percent: (s.avg / maxVal) * 100, color: '#c96442' },
-    { label: '最高', value: s.max, percent: 100, color: '#8b6f8e' }
-  ]
-})
-
-// 情感饼图 segments（纯饼图，无中心数字）
-const sentimentPieSegments = computed(() => {
-  const total = sentimentDistribution.value.reduce((sum, item) => sum + item.count, 0)
-  if (!total) return []
-  let accumulated = 0
-  return sentimentDistribution.value.map(item => {
-    const dash = (item.count / total) * circumference2
-    const offset = -(accumulated / total) * circumference2
-    accumulated += item.count
-    return {
-      dash,
-      offset,
-      color: sentimentColors[item.key] || '#ccc'
-    }
-  })
-})
-
-// 情感列表（含百分比）
 const sentimentItems = computed(() => {
   const total = sentimentDistribution.value.reduce((sum, item) => sum + item.count, 0)
   return sentimentDistribution.value.map(item => ({
@@ -284,7 +189,6 @@ const sentimentItems = computed(() => {
   }))
 })
 
-// 情感柱状图数据
 const sentimentBars = computed(() => {
   return sentimentItems.value.map(item => ({
     label: sentimentLabels[item.key],
@@ -293,21 +197,16 @@ const sentimentBars = computed(() => {
   }))
 })
 
-// 数字递增动画
 function animateTotalCount(target, duration = 900) {
   if (totalCountRafId) cancelAnimationFrame(totalCountRafId)
   const start = displayTotalCount.value
   const startTime = performance.now()
-
   function step(now) {
     const elapsed = now - startTime
     const progress = Math.min(elapsed / duration, 1)
-    // easeOutCubic
     const eased = 1 - Math.pow(1 - progress, 3)
     displayTotalCount.value = Math.round(start + (target - start) * eased)
-    if (progress < 1) {
-      totalCountRafId = requestAnimationFrame(step)
-    }
+    if (progress < 1) totalCountRafId = requestAnimationFrame(step)
   }
   totalCountRafId = requestAnimationFrame(step)
 }
@@ -315,44 +214,24 @@ function animateTotalCount(target, duration = 900) {
 async function fetchStats() {
   loading.value = true
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
     const resp = await fetch(`${API_BASE}/content-analysis/stats?artist=${encodeURIComponent(currentArtist.value)}`)
     const data = await resp.json()
     if (data.total_count !== undefined) {
       totalCount.value = data.total_count
-
-      // 主题分布：直接使用
-      themeDistribution.value = (data.theme_distribution || []).map(item => ({
-        name: item.theme_name,
-        count: item.count
-      }))
-
-      // 主题分布：API 按 period 分组返回，需按 theme_name 合并去重
       const themeMap = {}
       for (const item of (data.theme_distribution || [])) {
-        if (!themeMap[item.theme_name]) {
-          themeMap[item.theme_name] = 0
-        }
+        if (!themeMap[item.theme_name]) themeMap[item.theme_name] = 0
         themeMap[item.theme_name] += item.count
       }
       themeDistribution.value = Object.entries(themeMap).map(([name, count]) => ({ name, count }))
-
-      // 情感分布：按 polarity 聚合（原始数据按 period 分组）
       const sentimentMap = {}
       for (const item of (data.sentiment_distribution || [])) {
-        if (!sentimentMap[item.polarity]) {
-          sentimentMap[item.polarity] = 0
-        }
+        if (!sentimentMap[item.polarity]) sentimentMap[item.polarity] = 0
         sentimentMap[item.polarity] += item.count
       }
       sentimentDistribution.value = Object.entries(sentimentMap).map(([key, count]) => ({ key, count }))
-
-      // 分期分布（API 字段名是 period_stats）
       periodDistribution.value = data.period_stats || []
-
-      // 大数字递增动画 + 柱状图重建动画
       animateTotalCount(totalCount.value)
-      barsKey.value++
     } else {
       totalCount.value = 0
       themeDistribution.value = []
@@ -372,6 +251,7 @@ async function fetchStats() {
 
 function onArtistChange() {
   fetchStats()
+  fetchAreaThemeStats()
   emit('artist-change', currentArtist.value)
 }
 
@@ -379,18 +259,134 @@ function navigateToTheme(themeName) {
   window.location.href = `/#/content-analysis?theme=${encodeURIComponent(themeName)}`
 }
 
+// ── 内容×空间 图表 ──
+const themeBarChartRef = ref(null)
+const periodTrendChartRef = ref(null)
+let themeBarChart = null
+let periodTrendChart = null
+
+const areaThemeData = ref({ sample_total: 0, theme_area: [], period_trend: [], insights: [] })
+
+async function fetchAreaThemeStats() {
+  try {
+    const artist = currentArtist.value === 'all' ? 'all' : currentArtist.value
+    const res = await fetch(`${API_BASE}/content-analysis/area-theme-stats?artist=${encodeURIComponent(artist)}`)
+    const data = await res.json()
+    areaThemeData.value = {
+      sample_total: data.sample_total || 0,
+      theme_area: data.theme_area || [],
+      period_trend: (data.period_trend || []).filter(p => p.period !== '未分期' && p.period !== '年代不详'),
+      insights: data.insights || [],
+    }
+    nextTick(() => {
+      renderThemeBarChart()
+      renderPeriodTrendChart()
+    })
+  } catch (e) {
+    console.error('获取内容×空间数据失败', e)
+  }
+}
+
+function renderThemeBarChart() {
+  if (!themeBarChartRef.value || !areaThemeData.value.theme_area.length) return
+  if (!themeBarChart) themeBarChart = echarts.init(themeBarChartRef.value)
+  const items = areaThemeData.value.theme_area
+  const chartColors = ['#c96442', '#b8a47e', '#6B5B95', '#4ecdc4', '#667eea', '#ff6b6b']
+  themeBarChart.setOption({
+    animation: true, animationDuration: 600,
+    grid: { left: '3%', right: '12%', bottom: '3%', top: '8%', containLabel: true },
+    xAxis: {
+      type: 'category', data: items.map(i => i.theme),
+      axisLabel: { color: '#8a8070', fontSize: 10, interval: 0, rotate: items.length > 4 ? 20 : 0 },
+      axisLine: { show: false }, axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value', name: '面积(%)', nameTextStyle: { color: '#8a8070', fontSize: 10 },
+      axisLabel: { color: '#8a8070', fontSize: 10, formatter: '{value}%' },
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'rgba(139,124,179,0.12)', type: 'dashed' } },
+    },
+    series: [{
+      type: 'bar',
+      data: items.map((i, idx) => ({
+        value: i.avg_area,
+        itemStyle: { color: chartColors[idx % chartColors.length], borderRadius: [4, 4, 0, 0] },
+      })),
+      barWidth: '50%',
+      label: { show: true, position: 'top', formatter: '{c}%', fontSize: 10, color: '#666' },
+    }],
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params) => {
+        const d = params[0]; const item = items[d.dataIndex]
+        return `<b>${item.theme}</b><br/>平均面积: ${item.avg_area}%<br/>样本: ${item.n}幅<br/>平均词数: ${item.avg_words}`
+      },
+    },
+  }, true)
+}
+
+function renderPeriodTrendChart() {
+  if (!periodTrendChartRef.value || !areaThemeData.value.period_trend.length) return
+  if (!periodTrendChart) periodTrendChart = echarts.init(periodTrendChartRef.value)
+  const items = areaThemeData.value.period_trend
+  periodTrendChart.setOption({
+    animation: true, animationDuration: 600,
+    grid: { left: '3%', right: '8%', bottom: '3%', top: '12%', containLabel: true },
+    xAxis: {
+      type: 'category', data: items.map(i => i.period),
+      axisLabel: { color: '#8a8070', fontSize: 11 },
+      axisLine: { lineStyle: { color: '#d1cfc5' } }, axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value', name: '面积(%)', nameTextStyle: { color: '#8a8070', fontSize: 10 },
+      axisLabel: { color: '#8a8070', fontSize: 10, formatter: '{value}%' },
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'rgba(139,124,179,0.12)', type: 'dashed' } },
+    },
+    series: [{
+      type: 'line', data: items.map(i => i.avg_area),
+      smooth: 0.3, symbol: 'circle', symbolSize: 10,
+      lineStyle: { width: 2.5, color: '#c96442' },
+      itemStyle: { color: '#c96442', borderColor: '#fff', borderWidth: 2 },
+      label: { show: true, position: 'top', formatter: (p) => `${p.value}%`, fontSize: 10, color: '#c96442', fontWeight: 600 },
+      areaStyle: {
+        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(201,100,66,0.3)' }, { offset: 1, color: 'rgba(201,100,66,0.02)' }] },
+      },
+    }],
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params) => {
+        const d = params[0]; const item = items[d.dataIndex]
+        return `<b>${item.period}</b><br/>平均面积: ${item.avg_area}%<br/>样本: ${item.n}幅`
+      },
+    },
+  }, true)
+}
+
+// ── 生命周期 ──
+function handleResize() {
+  themeBarChart?.resize()
+  periodTrendChart?.resize()
+}
+
 onMounted(() => {
   fetchArtistList()
   fetchStats()
+  fetchAreaThemeStats()
+  window.addEventListener('resize', handleResize)
 })
 
-// 暴露刷新方法
-defineExpose({ 
+watch(currentArtist, () => {
+  fetchAreaThemeStats()
+})
+
+defineExpose({
   refresh: fetchStats,
   setArtist: (artist) => {
     if (currentArtist.value !== artist) {
       currentArtist.value = artist
       fetchStats()
+      fetchAreaThemeStats()
       emit('artist-change', artist)
     }
   }
@@ -398,15 +394,12 @@ defineExpose({
 </script>
 
 <style scoped>
-/* ─── 页面标题栏 ─── */
 .stats-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  height: 32px;
+  margin-bottom: 12px;
 }
-
 .stats-title {
   font-size: 18px;
   font-weight: 600;
@@ -415,24 +408,19 @@ defineExpose({
   font-family: 'Noto Serif SC', 'KaiTi', serif;
   letter-spacing: 0.02em;
 }
-
-/* ─── 内容区 ─── */
 .stats-module {
-  min-height: 320px;
+  min-height: 200px;
   width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-
 .stats-content {
-  min-height: 280px;
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
-
-/* ─── 空状态 ─── */
 .stats-empty {
   display: flex;
   flex-direction: column;
@@ -443,351 +431,170 @@ defineExpose({
   text-align: center;
   gap: 8px;
 }
-
 .stats-empty .empty-tip {
   font-size: 12px;
   color: #ccc;
   margin-top: 4px;
 }
 
-/* ─── 三卡片行 ─── */
-.stats-cards-row {
+/* ── 紧凑统计行 ── */
+.stat-bar {
   display: flex;
-  gap: 16px;
-  align-items: stretch;
-  margin-bottom: 16px;
-  flex: 1;
-}
-
-/* ─── 独立卡片通用 ─── */
-.stat-card {
-  background: #ffffff;
-  border: 1px solid #e8e6e0;
-  border-radius: 12px;
-  padding: 16px;
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: flex-start;
-  transition: box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
-}
-
-.card-inner {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
   align-items: center;
+  background: #faf8f4;
+  border: 1px solid #e8e6e0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
-
-/* 环形图卡片的内容从顶部开始 */
-.stat-card:not(.stat-card-total) .card-inner {
-  align-items: flex-start;
+.stat-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
-
-/* ─── 卡片1：总量 ─── */
-.stat-card-total {
-  background: linear-gradient(145deg, #faf8f4 0%, #f0ece4 100%);
-  border-color: #e0d9ce;
-  justify-content: center;
+.stat-total-group {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
 }
-
-.card-label {
-  font-size: 12px;
-  color: #8a8070;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.card-big-num {
-  font-size: clamp(40px, 5.5vw, 64px);
+.stat-total-num {
+  font-size: 28px;
   font-weight: 800;
   color: #c96442;
-  line-height: 1;
   font-family: 'Noto Serif SC', serif;
-  letter-spacing: -0.02em;
+  line-height: 1;
 }
-
-.card-sub {
-  font-size: 14px;
+.stat-total-unit {
+  font-size: 13px;
   color: #b0a090;
-  margin-top: 4px;
-  margin-bottom: 12px;
-}
-
-.card-divider {
-  width: 36px;
-  height: 1px;
-  background: #d0c8b8;
-  margin-bottom: 12px;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #8a8070;
-}
-
-.meta-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.meta-num {
-  font-size: 18px;
-  font-weight: 700;
-  color: #5a4a38;
-  line-height: 1;
-}
-
-.meta-label {
-  font-size: 11px;
-  color: #9a8a78;
-}
-
-.meta-sep {
-  color: #c0b8a8;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-/* ─── 卡片标题 ─── */
-.card-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a4a4a;
-  letter-spacing: 0.04em;
-  margin-bottom: 14px;
-  align-self: flex-start;
-}
-
-/* ─── 题跋字数统计 ─── */
-.char-stats-area {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.char-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.char-bar-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.char-bar-label {
-  width: 36px;
-  font-size: 12px;
-  color: #888;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.char-bar-track {
-  flex: 1;
-  height: 22px;
-  background: #f5f3ee;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.char-bar-fill {
-  height: 100%;
-  border-radius: 6px;
-  min-width: 4px;
-  transform-origin: left;
-  animation: barGrow 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-}
-
-.char-bar-value {
-  width: 60px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #2a2a2a;
-  font-family: 'Noto Serif SC', serif;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.char-bar-unit {
-  font-size: 11px;
-  font-weight: 400;
-  color: #aaa;
   margin-left: 2px;
 }
-
-.char-stats-meta {
+.stat-period-group {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding-top: 10px;
-  border-top: 1px solid #f0ede8;
+  gap: 6px;
 }
-
-.char-meta-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.char-meta-num {
-  font-size: 16px;
-  font-weight: 700;
-  color: #5a4a38;
-  font-family: 'Noto Serif SC', serif;
-}
-
-.char-meta-label {
+.period-chip {
   font-size: 11px;
+  color: #6a5a48;
+  background: #ede8e0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.chip-unknown {
   color: #9a8a78;
 }
-
-.char-meta-sep {
-  color: #d0c8b8;
-  font-size: 11px;
-}
-
-/* ─── 情感极性柱状图 ─── */
-.sentiment-bars-area {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.sentiment-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.sentiment-bar-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sentiment-bar-label {
-  width: 36px;
-  font-size: 12px;
-  color: #888;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.sentiment-bar-track {
+.stat-bar-center {
   flex: 1;
-  height: 22px;
-  background: #f5f3ee;
-  border-radius: 6px;
-  overflow: hidden;
+  min-width: 0;
 }
-
-.sentiment-bar-fill {
-  height: 100%;
-  border-radius: 6px;
-  min-width: 4px;
-  transform-origin: left;
-  animation: barGrow 0.8s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-}
-
-.sentiment-bar-value {
-  width: 50px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #2a2a2a;
-  font-family: 'Noto Serif SC', serif;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.sentiment-bar-unit {
-  font-size: 11px;
-  font-weight: 400;
-  color: #aaa;
-  margin-left: 2px;
-}
-
-.sentiment-bars-meta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #f0ede8;
-}
-
-.sentiment-meta-chip {
+.stat-words {
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 12px;
+  color: #666;
+  flex-wrap: wrap;
+}
+.stat-words-label {
+  color: #9a8a78;
+  margin-right: 2px;
+}
+.stat-words-value {
+  font-weight: 600;
+  color: #4a3a28;
+}
+.stat-words-sep {
+  color: #d0c8b8;
+}
+.stat-words-count {
+  color: #9a8a78;
+  margin-left: 4px;
+}
+.stat-bar-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.stat-sentiment {
+  display: flex;
+  gap: 8px;
+}
+.sentiment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 11px;
-  color: #555;
+  color: #5a5a5a;
   white-space: nowrap;
 }
-
-.sentiment-meta-dot {
-  width: 8px;
-  height: 8px;
+.sentiment-chip-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 2px;
   flex-shrink: 0;
 }
 
-.sentiment-meta-label {
-  color: #4a4a4a;
+/* ── 图表行 ── */
+.chart-row {
+  display: flex;
+  gap: 16px;
 }
-
-.sentiment-meta-count {
-  color: #aaa;
-}
-
-/* ─── 主题占比条形图 ─── */
-.theme-bars-section {
+.chart-col {
+  flex: 1;
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #e8e6e0;
-  border-radius: 12px;
-  padding: 21px;
+  border-radius: 10px;
+  padding: 10px 12px 6px;
 }
-
-.bars-header {
-  font-size: 13px;
+.chart-col-label {
+  font-size: 12px;
   font-weight: 600;
-  color: #4a4a4a;
+  color: #8a8070;
+  margin-bottom: 4px;
   letter-spacing: 0.04em;
-  margin-bottom: 14px;
+}
+.chart-col-canvas {
+  width: 100%;
+  height: 180px;
 }
 
-.bars-row {
+/* ── 底部行：主题占比 + 洞察 ── */
+.bottom-row {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+.theme-bar-compact {
+  flex: 0 0 62%;
+  background: #ffffff;
+  border: 1px solid #e8e6e0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 0;
+}
+.theme-bar-compact-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a8070;
+  margin-bottom: 8px;
+  letter-spacing: 0.04em;
+}
+.theme-bar-compact-body {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
-
-.bar-row {
+.theme-bar-compact-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
-
-.bar-label {
-  width: 120px;
-  font-size: 12px;
+.tbc-label {
+  width: 80px;
+  font-size: 11px;
   color: #666;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -801,45 +608,84 @@ defineExpose({
 .theme-link:hover {
   color: #c96442;
 }
-
-.bar-track {
+.tbc-track {
   flex: 1;
-  height: 14px;
+  height: 10px;
   background: #f0ede8;
-  border-radius: 5px;
+  border-radius: 4px;
   overflow: hidden;
 }
-
-.bar-fill {
+.tbc-fill {
   height: 100%;
-  border-radius: 5px;
-  min-width: 6px;
+  border-radius: 4px;
+  min-width: 4px;
   transform-origin: left;
-  animation: barGrow 0.9s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  animation: barGrow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
-
-@keyframes barGrow {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.bar-value {
-  width: 70px;
-  font-size: 12px;
-  font-weight: 700;
+.tbc-value {
+  width: 80px;
+  font-size: 11px;
+  font-weight: 600;
   color: #3a3a3a;
   text-align: right;
   flex-shrink: 0;
 }
-
-.bar-pct {
+.tbc-pct {
   font-weight: 400;
   color: #aaa;
-  margin-left: 3px;
-  font-size: 11px;
+  margin-left: 2px;
+}
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.insight-compact {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  background: #faf9f7;
+  border: 1px solid #e8e4da;
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.insight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.6;
+}
+.insight-icon {
+  color: #c96442;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .chart-row {
+    flex-direction: column;
+  }
+  .chart-col-canvas {
+    height: 150px;
+  }
+  .bottom-row {
+    flex-direction: column;
+  }
+  .theme-bar-compact {
+    flex: 1;
+  }
+  .stat-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .stat-bar-center {
+    width: 100%;
+  }
 }
 </style>
