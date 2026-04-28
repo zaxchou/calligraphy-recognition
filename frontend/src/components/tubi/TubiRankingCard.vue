@@ -8,10 +8,10 @@
     </div>
     <el-card shadow="never" class="ranking-card">
 
-      <!-- 骨架屏（8条统一结构，与真实数据完全对齐） -->
+      <!-- 骨架屏（7条统一结构，与真实数据完全对齐） -->
       <div class="skeleton-wrap" v-if="loading">
         <div class="skeleton-body">
-          <div v-for="i in 8" :key="i" class="skeleton-row" :class="{ 'skeleton-top': i <= 3 }">
+          <div v-for="i in 7" :key="i" class="skeleton-row" :class="{ 'skeleton-top': i <= 3 }">
             <div class="skeleton-medal skeleton-pulse" :class="{ 'skeleton-medal-lg': i <= 3 }"></div>
             <div class="skeleton-thumb skeleton-pulse" :class="{ 'skeleton-thumb-lg': i <= 3 }"></div>
             <div class="skeleton-info">
@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <!-- 排行榜内容（8条统一列表） -->
+      <!-- 排行榜内容（7条统一列表） -->
       <div class="ranking-body" v-if="!loading && rankings.length > 0">
         <!-- 第1-3名 -->
         <div
@@ -47,7 +47,7 @@
           <div class="ranking-row-ratio">{{ item.tubiRatio.toFixed(2) }}%</div>
         </div>
 
-        <!-- 第4-8名 -->
+        <!-- 第4-7名 -->
         <div
           v-for="(item, index) in remainingRankings"
           :key="item.id"
@@ -123,7 +123,7 @@ const rankings = computed(() => {
       }
     })
     .sort((a, b) => b.tubiRatio - a.tubiRatio) // 按题跋比降序排序
-    .slice(0, 8) // 最多显示8条
+    .slice(0, 7) // 最多显示7条
 })
 
 // 前三名排行榜数据
@@ -131,9 +131,9 @@ const topThreeRankings = computed(() => {
   return rankings.value.slice(0, 3)
 })
 
-// 第4-8名排行榜数据
+// 第4-7名排行榜数据
 const remainingRankings = computed(() => {
-  return rankings.value.slice(3, 8)
+  return rankings.value.slice(3, 7)
 })
 
 // 处理图片加载错误
@@ -196,7 +196,7 @@ function handleMore() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 10px;
+  padding: 16px 14px;
 }
 
 .ranking-body {
@@ -218,15 +218,15 @@ function handleMore() {
 .skeleton-body {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 6px;
   flex: 1;
 }
 
 .skeleton-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
+  gap: 10px;
+  padding: 8px 10px;
 }
 
 .skeleton-medal {
@@ -279,19 +279,19 @@ function handleMore() {
   background: var(--border-cream);
 }
 
-/* ─── 统一排行榜行（8条同样高度/行距）─── */
+/* ─── 统一排行榜行（7条同样高度/行距）─── */
 .ranking-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 6px;
 }
 
 .ranking-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
