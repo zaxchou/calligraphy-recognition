@@ -68,20 +68,37 @@
 
             <!-- 后端处理进度 -->
             <div v-if="store.uploadStatus === 'processing'" class="processing-status">
-              <div class="processing-spinner">
-                <Loader2 class="icon spin" />
-              </div>
-              <div class="processing-info">
-                <p class="processing-title">正在处理 PDF...</p>
-                <p class="processing-stage">{{ store.processingStage || '初始化中' }}</p>
-                <div class="processing-progress-bar">
-                  <div 
-                    class="processing-progress-fill"
-                    :style="{ width: `${store.processingProgress || 0}%` }"
-                  />
+              <div class="processing-steps">
+                <div 
+                  v-for="(step, index) in processingSteps" 
+                  :key="index"
+                  class="step-item"
+                  :class="{
+                    'step-completed': step.completed,
+                    'step-active': step.active,
+                    'step-waiting': !step.completed && !step.active
+                  }"
+                >
+                  <div class="step-icon">
+                    <Check v-if="step.completed" class="icon" />
+                    <Loader2 v-else-if="step.active" class="icon spin" />
+                    <Circle v-else class="icon" />
+                  </div>
+                  <div class="step-content">
+                    <p class="step-name">{{ step.name }}</p>
+                    <p v-if="step.active && store.processingStage" class="step-detail">
+                      {{ store.processingStage }}
+                    </p>
+                  </div>
                 </div>
-                <p class="processing-percent">{{ store.processingProgress || 0 }}%</p>
               </div>
+              <div class="processing-progress-bar">
+                <div 
+                  class="processing-progress-fill"
+                  :style="{ width: `${store.processingProgress || 0}%` }"
+                />
+              </div>
+              <p class="processing-percent">{{ store.processingProgress || 0 }}%</p>
             </div>
           </div>
 
@@ -105,6 +122,14 @@
                 <option :value="500">500 字符</option>
                 <option :value="800">800 字符</option>
                 <option :value="1000">1000 字符</option>
+              </select>
+            </div>
+            
+            <div class="config-item">
+              <label class="config-label">PDF 解析器</label>
+              <select v-model="config.parserBackend" class="config-select">
+                <option value="pymupdf">PyMuPDF（快速，基础解析）</option>
+                <option value="mineru">MinerU（AI解析，支持表格/大纲/图片提取）</option>
               </select>
             </div>
           </div>
@@ -148,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { 
   Upload, 
   X, 
@@ -156,7 +181,9 @@ import {
   FileText, 
   AlertCircle, 
   CheckCircle,
-  Loader2
+  Loader2,
+  Check,
+  Circle
 } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 
@@ -171,6 +198,43 @@ const emit = defineEmits(['update:visible', 'upload-success'])
 
 const store = useKnowledgeStore()
 
+// 处理步骤定义
+const processingSteps = computed(() => {
+  const progress = store.processingProgress || 0
+  return [
+    {
+      name: 'PDF 解析',
+      completed: progress >= 25,
+      active: progress >= 0 && progress < 25
+    },
+    {
+      name: '文本分块',
+      completed: progress >= 40,
+      active: progress >= 25 && progress < 40
+    },
+    {
+      name: '文本向量化',
+      completed: progress >= 70,
+      active: progress >= 40 && progress < 70
+    },
+    {
+      name: '图像提取',
+      completed: progress >= 78,
+      active: progress >= 70 && progress < 78
+    },
+    {
+      name: '图像向量化',
+      completed: progress >= 90,
+      active: progress >= 78 && progress < 90
+    },
+    {
+      name: '关联分析',
+      completed: progress >= 100,
+      active: progress >= 90 && progress < 100
+    }
+  ]
+})
+
 // 状态
 const fileInput = ref(null)
 const isDragOver = ref(false)
@@ -180,7 +244,8 @@ const uploadSuccess = ref(false)
 // 配置
 const config = reactive({
   chunkStrategy: 'semantic',
-  chunkSize: 500
+  chunkSize: 500,
+  parserBackend: 'pymupdf'
 })
 
 // 方法
@@ -235,7 +300,8 @@ async function startUpload() {
   try {
     await store.uploadPdf(selectedFile.value, {
       chunkStrategy: config.chunkStrategy,
-      chunkSize: config.chunkSize
+      chunkSize: config.chunkSize,
+      parserBackend: config.parserBackend
     })
     uploadSuccess.value = true
     emit('upload-success')
@@ -521,41 +587,88 @@ watch(() => props.visible, (newVal) => {
   bottom: 16px;
   left: 24px;
   right: 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
   padding: 16px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 10px;
 }
 
-.processing-spinner {
-  flex-shrink: 0;
+.processing-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.processing-spinner .icon {
-  width: 28px;
-  height: 28px;
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.step-item.step-active {
+  background: #dcfce7;
+}
+
+.step-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-icon .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.step-completed .step-icon .icon {
   color: #16a34a;
 }
 
-.processing-info {
+.step-active .step-icon .icon {
+  color: #16a34a;
+  animation: spin 1s linear infinite;
+}
+
+.step-waiting .step-icon .icon {
+  color: #9ca3af;
+}
+
+.step-content {
   flex: 1;
   min-width: 0;
 }
 
-.processing-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #166534;
-  margin-bottom: 4px;
+.step-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
 }
 
-.processing-stage {
-  font-size: 12px;
+.step-completed .step-name {
+  color: #166534;
+}
+
+.step-active .step-name {
+  color: #166534;
+  font-weight: 600;
+}
+
+.step-waiting .step-name {
+  color: #9ca3af;
+}
+
+.step-detail {
+  font-size: 11px;
   color: #15803d;
-  margin-bottom: 8px;
+  margin: 2px 0 0;
 }
 
 .processing-progress-bar {

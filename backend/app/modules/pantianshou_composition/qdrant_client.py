@@ -274,6 +274,7 @@ def delete_points(collection: str, point_ids: List[str]) -> bool:
 
 KNOWLEDGE_TEXTS_COLLECTION = "knowledge_texts"
 KNOWLEDGE_IMAGES_COLLECTION = "knowledge_images"
+KNOWLEDGE_TABLES_COLLECTION = "knowledge_tables"  # 新增表格集合
 
 # multimodal-embedding-v1 输出 1024 维向量
 KNOWLEDGE_VECTOR_SIZE = 1024
@@ -283,7 +284,8 @@ def ensure_knowledge_collections() -> bool:
     """确保知识库集合存在，不存在则创建."""
     texts_ok = ensure_collection(KNOWLEDGE_TEXTS_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)
     images_ok = ensure_collection(KNOWLEDGE_IMAGES_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)
-    return texts_ok and images_ok
+    tables_ok = ensure_collection(KNOWLEDGE_TABLES_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)  # 新增表格集合
+    return texts_ok and images_ok and tables_ok
 
 
 def upsert_text_chunks(chunks: List[Dict[str, Any]], book_id: str) -> bool:
@@ -412,6 +414,67 @@ def search_knowledge_images(
     )
 
 
+def upsert_tables(tables: List[Dict[str, Any]], book_id: str) -> bool:
+    """批量插入/更新表格向量.
+    
+    Args:
+        tables: 表格列表，每项包含 id, vector, content, metadata
+        book_id: 书籍ID，用于过滤
+    """
+    if not tables:
+        return True
+    
+    points = []
+    for table in tables:
+        point = {
+            "id": table["id"],
+            "vector": table["vector"],
+            "payload": {
+                "book_id": book_id,
+                "content": table["content"],
+                "chapter": table.get("chapter", ""),
+                "page_start": table.get("page_start", 0),
+                "page_end": table.get("page_end", 0),
+                "table_index": table.get("table_index", 0),
+                "metadata": table.get("metadata", {}),
+            }
+        }
+        points.append(point)
+    
+    return upsert_points(KNOWLEDGE_TABLES_COLLECTION, points)
+
+
+def search_knowledge_tables(
+    vector: List[float],
+    book_ids: Optional[List[str]] = None,
+    limit: int = 10,
+    score_threshold: float = 0.7
+) -> List[Dict[str, Any]]:
+    """搜索知识库表格.
+    
+    Args:
+        vector: 查询向量
+        book_ids: 限定搜索的书籍ID列表，None表示搜索全部
+        limit: 返回结果数量
+        score_threshold: 最低相似度阈值
+    """
+    query_filter = None
+    if book_ids:
+        query_filter = {
+            "must": [
+                {"key": "book_id", "match": {"any": book_ids}}
+            ]
+        }
+    
+    return search_collection(
+        KNOWLEDGE_TABLES_COLLECTION,
+        vector,
+        limit=limit,
+        query_filter=query_filter,
+        score_threshold=score_threshold
+    )
+
+
 def delete_book_vectors(book_id: str) -> bool:
     """删除某本书的所有向量数据."""
     # 删除文本向量
@@ -440,6 +503,13 @@ def delete_book_vectors(book_id: str) -> bool:
             json={"filter": filter_payload},
             headers=_headers()
         )
+        
+        # 删除表格
+        client.post(
+            f"{base}/collections/{KNOWLEDGE_TABLES_COLLECTION}/points/delete",
+            json={"filter": filter_payload},
+            headers=_headers()
+        )
         return True
     except Exception as e:
         logger.error("Qdrant 删除书籍向量失败 [book_id=%s]: %s", book_id, e)
@@ -456,7 +526,7 @@ def get_book_vector_count(book_id: str) -> Dict[str, int]:
     
     base = _base_url()
     if not base:
-        return {"texts": 0, "images": 0}
+        return {"texts": 0, "images": 0, "tables": 0}
     
     try:
         client = _get_client(5.0)
@@ -476,7 +546,15 @@ def get_book_vector_count(book_id: str) -> Dict[str, int]:
         )
         image_count = r2.json().get("result", {}).get("count", 0) if r2.status_code == 200 else 0
         
-        return {"texts": text_count, "images": image_count}
+        # 统计表格
+        r3 = client.post(
+            f"{base}/collections/{KNOWLEDGE_TABLES_COLLECTION}/points/count",
+            json={"filter": filter_payload},
+            headers=_headers()
+        )
+        table_count = r3.json().get("result", {}).get("count", 0) if r3.status_code == 200 else 0
+        
+        return {"texts": text_count, "images": image_count, "tables": table_count}
     except Exception as e:
         logger.error("Qdrant 获取书籍向量统计失败 [book_id=%s]: %s", book_id, e)
-        return {"texts": 0, "images": 0}
+        return {"texts": 0, "images": 0, "tables": 0}

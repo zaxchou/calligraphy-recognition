@@ -29,6 +29,8 @@ class PdfBook(Base):
     author = Column(String(255), nullable=True)
     total_pages = Column(Integer, nullable=True)
     status = Column(String(20), default="pending")  # pending/processing/completed/failed
+    full_md = Column(Text, nullable=True)  # 完整 Markdown 内容
+    outline = Column(JSON, nullable=True)  # 文档大纲（JSON 格式）
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -283,6 +285,115 @@ class CompositionFeedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class CompositionRule(Base):
+    """构图规则表 — 替代 pan.md / panplus.md 静态文件解析
+    
+    规则来源：潘天寿《关于构图问题》+ 刘海勇《中国写意花鸟画教程》
+    维度编码：KH(开合) XS(虚实) SM(疏密) QS(气势) FZ(辅助) JH(均衡) CC(穿插) BJ(边角) GF(范式) MC(画材)
+    """
+    __tablename__ = "composition_rules"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    rule_id = Column(String(20), nullable=False, unique=True, index=True)  # 如 "KH-01-01"
+    rule_name = Column(String(100), nullable=False)  # 规则名称
+    condition = Column(Text, nullable=False)  # 触发条件描述
+    quantitative_standard = Column(Text, nullable=True)  # 量化标准
+    weight = Column(Integer, default=50)  # 权重 0-100（存储为整数百分比）
+    category_name = Column(String(50), nullable=False)  # 维度名称（如"开合结构"）
+    category_code = Column(String(10), nullable=False, index=True)  # 维度编码（如"KH"）
+    subcategory_name = Column(String(100), nullable=True)  # 子维度名称
+    reference_figures = Column(JSON, default=list)  # 关联插图ID列表 ["图一", "图二"]
+    source = Column(String(20), default="pan.md")  # 来源："pan.md" 或 "panplus.md"
+    ruleset_version = Column(String(20), nullable=True)  # 规则集版本号
+    is_active = Column(Integer, default=1)  # 是否启用：1=启用，0=禁用
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        Index("idx_composition_rules_category", "category_code"),
+        Index("idx_composition_rules_source", "source"),
+    )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典（兼容 PanRule dataclass 字段名）"""
+        return {
+            "id": self.id,
+            "rule_id": self.rule_id,
+            "rule_name": self.rule_name,
+            "condition": self.condition,
+            "quantitative_standard": self.quantitative_standard,
+            "weight": self.weight / 100.0 if self.weight else 0.0,  # 转为 0.0-1.0
+            "category_name": self.category_name,
+            "category_code": self.category_code,
+            "subcategory_name": self.subcategory_name,
+            "reference_figures": self.reference_figures or [],
+            "source": self.source,
+            "ruleset_version": self.ruleset_version,
+            "is_active": bool(self.is_active),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+    
+    def to_pan_rule(self):
+        """转换为 PanRule dataclass（兼容现有 rule_matcher.py）"""
+        from app.modules.pantianshou_composition.knowledge_ingest import PanRule
+        return PanRule(
+            rule_id=self.rule_id,
+            rule_name=self.rule_name,
+            condition=self.condition,
+            quantitative_standard=self.quantitative_standard or "",
+            reference_figures=self.reference_figures or [],
+            weight=self.weight / 100.0 if self.weight else 0.0,
+            category_name=self.category_name,
+            category_code=self.category_code,
+            subcategory_name=self.subcategory_name or "",
+        )
+
+
+class CompositionFigure(Base):
+    """构图插图表 — 替代 pan.md 中的插图索引
+    
+    存储正例/反例插图的元数据，用于构图分析时的参考图匹配。
+    """
+    __tablename__ = "composition_figures"
+    
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    figure_id = Column(String(20), nullable=False, unique=True, index=True)  # 如 "图一"
+    figure_type = Column(String(20), nullable=False)  # "positive" 或 "negative"
+    score_ref = Column(Integer, nullable=True)  # 参考分数（0-100）
+    description = Column(Text, nullable=True)  # 插图描述
+    source = Column(String(20), default="pan.md")  # 来源
+    ruleset_version = Column(String(20), nullable=True)  # 规则集版本号
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        Index("idx_composition_figures_type", "figure_type"),
+    )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            "id": self.id,
+            "figure_id": self.figure_id,
+            "figure_type": self.figure_type,
+            "score_ref": self.score_ref,
+            "description": self.description,
+            "source": self.source,
+            "ruleset_version": self.ruleset_version,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+    
+    def to_pan_figure_index(self):
+        """转换为 PanFigureIndex dataclass（兼容现有代码）"""
+        from app.modules.pantianshou_composition.knowledge_ingest import PanFigureIndex
+        return PanFigureIndex(
+            figure_id=self.figure_id,
+            figure_type=self.figure_type,
+            score_ref=float(self.score_ref) if self.score_ref is not None else None,
+            description=self.description or "",
+        )
+
+
 # 数据库初始化函数
 def init_knowledge_tables(engine):
     """初始化知识库相关表"""
@@ -293,4 +404,6 @@ def init_knowledge_tables(engine):
         ExtractedImage.__table__,
         SearchHistory.__table__,
         SummaryCache.__table__,
+        CompositionRule.__table__,
+        CompositionFigure.__table__,
     ])

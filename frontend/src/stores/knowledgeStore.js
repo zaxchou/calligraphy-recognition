@@ -136,6 +136,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     formData.append('file', file)
     formData.append('chunk_strategy', config.chunkStrategy || 'semantic')
     formData.append('chunk_size', config.chunkSize || 500)
+    formData.append('parser_backend', config.parserBackend || 'pymupdf')
     
     try {
       const response = await axios.post(`${API_BASE}/books/upload`, formData, {
@@ -185,6 +186,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       const formData = new FormData()
       formData.append('chunk_strategy', config.chunkStrategy || 'semantic')
       formData.append('chunk_size', config.chunkSize || 500)
+      formData.append('parser_backend', config.parserBackend || 'pymupdf')
       
       const response = await axios.post(`${API_BASE}/books/${bookId}/reingest`, formData, {
         headers: {

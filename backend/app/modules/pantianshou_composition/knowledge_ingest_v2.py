@@ -21,6 +21,14 @@ from .image_matcher import ImageMatcher
 from .task_manager import TaskManager
 from . import qdrant_client
 
+# MinerU 云 API 支持
+try:
+    from .mineru_client import MinerUClient, parse_pdf_with_mineru
+    from .mineru_parser import MineruParser, parse_mineru_result
+    MINERU_AVAILABLE = True
+except ImportError:
+    MINERU_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +45,8 @@ class KnowledgeIngestV2:
     def __init__(self, 
                  db: Optional[Session] = None,
                  chunk_strategy: str = "semantic",
-                 chunk_size: int = 500):
+                 chunk_size: int = 500,
+                 parser_backend: str = "pymupdf"):
         """
         初始化入库处理器
         
@@ -45,11 +54,21 @@ class KnowledgeIngestV2:
             db: 数据库会话
             chunk_strategy: 分块策略
             chunk_size: 块大小
+            parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
         """
         self.db = db
         self._local_db = db is None
         self.chunk_strategy = chunk_strategy
         self.chunk_size = chunk_size
+        self.parser_backend = parser_backend
+        
+        # 验证 parser_backend
+        if parser_backend not in ("pymupdf", "mineru"):
+            raise ValueError(f"不支持的 parser_backend: {parser_backend}，可选值: pymupdf, mineru")
+        
+        if parser_backend == "mineru" and not MINERU_AVAILABLE:
+            logger.warning("MinerU 模块未正确导入，自动降级到 pymupdf")
+            self.parser_backend = "pymupdf"
         
         # 初始化服务
         self.embedding_service = EmbeddingService()
@@ -110,8 +129,12 @@ class KnowledgeIngestV2:
             # 1. PDF 解析（含 bbox、caption、figure_first_page）
             task_manager.update_progress(task_id, 10, "PDF解析", "正在解析PDF结构...")
             
-            with PdfProcessor(pdf_path) as processor:
-                pdf_content = processor.process_full()
+            # 根据 parser_backend 选择解析器
+            if self.parser_backend == "mineru":
+                pdf_content = await self._parse_with_mineru(pdf_path, task_manager, task_id)
+            else:
+                with PdfProcessor(pdf_path) as processor:
+                    pdf_content = processor.process_full()
             
             # 更新书籍元数据
             book.title = pdf_content.metadata.title
@@ -211,8 +234,9 @@ class KnowledgeIngestV2:
             # 4. 图像处理（含 bbox 和 caption）+ 图像向量化入库
             task_manager.update_progress(task_id, 70, "图像提取", "正在提取PDF图像...")
             
-            # 创建图像存储目录
-            image_dir = os.path.join(os.path.dirname(pdf_path), "images", book_id)
+            # 创建图像存储目录（统一使用 knowledge/books/images/）
+            knowledge_books_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "knowledge", "books")
+            image_dir = os.path.join(knowledge_books_dir, "images", book_id)
             os.makedirs(image_dir, exist_ok=True)
             
             # 确保 knowledge_images 集合存在
@@ -319,7 +343,25 @@ class KnowledgeIngestV2:
                 
                 self.db.commit()
             
-            # 5. 构建图像-文本关联（新算法：基于空间位置）
+            # 5. 表格处理
+            task_manager.update_progress(task_id, 85, "表格处理", "正在处理表格数据...")
+            
+            if pdf_content.tables:
+                await self._process_tables(book_id, pdf_content.tables, task_manager, task_id)
+            
+            # 6. 存储 full_md（完整 Markdown）
+            if hasattr(pdf_content, 'full_md') and pdf_content.full_md:
+                book.full_md = pdf_content.full_md
+                self.db.commit()
+                logger.info("已存储 full_md: %d 字符", len(pdf_content.full_md))
+            
+            # 7. 存储文档大纲
+            if hasattr(pdf_content, 'outline') and pdf_content.outline:
+                book.outline = pdf_content.outline
+                self.db.commit()
+                logger.info("已存储文档大纲: %d 项", len(pdf_content.outline))
+            
+            # 8. 构建图像-文本关联（新算法：基于空间位置）
             task_manager.update_progress(task_id, 90, "关联映射", "正在构建图像文本关联...")
             
             await self._build_associations(book_id, pdf_content.figure_first_page)
@@ -343,6 +385,53 @@ class KnowledgeIngestV2:
             result["error"] = str(e)
             return result
     
+    async def _parse_with_mineru(self, pdf_path: str, task_manager: TaskManager, task_id: str) -> PdfContent:
+        """
+        使用 MinerU 云 API 解析 PDF
+        
+        Args:
+            pdf_path: PDF 文件路径
+            task_manager: 任务管理器
+            task_id: 任务ID
+        
+        Returns:
+            PdfContent 格式的解析结果
+        """
+        import tempfile
+        
+        logger.info("[MinerU] 开始解析 PDF: %s", pdf_path)
+        
+        # 创建临时目录存放 MinerU 输出
+        with tempfile.TemporaryDirectory(prefix="mineru_") as temp_dir:
+            # 更新进度
+            task_manager.update_progress(task_id, 12, "PDF解析", "正在上传 PDF 到 MinerU 云 API...")
+            
+            # 调用 MinerU 客户端（同步函数，在线程池中运行）
+            mineru_result = await asyncio.to_thread(parse_pdf_with_mineru, pdf_path, temp_dir)
+            
+            if not mineru_result.success:
+                raise RuntimeError(f"MinerU 解析失败: {mineru_result.error}")
+            
+            # 更新进度
+            task_manager.update_progress(task_id, 18, "PDF解析", 
+                f"MinerU 解析完成，共 {mineru_result.page_count} 页，正在转换格式...")
+            
+            # 转换为 PdfContent 格式
+            pdf_content = parse_mineru_result(
+                content_list=mineru_result.content_list,
+                images_dir=mineru_result.images_dir,
+                full_md=mineru_result.full_md,
+                pdf_path=pdf_path
+            )
+            
+            logger.info("MinerU 解析成功: %s, %d 页, %d 文本块, %d 图像",
+                       os.path.basename(pdf_path), 
+                       pdf_content.metadata.total_pages,
+                       len(pdf_content.texts),
+                       len(pdf_content.images))
+            
+            return pdf_content
+    
     def _create_book_record(self, pdf_path: str) -> PdfBook:
         """创建书籍记录"""
         import uuid
@@ -364,6 +453,80 @@ class KnowledgeIngestV2:
         self.db.refresh(book)
         
         return book
+    
+    async def _process_tables(self, book_id: str, tables: List[Any], task_manager: TaskManager, task_id: str):
+        """处理表格数据并存储到 Qdrant"""
+        import uuid as _uuid
+        
+        if not tables:
+            return
+        
+        logger.info("开始处理 %d 个表格", len(tables))
+        
+        # 确保 knowledge_tables 集合存在
+        qdrant_client.ensure_knowledge_collections()
+        
+        # 获取书籍信息
+        book = self.db.query(PdfBook).filter(PdfBook.id == book_id).first()
+        book_info = {"title": book.title, "author": book.author} if book else {}
+        
+        tables_to_vectorize = []
+        
+        for idx, table in enumerate(tables):
+            # 检查是否已存在（基于内容哈希）
+            table_hash = table.compute_hash()
+            # 这里可以添加去重逻辑，但表格通常较少，先不做去重
+            
+            # Context Prepending
+            enriched_text = prepend_context_for_chunk(
+                {"content": table.content, "chapter_title": table.chapter_title,
+                 "page_start": table.page, "page_end": table.page},
+                book_info=book_info,
+            )
+            tables_to_vectorize.append({
+                "table": table,
+                "enriched_text": enriched_text,
+                "index": idx,
+            })
+        
+        # 批量向量化
+        if tables_to_vectorize:
+            texts_to_embed = [t["enriched_text"] for t in tables_to_vectorize]
+            embeddings = await self.embedding_service.embed_texts(texts_to_embed)
+            
+            # 保存到 Qdrant
+            for idx, (table_info, emb_result) in enumerate(zip(tables_to_vectorize, embeddings)):
+                table = table_info["table"]
+                
+                # 生成 Qdrant point ID
+                vector_id = str(_uuid.uuid5(_uuid.NAMESPACE_URL, 
+                    f"knowledge_table:{book_id}_{idx}"))
+                
+                # 构建 payload
+                point = {
+                    "id": vector_id,
+                    "vector": emb_result.embedding,
+                    "content": table.content,
+                    "chapter": table.chapter_title or "",
+                    "page_start": table.page,
+                    "page_end": table.page,
+                    "table_index": table.table_index,
+                    "metadata": {
+                        "book_title": book.title or "",
+                        "table_index": table.table_index,
+                    },
+                }
+                
+                qdrant_client.upsert_tables([point], book_id)
+                
+                if idx % 5 == 0:
+                    progress = 85 + int((idx / len(tables_to_vectorize)) * 5)
+                    task_manager.update_progress(
+                        task_id, progress, "表格处理",
+                        f"已处理 {idx}/{len(tables_to_vectorize)} 个表格"
+                    )
+            
+            logger.info("表格处理完成: %d 个表格已向量化", len(tables_to_vectorize))
     
     async def _build_associations(self, book_id: str, figure_first_page: Dict[str, int]):
         """构建图像-文本关联（基于空间位置）"""
@@ -426,7 +589,8 @@ class KnowledgeIngestV2:
 # 便捷函数
 async def process_pdf_file(pdf_path: str, 
                            task_id: Optional[str] = None,
-                           book_id: Optional[str] = None) -> Dict[str, Any]:
+                           book_id: Optional[str] = None,
+                           parser_backend: str = "pymupdf") -> Dict[str, Any]:
     """
     处理 PDF 文件的便捷函数
     
@@ -434,19 +598,21 @@ async def process_pdf_file(pdf_path: str,
         pdf_path: PDF 文件路径
         task_id: 任务ID
         book_id: 书籍ID
+        parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
     
     Returns:
         处理结果
     """
-    with KnowledgeIngestV2() as ingest:
+    with KnowledgeIngestV2(parser_backend=parser_backend) as ingest:
         return await ingest.process_pdf(pdf_path, task_id, book_id)
 
 
 def process_pdf_file_sync(pdf_path: str, 
                           task_id: Optional[str] = None,
-                          book_id: Optional[str] = None) -> Dict[str, Any]:
+                          book_id: Optional[str] = None,
+                          parser_backend: str = "pymupdf") -> Dict[str, Any]:
     """同步版本"""
-    return asyncio.run(process_pdf_file(pdf_path, task_id, book_id))
+    return asyncio.run(process_pdf_file(pdf_path, task_id, book_id, parser_backend))
 
 
 # 测试代码

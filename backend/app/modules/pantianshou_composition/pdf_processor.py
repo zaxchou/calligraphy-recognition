@@ -68,13 +68,30 @@ class PdfMetadata:
 
 
 @dataclass
+class ExtractedTable:
+    """提取的表格"""
+    content: str  # 表格内容（Markdown 或纯文本格式）
+    page: int
+    chapter_title: Optional[str] = None
+    bbox: Optional[Dict[str, float]] = None
+    table_index: int = 0  # 表格序号
+    
+    def compute_hash(self) -> str:
+        """计算内容哈希"""
+        return hashlib.md5(self.content.encode("utf-8")).hexdigest()
+
+
+@dataclass
 class PdfContent:
     """PDF 内容容器"""
     metadata: PdfMetadata = field(default_factory=PdfMetadata)
     texts: List[ExtractedText] = field(default_factory=list)
     images: List[ExtractedImage] = field(default_factory=list)
+    tables: List[ExtractedTable] = field(default_factory=list)  # 新增表格列表
     # 记录每个图号首次出现的页码，用于后续关联时排除重复引用
     figure_first_page: Dict[str, int] = field(default_factory=dict)
+    full_md: Optional[str] = None  # 完整 Markdown 内容
+    outline: List[Dict[str, Any]] = field(default_factory=list)  # 文档大纲
     
     def get_chapters(self) -> List[str]:
         """获取所有章节标题"""

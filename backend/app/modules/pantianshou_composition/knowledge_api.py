@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from .database import get_db
-from .models import PdfBook, KnowledgeTask, TextChunk, ExtractedImage, SearchHistory, SummaryCache
+from .models import PdfBook, KnowledgeTask, TextChunk, ExtractedImage, SearchHistory, SummaryCache, CompositionRule, CompositionFigure
 from .task_manager import TaskManager
 from .knowledge_ingest_v2 import process_pdf_file_sync
 
@@ -175,14 +175,25 @@ async def upload_pdf(
     file: UploadFile = File(...),
     chunk_strategy: str = Form("semantic"),
     chunk_size: int = Form(500),
+    parser_backend: str = Form("pymupdf"),
     db: Session = Depends(get_db)
 ):
     """
     上传 PDF 文件并开始处理
+    
+    Args:
+        file: PDF 文件
+        chunk_strategy: 分块策略 (semantic/fixed)
+        chunk_size: 块大小
+        parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
     """
     # 检查文件类型
     if not file.filename.endswith('.pdf'):
         raise HTTPException(400, "只支持 PDF 文件")
+    
+    # 验证 parser_backend
+    if parser_backend not in ("pymupdf", "mineru"):
+        raise HTTPException(400, f"不支持的 parser_backend: {parser_backend}，可选值: pymupdf, mineru")
     
     # 生成唯一文件名
     file_id = str(uuid.uuid4())
@@ -197,7 +208,12 @@ async def upload_pdf(
     try:
         from .knowledge_ingest_v2 import KnowledgeIngestV2
         
-        with KnowledgeIngestV2(db=db, chunk_strategy=chunk_strategy, chunk_size=chunk_size) as ingest:
+        with KnowledgeIngestV2(
+            db=db, 
+            chunk_strategy=chunk_strategy, 
+            chunk_size=chunk_size,
+            parser_backend=parser_backend
+        ) as ingest:
             result = await ingest.process_pdf(file_path)
         
         if result.get("status") == "failed":
@@ -209,7 +225,7 @@ async def upload_pdf(
         return BookCreateResponse(
             book_id=result["book_id"],
             task_id=result["task_id"],
-            message="PDF 上传成功，正在处理中"
+            message=f"PDF 上传成功，正在使用 {parser_backend} 解析器处理中"
         )
     
     except Exception as e:
@@ -300,6 +316,7 @@ async def reingest_book(
     book_id: str, 
     chunk_strategy: str = Form("semantic"),
     chunk_size: int = Form(500),
+    parser_backend: str = Form("pymupdf"),
     db: Session = Depends(get_db)
 ):
     """
@@ -307,7 +324,16 @@ async def reingest_book(
     
     立即返回 task_id，后台线程执行入库。
     前端通过 GET /tasks/{task_id} 轮询进度。
+    
+    Args:
+        book_id: 书籍ID
+        chunk_strategy: 分块策略
+        chunk_size: 块大小
+        parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
     """
+    # 验证 parser_backend
+    if parser_backend not in ("pymupdf", "mineru"):
+        raise HTTPException(400, f"不支持的 parser_backend: {parser_backend}，可选值: pymupdf, mineru")
     book = db.query(PdfBook).filter(PdfBook.id == book_id).first()
     if not book:
         raise HTTPException(404, "书籍不存在")
@@ -341,9 +367,13 @@ async def reingest_book(
             from .database import SessionLocal
             
             with TaskManager() as tm:
-                tm.update_progress(task_id, 5, "初始化", "开始重新入库...")
+                tm.update_progress(task_id, 5, "初始化", f"开始重新入库（使用 {parser_backend} 解析器）...")
             
-            with KnowledgeIngestV2(chunk_strategy=chunk_strategy, chunk_size=chunk_size) as ingest:
+            with KnowledgeIngestV2(
+                chunk_strategy=chunk_strategy, 
+                chunk_size=chunk_size,
+                parser_backend=parser_backend
+            ) as ingest:
                 result = asyncio.run(ingest.process_pdf(pdf_path, task_id=task_id, book_id=book_id))
             
             if result.get("status") == "failed":
@@ -534,17 +564,70 @@ async def get_book_images(
     } for i in images]
 
 
+@router.get("/images/{image_id}/related-chunks")
+async def get_image_related_chunks(image_id: str, db: Session = Depends(get_db)):
+    """
+    获取图片关联的文本块
+    
+    返回与该图片关联的所有文本块信息
+    """
+    image = db.query(ExtractedImage).filter(ExtractedImage.id == image_id).first()
+    if not image:
+        raise HTTPException(404, "图片不存在")
+    
+    related_chunks = []
+    if image.associated_chunks:
+        chunks = db.query(TextChunk).filter(
+            TextChunk.id.in_(image.associated_chunks)
+        ).order_by(TextChunk.chunk_index).all()
+        
+        related_chunks = [{
+            "id": c.id,
+            "chunk_index": c.chunk_index,
+            "chapter_title": c.chapter_title,
+            "page_start": c.page_start,
+            "page_end": c.page_end,
+            "content": c.content[:500] + "..." if len(c.content) > 500 else c.content,
+            "bbox": c.bbox,
+        } for c in chunks]
+    
+    return {
+        "image_id": image_id,
+        "image_info": {
+            "file_name": image.file_name,
+            "stored_url": image.stored_url,
+            "page": image.page,
+            "figure_id": image.figure_id,
+            "caption": image.caption,
+            "bbox": image.bbox,
+        },
+        "related_chunks": related_chunks,
+        "total_chunks": len(related_chunks),
+    }
+
+
 @router.get("/images/{book_id}/{image_name}")
 async def get_image(book_id: str, image_name: str):
     """
     获取图像文件
+    支持两个存储位置：
+    1. data/knowledge/books/images/{book_id}/{image_name} (MinerU 解析)
+    2. data/uploads/images/{book_id}/{image_name} (PyMuPDF 解析)
     """
-    image_path = os.path.join(UPLOAD_DIR, "images", book_id, image_name)
+    # 尝试两个可能的路径
+    base_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
     
-    if not os.path.exists(image_path):
-        raise HTTPException(404, "图像不存在")
+    # 路径1: knowledge/books/images (MinerU 解析的图像)
+    path1 = os.path.join(base_dir, "knowledge", "books", "images", book_id, image_name)
+    if os.path.exists(path1):
+        return FileResponse(path1)
     
-    return FileResponse(image_path)
+    # 路径2: uploads/images (PyMuPDF 解析的图像)
+    path2 = os.path.join(base_dir, "uploads", "images", book_id, image_name)
+    if os.path.exists(path2):
+        return FileResponse(path2)
+    
+    raise HTTPException(404, f"图像不存在: {image_name}")
 
 
 @router.get("/books/{book_id}/pdf")
@@ -897,6 +980,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "context_after": "",
                         "has_prev": False,
                         "has_next": False,
+                        "bbox": payload.get("bbox"),  # 添加 bbox 字段
                     })
                     continue
                 # 检查是否是图像类型的数据（跨模态搜索结果）
@@ -946,6 +1030,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "has_prev": False,
                         "has_next": False,
                         "result_type": "image",  # 标记为图像结果，前端可区分展示
+                        "bbox": payload.get("bbox"),  # 添加 bbox 字段
                         # 图像专属字段
                         "image": {
                             "url": image_url,
@@ -1036,6 +1121,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 "context_after": context_after,
                 "has_prev": bool(context_before),
                 "has_next": bool(context_after),
+                "bbox": payload.get("bbox"),  # 添加 bbox 字段
             })
         
         # 记录搜索历史（相同 query 只保留最新一条）
@@ -1231,6 +1317,124 @@ async def clear_search_history(
     return {"success": True, "message": "搜索历史已清空"}
 
 
+# ============ 表格搜索 API ============
+
+class TableSearchRequest(BaseModel):
+    """表格搜索请求"""
+    query: str
+    book_ids: Optional[List[str]] = None
+    limit: int = 10
+
+
+@router.post("/search/tables")
+async def search_tables(request: TableSearchRequest, db: Session = Depends(get_db)):
+    """
+    搜索知识库表格
+    
+    基于 Qdrant 向量搜索 knowledge_tables 集合
+    """
+    from .embedding_service import EmbeddingService
+    from . import qdrant_client
+    
+    try:
+        embedding_service = EmbeddingService()
+        embed_result = await embedding_service.embed_text(request.query)
+        if not embed_result:
+            raise HTTPException(500, "文本向量化失败")
+        
+        q_embedding = embed_result.embedding
+        
+        # 搜索表格集合
+        table_results = qdrant_client.search_knowledge_tables(
+            vector=q_embedding,
+            book_ids=request.book_ids,
+            limit=request.limit,
+            score_threshold=0.6,
+        )
+        
+        # 格式化结果
+        results = []
+        for r in table_results:
+            payload = r.get("payload", {})
+            results.append({
+                "vector_id": r.get("id"),
+                "score": r.get("score", 0),
+                "content": payload.get("content", ""),
+                "page": payload.get("page"),
+                "chapter_title": payload.get("chapter_title"),
+                "book_id": payload.get("book_id"),
+                "book_title": payload.get("book_title", ""),
+                "table_index": payload.get("table_index"),
+                "bbox": payload.get("bbox"),
+            })
+        
+        return {
+            "query": request.query,
+            "results": results,
+            "total": len(results),
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        logger.error("表格搜索失败: %s\n%s", str(e), traceback.format_exc())
+        raise HTTPException(500, f"表格搜索失败: {str(e)}")
+
+
+# ============ 大纲 API ============
+
+@router.get("/books/{book_id}/outline")
+async def get_book_outline(book_id: str, db: Session = Depends(get_db)):
+    """
+    获取书籍的文档大纲
+    
+    返回 MinerU 提取的标题层级结构
+    """
+    book = db.query(PdfBook).filter(PdfBook.id == book_id).first()
+    if not book:
+        raise HTTPException(404, "书籍不存在")
+    
+    if not book.outline:
+        return {
+            "book_id": book_id,
+            "outline": [],
+            "message": "暂无大纲数据（需使用 MinerU 解析器重新入库）"
+        }
+    
+    return {
+        "book_id": book_id,
+        "outline": book.outline,
+    }
+
+
+# ============ Markdown API ============
+
+@router.get("/books/{book_id}/markdown")
+async def get_book_markdown(book_id: str, db: Session = Depends(get_db)):
+    """
+    获取书籍的完整 Markdown 内容
+    
+    返回 MinerU 提取的完整 Markdown 格式文本
+    """
+    book = db.query(PdfBook).filter(PdfBook.id == book_id).first()
+    if not book:
+        raise HTTPException(404, "书籍不存在")
+    
+    if not book.full_md:
+        return {
+            "book_id": book_id,
+            "markdown": "",
+            "message": "暂无 Markdown 数据（需使用 MinerU 解析器重新入库）"
+        }
+    
+    return {
+        "book_id": book_id,
+        "markdown": book.full_md,
+        "length": len(book.full_md),
+    }
+
+
 # ============ 统计 API ============
 
 @router.get("/stats")
@@ -1297,3 +1501,203 @@ async def bailian_chat(request: ChatRequest):
             "X-Accel-Buffering": "no",  # Nginx 不缓冲
         },
     )
+
+
+# ======================================================================
+# 构图规则 CRUD API
+# ======================================================================
+
+class RuleCreateRequest(BaseModel):
+    """创建/更新构图规则请求"""
+    rule_id: str  # 如 "KH-01-01"
+    rule_name: str
+    condition: str
+    quantitative_standard: Optional[str] = ""
+    weight: int = 50  # 0-100
+    category_name: str
+    category_code: str
+    subcategory_name: Optional[str] = ""
+    reference_figures: List[str] = []
+    source: str = "manual"
+
+
+class RuleUpdateRequest(BaseModel):
+    """更新构图规则请求（所有字段可选）"""
+    rule_name: Optional[str] = None
+    condition: Optional[str] = None
+    quantitative_standard: Optional[str] = None
+    weight: Optional[int] = None
+    category_name: Optional[str] = None
+    category_code: Optional[str] = None
+    subcategory_name: Optional[str] = None
+    reference_figures: Optional[List[str]] = None
+    is_active: Optional[int] = None
+
+
+@router.get("/rules")
+def list_rules(
+    category_code: Optional[str] = Query(None, description="按维度编码筛选"),
+    source: Optional[str] = Query(None, description="按来源筛选"),
+    is_active: Optional[int] = Query(None, description="按启用状态筛选"),
+    db: Session = Depends(get_db),
+):
+    """获取构图规则列表"""
+    query = db.query(CompositionRule)
+    if category_code:
+        query = query.filter(CompositionRule.category_code == category_code)
+    if source:
+        query = query.filter(CompositionRule.source == source)
+    if is_active is not None:
+        query = query.filter(CompositionRule.is_active == is_active)
+    
+    rules = query.order_by(CompositionRule.category_code, CompositionRule.rule_id).all()
+    return {
+        "success": True,
+        "count": len(rules),
+        "rules": [r.to_dict() for r in rules],
+    }
+
+
+@router.get("/rules/categories")
+def list_rule_categories(db: Session = Depends(get_db)):
+    """获取构图规则维度列表"""
+    from sqlalchemy import func
+    categories = db.query(
+        CompositionRule.category_code,
+        CompositionRule.category_name,
+        func.count(CompositionRule.id).label("count"),
+    ).group_by(
+        CompositionRule.category_code, CompositionRule.category_name
+    ).order_by(CompositionRule.category_code).all()
+    
+    return {
+        "success": True,
+        "categories": [
+            {"code": c[0], "name": c[1], "count": c[2]}
+            for c in categories
+        ],
+    }
+
+
+@router.get("/rules/{rule_id}")
+def get_rule(rule_id: str, db: Session = Depends(get_db)):
+    """获取单条构图规则"""
+    rule = db.query(CompositionRule).filter_by(rule_id=rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"规则 {rule_id} 不存在")
+    return {"success": True, "rule": rule.to_dict()}
+
+
+@router.post("/rules")
+def create_rule(request: RuleCreateRequest, db: Session = Depends(get_db)):
+    """创建构图规则"""
+    existing = db.query(CompositionRule).filter_by(rule_id=request.rule_id).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"规则 {request.rule_id} 已存在")
+    
+    rule = CompositionRule(
+        rule_id=request.rule_id,
+        rule_name=request.rule_name,
+        condition=request.condition,
+        quantitative_standard=request.quantitative_standard,
+        weight=request.weight,
+        category_name=request.category_name,
+        category_code=request.category_code,
+        subcategory_name=request.subcategory_name,
+        reference_figures=request.reference_figures,
+        source=request.source,
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    
+    # 清除规则缓存
+    from .rule_matcher import clear_db_rules_cache
+    clear_db_rules_cache()
+    
+    return {"success": True, "rule": rule.to_dict()}
+
+
+@router.put("/rules/{rule_id}")
+def update_rule(rule_id: str, request: RuleUpdateRequest, db: Session = Depends(get_db)):
+    """更新构图规则"""
+    rule = db.query(CompositionRule).filter_by(rule_id=rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"规则 {rule_id} 不存在")
+    
+    update_data = request.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        if hasattr(rule, key):
+            setattr(rule, key, value)
+    
+    db.commit()
+    db.refresh(rule)
+    
+    # 清除规则缓存
+    from .rule_matcher import clear_db_rules_cache
+    clear_db_rules_cache()
+    
+    return {"success": True, "rule": rule.to_dict()}
+
+
+@router.delete("/rules/{rule_id}")
+def delete_rule(rule_id: str, db: Session = Depends(get_db)):
+    """删除构图规则"""
+    rule = db.query(CompositionRule).filter_by(rule_id=rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"规则 {rule_id} 不存在")
+    
+    db.delete(rule)
+    db.commit()
+    
+    # 清除规则缓存
+    from .rule_matcher import clear_db_rules_cache
+    clear_db_rules_cache()
+    
+    return {"success": True, "message": f"规则 {rule_id} 已删除"}
+
+
+@router.post("/rules/batch-toggle")
+def batch_toggle_rules(
+    rule_ids: List[str],
+    is_active: int = Query(..., description="1=启用，0=禁用"),
+    db: Session = Depends(get_db),
+):
+    """批量启用/禁用构图规则"""
+    updated = db.query(CompositionRule).filter(
+        CompositionRule.rule_id.in_(rule_ids)
+    ).update({CompositionRule.is_active: is_active}, synchronize_session=False)
+    db.commit()
+    
+    # 清除规则缓存
+    from .rule_matcher import clear_db_rules_cache
+    clear_db_rules_cache()
+    
+    return {"success": True, "updated": updated}
+
+
+@router.get("/figures")
+def list_figures(
+    figure_type: Optional[str] = Query(None, description="按类型筛选：positive/negative"),
+    db: Session = Depends(get_db),
+):
+    """获取构图插图列表"""
+    query = db.query(CompositionFigure)
+    if figure_type:
+        query = query.filter(CompositionFigure.figure_type == figure_type)
+    
+    figures = query.order_by(CompositionFigure.figure_id).all()
+    return {
+        "success": True,
+        "count": len(figures),
+        "figures": [f.to_dict() for f in figures],
+    }
+
+
+@router.get("/figures/{figure_id}")
+def get_figure(figure_id: str, db: Session = Depends(get_db)):
+    """获取单个插图信息"""
+    figure = db.query(CompositionFigure).filter_by(figure_id=figure_id).first()
+    if not figure:
+        raise HTTPException(status_code=404, detail=f"插图 {figure_id} 不存在")
+    return {"success": True, "figure": figure.to_dict()}

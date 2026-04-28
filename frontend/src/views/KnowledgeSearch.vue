@@ -89,7 +89,7 @@
                 {{ getConfidenceLabel(store.aiSummary.confidence) }}
               </span>
             </div>
-            <p class="ai-summary-content">{{ store.aiSummary.answer }}</p>
+            <p class="ai-summary-content">{{ cleanLatexSymbols(store.aiSummary.answer) }}</p>
             
             <!-- 要点列表 -->
             <div v-if="store.aiSummary.key_points && store.aiSummary.key_points.length > 0" class="ai-key-points">
@@ -97,7 +97,7 @@
               <ul class="key-points-list">
                 <li v-for="(point, idx) in store.aiSummary.key_points" :key="idx" class="key-point-item">
                   <span class="key-point-bullet">●</span>
-                  <span class="key-point-text">{{ point }}</span>
+                  <span class="key-point-text">{{ cleanLatexSymbols(point) }}</span>
                 </li>
               </ul>
             </div>
@@ -125,9 +125,9 @@
                   class="related-image-card"
                   @click="openImageDetail(img)"
                 >
-                  <img :src="getImageUrl(img.url)" :alt="img.display_label || img.figure_id || '配图'" class="related-image-thumb" />
+                  <img :src="getImageUrl(img.url)" :alt="cleanLatexSymbols(img.display_label) || img.figure_id || '配图'" class="related-image-thumb" />
                   <div class="related-image-info">
-                    <span class="related-image-label">{{ img.display_label || img.figure_id || '配图' }}</span>
+                    <span class="related-image-label">{{ cleanLatexSymbols(img.display_label) || img.figure_id || '配图' }}</span>
                   </div>
                 </div>
               </div>
@@ -172,7 +172,7 @@
               <template v-if="result.result_type === 'image'">
                 <div class="result-image-layout">
                   <div class="result-image-preview">
-                    <img :src="getImageUrl(result.image?.url || result.associated_images?.[0]?.url)" :alt="result.image?.artwork_title || '配图'" />
+                    <img :src="getImageUrl(result.image?.url || result.associated_images?.[0]?.url)" :alt="cleanLatexSymbols(result.image?.artwork_title) || '配图'" />
                   </div>
                   <div class="result-body">
                     <div class="result-header">
@@ -180,15 +180,15 @@
                         <span class="result-type-badge image-badge">
                           <ImageIcon class="badge-icon" />配图
                         </span>
-                        <span v-if="result.image?.artist" class="result-chapter">{{ result.image?.era ? result.image.era + '·' : '' }}{{ result.image.artist }}</span>
+                        <span v-if="result.image?.artist" class="result-chapter">{{ result.image?.era ? result.image.era + '·' : '' }}{{ cleanLatexSymbols(result.image.artist) }}</span>
                       </div>
                       <span class="result-score-badge" :class="getScoreClass(result.score)">
                         {{ formatScore(result.score) }}% 匹配
                       </span>
                     </div>
                     
-                    <p v-if="result.image?.artwork_title" class="image-title">《{{ result.image.artwork_title }}》</p>
-                    <p v-if="result.image?.description" class="result-content image-desc">{{ result.image.description }}</p>
+                    <p v-if="result.image?.artwork_title" class="image-title">《{{ cleanLatexSymbols(result.image.artwork_title) }}》</p>
+                    <p v-if="result.image?.description" class="result-content image-desc">{{ cleanLatexSymbols(result.image.description) }}</p>
                     
                     <div class="result-footer">
                       <div class="footer-left">
@@ -205,6 +205,14 @@
                     </div>
                   </div>
                 </div>
+              </template>
+              
+              <!-- 表格结果卡片 -->
+              <template v-else-if="result.result_type === 'table'">
+                <TableResultCard 
+                  :result="result"
+                  @click="openDetail(result, index)"
+                />
               </template>
               
               <!-- 文本结果卡片 -->
@@ -224,10 +232,10 @@
                   </div>
                   
                   <p class="result-content">
-                    <span v-if="result.context_before" class="context-ellipsis">...{{ result.context_before.slice(-30) }}</span>
-                    <span class="highlight-text">{{ truncateAtSentence(result.content, 150) }}</span>
+                    <span v-if="result.context_before" class="context-ellipsis">...{{ cleanLatexSymbols(result.context_before.slice(-30)) }}</span>
+                    <span class="highlight-text">{{ cleanLatexSymbols(truncateAtSentence(result.content, 150)) }}</span>
                     <span v-if="result.content.length > 150" class="fade-out">...</span>
-                    <span v-if="result.context_after" class="context-ellipsis">{{ result.context_after.slice(0, 30) }}...</span>
+                    <span v-if="result.context_after" class="context-ellipsis">{{ cleanLatexSymbols(result.context_after.slice(0, 30)) }}...</span>
                   </p>
                   
                   <div class="result-footer">
@@ -637,9 +645,10 @@ import {
   Send
 } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
 import BookReaderModal from '@/components/BookReaderModal.vue'
+import TableResultCard from '@/components/TableResultCard.vue'
 
 const store = useKnowledgeStore()
 
@@ -759,6 +768,23 @@ function handleNavigateChunk(chunkData) {
   selectedResult.value = chunkData
 }
 
+// 清理 LaTeX 数学符号，转换为 Unicode 字符
+function cleanLatexSymbols(text) {
+  if (!text) return text
+  // 将 $\textcircled{1}$ 格式转换为 ①②③ 等 Unicode 带圈数字
+  const circledMap = {
+    '0': '⓪', '1': '①', '2': '②', '3': '③', '4': '④',
+    '5': '⑤', '6': '⑥', '7': '⑦', '8': '⑧', '9': '⑨',
+    '10': '⑩', '11': '⑪', '12': '⑫', '13': '⑬', '14': '⑭',
+    '15': '⑮', '16': '⑯', '17': '⑰', '18': '⑱', '19': '⑲',
+    '20': '⑳'
+  }
+  // 匹配 $\textcircled{N}$ 或 $\textcircled{NN}$
+  return text.replace(/\$\\textcircled\{(\d+)\}\$/g, (match, num) => {
+    return circledMap[num] || `(${num})`
+  })
+}
+
 // 在句子边界截断文本（避免在句子中间截断）
 function truncateAtSentence(text, maxLen) {
   if (!text || text.length <= maxLen) return text || ''
@@ -799,11 +825,29 @@ function handleUploadSuccess() {
 async function reingestBook(bookId) {
   if (reingestingBookId.value) return
   
+  // 询问使用哪个解析器
+  const parserChoice = await ElMessageBox.confirm(
+    '选择 PDF 解析器：',
+    '重新入库',
+    {
+      confirmButtonText: 'MinerU（AI解析，支持表格/大纲）',
+      cancelButtonText: 'PyMuPDF（快速，基础解析）',
+      distinguishCancelAndClose: true,
+      type: 'info'
+    }
+  ).then(() => 'mineru').catch((action) => {
+    if (action === 'cancel') return 'pymupdf'
+    return null // close
+  })
+  
+  if (!parserChoice) return // 用户关闭了对话框
+  
   reingestingBookId.value = bookId
   try {
     const result = await store.reingestBook(bookId, {
       chunkStrategy: 'semantic',
-      chunkSize: 500
+      chunkSize: 500,
+      parserBackend: parserChoice
     })
     
     // 轮询等待完成（store.startPollingTask 已启动）
