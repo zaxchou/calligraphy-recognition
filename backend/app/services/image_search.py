@@ -105,8 +105,9 @@ class ImageSearchEngine:
         from app.modules.pantianshou_composition.embedding_service import EmbeddingService
         svc = EmbeddingService()
 
-        self.index = self.faiss.IndexFlatIP(self.embedding_dim)
-        self.id_map = []
+        # 先构建到临时索引，成功后替换，避免中断时损坏旧索引
+        tmp_index = self.faiss.IndexFlatIP(self.embedding_dim)
+        tmp_id_map = []
 
         t0 = time.time()
 
@@ -122,8 +123,8 @@ class ImageSearchEngine:
             if result and result.embedding and any(v != 0 for v in result.embedding):
                 vec = np.array([result.embedding], dtype=np.float32)
                 self.faiss.normalize_L2(vec)
-                self.index.add(vec)
-                self.id_map.append(r["id"])
+                tmp_index.add(vec)
+                tmp_id_map.append(r["id"])
                 indexed += 1
             else:
                 skipped += 1
@@ -132,7 +133,13 @@ class ImageSearchEngine:
                 elapsed = time.time() - t0
                 logger.info("索引进度: %d/%d, 耗时 %.1fs", indexed, total, elapsed)
 
-        self._save_index()
+        # 构建成功，替换旧索引（至少构建了1条才替换，防止API故障导致空索引覆盖）
+        if indexed > 0:
+            self.index = tmp_index
+            self.id_map = tmp_id_map
+            self._save_index()
+        else:
+            return {"ok": False, "error": "构建失败：所有作品embedding都为空，旧索引未受影响", "total": 0, "skipped": skipped}
         elapsed = time.time() - t0
         logger.info("索引构建完成: %d 条, 跳过 %d, 耗时 %.1fs", indexed, skipped, elapsed)
         return {"ok": True, "total": indexed, "skipped": skipped, "elapsed": round(elapsed, 1)}
