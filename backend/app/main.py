@@ -139,6 +139,18 @@ except Exception:
     import logging
     logging.getLogger(__name__).exception("Failed to import content_analysis module")
 
+# 图像相似搜索路由
+try:
+    from app.api import image_search as image_search_router
+    app.include_router(
+        image_search_router.router,
+        prefix=settings.API_V1_STR + "/image-search",
+        tags=["图像相似搜索"]
+    )
+except Exception:
+    import logging
+    logging.getLogger(__name__).exception("Failed to import image_search module")
+
 
 @app.get("/")
 def root():

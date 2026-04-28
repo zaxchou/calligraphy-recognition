@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息 · 画家规则 · 作品上传</p>
+        <p class="page-subtitle">题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息 · 画家规则 · 作品查重 · 作品上传</p>
       </div>
       <div class="header-center">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
@@ -407,6 +407,13 @@
         </div>
       </el-tab-pane>
 
+      <!-- 作品查重 -->
+      <el-tab-pane label="作品查重" name="image-search">
+        <div class="tab-content full-tab-content">
+          <ImageSearchPanel @item-click="onImageSearchItemClick" />
+        </div>
+      </el-tab-pane>
+
       <!-- 作品上传 -->
       <el-tab-pane label="作品上传" name="upload">
         <div class="tab-content full-tab-content upload-tab-content">
@@ -452,6 +459,7 @@ import ArtistInfoManager from './ArtistInfoManager.vue'
 import ArtistRulesManager from './ArtistRulesManager.vue'
 import SealManager from './SealManager.vue'
 import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
+import ImageSearchPanel from '../components/tubi/ImageSearchPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -783,6 +791,10 @@ function onUploaded(newImages) {
 
 function openUploadDialog() {
   uploadDialogRef.value?.open()
+}
+
+function onImageSearchItemClick(recordId) {
+  router.push({ name: 'TubiDetail', params: { id: recordId } })
 }
 
 function copyReportAsMarkdown() {
