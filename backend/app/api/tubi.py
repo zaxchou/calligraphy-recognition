@@ -675,6 +675,17 @@ async def upload_image(
         db.commit()
         db.refresh(db_analysis)
 
+        # 自动追加到图像搜索索引
+        try:
+            from app.services.image_search import get_search_engine
+            engine = get_search_engine()
+            tp = normalize_path(thumbnail_path) if thumbnail_path else None
+            if tp and engine.total_indexed > 0:
+                engine.add_to_index(db_analysis.id, tp)
+                logger.info("已追加到图像搜索索引: id=%d", db_analysis.id)
+        except Exception as e:
+            logger.warning("追加索引失败(不影响上传): %s", e)
+
         logger.info("上传成功: %s", file_id)
         return {
             "success": True,
