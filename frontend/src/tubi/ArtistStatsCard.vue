@@ -397,7 +397,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .stats-title {
   font-size: 18px;
@@ -419,6 +419,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background: transparent;
 }
 .stats-empty {
   display: flex;
@@ -639,27 +640,28 @@ defineExpose({
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 6px;
+  justify-content: center;
+  gap: 10px;
   background: #faf9f7;
   border: 1px solid #e8e4da;
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 16px 20px;
   min-width: 0;
 }
 .insight-item {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  font-size: 12px;
-  color: #555;
-  line-height: 1.6;
+  gap: 8px;
+  font-size: 14px;
+  color: #444;
+  line-height: 1.7;
 }
 .insight-icon {
   color: #c96442;
   font-weight: 700;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 15px;
+  margin-top: 2px;
 }
 
 @media (max-width: 900px) {
