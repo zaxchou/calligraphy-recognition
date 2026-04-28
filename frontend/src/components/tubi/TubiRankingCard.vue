@@ -196,7 +196,7 @@ function handleMore() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px 14px;
+  padding: 14px 12px;
 }
 
 .ranking-body {
@@ -218,27 +218,27 @@ function handleMore() {
 .skeleton-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
 }
 
 .skeleton-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 4px 10px;
 }
 
 .skeleton-medal {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .skeleton-thumb {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -279,19 +279,19 @@ function handleMore() {
   background: var(--border-cream);
 }
 
-/* ─── 统一排行榜行（7条同样高度/行距）─── */
+/* ─── 统一排行榜行（7条）─── */
 .ranking-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .ranking-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 4px 10px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
@@ -334,8 +334,8 @@ function handleMore() {
 }
 
 .ranking-row-medal {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--ring-warm);
   color: var(--charcoal-warm);
@@ -343,7 +343,7 @@ function handleMore() {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   flex-shrink: 0;
 }
 
@@ -363,8 +363,8 @@ function handleMore() {
 }
 
 .ranking-row-thumb {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--parchment);
@@ -394,7 +394,7 @@ function handleMore() {
 }
 
 .ranking-row-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--near-black);
   margin-bottom: 1px;
@@ -405,7 +405,7 @@ function handleMore() {
 }
 
 .ranking-row-author {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--olive-gray);
 }
 

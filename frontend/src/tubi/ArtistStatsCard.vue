@@ -85,8 +85,8 @@
             </div>
           </div>
           <div class="insight-compact" v-if="areaThemeData.insights.length">
+            <div class="insight-label">洞察</div>
             <div class="insight-item" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
-              <span class="insight-icon">ℹ</span>
               <span>{{ insight }}</span>
             </div>
           </div>
@@ -641,27 +641,23 @@ defineExpose({
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
-  background: #faf9f7;
-  border: 1px solid #e8e4da;
-  border-radius: 10px;
-  padding: 16px 20px;
+  gap: 6px;
+  background: transparent;
+  border-left: 3px solid #c96442;
+  padding: 6px 0 6px 16px;
   min-width: 0;
 }
+.insight-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c96442;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .insight-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
   font-size: 14px;
   color: #444;
   line-height: 1.7;
-}
-.insight-icon {
-  color: #c96442;
-  font-weight: 700;
-  flex-shrink: 0;
-  font-size: 15px;
-  margin-top: 2px;
 }
 
 @media (max-width: 900px) {
