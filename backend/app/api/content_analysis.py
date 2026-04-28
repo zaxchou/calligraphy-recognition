@@ -54,6 +54,72 @@ def build_artist_condition(artist: str) -> tuple:
         return "(artist LIKE ? OR artist LIKE ?)", (f"%{artist}%", f"%{artist}%")
 
 
+# ============ 公共服务函数 ============
+
+def persist_analysis_result(cur, record_id, result, year=None, artist=None, extra_fields=None):
+    """
+    统一持久化题跋分析结果到 tubi_analyses 表。
+    供 /verify、/analyze/、/batch、/batch-reanalyze 等端点复用。
+
+    Args:
+        extra_fields: 额外合并到 content_analysis JSON 的字段，如 {"v4_confidence": 0.8, "rules_version": "5.5"}
+    """
+    from app.services.inscription_content_analyzer import get_period_phase
+
+    content_analysis = {
+        "char_count": result.char_count,
+        "word_count": result.word_count,
+        "ttr": result.ttr,
+        "themes": result.themes,
+        "sentiment": result.sentiment,
+        "feature_words": result.feature_words,
+        "objects_mentioned": result.objects_mentioned,
+    }
+    if extra_fields:
+        content_analysis.update(extra_fields)
+
+    theme_tags = ",".join([t["name"] for t in result.themes])
+    period_phase = get_period_phase(year, artist)
+
+    cur.execute("""
+        UPDATE tubi_analyses
+        SET char_count = ?,
+            word_count = ?,
+            theme_tags = ?,
+            content_analysis = ?,
+            period_phase = ?,
+            updated_at = ?
+        WHERE id = ?
+    """, (
+        content_analysis["char_count"],
+        content_analysis["word_count"],
+        theme_tags,
+        json.dumps(content_analysis, ensure_ascii=False),
+        period_phase,
+        datetime.now(),
+        record_id
+    ))
+
+    return content_analysis
+
+
+def stale_analysis_result(cur, record_id):
+    """
+    将分析结果标记为过期（清空所有题跋衍生字段）。
+    用于文本清空或分析不可用场景，确保前端不继续展示旧结果。
+    """
+    cur.execute("""
+        UPDATE tubi_analyses
+        SET content_analysis = NULL,
+            theme_tags = NULL,
+            char_count = NULL,
+            word_count = NULL,
+            period_phase = NULL,
+            updated_at = ?
+        WHERE id = ?
+    """, (datetime.now(), record_id))
+
+
 # ============ 数据模型 ============
 
 class PeriodStats(BaseModel):
@@ -169,6 +235,9 @@ class VerifyResponse(BaseModel):
     success: bool
     message: str
     record_id: int
+    analysis_status: str = "unchanged"
+    content_analysis: Optional[Dict[str, Any]] = None
+    theme_tags: Optional[str] = None
 
 
 class ArtistsResponse(BaseModel):
@@ -659,21 +728,33 @@ async def verify_inscription(
     request: VerifyRequest,
 ):
     """
-    用户校对确认题跋文本
+    用户校对确认题跋文本。
+    如果题跋内容或分析说明发生变化，自动以规则引擎同步重算分析结果，
+    确保预览、列表和统计不继续展示旧数据。
     """
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 检查记录存在
-    cur.execute("SELECT id FROM tubi_analyses WHERE id = ?", (record_id,))
-    if not cur.fetchone():
+    cur.execute("""
+        SELECT id, inscription_content, analysis_note, year, artist,
+               artwork_width_cm, artwork_height_cm
+        FROM tubi_analyses WHERE id = ?
+    """, (record_id,))
+    row = cur.fetchone()
+    if not row:
         conn.close()
         raise HTTPException(status_code=404, detail="Record not found")
 
-    # 计算字数
-    char_count = len(request.inscription_content) if request.inscription_content else 0
+    old_content = row["inscription_content"] or ""
+    old_note = row["analysis_note"] or ""
+    new_content = request.inscription_content or ""
+    new_note = request.analysis_note or ""
 
-    # 更新题跋文本和校验标志
+    content_changed = new_content != old_content
+    note_changed = new_note != old_note
+
+    char_count = len(new_content) if new_content else 0
+
     cur.execute("""
         UPDATE tubi_analyses
         SET inscription_content = ?,
@@ -690,7 +771,6 @@ async def verify_inscription(
         record_id
     ))
 
-    # 更新印章内容（如果提供了）
     if request.seal_content is not None:
         cur.execute("""
             UPDATE tubi_analyses
@@ -706,7 +786,6 @@ async def verify_inscription(
             record_id
         ))
 
-    # 更新 AI 分析说明（如果提供了）
     if request.analysis_note is not None:
         cur.execute("""
             UPDATE tubi_analyses
@@ -719,16 +798,44 @@ async def verify_inscription(
             record_id
         ))
 
+    analysis_status = "unchanged"
+    refreshed_ca = None
+    refreshed_theme_tags = None
+
+    if content_changed or note_changed:
+        if new_content and len(new_content.strip()) > 0:
+            try:
+                from app.services.inscription_content_analyzer import analyze_tiba_content
+
+                result = analyze_tiba_content(
+                    new_content,
+                    year=row["year"],
+                    title=None,
+                    analysis_note=new_note,
+                    width_cm=row["artwork_width_cm"],
+                    height_cm=row["artwork_height_cm"],
+                    artist=row["artist"]
+                )
+                refreshed_ca = persist_analysis_result(cur, record_id, result, year=row["year"], artist=row["artist"])
+                refreshed_theme_tags = ",".join([t["name"] for t in result.themes])
+                analysis_status = "refreshed"
+            except Exception:
+                stale_analysis_result(cur, record_id)
+                analysis_status = "stale"
+        else:
+            stale_analysis_result(cur, record_id)
+            analysis_status = "stale"
+
     conn.commit()
     conn.close()
-
-    # 重新分析（新文本可能主题不同）
-    # 异步触发或让用户手动触发 batch_analyze
 
     return VerifyResponse(
         success=True,
         message="Text verified and updated",
-        record_id=record_id
+        record_id=record_id,
+        analysis_status=analysis_status,
+        content_analysis=refreshed_ca,
+        theme_tags=refreshed_theme_tags
     )
 
 
@@ -1560,35 +1667,17 @@ async def analyze_single(
         "feature_words": result.feature_words,
         "objects_mentioned": result.objects_mentioned,
     }
-    # v5.5: 附加整体置信度（从规则引擎取出）
+    extra_fields = {}
     if not request.use_llm:
         raw_v4 = classify_inscription_v4(
             content, year=year, title=title, analysis_note=analysis_note,
             width_cm=width_cm, height_cm=height_cm, artist=record_artist
         )
-        content_analysis["v4_confidence"] = raw_v4.get("confidence", 0)
-    content_analysis["rules_version"] = "5.5"
-    theme_tags = ",".join([t["name"] for t in result.themes])
+        extra_fields["v4_confidence"] = raw_v4.get("confidence", 0)
+    extra_fields["rules_version"] = "5.5"
 
-    # 更新数据库
-    cur.execute("""
-        UPDATE tubi_analyses
-        SET char_count = ?,
-            word_count = ?,
-            theme_tags = ?,
-            content_analysis = ?,
-            period_phase = ?,
-            updated_at = ?
-        WHERE id = ?
-    """, (
-        content_analysis["char_count"],
-        content_analysis["word_count"],
-        theme_tags,
-        json.dumps(content_analysis, ensure_ascii=False),
-        get_period_phase(year, record_artist),
-        datetime.now(),
-        record_id_db
-    ))
+    persist_analysis_result(cur, record_id_db, result, year=year, artist=record_artist, extra_fields=extra_fields)
+    content_analysis.update(extra_fields)
 
     conn.commit()
     conn.close()

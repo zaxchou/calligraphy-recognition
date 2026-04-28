@@ -182,6 +182,10 @@
               <span class="sentiment-tag" :class="analysisPreview.sentiment?.polarity">{{ polarityLabel(analysisPreview.sentiment?.polarity) }} {{ analysisPreview.sentiment?.intensity != null && !isNaN(analysisPreview.sentiment.intensity) ? `${(analysisPreview.sentiment.intensity * 100).toFixed(0)}%` : '' }}</span>
             </div>
           </div>
+          <div v-else-if="currentRecord?.inscription_content" class="analysis-preview analysis-stale">
+            <div class="preview-header"><el-icon><WarningFilled /></el-icon>分析已过期</div>
+            <p class="stale-hint">题跋文本已修改，请点击「重新分析」更新主题与情感</p>
+          </div>
         </div>
       </div>
     </div>
@@ -236,7 +240,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position } from '@element-plus/icons-vue'
+import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position, WarningFilled } from '@element-plus/icons-vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
 import { tubiApi, sealsApi } from '../api'
 
@@ -629,7 +633,10 @@ defineExpose({ nextRecord, jumpToRecordById })
 .translation-content.translating{color:#a0a096;font-style:italic}
 .action-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .analysis-preview{background:#f8f8f6;border:1px solid #e8e6dc;border-radius:10px;padding:14px 16px}
+.analysis-preview.analysis-stale{background:#fef8e8;border-color:#e6a23c}
 .preview-header{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#141413;margin-bottom:10px}
+.analysis-stale .preview-header{color:#e6a23c}
+.stale-hint{font-size:12px;color:#909399;margin:0;padding:0}
 .preview-tags{display:flex;flex-wrap:wrap;gap:8px}
 .theme-tag{padding:5px 10px;background:#fff;border:1px solid #e8e6dc;border-radius:6px;font-size:12px;color:#141413}
 .theme-tag .confidence{color:#a0a096;margin-left:4px}

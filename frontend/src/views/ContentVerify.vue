@@ -650,9 +650,30 @@ async function onSave(payload) {
           records.value[idx].inscription_verified = true
           records.value[idx].seal_verified = seal_content ? true : records.value[idx].seal_verified
           verifiedCount.value++
-          ElMessage.success('校对已保存')
+        }
+        if (data.analysis_status === 'refreshed') {
+          records.value[idx].content_analysis = data.content_analysis
+          records.value[idx].theme_tags = data.theme_tags ? data.theme_tags.split(',') : []
+          if (!isReverify) {
+            ElMessage.success('校对已保存，分析已同步更新')
+          } else {
+            ElMessage.success('已重新校对，分析已同步更新')
+          }
+        } else if (data.analysis_status === 'stale') {
+          records.value[idx].content_analysis = null
+          records.value[idx].theme_tags = []
+          if (!isReverify) {
+            ElMessage.success('校对已保存')
+          } else {
+            ElMessage.success('已重新校对')
+          }
+          ElMessage.warning('题跋分析已过期，请点击「重新分析」更新')
         } else {
-          ElMessage.success('已重新校对')
+          if (!isReverify) {
+            ElMessage.success('校对已保存')
+          } else {
+            ElMessage.success('已重新校对')
+          }
         }
       }
       verifyPanelRef.value?.nextRecord()
