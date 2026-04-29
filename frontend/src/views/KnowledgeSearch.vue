@@ -1,98 +1,91 @@
-<template>
+﻿<template>
 <div class="ks-root">
-  <!-- ===== 居中欢迎态 ===== -->
-  <transition name="fade-scale">
-    <div v-if="centered" class="ks-center-wrap" key="center">
-      <div class="ks-center-body">
-        <h1 class="ks-center-title">写意知识库</h1>
-        <p class="ks-center-sub">潘天寿构图法则 · 写意花鸟画技法</p>
-        <div class="ks-center-search">
-          <Search class="ks-search-icon" />
-          <input v-model="searchInput" type="text" class="ks-center-input" placeholder="搜索写意花鸟画、潘天寿构图法则等专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" ref="searchInputRef" @input="centered=true" />
-          <button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
-        </div>
-        <div class="ks-mode-row">
-          <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索模式</button>
-          <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button>
-          <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
-        </div>
-        <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
-      </div>
-    </div>
-  </transition>
 
-  <!-- ===== 搜索态（带顶栏） ===== -->
-  <transition name="fade-slide">
-    <div v-if="!centered && activeMode==='search'" class="ks-search-view" key="search">
-      <header class="ks-bar"><h1 class="ks-bar-title">写意知识库</h1>
-        <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" />
-          <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button><button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
-        </div>
-        <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
-      </header>
-      <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button></div>
-      <div class="ks-body-wrap" :class="{'with-panel':rightPanelOpen}">
-        <div class="ks-main">
-          <div class="ks-search-panel">
-            <div v-if="store.searchLoading" class="ks-progress"><div class="ks-progress-fill" :style="{width:store.searchProgress+'%'}"></div></div>
-            <div v-if="store.aiSummary?.answer" class="ks-card"><div class="ks-card-hd"><Sparkles class="ks-summary-spark" /><span>AI概述</span><span class="ks-summary-conf" :class="'conf-'+getConfClass(store.aiSummary.confidence)">{{ getConfLabel(store.aiSummary.confidence) }}</span></div>
-              <div class="ks-card-body" v-html="renderCitations(store.aiSummary.answer)" @click="onCitationClick($event)"></div>
-              <div v-if="store.relatedImages?.length" class="ks-related-img-row"><div v-for="(ri,i) in store.relatedImages.slice(0,6)" :key="ri.url" class="ks-related-img-thumb" @click="openImagePreview(ri,store.relatedImages.slice(0,6),i)"><img :src="getImageUrl(ri.stored_url||ri.url)" /><span>{{ ri.display_label||ri.figure_id||'' }}</span></div></div>
-              <div v-if="store.aiSummary.key_points?.length" class="ks-points"><div class="ks-points-label">核心要点</div><ul><li v-for="(p,i) in store.aiSummary.key_points" :key="i">{{ cleanLatex(p) }}</li></ul></div>
-              <div v-if="store.aiSummary.sources?.length" class="ks-sources"><span class="ks-sources-label">参考来源：</span><button v-for="(s,i) in store.aiSummary.sources" :key="i" class="ks-src" @click="scrollToResult(s)">《{{ (s.book||'').replace(/[《》]/g,'') }}》p.{{ s.page||'?' }}</button></div>
-            </div>
-            <div v-if="hasSearched&&!store.searchLoading" class="ks-results">
-              <div class="ks-rbar"><span>共{{ store.searchResults.length }}条结果</span><button class="ks-clear-btn" @click="clearSearch">清除</button></div>
-              <div v-if="store.searchResults.length===0" class="ks-empty"><FileSearch class="ks-empty-icon" /><p>未找到相关结果</p></div>
-              <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" :style="{animationDelay:`${i*0.06}s`}" @click="openDetail(r,i)">
-                <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div></div></template>
-                <template v-else-if="r.result_type==='table'"><TableResultCard :result="r" @click="openDetail(r,i)" /></template>
-                <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
-              </div></div>
-            </div>
+  <transition name="view-switch" mode="out-in">
+  <div v-if="centered" key="center" class="ks-center-wrap">
+    <div class="ks-center-body">
+      <h1 class="ks-center-title">写意知识库</h1>
+      <p class="ks-center-sub">潘天寿构图法则 · 写意花鸟画技法</p>
+      <div class="ks-center-search">
+        <Search class="ks-search-icon" />
+        <input v-model="searchInput" type="text" class="ks-center-input" placeholder="搜索写意花鸟画、潘天寿构图法则等专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" ref="searchInputRef" @input="centered=true" />
+        <button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
+      </div>
+      <div class="ks-mode-row">
+        <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索模式</button>
+        <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button>
+        <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
+      </div>
+      <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
+    </div>
+  </div>
+
+  <div v-else-if="activeMode==='search'" key="search" class="ks-search-view">
+    <header class="ks-bar"><h1 class="ks-bar-title">写意知识库</h1>
+      <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" />
+        <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button><button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
+      </div>
+      <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
+    </header>
+    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button></div>
+    <div class="ks-body-wrap" :class="{'with-panel':rightPanelOpen}">
+      <div class="ks-main">
+        <div class="ks-search-panel">
+          <div v-if="store.searchLoading" class="ks-progress"><div class="ks-progress-fill" :style="{width:store.searchProgress+'%'}"></div></div>
+          <div v-if="store.aiSummary?.answer" class="ks-card"><div class="ks-card-hd"><Sparkles class="ks-summary-spark" /><span>AI概述</span><span class="ks-summary-conf" :class="'conf-'+getConfClass(store.aiSummary.confidence)">{{ getConfLabel(store.aiSummary.confidence) }}</span></div>
+            <div class="ks-card-body" v-html="renderCitations(store.aiSummary.answer)" @click="onCitationClick($event)"></div>
+            <div v-if="store.relatedImages?.length" class="ks-related-img-row"><div v-for="(ri,i) in store.relatedImages.slice(0,6)" :key="ri.url" class="ks-related-img-thumb" @click="openImagePreview(ri,store.relatedImages.slice(0,6),i)"><img :src="getImageUrl(ri.stored_url||ri.url)" /><span>{{ ri.display_label||ri.figure_id||'' }}</span></div></div>
+            <div v-if="store.aiSummary.key_points?.length" class="ks-points"><div class="ks-points-label">核心要点</div><ul><li v-for="(p,i) in store.aiSummary.key_points" :key="i">{{ cleanLatex(p) }}</li></ul></div>
+            <div v-if="store.aiSummary.sources?.length" class="ks-sources"><span class="ks-sources-label">参考来源：</span><button v-for="(s,i) in store.aiSummary.sources" :key="i" class="ks-src" @click="scrollToResult(s)">《{{ (s.book||'').replace(/[《》]/g,'') }}》p.{{ s.page||'?' }}</button></div>
+          </div>
+          <div v-if="hasSearched&&!store.searchLoading" class="ks-results">
+            <div class="ks-rbar"><span>共{{ store.searchResults.length }}条结果</span><button class="ks-clear-btn" @click="clearSearch">清除</button></div>
+            <div v-if="store.searchResults.length===0" class="ks-empty"><FileSearch class="ks-empty-icon" /><p>未找到相关结果</p></div>
+            <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" :style="{animationDelay:`${i*0.06}s`}" @click="openDetail(r,i)">
+              <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div></div></template>
+              <template v-else-if="r.result_type==='table'"><TableResultCard :result="r" @click="openDetail(r,i)" /></template>
+              <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
+            </div></div>
           </div>
         </div>
-        <transition name="slide-right"><div v-if="rightPanelOpen" class="ks-panel">
-          <div class="ks-phdr"><span class="ks-ptitle">{{ activeResult?.book_title||'文档查看' }}</span><div class="ks-phdr-acts"><button v-if="pdfUrl" class="ks-pdf-btn" @click="openPdf"><FileDown class="icon-sm" />PDF</button><button class="ks-pclose" @click="closePanel"><X class="icon" /></button></div></div>
-          <div class="ks-pbody">
-            <div v-if="activeResult?.result_type==='image'" class="ks-pimg"><img :src="getFullImageUrl(activeResult)" class="ks-pimg-main" @click="openImagePreview(activeResult.image||activeResult.associated_images?.[0],activeResult.associated_images,0)" /><ImageRelatedChunks v-if="activeResult.image?.id" :chunks="relatedChunks" :loading="loadingRelated" @chunk-click="onRelatedClick" /></div>
-            <div v-if="activeResult?.result_type!=='image'" class="ks-detail"><div class="ks-dmeta"><span class="ks-dchap">{{ getChapter(activeResult) }}</span><span class="ks-dpage" v-if="activeResult.page_start"><BookOpen class="icon-xs" />第{{ activeResult.page_start }}{{ activeResult.page_end!==activeResult.page_start?'-'+activeResult.page_end:'' }}页</span></div>
-              <div v-if="activeResult.context_before" class="ks-dctx"><p class="ks-dctx-txt">{{ cleanLatex(activeResult.context_before) }}</p><div class="ks-dctx-mrk">⋯上文⋯</div></div>
-              <div class="ks-dcontent" v-html="highlightDetail(activeResult)"></div>
-              <div v-if="activeResult.associated_images?.length" class="ks-dims"><div class="ks-dims-label"><ImageIcon class="icon-xs" />关联配图</div><div class="ks-dims-grid"><div v-for="(img,i) in activeResult.associated_images" :key="i" class="ks-dim" @click="openImagePreview(img,activeResult.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" @error="e=>{e.target.src='/placeholder.png'}" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
-              <div v-if="activeResult.context_after" class="ks-dctx"><div class="ks-dctx-mrk">⋯下文⋯</div><p class="ks-dctx-txt">{{ cleanLatex(activeResult.context_after) }}</p></div>
-              <div class="ks-dnav"><button class="ks-dnav-btn" :disabled="loadingChunk||chunkIndex<=0" @click="loadPrevChunk"><ChevronLeft class="icon-xs" />上一段</button><span class="ks-dnav-info" v-if="chunkIndex>0">第{{ chunkIndex+1 }}段</span><button class="ks-dnav-btn" :disabled="loadingChunk" @click="loadNextChunk">下一段<ChevronRight class="icon-xs" /></button></div>
-            </div>
-            <div class="ks-ptabs"><button :class="{active:panelTab==='outline'}" @click="panelTab='outline'"><ListTree class="icon-xs" />大纲</button><button v-if="markdownContent" :class="{active:panelTab==='markdown'}" @click="panelTab='markdown'"><FileCode class="icon-xs" />原文</button><button v-if="activeResult?.associated_images?.length" :class="{active:panelTab==='images'}" @click="panelTab='images'"><ImageIcon class="icon-xs" />配图</button></div>
-            <div v-show="panelTab==='outline'" class="ks-ptab"><input v-model="outlineFilter" class="ks-outline-filter" placeholder="筛选大纲标题..." /><DocumentOutline :outline="filteredOutline" :loading="loadingOutline" @item-click="onOutlineClick" /></div>
-            <div v-show="panelTab==='markdown'" class="ks-ptab" ref="mdContentRef"><MarkdownViewer :markdown="markdownContent" :loading="loadingMarkdown" /></div>
-            <div v-show="panelTab==='images'" class="ks-ptab"><div class="ks-pimg-grid"><div v-for="(img,i) in activeResult?.associated_images" :key="i" class="ks-pimg-item" @click="openImagePreview(img,activeResult?.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
+      </div>
+      <transition name="slide-right"><div v-if="rightPanelOpen" class="ks-panel">
+        <div class="ks-phdr"><span class="ks-ptitle">{{ activeResult?.book_title||'文档查看' }}</span><div class="ks-phdr-acts"><button v-if="pdfUrl" class="ks-pdf-btn" @click="openPdf"><FileDown class="icon-sm" />PDF</button><button class="ks-pclose" @click="closePanel"><X class="icon" /></button></div></div>
+        <div class="ks-pbody">
+          <div v-if="activeResult?.result_type==='image'" class="ks-pimg"><img :src="getFullImageUrl(activeResult)" class="ks-pimg-main" @click="openImagePreview(activeResult.image||activeResult.associated_images?.[0],activeResult.associated_images,0)" /><ImageRelatedChunks v-if="activeResult.image?.id" :chunks="relatedChunks" :loading="loadingRelated" @chunk-click="onRelatedClick" /></div>
+          <div v-if="activeResult?.result_type!=='image'" class="ks-detail"><div class="ks-dmeta"><span class="ks-dchap">{{ getChapter(activeResult) }}</span><span class="ks-dpage" v-if="activeResult.page_start"><BookOpen class="icon-xs" />第{{ activeResult.page_start }}{{ activeResult.page_end!==activeResult.page_start?'-'+activeResult.page_end:'' }}页</span></div>
+            <div v-if="activeResult.context_before" class="ks-dctx"><p class="ks-dctx-txt">{{ cleanLatex(activeResult.context_before) }}</p><div class="ks-dctx-mrk">···上文···</div></div>
+            <div class="ks-dcontent" v-html="highlightDetail(activeResult)"></div>
+            <div v-if="activeResult.associated_images?.length" class="ks-dims"><div class="ks-dims-label"><ImageIcon class="icon-xs" />关联配图</div><div class="ks-dims-grid"><div v-for="(img,i) in activeResult.associated_images" :key="i" class="ks-dim" @click="openImagePreview(img,activeResult.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" @error="e=>{e.target.src='/placeholder.png'}" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
+            <div v-if="activeResult.context_after" class="ks-dctx"><div class="ks-dctx-mrk">···下文···</div><p class="ks-dctx-txt">{{ cleanLatex(activeResult.context_after) }}</p></div>
+            <div class="ks-dnav"><button class="ks-dnav-btn" :disabled="loadingChunk||chunkIndex<=0" @click="loadPrevChunk"><ChevronLeft class="icon-xs" />上一段</button><span class="ks-dnav-info" v-if="chunkIndex>0">第{{ chunkIndex+1 }}段</span><button class="ks-dnav-btn" :disabled="loadingChunk" @click="loadNextChunk">下一段<ChevronRight class="icon-xs" /></button></div>
           </div>
-        </div></transition>
-      </div>
-    </div>
-  </transition>
-
-  <!-- ===== 专家全屏态（无顶栏） ===== -->
-  <transition name="fade-scale">
-    <div v-if="!centered && activeMode==='chat'" class="ks-full-view" key="chat">
-      <div class="ks-full-top">
-        <div class="ks-mode-row">
-          <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button>
-          <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="activeMode='chat'"><MessageCircle class="icon-xs" /> 专家模式</button>
-          <button class="ks-mode-pill ks-mode-pill-icon" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
+          <div class="ks-ptabs"><button :class="{active:panelTab==='outline'}" @click="panelTab='outline'"><ListTree class="icon-xs" />大纲</button><button v-if="markdownContent" :class="{active:panelTab==='markdown'}" @click="panelTab='markdown'"><FileCode class="icon-xs" />原文</button><button v-if="activeResult?.associated_images?.length" :class="{active:panelTab==='images'}" @click="panelTab='images'"><ImageIcon class="icon-xs" />配图</button></div>
+          <div v-show="panelTab==='outline'" class="ks-ptab"><input v-model="outlineFilter" class="ks-outline-filter" placeholder="筛选大纲标题..." /><DocumentOutline :outline="filteredOutline" :loading="loadingOutline" @item-click="onOutlineClick" /></div>
+          <div v-show="panelTab==='markdown'" class="ks-ptab" ref="mdContentRef"><MarkdownViewer :markdown="markdownContent" :loading="loadingMarkdown" /></div>
+          <div v-show="panelTab==='images'" class="ks-ptab"><div class="ks-pimg-grid"><div v-for="(img,i) in activeResult?.associated_images" :key="i" class="ks-pimg-item" @click="openImagePreview(img,activeResult?.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
         </div>
-      </div>
-      <div class="ks-full-body">
-        <div class="ks-chat"><div class="ks-chat-msgs" ref="chatMsgsRef">
-          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon" /><User v-else class="icon" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" v-html="renderMd(m.content,m.loading)"></div></div></div>
-        </div><div class="ks-chat-input"><textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="输入问题..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="2" :disabled="chatLoading"></textarea><button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading"><Send class="icon" /></button></div></div>
+      </div></transition>
+    </div>
+  </div>
+
+  <div v-else key="chat" class="ks-full-view">
+    <div class="ks-full-top">
+      <div class="ks-mode-row">
+        <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button>
+        <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="activeMode='chat'"><MessageCircle class="icon-xs" /> 专家模式</button>
+        <button class="ks-mode-pill ks-mode-pill-icon" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
       </div>
     </div>
+    <div class="ks-full-body">
+      <div class="ks-chat"><div class="ks-chat-msgs" ref="chatMsgsRef">
+        <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
+        <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon" /><User v-else class="icon" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" v-html="renderMd(m.content,m.loading)"></div></div></div>
+      </div><div class="ks-chat-input"><textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="输入问题..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="2" :disabled="chatLoading"></textarea><button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading"><Send class="icon" /></button></div></div>
+    </div>
+  </div>
   </transition>
 
-  <!-- 书库面板 & 浮层 -->
   <transition name="drop"><div v-if="libOpen" class="ks-lib-pop">
     <div class="ks-lib-inner"><div class="ks-lib-row"><button class="ks-upload-btn" @click="showUploadModal=true"><span class="ks-upload-icon">+</span>上传PDF</button><div class="ks-lib-stats" v-if="store.stats"><span>{{ store.stats.books?.total||0 }}书</span><span>{{ store.stats.contents?.chunks||0 }}块</span><span>{{ store.stats.contents?.images||0 }}图</span></div></div>
       <div class="ks-lib-books" v-if="store.books.length"><div v-for="b in store.books" :key="b.id" class="ks-lib-book"><label class="ks-lib-bl"><input type="checkbox" v-model="selectedBooks" :value="b.id" :disabled="b.status==='processing'" /><span class="ks-lib-bn">{{ b.title||b.file_name }}</span><span :class="['ks-lib-bs',b.status]">{{ statusLabel(b.status) }}</span></label><div class="ks-lib-bacts"><button class="ks-lib-act" @click="reingest(b.id)" :disabled="reingestingId===b.id"><RefreshCw v-if="reingestingId!==b.id" class="icon-xs" /><Loader2 v-else class="icon-xs spin" /></button><button class="ks-lib-act del" @click="delBook(b.id)"><Trash2 class="icon-xs" /></button></div></div></div>
@@ -188,7 +181,6 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 
 <style scoped>
 .ks-root{min-height:100vh;background:#fafaf8}
-/* ===== 居中欢迎态 ===== */
 .ks-center-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px}
 .ks-center-body{text-align:center;max-width:640px;width:100%;margin-top:-80px}
 .ks-center-title{font-family:'Noto Serif SC',serif;font-size:36px;font-weight:700;color:#141413;margin:0 0 6px}
@@ -215,7 +207,6 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-tag{border:none;background:#f5f2eb;padding:4px 14px;border-radius:14px;font-size:12px;color:#8a877e;cursor:pointer;transition:all 0.2s ease}
 .ks-tag:hover{background:#fdf8f5;color:#c96442}
 
-/* ===== 搜索视图 ===== */
 .ks-search-view{padding:16px 24px 32px}
 .ks-bar{display:flex;align-items:center;gap:12px;margin-bottom:0}
 .ks-bar-title{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;color:#141413;margin:0;white-space:nowrap}
@@ -238,7 +229,6 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-progress-fill{height:100%;background:linear-gradient(90deg,#c96442,#e8a060,#c96442);background-size:200% 100%;border-radius:2px;transition:width 0.3s;animation:ks-shimmer 1.5s ease-in-out infinite}
 @keyframes ks-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-/* AI摘要 */
 .ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px;animation:ks-card-in 0.5s 0.05s cubic-bezier(0.25,0.1,0.25,1) both}
 .ks-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;font-weight:600;color:#141413}
 .ks-summary-spark{color:#c96442;width:18px;height:18px}
@@ -279,12 +269,10 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-rfoot{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#999}
 .ks-raction{color:#c96442;display:flex;align-items:center;gap:2px}
 
-/* ===== 全屏视图（专家/图谱） ===== */
 .ks-full-view{min-height:100vh;display:flex;flex-direction:column;padding:16px 24px}
 .ks-full-top{display:flex;justify-content:center;margin-bottom:8px}
 .ks-full-body{flex:1;display:flex;flex-direction:column;max-width:800px;width:100%;margin:0 auto}
 
-/* 聊天 */
 .ks-chat{display:flex;flex-direction:column;flex:1;min-height:200px;max-height:calc(100vh - 180px)}
 .ks-chat-msgs{flex:1;overflow-y:auto;padding:8px 0}
 .ks-chat-welcome{text-align:center;padding:24px 16px;color:#6b6b66}
@@ -312,10 +300,10 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-chat-send:hover{background:#a8513a}
 .ks-chat-send:disabled{opacity:0.5;cursor:not-allowed}
 
-/* 右面板 */
 .ks-panel{position:fixed;top:0;right:0;width:60vw;max-width:960px;min-width:480px;height:100vh;background:#fff;border-left:1px solid #e8e6dc;display:flex;flex-direction:column;z-index:100;box-shadow:-4px 0 20px rgba(0,0,0,0.06)}
 .ks-phdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f0eee6;flex-shrink:0}
-.ks-ptitle{font-size:14px;font-weight:600;color:#141413;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-ptitle{font-size:14px;font-weight:600;color:#141413;overflow:hidden
+;text-overflow:ellipsis;white-space:nowrap}
 .ks-phdr-acts{display:flex;align-items:center;gap:6px}
 .ks-pdf-btn{border:none;background:#f5f2eb;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#5e5d59;display:flex;align-items:center;gap:4px}
 .ks-pdf-btn:hover{background:#c96442;color:#fff}
@@ -344,13 +332,10 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-pimg{padding:14px}.ks-pimg-main{width:100%;max-height:320px;object-fit:contain;border-radius:8px;cursor:pointer}
 .ks-pimg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .ks-pimg-item{cursor:pointer;text-align:center}.ks-pimg-item img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:6px;border:1px solid #e8e4da;background:#fafaf8}.ks-pimg-item span{font-size:10px;color:#999;display:block;margin-top:2px}
-
 .ks-related-img-row{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #f0eee6;overflow-x:auto}
 .ks-related-img-thumb{flex-shrink:0;width:72px;cursor:pointer;text-align:center}
 .ks-related-img-thumb img{width:72px;height:72px;object-fit:contain;border-radius:6px;border:1px solid #e8e4da;background:#fafaf8}
 .ks-related-img-thumb span{font-size:9px;color:#999;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px}
-
-/* 书库 */
 .ks-lib-pop{position:fixed;top:64px;right:24px;width:360px;max-height:calc(100vh - 80px);overflow-y:auto;background:#fff;border:1px solid #e8e6dc;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.1);z-index:99}.ks-lib-inner{padding:14px}
 .ks-lib-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .ks-upload-btn{display:flex;align-items:center;gap:4px;padding:6px 14px;border:1.5px dashed #e0ddd3;background:#fafaf8;border-radius:8px;font-size:13px;color:#6b6b66;cursor:pointer;transition:all 0.2s}
@@ -366,7 +351,6 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-lib-act{border:none;background:none;padding:3px;border-radius:4px;cursor:pointer;color:#b8b4aa;display:flex}
 .ks-lib-act:hover{color:#6b6b66;background:#f0ede4}.ks-lib-act.del:hover{color:#c96442}
 .ks-lib-empty{font-size:13px;color:#c0bdb3;text-align:center;padding:12px 0}
-
 .ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center}
 .ks-preview-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px}
 .ks-preview-close{position:absolute;top:20px;right:20px;border:none;background:rgba(255,255,255,0.15);color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -377,16 +361,12 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-preview-next{right:24px}
 .ks-preview-counter{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:10px}
 
-/* 动画 */
-.fade-enter-active,.fade-leave-active{transition:all 0.35s ease}.fade-enter-from,.fade-leave-to{opacity:0;transform:translateY(8px)}
-.fade-scale-enter-active,.fade-scale-leave-active{transition:all 0.5s cubic-bezier(0.35,0,0.25,1)}
-.fade-scale-enter-from{opacity:0;transform:scale(0.96) translateY(16px)}
-.fade-scale-leave-to{opacity:0;transform:scale(1.02) translateY(-12px)}
-.fade-slide-enter-active,.fade-slide-leave-active{transition:all 0.45s cubic-bezier(0.35,0,0.25,1)}
-.fade-slide-enter-from{opacity:0;transform:translateY(-24px)}
-.fade-slide-leave-to{opacity:0;transform:translateY(12px)}
+.view-switch-enter-active,.view-switch-leave-active{transition:all 0.32s cubic-bezier(0.4,0,0.2,1)}
+.view-switch-enter-from{opacity:0;transform:translateY(10px)}
+.view-switch-leave-to{opacity:0;transform:translateY(-10px)}
 .slide-right-enter-active,.slide-right-leave-active{transition:all 0.3s}.slide-right-enter-from,.slide-right-leave-to{transform:translateX(100%);opacity:0}
 .drop-enter-active,.drop-leave-active{transition:all 0.2s}.drop-enter-from,.drop-leave-to{opacity:0;transform:translateY(-8px)}
+.fade-enter-active,.fade-leave-active{transition:all 0.35s ease}.fade-enter-from,.fade-leave-to{opacity:0;transform:translateY(8px)}
 
 .icon{width:20px;height:20px}.icon-sm{width:16px;height:16px}.icon-xs{width:12px;height:12px}
 .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
