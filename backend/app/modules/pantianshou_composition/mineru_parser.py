@@ -9,6 +9,14 @@ import logging
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
+_LATEX_MATH_RE = re.compile(r'\$\$[^$]*\$\$|\$[^$]*\$|\\(?:begin|end)\{[^}]*\}')
+
+def _clean_latex_math(text: str) -> str:
+    """移除 MinerU 保留的 LaTeX 数学标记（$...$ / $$...$$ / \\begin...\\end）"""
+    text = _LATEX_MATH_RE.sub('', text)
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+    return text
+
 from .pdf_processor import (
     PdfContent,
     PdfMetadata,
@@ -75,7 +83,7 @@ class MineruParser:
             
             if item_type == "text":
                 # 文本块
-                text = item.get("text", "").strip()
+                text = _clean_latex_math(item.get("text", "").strip())
                 if not text or len(text) < 3:
                     continue
                 
@@ -179,7 +187,7 @@ class MineruParser:
         
         # 存储 full_md
         if full_md:
-            content.full_md = full_md
+            content.full_md = _clean_latex_math(full_md)
             
             # 如果 content_list 没有标题，尝试从 Markdown 中提取大纲
             if not content.outline:

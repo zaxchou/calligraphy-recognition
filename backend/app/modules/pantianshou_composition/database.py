@@ -88,3 +88,31 @@ def _auto_migrate(engine):
 
 # 启动时自动初始化
 init_database()
+
+
+def recover_stalled_tasks():
+    """恢复启动时因进程重启而卡在 processing 状态的任务"""
+    from datetime import datetime, timedelta
+    db = SessionLocal()
+    try:
+        from app.modules.pantianshou_composition.models import KnowledgeTask, PdfBook
+        stalled = db.query(KnowledgeTask).filter(
+            KnowledgeTask.status == 'processing'
+        ).all()
+        recovered = 0
+        for task in stalled:
+            task.status = 'failed'
+            task.error_message = '服务重启导致任务中断，请重新入库'
+            task.progress = 0
+            recovered += 1
+        if recovered:
+            db.commit()
+            import logging
+            logging.getLogger(__name__).info(f"已恢复 {recovered} 个因重启中断的任务")
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+
+recover_stalled_tasks()

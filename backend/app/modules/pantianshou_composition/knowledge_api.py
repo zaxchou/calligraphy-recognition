@@ -24,6 +24,9 @@ from .knowledge_ingest_v2 import process_pdf_file_sync
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# 输出安全层：移除 LaTeX 数学标记（处理旧数据中残留的 $...$）
+_STRIP_LATEX_RE = re.compile(r'\$\$[^$]*\$\$|\$[^$]*\$|\\(?:begin|end)\{[^}]*\}')
+
 
 def _parse_caption_for_display(caption: str) -> str:
     """
@@ -1136,7 +1139,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "page_end": payload.get("page_number") or payload.get("page", 0),
                         "chunk_index": 0,
                         "score": r.get("score", 0),
-                        "associated_images": [{"url": image_url, "figure_id": fig_id}] if image_url else [],
+                        "associated_images": [{"url": image_url, "stored_url": image_url, "figure_id": fig_id}] if image_url else [],
                         "context_before": "",
                         "context_after": "",
                         "has_prev": False,
@@ -1146,6 +1149,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         # 图像专属字段
                         "image": {
                             "url": image_url,
+                            "stored_url": image_url,
                             "figure_id": fig_id,
                             "artist": artist,
                             "artwork_title": artwork,
@@ -1168,6 +1172,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 associated_images = [{
                     "id": img.id,
                     "file_name": img.file_name,
+                    "url": img.stored_url,
                     "stored_url": img.stored_url,
                     "page": img.page,
                     "figure_id": img.figure_id,
@@ -1214,6 +1219,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
             
             # 对 content 在句子边界截断（用于搜索列表预览）
             raw_content = payload.get("content", "")
+            raw_content = _STRIP_LATEX_RE.sub('', raw_content)
             truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
             
             results.append({
@@ -1278,6 +1284,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 seen_related_urls.add(url_key)
                 related_images.append({
                     "url": url,
+                    "stored_url": url,
                     "figure_id": ai.get("figure_id", ""),
                     "display_label": ai.get("display_label", ai.get("figure_id", "")),
                     "source": "associated",
@@ -1322,6 +1329,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         display_label = figure_id
                     related_images.append({
                         "url": img_url,
+                        "stored_url": img_url,
                         "figure_id": figure_id,
                         "artist": artist,
                         "artwork_title": artwork_title,
@@ -1361,7 +1369,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
             "results": results,
             "total": len(results),
             "ai_summary": {
-                "answer": ai_summary.get("answer", ""),
+                "answer": _STRIP_LATEX_RE.sub('', ai_summary.get("answer", "")),
                 "key_points": ai_summary.get("key_points", []),
                 "related_concepts": ai_summary.get("related_concepts", []),
                 "confidence": ai_summary.get("confidence", 0),

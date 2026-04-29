@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import logging
 import math
+import os
+import pickle
 import re
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
@@ -276,20 +278,53 @@ class BM25Index:
 # 全局 BM25 索引单例
 _bm25_index: Optional[BM25Index] = None
 
+_BM25_CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'data')
+_BM25_CACHE_FILE = os.path.join(_BM25_CACHE_DIR, 'bm25_index.pkl')
 
-def get_bm25_index() -> BM25Index:
-    """获取全局 BM25 索引"""
+
+def _save_bm25_index():
     global _bm25_index
     if _bm25_index is None:
-        _bm25_index = BM25Index()
+        return
+    try:
+        os.makedirs(_BM25_CACHE_DIR, exist_ok=True)
+        with open(_BM25_CACHE_FILE, 'wb') as f:
+            pickle.dump(_bm25_index, f, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception:
+        pass
+
+
+def _load_bm25_index() -> Optional[BM25Index]:
+    if not os.path.exists(_BM25_CACHE_FILE):
+        return None
+    try:
+        with open(_BM25_CACHE_FILE, 'rb') as f:
+            idx = pickle.load(f)
+        if isinstance(idx, BM25Index):
+            return idx
+    except Exception:
+        pass
+    return None
+
+
+def get_bm25_index() -> BM25Index:
+    """获取全局 BM25 索引（优先从缓存加载）"""
+    global _bm25_index
+    if _bm25_index is None:
+        cached = _load_bm25_index()
+        if cached:
+            _bm25_index = cached
+        else:
+            _bm25_index = BM25Index()
     return _bm25_index
 
 
 def invalidate_bm25_cache(collection: Optional[str] = None):
-    """使 BM25 缓存失效"""
+    """使 BM25 缓存失效并持久化"""
     global _bm25_index
     if _bm25_index:
         _bm25_index.invalidate(collection)
+        _save_bm25_index()
 
 
 def reciprocal_rank_fusion(
