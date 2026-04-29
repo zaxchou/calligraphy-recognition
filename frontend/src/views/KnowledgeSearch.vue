@@ -38,6 +38,7 @@
             <div v-if="store.searchLoading" class="ks-progress"><div class="ks-progress-fill" :style="{width:store.searchProgress+'%'}"></div></div>
             <div v-if="store.aiSummary?.answer" class="ks-card"><div class="ks-card-hd"><Sparkles class="ks-summary-spark" /><span>AI概述</span><span class="ks-summary-conf" :class="'conf-'+getConfClass(store.aiSummary.confidence)">{{ getConfLabel(store.aiSummary.confidence) }}</span></div>
               <div class="ks-card-body" v-html="renderCitations(store.aiSummary.answer)" @click="onCitationClick($event)"></div>
+              <div v-if="store.relatedImages?.length" class="ks-related-img-row"><div v-for="ri in store.relatedImages.slice(0,6)" :key="ri.url" class="ks-related-img-thumb" @click="openImagePreview(ri)"><img :src="getImageUrl(ri.stored_url||ri.url)" /><span>{{ ri.display_label||ri.figure_id||'' }}</span></div></div>
               <div v-if="store.aiSummary.key_points?.length" class="ks-points"><div class="ks-points-label">核心要点</div><ul><li v-for="(p,i) in store.aiSummary.key_points" :key="i">{{ cleanLatex(p) }}</li></ul></div>
               <div v-if="store.aiSummary.sources?.length" class="ks-sources"><span class="ks-sources-label">参考来源：</span><button v-for="(s,i) in store.aiSummary.sources" :key="i" class="ks-src" @click="scrollToResult(s)">《{{ (s.book||'').replace(/[《》]/g,'') }}》p.{{ s.page||'?' }}</button></div>
             </div>
@@ -276,8 +277,8 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.15s;display:flex}
 .ks-rcard:hover{border-color:#c96442;box-shadow:0 2px 8px rgba(201,100,66,0.08)}
 .ks-rcard.active{border-color:#c96442;background:#fdf8f5}
-.ks-rimg{width:120px;flex-shrink:0;height:90px;overflow:hidden}
-.ks-rimg img{width:100%;height:100%;object-fit:cover}
+.ks-rimg{width:120px;flex-shrink:0;min-height:120px;display:flex;align-items:center;justify-content:center;background:#f5f2eb;border-radius:8px 0 0 8px}
+.ks-rimg img{width:100%;height:100%;object-fit:contain;aspect-ratio:1}
 .ks-rbody{padding:12px 14px;flex:1;min-width:0}
 .ks-rhead{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .ks-badge{display:inline-flex;align-items:center;gap:3px;background:#fef0e8;color:#c96442;font-size:10px;padding:2px 6px;border-radius:4px}
@@ -350,7 +351,7 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-dcontent :deep(.ks-hl){background:#fef0e0;color:#c96442;font-weight:600;border-radius:2px;padding:0 2px}
 .ks-dims{margin:10px 0}.ks-dims-label{font-size:12px;font-weight:600;color:#6b6b66;margin-bottom:6px;display:flex;align-items:center;gap:4px}
 .ks-dims-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.ks-dim{cursor:pointer;text-align:center}.ks-dim img{width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e8e4da}.ks-dim span{font-size:10px;color:#999;display:block}
+.ks-dim{cursor:pointer;text-align:center}.ks-dim img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:4px;border:1px solid #e8e4da;background:#fafaf8}.ks-dim span{font-size:10px;color:#999;display:block}
 .ks-dnav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:10px;border-top:1px solid #f0eee6}
 .ks-dnav-btn{border:1px solid #e0ddd3;background:#fff;padding:5px 12px;border-radius:8px;font-size:12px;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:4px}
 .ks-dnav-btn:hover:not(:disabled){border-color:#c96442;color:#c96442}
@@ -364,7 +365,12 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-outline-filter:focus{border-color:#c96442}
 .ks-pimg{padding:14px}.ks-pimg-main{width:100%;max-height:320px;object-fit:contain;border-radius:8px;cursor:pointer}
 .ks-pimg-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.ks-pimg-item{cursor:pointer;text-align:center}.ks-pimg-item img{width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #e8e4da}.ks-pimg-item span{font-size:10px;color:#999;display:block;margin-top:2px}
+.ks-pimg-item{cursor:pointer;text-align:center}.ks-pimg-item img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:6px;border:1px solid #e8e4da;background:#fafaf8}.ks-pimg-item span{font-size:10px;color:#999;display:block;margin-top:2px}
+
+.ks-related-img-row{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #f0eee6;overflow-x:auto}
+.ks-related-img-thumb{flex-shrink:0;width:72px;cursor:pointer;text-align:center}
+.ks-related-img-thumb img{width:72px;height:72px;object-fit:contain;border-radius:6px;border:1px solid #e8e4da;background:#fafaf8}
+.ks-related-img-thumb span{font-size:9px;color:#999;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px}
 
 /* 书库 */
 .ks-lib-pop{position:fixed;top:64px;right:24px;width:360px;max-height:calc(100vh - 80px);overflow-y:auto;background:#fff;border:1px solid #e8e6dc;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.1);z-index:99}.ks-lib-inner{padding:14px}

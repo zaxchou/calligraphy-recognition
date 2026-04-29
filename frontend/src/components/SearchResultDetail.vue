@@ -116,12 +116,13 @@ function closeModal() {
 }
 
 function getImageUrl(img) {
-  // 使用完整的 URL
   if (img.stored_url?.startsWith('http')) {
     return img.stored_url
   }
-  // stored_url 格式是 /api/knowledge/images/...，需要替换为 /api/v1/knowledge/images/...
-  return `http://localhost:8001${img.stored_url.replace('/api/knowledge', '/api/v1/knowledge')}`
+  if (/^[a-f0-9-]{36}$/.test(img.stored_url || '')) {
+    return `http://localhost:8001/api/v1/knowledge/images/${img.stored_url}`
+  }
+  return `http://localhost:8001${(img.stored_url || '').replace('/api/knowledge', '/api/v1/knowledge')}`
 }
 
 function previewImage(img) {
@@ -261,7 +262,8 @@ function previewImage(img) {
 .image-item img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #fafaf8;
 }
 
 .image-label {

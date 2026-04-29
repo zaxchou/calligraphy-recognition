@@ -394,13 +394,13 @@ function closeModal() {
 
 function getImageUrl(img) {
   if (!img || !img.stored_url) return ''
-  // 如果已经是完整 URL，直接返回
   if (img.stored_url.startsWith('http')) {
     return img.stored_url
   }
-  // 将 /api/knowledge 替换为 /api/v1/knowledge
+  if (/^[a-f0-9-]{36}$/.test(img.stored_url)) {
+    return '/api/v1/knowledge/images/' + img.stored_url
+  }
   const url = img.stored_url.replace('/api/knowledge', '/api/v1/knowledge')
-  // 使用相对路径，让 Vite proxy 处理
   return url
 }
 
@@ -1251,9 +1251,11 @@ function handleKeydown(e) {
 
 .inline-image {
   width: 100%;
-  height: 100px;
-  object-fit: cover;
+  aspect-ratio: 1;
+  object-fit: contain;
   display: block;
+  background: #fafaf8;
+  border-radius: 6px;
 }
 
 .inline-image-caption {
