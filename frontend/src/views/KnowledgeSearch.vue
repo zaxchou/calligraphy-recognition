@@ -17,7 +17,7 @@
           <button :class="['ks-mode-pill',{active:activeMode==='graph'}]" @click="switchMode('graph');fetchGraph()"><Share2 class="icon-xs" /> 图谱</button>
           <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
         </div>
-        <div class="ks-tags"><span class="ks-tag-label">热门搜索：</span><button v-for="t in hotTags" :key="t" class="ks-tag" @click="searchByTag(t)">{{ t }}</button></div>
+        <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
       </div>
     </div>
   </transition>
@@ -137,7 +137,6 @@ const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), sel
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null)
 const graphNodes = ref([]), graphEdges = ref([]), graphSvgW = ref(1000), graphSvgH = ref(700), graphLoading = ref(false), graphCanvasRef = ref(null), graphZoom = ref(1), graphPanX = ref(0), graphPanY = ref(0), graphDragging = ref(false), graphDragStart = ref({x:0,y:0})
-const hotTags = ['墨法','构图','笔法','写意','花鸟','山水','题跋','印章']
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
 function cleanLatex(s){return(s||'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
