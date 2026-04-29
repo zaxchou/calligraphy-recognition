@@ -140,7 +140,7 @@ const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), cha
 const graphNodes = ref([]), graphEdges = ref([]), graphSvgW = ref(1000), graphSvgH = ref(700), graphLoading = ref(false), graphCanvasRef = ref(null), graphZoom = ref(1), graphPanX = ref(0), graphPanY = ref(0), graphDragging = ref(false), graphDragStart = ref({x:0,y:0})
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
-function cleanLatex(s){return(s||'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
+function cleanLatex(s){return(s||'').replace(/\$[^$]*\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
 function truncateAt(s,n){return s&&s.length>n?s.slice(0,n):(s||'')}
 function formatScore(s){return s?Math.round(s*100):0}
 function getScoreClass(s){const v=formatScore(s);return v>=95?'s-high':v>=80?'s-mid':'s-low'}
