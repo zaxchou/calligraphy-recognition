@@ -148,7 +148,7 @@ function getChapter(r){return r.chapter||r.section||r.book_title||''}
 function getConfClass(c){return c>=0.7?'high':c>=0.4?'mid':'low'}
 function getConfLabel(c){return c>=0.7?'高可信':c>=0.4?'中可信':'低可信'}
 function statusLabel(s){return s==='completed'?'✓':s==='processing'?'处理中':s==='failed'?'失败':s}
-function getImageUrl(u){if(!u)return'';if(u.startsWith('http'))return u;if(u.startsWith('/api/'))return u;return'/api/v1/knowledge/'+u.replace(/^\/+/,'')}
+function getImageUrl(u){if(!u)return'';if(u.startsWith('http'))return u;if(u.startsWith('/api/'))return u;if(/^[a-f0-9-]{36}$/.test(u))return'/api/v1/knowledge/images/'+u;return'/api/v1/knowledge/'+u.replace(/^\/+/,'')}
 function getFullImageUrl(r){return getImageUrl(r.image?.stored_url||r.associated_images?.[0]?.stored_url)}
 function openPdf(){if(pdfUrl.value)window.open(pdfUrl.value,'_blank')}
 function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite">[$1]</sup>')}

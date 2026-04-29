@@ -691,14 +691,15 @@ async def get_image_related_chunks(image_id: str, db: Session = Depends(get_db))
 
 
 @router.get("/images/{book_id}/{image_name}")
-async def get_image(book_id: str, image_name: str):
+async def get_image(book_id: str, image_name: str, db: Session = Depends(get_db)):
     """
     获取图像文件
     支持两个存储位置：
     1. data/knowledge/books/images/{book_id}/{image_name} (MinerU 解析)
     2. data/uploads/images/{book_id}/{image_name} (PyMuPDF 解析)
+    也可仅传 image_id 作为 book_id（单段路径），自动查库定位。
     """
-    # 尝试两个可能的路径
+    # 如果 book_id 看起来像 UUID 且 image_name 为空 → 当作 image_id 查库
     base_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
     
     # 路径1: knowledge/books/images (MinerU 解析的图像)
@@ -712,6 +713,23 @@ async def get_image(book_id: str, image_name: str):
         return FileResponse(path2)
     
     raise HTTPException(404, f"图像不存在: {image_name}")
+
+
+@router.get("/images/{image_id}")
+async def get_image_by_id(image_id: str, db: Session = Depends(get_db)):
+    """通过 ExtractedImage.id 直接获取图片（兼容旧版前端或用 UUID 作 URL）"""
+    from app.modules.pantianshou_composition.models import ExtractedImage
+    img = db.query(ExtractedImage).filter(ExtractedImage.id == image_id).first()
+    if not img:
+        raise HTTPException(404, "图像不存在")
+    base_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
+    path = os.path.join(base_dir, "knowledge", "books", "images", img.book_id, img.file_name)
+    if os.path.exists(path):
+        return FileResponse(path, media_type="image/png")
+    path2 = os.path.join(base_dir, "uploads", "images", img.book_id, img.file_name)
+    if os.path.exists(path2):
+        return FileResponse(path2, media_type="image/png")
+    raise HTTPException(404, "图像文件不存在")
 
 
 @router.get("/books/{book_id}/pdf")
