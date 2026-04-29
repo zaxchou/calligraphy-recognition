@@ -175,7 +175,9 @@ async def upload_pdf(
     file: UploadFile = File(...),
     chunk_strategy: str = Form("semantic"),
     chunk_size: int = Form(500),
-    parser_backend: str = Form("pymupdf"),
+    parser_backend: str = Form("mineru"),
+    series_id: str = Form(None),
+    page_offset: int = Form(1),
     db: Session = Depends(get_db)
 ):
     """
@@ -185,15 +187,17 @@ async def upload_pdf(
         file: PDF 文件
         chunk_strategy: 分块策略 (semantic/fixed)
         chunk_size: 块大小
-        parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
+        parser_backend: PDF 解析器后端 ("mineru")
+        series_id: 系列ID，同一套书的多卷共享此ID（传空字符串则不关联）
+        page_offset: 系列内起始页码偏移（本卷在完整书中的第一页页码，如 part2 从 201 开始）
     """
     # 检查文件类型
     if not file.filename.endswith('.pdf'):
         raise HTTPException(400, "只支持 PDF 文件")
     
     # 验证 parser_backend
-    if parser_backend not in ("pymupdf", "mineru"):
-        raise HTTPException(400, f"不支持的 parser_backend: {parser_backend}，可选值: pymupdf, mineru")
+    if parser_backend not in ("mineru",):
+        raise HTTPException(400, f"不支持的 parser_backend: {parser_backend}，仅支持: mineru")
     
     # 生成唯一文件名
     file_id = str(uuid.uuid4())
@@ -204,27 +208,69 @@ async def upload_pdf(
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
     
-    # 创建处理任务
+    # 创建处理任务（后台线程模式，立即返回 task_id）
     try:
         from .knowledge_ingest_v2 import KnowledgeIngestV2
+        from .database import SessionLocal
         
+        # 先创建书籍记录和任务记录
         with KnowledgeIngestV2(
             db=db, 
             chunk_strategy=chunk_strategy, 
             chunk_size=chunk_size,
             parser_backend=parser_backend
         ) as ingest:
-            result = await ingest.process_pdf(file_path)
+            # 创建书籍记录
+            book = ingest._create_book_record(file_path)
+            book_id = book.id
+            
+            # 设置系列ID和页面偏移（用于跨文件定位）
+            if series_id:
+                book.series_id = series_id
+            book.page_offset = page_offset
+            
+            # 创建任务记录
+            task_manager = TaskManager(db)
+            task = task_manager.create_task(book_id, "full_process")
+            task_id = task.id
+            
+            db.commit()
         
-        if result.get("status") == "failed":
-            raise HTTPException(500, f"处理失败: {result.get('error')}")
+        # 启动后台线程执行入库
+        import threading
         
-        # 新书上架，清除摘要缓存
-        _clear_summary_cache(db)
+        def _run_ingest():
+            try:
+                with TaskManager() as tm:
+                    tm.update_progress(task_id, 5, "初始化", f"开始处理（使用 {parser_backend} 解析器）...")
+                
+                with KnowledgeIngestV2(
+                    chunk_strategy=chunk_strategy, 
+                    chunk_size=chunk_size,
+                    parser_backend=parser_backend
+                ) as ingest:
+                    result = asyncio.run(ingest.process_pdf(file_path, task_id=task_id, book_id=book_id))
+                
+                if result.get("status") == "failed":
+                    with TaskManager() as tm:
+                        tm.fail_task(task_id, result.get("error", "未知错误"), "处理失败")
+                
+                # 新书上架，清除摘要缓存
+                with SessionLocal() as db2:
+                    _clear_summary_cache(db2)
+                    
+            except Exception as e:
+                import traceback
+                logger.error(f"上传处理后台线程异常: {e}\n{traceback.format_exc()}")
+                with TaskManager() as tm:
+                    tm.fail_task(task_id, str(e), "处理异常")
+        
+        thread = threading.Thread(target=_run_ingest, daemon=True)
+        thread.start()
         
         return BookCreateResponse(
-            book_id=result["book_id"],
-            task_id=result["task_id"],
+            book_id=book_id,
+            task_id=task_id,
             message=f"PDF 上传成功，正在使用 {parser_backend} 解析器处理中"
         )
     
@@ -287,28 +333,63 @@ async def get_book(book_id: str, db: Session = Depends(get_db)):
 @router.delete("/books/{book_id}")
 async def delete_book(book_id: str, db: Session = Depends(get_db)):
     """
-    删除书籍及其所有相关数据
+    删除书籍及其所有相关数据（级联删除）
+    
+    删除范围：
+    1. SQLite: pdf_books + 级联删除 text_chunks, extracted_images, knowledge_tasks
+    2. Qdrant: knowledge_texts, knowledge_images, knowledge_tables 中的向量
+    3. 磁盘: PDF 文件 + 提取的图像文件
     """
+    from .qdrant_client import delete_book_vectors
+    
     book = db.query(PdfBook).filter(PdfBook.id == book_id).first()
     if not book:
         raise HTTPException(404, "书籍不存在")
     
-    # 删除文件
-    if os.path.exists(book.stored_path):
-        os.remove(book.stored_path)
+    book_title = book.title or book.file_name
+    logger.info("开始删除书籍: %s (id=%s)", book_title, book_id)
     
-    # 删除图像
-    image_dir = os.path.join(os.path.dirname(book.stored_path), "images", book_id)
-    if os.path.exists(image_dir):
-        shutil.rmtree(image_dir)
+    # 1. 删除 Qdrant 中的向量（必须在删除 SQLite 之前，因为需要 book_id）
+    try:
+        delete_book_vectors(book_id)
+        logger.info("Qdrant 向量已删除: %s", book_id)
+    except Exception as e:
+        logger.error("删除 Qdrant 向量失败: %s", e)
+        # 继续删除其他数据，不中断流程
     
-    # 删除数据库记录（级联删除会处理关联数据）
-    db.delete(book)
-    db.commit()
+    # 2. 删除磁盘上的 PDF 文件
+    if book.stored_path and os.path.exists(book.stored_path):
+        try:
+            os.remove(book.stored_path)
+            logger.info("PDF 文件已删除: %s", book.stored_path)
+        except Exception as e:
+            logger.error("删除 PDF 文件失败: %s", e)
     
-    # TODO: 删除 Qdrant 中的向量
+    # 3. 删除磁盘上的图像文件（统一路径: data/knowledge/books/images/{book_id}/）
+    base_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
+    image_dirs_to_try = [
+        os.path.join(base_dir, "knowledge", "books", "images", book_id),  # MinerU 解析
+        os.path.join(base_dir, "uploads", "images", book_id),  # PyMuPDF 解析（兼容旧数据）
+    ]
+    for image_dir in image_dirs_to_try:
+        if os.path.exists(image_dir):
+            try:
+                shutil.rmtree(image_dir)
+                logger.info("图像目录已删除: %s", image_dir)
+            except Exception as e:
+                logger.error("删除图像目录失败: %s", e)
     
-    return {"message": "书籍已删除"}
+    # 4. 删除 SQLite 记录（级联删除会处理 text_chunks, extracted_images, knowledge_tasks）
+    try:
+        db.delete(book)
+        db.commit()
+        logger.info("SQLite 记录已删除: %s", book_id)
+    except Exception as e:
+        db.rollback()
+        logger.error("删除 SQLite 记录失败: %s", e)
+        raise HTTPException(500, f"删除数据库记录失败: {str(e)}")
+    
+    return {"message": f"书籍 '{book_title}' 及其所有关联数据已删除"}
 
 
 @router.post("/books/{book_id}/reingest")
@@ -316,7 +397,7 @@ async def reingest_book(
     book_id: str, 
     chunk_strategy: str = Form("semantic"),
     chunk_size: int = Form(500),
-    parser_backend: str = Form("pymupdf"),
+    parser_backend: str = Form("mineru"),
     db: Session = Depends(get_db)
 ):
     """
@@ -329,11 +410,11 @@ async def reingest_book(
         book_id: 书籍ID
         chunk_strategy: 分块策略
         chunk_size: 块大小
-        parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
+        parser_backend: PDF 解析器后端 ("mineru")
     """
     # 验证 parser_backend
-    if parser_backend not in ("pymupdf", "mineru"):
-        raise HTTPException(400, f"不支持的 parser_backend: {parser_backend}，可选值: pymupdf, mineru")
+    if parser_backend not in ("mineru",):
+        raise HTTPException(400, f"不支持的 parser_backend: {parser_backend}，仅支持: mineru")
     book = db.query(PdfBook).filter(PdfBook.id == book_id).first()
     if not book:
         raise HTTPException(404, "书籍不存在")
@@ -645,7 +726,7 @@ async def get_book_pdf(book_id: str, db: Session = Depends(get_db)):
     return FileResponse(
         book.stored_path,
         media_type="application/pdf",
-        filename=book.file_name
+        headers={"Content-Disposition": f"inline; filename=\"{book.file_name}\""}
     )
 
 
@@ -736,19 +817,19 @@ def _extract_book_title(payload: dict) -> str:
     if isinstance(metadata, dict):
         book_title = metadata.get("book_title")
         if book_title:
-            # 统一书名：英文副标题版本 → 中文简称
-            if "中国写意花鸟画教程" in book_title:
-                return "写意教程"
             return book_title
 
-    # 2. 花鸟教程章节: book 字段
+    # 2. 章节/分类字段
     book = payload.get("book")
     if book:
-        if "中国写意花鸟画教程" in book or "花鸟" in book:
-            return "写意教程"
         return book
 
-    # 3. 艺术家档案: name 字段
+    # 3. 书名字段
+    bt = payload.get("book_title")
+    if bt:
+        return bt
+
+    # 4. 艺术家档案: name 字段
     name = payload.get("name")
     if name:
         era = payload.get("era", "")
@@ -756,13 +837,14 @@ def _extract_book_title(payload: dict) -> str:
             return f"{era}·{name}"
         return name
 
-    # 4. 根据类型返回默认名称
-    doc_type = payload.get("type")
-    if doc_type == "knowledge_chapter":
-        return "写意教程"
+    # 5. 来源字段
+    source = payload.get("source", "")
+    if source and source != "uploaded_images":
+        return source
 
-    # 5. 最后回退
-    return "未知来源"
+    # 6. 最后回退
+    doc_type = payload.get("type", "")
+    return doc_type or "知识库"
 
 
 @router.post("/search")
@@ -899,6 +981,26 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
         # ---- 过滤非文本内容 ----
         search_results = [r for r in search_results if _should_include_in_search(r.get("payload", {}))]
 
+        # ---- 过滤孤立向量（book_id 不存在于 SQLite 的结果）----
+        # 收集所有结果中涉及的 book_id，批量查询数据库
+        result_book_ids = set()
+        for r in search_results:
+            bid = r.get("payload", {}).get("book_id")
+            if bid:
+                result_book_ids.add(bid)
+        
+        if result_book_ids:
+            existing_book_ids = set(
+                row[0] for row in db.query(PdfBook.id).filter(PdfBook.id.in_(result_book_ids)).all()
+            )
+            # 过滤掉 book_id 存在但不在数据库中的结果
+            # 注意：没有 book_id 的结果（如花鸟教程章节）保留
+            search_results = [
+                r for r in search_results
+                if not r.get("payload", {}).get("book_id") 
+                or r.get("payload", {}).get("book_id") in existing_book_ids
+            ]
+
         # ---- ③ AI 摘要回答（带缓存）----
         # 缓存 key 包含 query + book_ids，不同书库过滤结果不同
         book_ids_str = ",".join(sorted(request.book_ids)) if request.book_ids else "all"
@@ -967,7 +1069,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "chunk_id": None,
                         "vector_id": vector_id,
                         "book_id": book_id,
-                        "book_title": "写意教程",
+                        "book_title": _extract_book_title(payload),
                         "content": truncated_content,
                         "content_full": raw_content,
                         "chapter_title": payload.get("chapter_title", ""),
@@ -1016,7 +1118,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "chunk_id": None,
                         "vector_id": vector_id,
                         "book_id": book_id,
-                        "book_title": chapter or "写意教程",
+                        "book_title": _extract_book_title(payload),
                         "content": content_text[:200],
                         "content_full": content_text,
                         "chapter_title": chapter,
@@ -1389,23 +1491,35 @@ async def get_book_outline(book_id: str, db: Session = Depends(get_db)):
     """
     获取书籍的文档大纲
     
-    返回 MinerU 提取的标题层级结构
+    如果该书属于某个系列（有 series_id），会合并该系列中所有书籍的大纲，
+    并根据每本书的 page_offset 调整页码，同时标记每个大纲项属于哪本书。
     """
     book = db.query(PdfBook).filter(PdfBook.id == book_id).first()
     if not book:
         raise HTTPException(404, "书籍不存在")
     
-    if not book.outline:
-        return {
-            "book_id": book_id,
-            "outline": [],
-            "message": "暂无大纲数据（需使用 MinerU 解析器重新入库）"
-        }
+    # 如果该书属于某个系列，合并系列内所有大纲
+    if book.series_id:
+        siblings = db.query(PdfBook).filter(
+            PdfBook.series_id == book.series_id,
+            PdfBook.outline.isnot(None)
+        ).order_by(PdfBook.page_offset).all()
+        
+        merged = []
+        for sib in siblings:
+            offset = sib.page_offset or 1
+            for item in (sib.outline or []):
+                merged.append({
+                    "title": item["title"],
+                    "page": (item["page"] + offset - 1) if item.get("page") is not None else None,
+                    "level": item.get("level", 2),
+                    "target_book_id": sib.id,
+                })
+        return {"book_id": book_id, "outline": merged, "series": True}
     
-    return {
-        "book_id": book_id,
-        "outline": book.outline,
-    }
+    if not book.outline:
+        return {"book_id": book_id, "outline": [], "message": "暂无大纲数据"}
+    return {"book_id": book_id, "outline": book.outline}
 
 
 # ============ Markdown API ============
@@ -1701,3 +1815,96 @@ def get_figure(figure_id: str, db: Session = Depends(get_db)):
     if not figure:
         raise HTTPException(status_code=404, detail=f"插图 {figure_id} 不存在")
     return {"success": True, "figure": figure.to_dict()}
+
+
+@router.get("/graph")
+def get_knowledge_graph():
+    """获取知识图谱数据（朝代→画册→技法类型→图例）"""
+    import json, re
+    from app.core.config import BASE_DIR
+
+    meta_path = os.path.join(BASE_DIR, "data", "knowledge", "figure_metadata.json")
+    nodes = {}
+    edges = []
+
+    if os.path.exists(meta_path):
+        with open(meta_path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        for fid, fig in metadata.items():
+            era = (fig.get("era") or "").strip()
+            fig_type = (fig.get("figure_type") or "").strip()
+            chapter = (fig.get("chapter") or "").strip()
+            artist = (fig.get("artist") or "").strip()
+            artwork = (fig.get("artwork_title") or fig.get("title") or "").strip()
+
+            # Map figure_type to Chinese
+            type_map = {"artwork": "作品", "technique": "技法", "teaching_illustration": "教学图例",
+                        "positive": "正例", "negative": "反例", "unknown": "其他"}
+            fig_type_cn = type_map.get(fig_type, fig_type)
+
+            # Parse chapter into book + section
+            section = ""
+            book = ""
+            if "•" in chapter:
+                parts = chapter.split("•")
+                if len(parts) >= 2:
+                    section = parts[0].strip().rstrip(" \u2022")
+                    book_raw = parts[-1].strip()
+                    if "国美好教材" in book_raw or "写意花鸟画" in book_raw:
+                        book = "中国写意花鸟画教程"
+                    else:
+                        book = book_raw[:20]
+            elif chapter:
+                section = chapter[:20]
+
+            # Artist node
+            if artist:
+                akey = f"artist:{artist}"
+                nodes.setdefault(akey, {"id": akey, "label": artist, "type": "artist", "era": era, "count": 0})
+                nodes[akey]["count"] += 1
+
+            # Artwork node
+            if artwork:
+                wkey = f"artwork:{artwork}"
+                nodes.setdefault(wkey, {"id": wkey, "label": artwork, "type": "artwork"})
+                if artist:
+                    edges.append({"from": f"artist:{artist}", "to": wkey, "label": "创作"})
+
+            # Era node
+            if era:
+                ekey = f"era:{era}"
+                nodes.setdefault(ekey, {"id": ekey, "label": era, "type": "era", "count": 0})
+                nodes[ekey]["count"] += 1
+
+            # Book node
+            if book:
+                bkey = f"book:{book}"
+                nodes.setdefault(bkey, {"id": bkey, "label": book, "type": "book", "count": 0})
+                nodes[bkey]["count"] += 1
+                if era:
+                    edges.append({"from": f"era:{era}", "to": bkey, "label": "所属"})
+
+            # Section node
+            if section:
+                skey = f"section:{section}"
+                label = section[:18].rstrip(" •")
+                nodes.setdefault(skey, {"id": skey, "label": label, "type": "section"})
+                if book:
+                    edges.append({"from": f"book:{book}", "to": skey, "label": "章节"})
+
+            # Figure type node
+            if fig_type_cn:
+                tkey = f"type:{fig_type}"
+                nodes.setdefault(tkey, {"id": tkey, "label": fig_type_cn, "type": "technique", "count": 0})
+                nodes[tkey]["count"] += 1
+                if section:
+                    edges.append({"from": f"section:{section}", "to": tkey, "label": "包含"})
+                elif artist and artwork:
+                    edges.append({"from": f"artwork:{artwork}", "to": tkey, "label": "类型"})
+
+    return {
+        "success": True,
+        "nodes": list(nodes.values()),
+        "edges": edges,
+    }

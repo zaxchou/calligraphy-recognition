@@ -46,7 +46,7 @@ class KnowledgeIngestV2:
                  db: Optional[Session] = None,
                  chunk_strategy: str = "semantic",
                  chunk_size: int = 500,
-                 parser_backend: str = "pymupdf"):
+                 parser_backend: str = "mineru"):
         """
         初始化入库处理器
         
@@ -54,7 +54,7 @@ class KnowledgeIngestV2:
             db: 数据库会话
             chunk_strategy: 分块策略
             chunk_size: 块大小
-            parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
+            parser_backend: PDF 解析器后端 ("mineru")
         """
         self.db = db
         self._local_db = db is None
@@ -63,12 +63,11 @@ class KnowledgeIngestV2:
         self.parser_backend = parser_backend
         
         # 验证 parser_backend
-        if parser_backend not in ("pymupdf", "mineru"):
-            raise ValueError(f"不支持的 parser_backend: {parser_backend}，可选值: pymupdf, mineru")
+        if parser_backend not in ("mineru",):
+            raise ValueError(f"不支持的 parser_backend: {parser_backend}，仅支持: mineru")
         
-        if parser_backend == "mineru" and not MINERU_AVAILABLE:
-            logger.warning("MinerU 模块未正确导入，自动降级到 pymupdf")
-            self.parser_backend = "pymupdf"
+        if not MINERU_AVAILABLE:
+            raise ValueError("MinerU 模块未正确导入，请检查配置")
         
         # 初始化服务
         self.embedding_service = EmbeddingService()
@@ -129,12 +128,8 @@ class KnowledgeIngestV2:
             # 1. PDF 解析（含 bbox、caption、figure_first_page）
             task_manager.update_progress(task_id, 10, "PDF解析", "正在解析PDF结构...")
             
-            # 根据 parser_backend 选择解析器
-            if self.parser_backend == "mineru":
-                pdf_content = await self._parse_with_mineru(pdf_path, task_manager, task_id)
-            else:
-                with PdfProcessor(pdf_path) as processor:
-                    pdf_content = processor.process_full()
+            # 使用 MinerU 解析器
+            pdf_content = await self._parse_with_mineru(pdf_path, task_manager, task_id)
             
             # 更新书籍元数据
             book.title = pdf_content.metadata.title
@@ -215,6 +210,7 @@ class KnowledgeIngestV2:
                         "vector": emb_result.embedding,
                         "content": chunk.content,
                         "chapter": chunk.chapter_title,
+                        "book_title": book.title or "",
                         "page_start": chunk.page_start,
                         "page_end": chunk.page_end,
                         "chunk_index": chunk.chunk_index,
@@ -508,6 +504,7 @@ class KnowledgeIngestV2:
                     "vector": emb_result.embedding,
                     "content": table.content,
                     "chapter": table.chapter_title or "",
+                    "book_title": book.title or "",
                     "page_start": table.page,
                     "page_end": table.page,
                     "table_index": table.table_index,
@@ -590,7 +587,7 @@ class KnowledgeIngestV2:
 async def process_pdf_file(pdf_path: str, 
                            task_id: Optional[str] = None,
                            book_id: Optional[str] = None,
-                           parser_backend: str = "pymupdf") -> Dict[str, Any]:
+                           parser_backend: str = "mineru") -> Dict[str, Any]:
     """
     处理 PDF 文件的便捷函数
     
@@ -598,7 +595,7 @@ async def process_pdf_file(pdf_path: str,
         pdf_path: PDF 文件路径
         task_id: 任务ID
         book_id: 书籍ID
-        parser_backend: PDF 解析器后端 ("pymupdf" 或 "mineru")
+        parser_backend: PDF 解析器后端 ("mineru")
     
     Returns:
         处理结果
@@ -610,7 +607,7 @@ async def process_pdf_file(pdf_path: str,
 def process_pdf_file_sync(pdf_path: str, 
                           task_id: Optional[str] = None,
                           book_id: Optional[str] = None,
-                          parser_backend: str = "pymupdf") -> Dict[str, Any]:
+                          parser_backend: str = "mineru") -> Dict[str, Any]:
     """同步版本"""
     return asyncio.run(process_pdf_file(pdf_path, task_id, book_id, parser_backend))
 

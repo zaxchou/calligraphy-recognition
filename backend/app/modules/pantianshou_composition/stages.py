@@ -276,10 +276,8 @@ def _build_checks(metrics: Any) -> List[Dict[str, Any]]:
 def search_and_match(ctx: CompositionContext) -> None:
     case_hits = search_cases(ctx.vector or [], limit=5)
 
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-    pan_md_path = os.path.join(repo_root, "pan.md")
-    panplus_md_path = os.path.join(repo_root, "panplus.md")
-    sel = select_rules(pan_md_path, ctx.metrics, adv=ctx.advanced_metrics, limit=12, panplus_md_path=panplus_md_path if os.path.exists(panplus_md_path) else None)
+    # 优先从数据库加载规则（pan.md/panplus.md 已迁移到 CompositionRule 表）
+    sel = select_rules(metrics=ctx.metrics, adv=ctx.advanced_metrics, limit=12)
 
     issues, matched_rules, theory_basis = _build_rules_payload(sel)
     references = _build_references(case_hits)

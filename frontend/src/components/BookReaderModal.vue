@@ -10,7 +10,7 @@
               <span>返回搜索结果</span>
             </button>
             <span class="toolbar-divider">|</span>
-            <span class="book-title">{{ result.result_type === 'image' ? (result.image?.artwork_title || '配图详情') : result.book_title }}</span>
+            <span class="book-title">{{ result.result_type === 'image' ? (cleanLatexSymbols(result.image?.artwork_title) || '配图详情') : result.book_title }}</span>
             <span class="chapter-tag">{{ result.result_type === 'image' ? (result.image?.era ? result.image.era + '·' + (result.image.artist || '') : (result.image?.artist || '配图')) : getChapterTitle(result) }}</span>
           </div>
           <div class="toolbar-right">
@@ -41,25 +41,34 @@
                   <div class="image-detail-main">
                     <img 
                       :src="getFullImageUrl(result.image?.url || result.associated_images?.[0]?.url)" 
-                      :alt="result.image?.artwork_title || '配图'" 
+                      :alt="cleanLatexSymbols(result.image?.artwork_title) || '配图'" 
                       class="image-detail-img"
                       @click="openImagePreviewDirect(getFullImageUrl(result.image?.url || result.associated_images?.[0]?.url))"
                     />
                   </div>
                   <div class="image-detail-info">
-                    <h2 v-if="result.image?.artwork_title" class="artwork-title">《{{ result.image.artwork_title }}》</h2>
+                    <h2 v-if="result.image?.artwork_title" class="artwork-title">《{{ cleanLatexSymbols(result.image.artwork_title) }}》</h2>
                     <div v-if="result.image?.artist" class="artwork-meta">
                       <span class="meta-label">作者</span>
-                      <span class="meta-value">{{ result.image?.era ? result.image.era + '·' : '' }}{{ result.image.artist }}</span>
+                      <span class="meta-value">{{ result.image?.era ? result.image.era + '·' : '' }}{{ cleanLatexSymbols(result.image.artist) }}</span>
                     </div>
                     <div v-if="result.image?.chapter" class="artwork-meta">
                       <span class="meta-label">章节</span>
-                      <span class="meta-value">{{ result.image.chapter }}</span>
+                      <span class="meta-value">{{ cleanLatexSymbols(result.image.chapter) }}</span>
                     </div>
                     <div v-if="result.image?.description" class="artwork-desc">
-                      <p>{{ result.image.description }}</p>
+                      <p>{{ cleanLatexSymbols(result.image.description) }}</p>
                     </div>
                   </div>
+                </div>
+                
+                <!-- 关联文本块 -->
+                <div v-if="relatedChunks.length > 0" class="related-chunks-section">
+                  <ImageRelatedChunks 
+                    :chunks="relatedChunks"
+                    :loading="loadingRelatedChunks"
+                    @chunk-click="onRelatedChunkClick"
+                  />
                 </div>
               </div>
             </template>
@@ -71,54 +80,113 @@
               <div class="page-header">
                 <span class="page-chapter">{{ getChapterTitle(result) }}</span>
                 <span class="page-number">第 {{ result.page_start }} 页</span>
+                <div class="header-actions">
+                  <button class="view-pdf-btn" @click="openPdfSource">
+                    <FileDown class="icon" />
+                    <span>查看 PDF</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- 页面内容 -->
-              <div class="page-content" ref="pageContent">
-                <!-- 上文 -->
-                <div v-if="result.context_before" class="context-section before">
-                  <p class="context-text">{{ result.context_before }}</p>
-                  <div class="context-marker">⋯ 上文 ⋯</div>
-                </div>
+              <!-- 标签页切换 -->
+              <div class="reader-tabs">
+                <button 
+                  class="tab-btn"
+                  :class="{ active: activeTab === 'content' }"
+                  @click="activeTab = 'content'"
+                >
+                  <FileText class="icon" />
+                  <span>文本内容</span>
+                </button>
+                <button 
+                  v-if="documentOutline.length > 0"
+                  class="tab-btn"
+                  :class="{ active: activeTab === 'outline' }"
+                  @click="activeTab = 'outline'"
+                >
+                  <ListTree class="icon" />
+                  <span>文档大纲</span>
+                  <span class="tab-count">{{ documentOutline.length }}</span>
+                </button>
+                <button 
+                  v-if="markdownContent"
+                  class="tab-btn"
+                  :class="{ active: activeTab === 'markdown' }"
+                  @click="activeTab = 'markdown'"
+                >
+                  <FileCode class="icon" />
+                  <span>Markdown</span>
+                </button>
+              </div>
 
-                <!-- 当前内容（高亮） -->
-                <div class="current-content">
-                  <p class="content-text" v-html="highlightedContent"></p>
-                </div>
+              <!-- 标签页内容 -->
+              <div class="tab-content">
+                <!-- 文本内容标签页 -->
+                <div v-show="activeTab === 'content'" class="tab-pane">
+                  <div class="page-content" ref="pageContent">
+                    <!-- 上文 -->
+                    <div v-if="result.context_before" class="context-section before">
+                      <p class="context-text">{{ cleanLatexSymbols(result.context_before) }}</p>
+                      <div class="context-marker">⋯ 上文 ⋯</div>
+                    </div>
 
-                <!-- 关联图片 - 内联显示在文本下方 -->
-                <div v-if="result.associated_images?.length > 0" class="inline-images">
-                  <div class="images-header">
-                    <ImageIcon class="icon" />
-                    <span>关联插图 ({{ result.associated_images.length }}张)</span>
-                  </div>
-                  <div class="images-grid">
-                    <div 
-                      v-for="(img, idx) in result.associated_images" 
-                      :key="img.id || idx"
-                      class="inline-image-item"
-                      @click="openImagePreviewByIndex(idx)"
-                    >
-                      <img 
-                        :src="getImageUrl(img)" 
-                        :alt="img.caption || img.figure_id || '插图'"
-                        class="inline-image"
-                        @error="handleImageError"
-                      />
-                      <div v-if="img.caption || img.figure_id" class="inline-image-caption">
-                        {{ img.caption || img.figure_id }}
+                    <!-- 当前内容（高亮） -->
+                    <div class="current-content">
+                      <p class="content-text" v-html="highlightedContent"></p>
+                    </div>
+
+                    <!-- 关联图片 - 内联显示在文本下方 -->
+                    <div v-if="result.associated_images?.length > 0" class="inline-images">
+                      <div class="images-header">
+                        <ImageIcon class="icon" />
+                        <span>关联插图 ({{ result.associated_images.length }}张)</span>
                       </div>
-                      <div class="image-overlay">
-                        <span class="zoom-hint">点击放大</span>
+                      <div class="images-grid">
+                        <div 
+                          v-for="(img, idx) in result.associated_images" 
+                          :key="img.id || idx"
+                          class="inline-image-item"
+                          @click="openImagePreviewByIndex(idx)"
+                        >
+                          <img 
+                            :src="getImageUrl(img)" 
+                            :alt="img.caption || img.figure_id || '插图'"
+                            class="inline-image"
+                            @error="handleImageError"
+                          />
+                          <div v-if="img.caption || img.figure_id" class="inline-image-caption">
+                            {{ img.caption || img.figure_id }}
+                          </div>
+                          <div class="image-overlay">
+                            <span class="zoom-hint">点击放大</span>
+                          </div>
+                        </div>
                       </div>
+                    </div>
+
+                    <!-- 下文 -->
+                    <div v-if="result.context_after" class="context-section after">
+                      <div class="context-marker">⋯ 下文 ⋯</div>
+                      <p class="context-text">{{ cleanLatexSymbols(result.context_after) }}</p>
                     </div>
                   </div>
                 </div>
 
-                <!-- 下文 -->
-                <div v-if="result.context_after" class="context-section after">
-                  <div class="context-marker">⋯ 下文 ⋯</div>
-                  <p class="context-text">{{ result.context_after }}</p>
+                <!-- 文档大纲标签页 -->
+                <div v-show="activeTab === 'outline'" class="tab-pane">
+                  <DocumentOutline 
+                    :outline="documentOutline"
+                    :loading="loadingOutline"
+                    @item-click="onOutlineItemClick"
+                  />
+                </div>
+
+                <!-- Markdown 标签页 -->
+                <div v-show="activeTab === 'markdown'" class="tab-pane">
+                  <MarkdownViewer 
+                    :markdown="markdownContent"
+                    :loading="loadingMarkdown"
+                  />
                 </div>
               </div>
 
@@ -192,6 +260,35 @@
         <X class="icon" />
       </button>
     </div>
+    
+    <!-- PDF 查看器 -->
+    <div v-if="showPdfViewer" class="pdf-viewer-overlay" @click="closePdfViewer">
+      <div class="pdf-viewer-container" @click.stop>
+        <div class="pdf-viewer-header">
+          <div class="pdf-viewer-title">
+            <FileDown class="icon" />
+            <span>PDF 原文查看</span>
+            <span class="pdf-book-name">{{ result.book_title }}</span>
+          </div>
+          <button class="pdf-viewer-close" @click="closePdfViewer">
+            <X class="icon" />
+          </button>
+        </div>
+        <div class="pdf-viewer-body">
+          <PdfViewer 
+            v-if="pdfUrl"
+            ref="pdfViewerRef"
+            :pdf-url="pdfUrl"
+            :initial-page="result.page_start || 1"
+            :bboxes="pdfBboxes"
+            :auto-scroll-to-bbox="true"
+            @page-change="onPdfPageChange"
+            @bbox-click="onPdfBboxClick"
+            @pdf-loaded="onPdfLoaded"
+          />
+        </div>
+      </div>
+    </div>
   </Teleport>
 </template>
 
@@ -200,10 +297,14 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { 
   X, ArrowLeft, ChevronLeft, ChevronRight, 
   ImageIcon, BookOpen, Hash, Layers, Copy, FileText, 
-  Loader2 
+  Loader2, FileDown, ListTree, FileCode
 } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
+import PdfViewer from './PdfViewer.vue'
+import DocumentOutline from './DocumentOutline.vue'
+import MarkdownViewer from './MarkdownViewer.vue'
+import ImageRelatedChunks from './ImageRelatedChunks.vue'
 
 const store = useKnowledgeStore()
 
@@ -239,6 +340,25 @@ const previewImageUrl = ref('')
 const pageContent = ref(null)
 const loading = ref(false)
 const totalChunks = ref(0)
+const activeTab = ref('content')
+
+// PDF 查看器状态
+const showPdfViewer = ref(false)
+const pdfUrl = ref('')
+const pdfBboxes = ref([])
+const pdfViewerRef = ref(null)
+
+// 文档大纲状态
+const documentOutline = ref([])
+const loadingOutline = ref(false)
+
+// Markdown 内容状态
+const markdownContent = ref('')
+const loadingMarkdown = ref(false)
+
+// 关联文本块状态
+const relatedChunks = ref([])
+const loadingRelatedChunks = ref(false)
 
 // 当前阅读的文本块（可独立于搜索结果翻页）
 const readerResult = computed(() => ({
@@ -254,6 +374,8 @@ const currentImage = computed(() => {
 
 const highlightedContent = computed(() => {
   let content = readerResult.value.content
+  // 先清理 LaTeX 符号
+  content = cleanLatexSymbols(content)
   if (props.searchQuery) {
     const regex = new RegExp(`(${escapeRegExp(props.searchQuery)})`, 'gi')
     content = content.replace(regex, '<mark class="highlight">$1</mark>')
@@ -469,7 +591,128 @@ function copyContent() {
 function openPdfSource() {
   const bookId = props.result.book_id
   if (bookId) {
-    window.open(`/api/v1/knowledge/books/${bookId}/pdf`, '_blank')
+    // 设置 PDF URL
+    pdfUrl.value = `/api/v1/knowledge/books/${bookId}/pdf`
+    
+    // 构建 bbox 数据
+    const bboxes = []
+    if (props.result.bbox) {
+      bboxes.push({
+        page: props.result.page_start || 1,
+        x: props.result.bbox.x || 0,
+        y: props.result.bbox.y || 0,
+        width: props.result.bbox.width || 100,
+        height: props.result.bbox.height || 50,
+        label: '当前内容',
+        active: true
+      })
+    }
+    pdfBboxes.value = bboxes
+    
+    // 显示 PDF 查看器
+    showPdfViewer.value = true
+  }
+}
+
+function closePdfViewer() {
+  showPdfViewer.value = false
+  pdfUrl.value = ''
+  pdfBboxes.value = []
+}
+
+// 加载文档大纲
+async function loadDocumentOutline(bookId) {
+  if (!bookId) return
+  loadingOutline.value = true
+  try {
+    const response = await fetch(`/api/v1/knowledge/books/${bookId}/outline`)
+    if (response.ok) {
+      const data = await response.json()
+      documentOutline.value = data.outline || []
+    }
+  } catch (e) {
+    console.error('加载大纲失败:', e)
+  } finally {
+    loadingOutline.value = false
+  }
+}
+
+// 加载 Markdown 内容
+async function loadMarkdownContent(bookId) {
+  if (!bookId) return
+  loadingMarkdown.value = true
+  try {
+    const response = await fetch(`/api/v1/knowledge/books/${bookId}/markdown`)
+    if (response.ok) {
+      const data = await response.json()
+      markdownContent.value = data.markdown || ''
+    }
+  } catch (e) {
+    console.error('加载 Markdown 失败:', e)
+  } finally {
+    loadingMarkdown.value = false
+  }
+}
+
+// 加载关联文本块
+async function loadRelatedChunks(imageId) {
+  if (!imageId) return
+  loadingRelatedChunks.value = true
+  try {
+    const response = await fetch(`/api/v1/knowledge/images/${imageId}/related-chunks`)
+    if (response.ok) {
+      const data = await response.json()
+      relatedChunks.value = data.chunks || []
+    }
+  } catch (e) {
+    console.error('加载关联文本块失败:', e)
+  } finally {
+    loadingRelatedChunks.value = false
+  }
+}
+
+// 待跳转的页面（用于 PDF 加载完成后自动跳转）
+const pendingPageNavigation = ref(null)
+
+// 大纲项点击 - 跳转到 PDF 对应页面
+function onOutlineItemClick(item) {
+  if (item.page) {
+    const bookId = props.result.book_id
+    if (!bookId) return
+    
+    // 如果 PDF 查看器未打开，先打开它
+    if (!showPdfViewer.value) {
+      pendingPageNavigation.value = item.page
+      pdfUrl.value = `/api/v1/knowledge/books/${bookId}/pdf`
+      pdfBboxes.value = []
+      showPdfViewer.value = true
+    } else {
+      // PDF 查看器已打开，直接跳转
+      if (pdfViewerRef.value) {
+        pdfViewerRef.value.goToPage(item.page)
+      }
+    }
+  }
+}
+
+// PDF 加载完成事件处理
+function onPdfLoaded(info) {
+  console.log('PDF 加载完成:', info)
+  // 如果有待跳转的页面，现在跳转
+  if (pendingPageNavigation.value && pdfViewerRef.value) {
+    const targetPage = pendingPageNavigation.value
+    pendingPageNavigation.value = null
+    nextTick(() => {
+      pdfViewerRef.value.goToPage(targetPage)
+    })
+  }
+}
+
+// 关联文本块点击 - 导航到该文本块
+function onRelatedChunkClick(chunk) {
+  if (chunk && chunk.chunk_id) {
+    // 发送导航事件，让父组件处理搜索结果切换
+    emit('navigate-chunk', chunk)
   }
 }
 
@@ -477,14 +720,60 @@ function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-// 监听结果变化，重置图片索引
-watch(() => props.result, () => {
+// PDF 查看器事件处理
+function onPdfPageChange(page) {
+  console.log('PDF 页面切换:', page)
+}
+
+function onPdfBboxClick(bbox) {
+  console.log('点击 bbox:', bbox)
+}
+
+// 清理 LaTeX 数学符号，转换为 Unicode 字符
+function cleanLatexSymbols(text) {
+  if (!text) return text
+  // 将 $\textcircled{N}$ 格式转换为 ①②③ 等 Unicode 带圈数字
+  const circledMap = {
+    '0': '⓪', '1': '①', '2': '②', '3': '③', '4': '④',
+    '5': '⑤', '6': '⑥', '7': '⑦', '8': '⑧', '9': '⑨',
+    '10': '⑩', '11': '⑪', '12': '⑫', '13': '⑬', '14': '⑭',
+    '15': '⑮', '16': '⑯', '17': '⑰', '18': '⑱', '19': '⑲',
+    '20': '⑳'
+  }
+  // 匹配 $\textcircled{N}$ 或 $\textcircled{NN}$
+  return text.replace(/\$\\textcircled\{(\d+)\}\$/g, (match, num) => {
+    return circledMap[num] || `(${num})`
+  })
+}
+
+// 监听结果变化，重置图片索引，加载相关数据
+watch(() => props.result, (newResult) => {
   currentImageIndex.value = 0
   nextTick(() => {
     if (pageContent.value) {
       pageContent.value.scrollTop = 0
     }
   })
+  
+  // 清空之前的数据
+  documentOutline.value = []
+  markdownContent.value = ''
+  relatedChunks.value = []
+  
+  if (newResult) {
+    const bookId = newResult.book_id
+    
+    // 文本结果：加载大纲和 Markdown
+    if (newResult.result_type !== 'image' && bookId) {
+      loadDocumentOutline(bookId)
+      loadMarkdownContent(bookId)
+    }
+    
+    // 图像结果：加载关联文本块
+    if (newResult.result_type === 'image' && newResult.image?.id) {
+      loadRelatedChunks(newResult.image.id)
+    }
+  }
 }, { immediate: true })
 
 // 键盘导航
@@ -779,9 +1068,95 @@ function handleKeydown(e) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid #e8e4dc;
-  margin-bottom: 24px;
+  margin-bottom: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.view-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f5f0e8;
+  border: 1px solid #e8e4dc;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #5a5a5a;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-pdf-btn:hover {
+  background: #c45c48;
+  border-color: #c45c48;
+  color: #fff;
+}
+
+/* 标签页 */
+.reader-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e8e4dc;
+  background: #faf9f7;
+  margin: 0 -40px;
+  padding: 0 40px;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  color: #8b7355;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: #5a5a5a;
+  background: rgba(196, 92, 72, 0.05);
+}
+
+.tab-btn.active {
+  color: #c45c48;
+  border-bottom-color: #c45c48;
+  font-weight: 600;
+}
+
+.tab-count {
+  padding: 1px 6px;
+  background: #e8e4dc;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8b7355;
+}
+
+.tab-btn.active .tab-count {
+  background: rgba(196, 92, 72, 0.15);
+  color: #c45c48;
+}
+
+/* 标签页内容 */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-pane {
+  height: 100%;
+  overflow-y: auto;
 }
 
 .page-chapter {
@@ -1195,6 +1570,82 @@ function handleKeydown(e) {
   }
 }
 
+/* PDF 查看器弹窗 */
+.pdf-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+  padding: 20px;
+}
+
+.pdf-viewer-container {
+  background: #f5f0e8;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 1200px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.pdf-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e8e4dc;
+}
+
+.pdf-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #3d3d3d;
+}
+
+.pdf-book-name {
+  font-weight: 400;
+  color: #8b7355;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.pdf-viewer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #f8f6f1;
+  border: none;
+  border-radius: 8px;
+  color: #8b7355;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pdf-viewer-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.pdf-viewer-body {
+  flex: 1;
+  overflow: hidden;
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }
@@ -1218,5 +1669,20 @@ function handleKeydown(e) {
   .reader-right {
     height: 60%;
   }
+}
+
+/* 文档大纲区域 */
+.outline-section {
+  margin-top: 24px;
+}
+
+/* Markdown 视图区域 */
+.markdown-section {
+  margin-top: 24px;
+}
+
+/* 关联文本块区域 */
+.related-chunks-section {
+  margin-top: 24px;
 }
 </style>

@@ -12,6 +12,7 @@ router = APIRouter()
 
 class SearchResult(BaseModel):
     id: int
+    image_id: str
     title: str
     artist: str
     score: float
@@ -45,6 +46,16 @@ class RebuildResponse(BaseModel):
     total: int
     skipped: int
     elapsed: float
+
+
+class StatsResponse(BaseModel):
+    total_indexed: int
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_stats():
+    engine = get_search_engine()
+    return StatsResponse(total_indexed=engine.total_indexed)
 
 
 @router.post("/search", response_model=SearchResponse)

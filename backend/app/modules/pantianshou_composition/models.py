@@ -31,6 +31,8 @@ class PdfBook(Base):
     status = Column(String(20), default="pending")  # pending/processing/completed/failed
     full_md = Column(Text, nullable=True)  # 完整 Markdown 内容
     outline = Column(JSON, nullable=True)  # 文档大纲（JSON 格式）
+    series_id = Column(String(36), nullable=True, index=True)  # 系列ID：同一套书的多卷共享此ID
+    page_offset = Column(Integer, default=0, nullable=True)  # 系列内起始页码偏移（从1开始）
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -42,6 +44,7 @@ class PdfBook(Base):
     __table_args__ = (
         Index("idx_pdf_books_status", "status"),
         Index("idx_pdf_books_created", "created_at"),
+        Index("idx_pdf_books_series", "series_id"),
     )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -55,6 +58,8 @@ class PdfBook(Base):
             "author": self.author,
             "total_pages": self.total_pages,
             "status": self.status,
+            "series_id": self.series_id,
+            "page_offset": self.page_offset or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

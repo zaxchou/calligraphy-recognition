@@ -1883,14 +1883,18 @@ async def get_dimensions(artist: Optional[str] = None, db: Session = Depends(get
     total = len(items)
     filled = sum(1 for i in items if i["artwork_width_cm"] is not None and i["artwork_height_cm"] is not None)
 
-    # 按年份分组
+    # 按年份分组（无年份/年代不详的统一归入"年代不详"）
     from collections import defaultdict
     by_year = defaultdict(list)
     for item in items:
-        by_year[item["year"]].append(item)
+        year = item["year"]
+        by_year[year].append(item)
 
-    # 排序年份（不含 None，前端已硬编码"无年份"按钮）
+    # 排序年份，"年代不详"放最后
     years = sorted([y for y in by_year.keys() if y is not None])
+    if None in by_year:
+        by_year["年代不详"] = by_year.pop(None)
+        years.append("年代不详")
 
     return {
         "success": True,

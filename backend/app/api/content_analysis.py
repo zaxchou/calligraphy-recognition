@@ -886,13 +886,14 @@ async def get_records(
     sql = f"""
         SELECT id, image_id, title, year, period_phase,
                inscription_content, inscription_modern, inscription_verified,
+               inscription_verified_at,
                seal_content, seal_verified,
                filepath, thumbnail_path,
                content_analysis, analysis_note,
                is_manual_annotated
         FROM tubi_analyses
         WHERE {' AND '.join(where_clauses)}
-        ORDER BY (CASE WHEN inscription_verified = 1 THEN 1 ELSE 0 END) ASC, year, id
+        ORDER BY (CASE WHEN inscription_verified = 1 THEN 0 ELSE 1 END) ASC, inscription_verified_at DESC, year, id
         LIMIT ? OFFSET ?
     """
     params.extend([limit, offset])
@@ -903,7 +904,7 @@ async def get_records(
     import json as _json
     records = []
     for row in rows:
-        content_analysis_str = row[12]
+        content_analysis_str = row[13]
         content_analysis = None
         themes = []
         sentiment = None
@@ -924,15 +925,16 @@ async def get_records(
             "inscription_content": row[5],
             "inscription_modern": row[6],
             "inscription_verified": bool(row[7]),
-            "seal_content": row[8],
-            "seal_verified": bool(row[9]),
-            "filepath": row[10],
-            "thumbnail_path": row[11],
+            "inscription_verified_at": row[8],
+            "seal_content": row[9],
+            "seal_verified": bool(row[10]),
+            "filepath": row[11],
+            "thumbnail_path": row[12],
             "content_analysis": content_analysis,
             "theme_tags": themes,
             "sentiment": sentiment,
-            "analysis_note": row[13],
-            "is_manual_annotated": bool(row[14]) if row[14] else False,
+            "analysis_note": row[14],
+            "is_manual_annotated": bool(row[15]) if row[15] else False,
         })
 
     # 获取总数（使用与主查询相同的 WHERE 条件，仅去掉 LIMIT/OFFSET 参数）

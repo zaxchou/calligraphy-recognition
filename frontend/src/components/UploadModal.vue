@@ -125,12 +125,20 @@
               </select>
             </div>
             
+            <!-- MinerU 解析器已默认启用 -->
+          </div>
+
+          <!-- 系列设置（跨文件定位） -->
+          <div class="config-section">
+            <h3 class="config-title">系列设置</h3>
+            <p class="config-desc">如果此PDF是某套书的一部分，设置系列参数后，第一篇的目录可以跨文件跳转</p>
             <div class="config-item">
-              <label class="config-label">PDF 解析器</label>
-              <select v-model="config.parserBackend" class="config-select">
-                <option value="pymupdf">PyMuPDF（快速，基础解析）</option>
-                <option value="mineru">MinerU（AI解析，支持表格/大纲/图片提取）</option>
-              </select>
+              <label class="config-label">系列ID</label>
+              <input v-model="config.seriesId" class="config-input" placeholder="留空则不关联系列" />
+            </div>
+            <div class="config-item">
+              <label class="config-label">起始页码</label>
+              <input v-model.number="config.pageOffset" type="number" min="1" class="config-input" placeholder="本卷在完整书中的第1页页码，如201" />
             </div>
           </div>
 
@@ -245,7 +253,9 @@ const uploadSuccess = ref(false)
 const config = reactive({
   chunkStrategy: 'semantic',
   chunkSize: 500,
-  parserBackend: 'pymupdf'
+  parserBackend: 'mineru',
+  seriesId: '',
+  pageOffset: 1
 })
 
 // 方法
@@ -301,7 +311,9 @@ async function startUpload() {
     await store.uploadPdf(selectedFile.value, {
       chunkStrategy: config.chunkStrategy,
       chunkSize: config.chunkSize,
-      parserBackend: config.parserBackend
+      parserBackend: config.parserBackend,
+      seriesId: config.seriesId,
+      pageOffset: config.pageOffset
     })
     uploadSuccess.value = true
     emit('upload-success')
@@ -375,6 +387,8 @@ watch(() => props.visible, (newVal) => {
   max-width: 520px;
   max-height: 90vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
@@ -384,6 +398,7 @@ watch(() => props.visible, (newVal) => {
   justify-content: space-between;
   padding: 20px 24px;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -429,6 +444,8 @@ watch(() => props.visible, (newVal) => {
 .modal-body {
   padding: 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* 上传区 */
@@ -737,6 +754,31 @@ watch(() => props.visible, (newVal) => {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.config-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.config-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.config-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
 /* 消息提示 */
 .error-message {
   display: flex;
@@ -795,6 +837,7 @@ watch(() => props.visible, (newVal) => {
   gap: 12px;
   padding: 16px 24px;
   border-top: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .cancel-btn {

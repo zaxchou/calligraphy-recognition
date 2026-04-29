@@ -13,6 +13,43 @@ from app.modules.pantianshou_composition.knowledge_ingest import PanRule, parse_
 
 logger = logging.getLogger(__name__)
 
+# 数据库规则缓存（进程级，避免每次分析都查库）
+_DB_RULES_CACHE: List[PanRule] | None = None
+
+
+def _load_rules_from_db() -> List[PanRule]:
+    """从数据库加载所有启用的构图规则，转换为 PanRule dataclass。
+    
+    缓存在进程级内存中，首次调用后不再查库。
+    如需刷新缓存（如规则编辑后），调用 clear_db_rules_cache()。
+    """
+    global _DB_RULES_CACHE
+    if _DB_RULES_CACHE is not None:
+        return _DB_RULES_CACHE
+    
+    try:
+        from app.modules.pantianshou_composition.database import SessionLocal
+        from app.modules.pantianshou_composition.models import CompositionRule
+        
+        session = SessionLocal()
+        try:
+            rows = session.query(CompositionRule).filter_by(is_active=1).all()
+            _DB_RULES_CACHE = [r.to_pan_rule() for r in rows]
+            logger.info(f"[rule_matcher] 从数据库加载 {len(_DB_RULES_CACHE)} 条构图规则")
+        finally:
+            session.close()
+    except Exception as e:
+        logger.warning(f"[rule_matcher] 数据库加载失败，回退到文件解析: {e}")
+        _DB_RULES_CACHE = []
+    
+    return _DB_RULES_CACHE
+
+
+def clear_db_rules_cache():
+    """清除数据库规则缓存（规则编辑后调用）"""
+    global _DB_RULES_CACHE
+    _DB_RULES_CACHE = None
+
 
 @dataclass(frozen=True)
 class Issue:
@@ -589,34 +626,39 @@ def _score_rule(rule: PanRule, issues: Sequence[Issue]) -> float:
 
 
 def select_rules(
-    pan_md_path: str,
-    metrics: ImageMetrics,
+    pan_md_path: str = "",
+    metrics: ImageMetrics = None,
     adv: Optional[AdvancedMetrics] = None,
     limit: int = 12,
     panplus_md_path: str | None = None,
 ) -> Dict[str, Any]:
     """Select the most relevant composition rules for the given image metrics.
 
-    Searches both pan.md and panplus.md rules, returning top matches.
+    优先从数据库加载规则（CompositionRule 表）。
+    如果数据库为空，回退到文件解析（pan.md + panplus.md）。
+    
     Ensures at least 1 rule per dimension (KH/XS/SM/FZ/JH/CC/BJ) for coverage.
     """
-    if not os.path.exists(pan_md_path):
-        return {"issues": [], "rules": []}
-    text = _read_text(pan_md_path)
-    rules = parse_pan_rules(text)
-    # Load panplus rules (JH/CC/BJ + supplementary KH/XS/SM/QS/FZ)
-    panplus_rules = load_panplus_rules(panplus_md_path)
-    # Merge: panplus rules override pan.md if same rule_id
-    seen_ids: set = set()
-    all_rules: list[PanRule] = []
-    for r in rules:
-        seen_ids.add(r.rule_id)
-        all_rules.append(r)
-    for r in panplus_rules:
-        if r.rule_id not in seen_ids:
+    # 优先从数据库加载
+    all_rules = _load_rules_from_db()
+    
+    # 数据库为空时回退到文件解析
+    if not all_rules:
+        logger.info("[rule_matcher] 数据库无规则，回退到文件解析")
+        if not pan_md_path or not os.path.exists(pan_md_path):
+            return {"issues": [], "rules": []}
+        text = _read_text(pan_md_path)
+        rules = parse_pan_rules(text)
+        panplus_rules = load_panplus_rules(panplus_md_path)
+        seen_ids: set = set()
+        all_rules = []
+        for r in rules:
             seen_ids.add(r.rule_id)
             all_rules.append(r)
-        # If rule_id exists in both, skip pan.md version (panplus is newer)
+        for r in panplus_rules:
+            if r.rule_id not in seen_ids:
+                seen_ids.add(r.rule_id)
+                all_rules.append(r)
     issues = derive_issues(metrics, adv)
     if not issues:
         issues = [

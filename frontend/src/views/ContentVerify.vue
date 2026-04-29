@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">题跋校对 · 标注图校对 · 尺寸录入 · 印章管理 · 册页管理 · 条屏管理 · 标签管理 · 作者信息 · 画家规则 · 作品查重 · 作品上传</p>
+        <p class="page-subtitle"></p>
       </div>
       <div class="header-center">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
@@ -464,7 +464,7 @@ import ImageSearchPanel from '../components/tubi/ImageSearchPanel.vue'
 const router = useRouter()
 const route = useRoute()
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
 const verifyPanelRef = ref(null)
 const uploadDialogRef = ref(null)
@@ -794,7 +794,8 @@ function openUploadDialog() {
 }
 
 function onImageSearchItemClick(recordId) {
-  router.push({ name: 'TubiDetail', params: { id: recordId } })
+  const route = router.resolve({ name: 'TubiDetail', params: { id: recordId } })
+  window.open(route.href, '_blank')
 }
 
 function copyReportAsMarkdown() {

@@ -1,14 +1,13 @@
 <template>
   <div class="isp-root">
-    <div class="isp-hero">
-      <el-icon class="isp-hero-icon"><PictureFilled /></el-icon>
-      <span class="isp-hero-title">以图搜图</span>
+    <div class="isp-head">
       <el-tag size="small" effect="plain" class="isp-hero-tag">{{ totalIndexed }} 幅已索引</el-tag>
+      <el-button size="small" text @click="rebuildIndex" :loading="rebuilding" class="isp-rebuild-btn">重建索引</el-button>
     </div>
-    <p class="isp-hero-desc">上传作品截图或照片，自动匹配库中相似作品</p>
 
-    <div class="isp-upload-row">
+    <div class="isp-upload-area">
       <el-upload
+        ref="uploadRef"
         class="isp-upload"
         drag
         :auto-upload="false"
@@ -16,19 +15,27 @@
         accept=".jpg,.jpeg,.png,.webp,.bmp"
         :on-change="onFileSelected"
       >
-        <template v-if="!uploadPreview">
+        <template v-if="uploadPreview">
+          <div class="preview-inner">
+            <img :src="uploadPreview" class="preview-img-inline" />
+            <div class="preview-overlay">
+              <el-button class="preview-change-btn" type="primary" size="small" @click.stop="triggerUpload">更换图片</el-button>
+            </div>
+          </div>
+        </template>
+        <template v-else>
           <el-icon class="isp-upload-icon"><Upload /></el-icon>
           <div class="isp-upload-text">拖拽图片到这里</div>
           <div class="isp-upload-hint">JPG / PNG / WebP</div>
         </template>
-        <img v-else :src="uploadPreview" class="isp-upload-preview" />
       </el-upload>
-      <div class="isp-upload-actions">
-        <el-button type="primary" size="large" @click="doSearch" :loading="searching" :disabled="!uploadFile">
+
+      <div class="isp-upload-actions" v-if="uploadFile">
+        <el-button type="primary" size="large" @click="doSearch" :loading="searching">
           <el-icon><Search /></el-icon>
           开始搜索
         </el-button>
-        <el-button size="small" plain @click="clearUpload" v-if="uploadFile">清除</el-button>
+        <el-button size="large" plain @click="clearUpload">清除</el-button>
       </div>
     </div>
 
@@ -50,7 +57,7 @@
           :key="hit.id"
           class="isp-r-row isp-r-body"
           :class="{ 'isp-r-top': idx === 0 }"
-          @click="$emit('item-click', hit.id)"
+          @click="$emit('item-click', hit.image_id)"
         >
           <span class="isp-r-thumb">
             <img :src="hit.thumbnail_url" class="isp-r-img" @error="e => e.target.style.display='none'" />
@@ -75,12 +82,12 @@
       </div>
       <div v-show="dupExpanded" class="isp-dups-list">
         <div v-for="(pair, idx) in duplicates" :key="idx" class="isp-dup-row">
-          <span class="isp-dup-item" @click="$emit('item-click', pair.a.id)">
+          <span class="isp-dup-item" @click="$emit('item-click', pair.a.image_id || pair.a.id)">
             <img :src="pair.a.thumbnail_url" class="isp-dup-thumb" />
             {{ pair.a.title }}
           </span>
           <span class="isp-dup-sep">{{ (pair.score * 100).toFixed(1) }}%</span>
-          <span class="isp-dup-item" @click="$emit('item-click', pair.b.id)">
+          <span class="isp-dup-item" @click="$emit('item-click', pair.b.image_id || pair.b.id)">
             <img :src="pair.b.thumbnail_url" class="isp-dup-thumb" />
             {{ pair.b.title }}
           </span>
@@ -88,20 +95,18 @@
       </div>
     </div>
 
-    <div class="isp-footer">
-      <el-button size="small" text @click="rebuildIndex" :loading="rebuilding">重建索引</el-button>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Search, Upload, WarningFilled, ArrowUp, ArrowDown, PictureFilled } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Upload, WarningFilled, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 
 const emit = defineEmits(['item-click'])
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
 
+const uploadRef = ref(null)
 const uploadFile = ref(null)
 const uploadPreview = ref('')
 const searching = ref(false)
@@ -110,6 +115,10 @@ const totalIndexed = ref(0)
 const duplicates = ref([])
 const dupExpanded = ref(false)
 const rebuilding = ref(false)
+
+function triggerUpload() {
+  uploadRef.value?.$el.querySelector('input[type=file]')?.click()
+}
 
 function onFileSelected(file) {
   uploadFile.value = file.raw
@@ -142,6 +151,14 @@ async function doSearch() {
   }
 }
 
+async function fetchStats() {
+  try {
+    const res = await fetch(`${API_BASE}/image-search/stats`)
+    const data = await res.json()
+    totalIndexed.value = data.total_indexed || 0
+  } catch { /* silent */ }
+}
+
 async function fetchDuplicates() {
   try {
     const res = await fetch(`${API_BASE}/image-search/duplicates?threshold=0.995`)
@@ -150,6 +167,15 @@ async function fetchDuplicates() {
 }
 
 async function rebuildIndex() {
+  try {
+    await ElMessageBox.confirm(
+      '重建索引需要调用 API 重新对所有作品图生成向量，耗时较长，确定要继续吗？',
+      '确认重建索引',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
   rebuilding.value = true
   try {
     const res = await fetch(`${API_BASE}/image-search/rebuild-index`, { method: 'POST' })
@@ -163,33 +189,92 @@ async function rebuildIndex() {
   }
 }
 
-onMounted(() => { fetchDuplicates() })
+onMounted(() => { fetchStats(); fetchDuplicates() })
 </script>
 
 <style scoped>
 .isp-root { max-width: 820px; margin: 0 auto; }
 
-.isp-hero {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+.isp-head {
+  position: relative; text-align: center; margin-bottom: 16px;
 }
-.isp-hero-icon { font-size: 22px; color: #c96442; }
-.isp-hero-title { font-size: 18px; font-weight: 700; color: #1a1a1a; font-family: 'Noto Serif SC','KaiTi',serif; }
-.isp-hero-tag { margin-left: 4px; }
-.isp-hero-desc { font-size: 13px; color: #999; margin-bottom: 20px; }
+.isp-hero-tag {
+  font-size: 12px; letter-spacing: 0.3px;
+  border-radius: 6px !important;
+}
+.isp-rebuild-btn {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  color: #b8b4aa !important; font-size: 12px;
+}
+.isp-rebuild-btn:hover {
+  color: #c96442 !important;
+}
 
-.isp-upload-row {
-  display: flex; gap: 20px; align-items: flex-start; margin-bottom: 24px;
+.isp-upload-area {
+  margin-bottom: 24px; text-align: center;
 }
-.isp-upload { flex: 1; }
+.isp-upload { display: inline-block; }
+.isp-upload :deep(.el-upload) {
+  display: block !important;
+}
 .isp-upload :deep(.el-upload-dragger) {
-  min-height: 140px; border-radius: 12px;
+  width: 420px; min-height: 200px;
+  border-radius: 16px;
+  padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+  background: #fafaf8;
+  border: 2px dashed #e0ddd3;
+  transition: all 0.25s ease;
 }
-.isp-upload-icon { font-size: 36px; color: #c0c4cc; margin-bottom: 6px; }
-.isp-upload-text { font-size: 14px; color: #606266; }
-.isp-upload-hint { margin-top: 4px; font-size: 12px; color: #ccc; }
-.isp-upload-preview { max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 8px; }
+.isp-upload :deep(.el-upload-dragger:hover) {
+  border-color: #c96442;
+  background: #fdf8f5;
+}
+.isp-upload :deep(.el-upload-dragger.is-dragover) {
+  border-color: #c96442;
+  background: #fdf0ea;
+}
+.isp-upload-icon {
+  font-size: 48px; color: #cac6bb; margin-bottom: 4px;
+  transition: color 0.25s ease, transform 0.25s ease;
+}
+.isp-upload :deep(.el-upload-dragger:hover) .isp-upload-icon {
+  color: #c96442; transform: translateY(-2px);
+}
+.isp-upload-text {
+  font-size: 15px; font-weight: 500; color: #6b6b66; letter-spacing: 0.02em;
+}
+.isp-upload-hint {
+  margin-top: 2px; font-size: 12px; color: #b8b4aa; letter-spacing: 0.5px;
+}
+
+.preview-inner {
+  position: relative; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; border-radius: 14px;
+}
+.preview-img-inline {
+  max-width: 100%; max-height: 320px;
+  object-fit: contain; border-radius: 14px;
+}
+.preview-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45);
+  opacity: 0; transition: opacity 0.25s ease; border-radius: 14px;
+  backdrop-filter: blur(2px);
+}
+.preview-inner:hover .preview-overlay { opacity: 1; }
+.preview-change-btn {
+  height: 46px; padding: 0 32px;
+  border-radius: 10px; background: #c96442;
+  color: #fff; border: none; font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
 .isp-upload-actions {
-  display: flex; flex-direction: column; gap: 8px; padding-top: 4px; min-width: 110px;
+  display: flex; flex-direction: row; justify-content: center; gap: 12px; margin-top: 20px;
 }
 
 .isp-results { margin-bottom: 20px; }
@@ -238,6 +323,4 @@ onMounted(() => { fetchDuplicates() })
 }
 .isp-dup-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid #e0ddcf; flex-shrink: 0; }
 .isp-dup-sep { font-size: 14px; font-weight: 700; color: #b8a47e; flex-shrink: 0; }
-
-.isp-footer { text-align: center; padding-top: 8px; border-top: 1px solid #f0eee6; }
 </style>

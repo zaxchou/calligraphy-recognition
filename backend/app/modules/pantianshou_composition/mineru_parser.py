@@ -180,6 +180,10 @@ class MineruParser:
         # 存储 full_md
         if full_md:
             content.full_md = full_md
+            
+            # 如果 content_list 没有标题，尝试从 Markdown 中提取大纲
+            if not content.outline:
+                content.outline = self._extract_outline_from_markdown(full_md)
         
         logger.info(
             f"MinerU 解析完成: {content.metadata.total_pages}页, "
@@ -203,10 +207,16 @@ class MineruParser:
                 pages.add(item["page_idx"])
         total_pages = max(pages) + 1 if pages else 0
         
-        # 从文件名猜测标题
+        # 从文件名猜测标题（去掉 UUID 前缀）
         title = None
         if pdf_path:
             file_name = os.path.basename(pdf_path)
+            # 去掉 UUID 前缀：{uuid}_{原始文件名} → {原始文件名}
+            if '_' in file_name and len(file_name.split('_')[0]) == 36:
+                # UUID 格式：8-4-4-4-12，长度 36
+                parts = file_name.split('_', 1)
+                if len(parts) == 2:
+                    file_name = parts[1]
             title = os.path.splitext(file_name)[0]
         
         return PdfMetadata(
@@ -361,6 +371,82 @@ class MineruParser:
             return 2
         else:
             return 3
+    
+    def _extract_outline_from_markdown(self, markdown: str) -> List[Dict[str, Any]]:
+        """从 Markdown 内容中提取大纲（当 MinerU content_list 没有标题时使用）
+        
+        改进：尝试从标题文本中解析页码（如 "第一章...009" → page=9），
+        并根据章节页码估算无页码标题的位置。
+        """
+        outline = []
+        lines = markdown.split('\n')
+        
+        # 页码提取正则：匹配省略号/空格后的数字（1-3位）
+        page_pattern = re.compile(r'[…\s]+(\d{1,3})$')
+        
+        for line in lines:
+            line = line.strip()
+            # 匹配 Markdown 标题：# 标题, ## 标题, ### 标题
+            match = re.match(r'^(#{1,3})\s+(.+)$', line)
+            if match:
+                level = len(match.group(1))  # # = 1, ## = 2, ### = 3
+                title = match.group(2).strip()
+                if title and len(title) > 1:  # 过滤掉太短的标题
+                    # 尝试从标题中提取页码
+                    page = 0
+                    page_match = page_pattern.search(title)
+                    if page_match:
+                        page = int(page_match.group(1))
+                    
+                    outline.append({
+                        "title": title,
+                        "page": page,
+                        "level": level,
+                    })
+        
+        # 估算无页码标题的位置：根据前后有页码的标题进行线性插值
+        self._estimate_missing_pages(outline)
+        
+        return outline
+    
+    def _estimate_missing_pages(self, outline: List[Dict[str, Any]]):
+        """估算没有页码的标题位置
+        
+        根据前后有页码的标题进行线性插值。
+        """
+        if not outline:
+            return
+        
+        # 找到所有有页码的项
+        indexed_items = [(i, item) for i, item in enumerate(outline) if item.get("page", 0) > 0]
+        
+        if len(indexed_items) < 2:
+            # 不足两个有页码的项，无法插值
+            return
+        
+        # 对每两个有页码的项之间的无页码项进行插值
+        for idx in range(len(indexed_items) - 1):
+            i1, item1 = indexed_items[idx]
+            i2, item2 = indexed_items[idx + 1]
+            
+            page1 = item1["page"]
+            page2 = item2["page"]
+            
+            if page1 >= page2:
+                continue  # 无效的页码范围
+            
+            # 计算中间项的数量
+            middle_count = i2 - i1 - 1
+            if middle_count <= 0:
+                continue
+            
+            # 线性插值
+            for j in range(i1 + 1, i2):
+                if outline[j].get("page", 0) == 0:
+                    # 根据位置比例估算页码
+                    ratio = (j - i1) / (i2 - i1)
+                    estimated_page = int(page1 + ratio * (page2 - page1))
+                    outline[j]["page"] = max(1, estimated_page)
     
     def _build_figure_first_page(self, content: PdfContent):
         """构建图号首次出现位置映射"""

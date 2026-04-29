@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SearchHit:
     id: int
+    image_id: str
     title: str
     artist: str
     score: float
@@ -187,13 +188,13 @@ class ImageSearchEngine:
         for dist, idx in zip(distances[0], indices[0]):
             if idx < 0 or idx >= len(self.id_map):
                 continue
-            cur.execute("SELECT id, title, artist, thumbnail_path, year, album_name, inscription_percent FROM tubi_analyses WHERE id = ?", (self.id_map[idx],))
+            cur.execute("SELECT id, image_id, title, artist, thumbnail_path, year, album_name, inscription_percent FROM tubi_analyses WHERE id = ?", (self.id_map[idx],))
             r = cur.fetchone()
             if not r:
                 continue
             fn = os.path.basename(r["thumbnail_path"].replace("\\", "/")) if r["thumbnail_path"] else ""
             hits.append(SearchHit(
-                id=r["id"], title=r["title"] or "未命名", artist=r["artist"] or "",
+                id=r["id"], image_id=r["image_id"], title=r["title"] or "未命名", artist=r["artist"] or "",
                 score=round(float(dist), 4),
                 thumbnail_url=f"/static/thumbnails/{fn}" if fn else "",
                 year=r["year"], album_name=r["album_name"], inscription_percent=r["inscription_percent"],
@@ -225,7 +226,7 @@ class ImageSearchEngine:
                 if pair_key in seen:
                     continue
                 seen.add(pair_key)
-                cur.execute("SELECT id, title, artist, thumbnail_path, year FROM tubi_analyses WHERE id IN (?, ?)", (a, b))
+                cur.execute("SELECT id, image_id, title, artist, thumbnail_path, year FROM tubi_analyses WHERE id IN (?, ?)", (a, b))
                 rows = {r["id"]: dict(r) for r in cur.fetchall()}
                 ra, rb = rows.get(a), rows.get(b)
                 if not ra or not rb:
@@ -237,10 +238,10 @@ class ImageSearchEngine:
                     return ""
 
                 pairs.append({"score": round(sim, 4), "a": {
-                    "id": ra["id"], "title": ra.get("title", "未命名"), "artist": ra.get("artist", ""),
+                    "id": ra["id"], "image_id": ra.get("image_id", ""), "title": ra.get("title", "未命名"), "artist": ra.get("artist", ""),
                     "thumbnail_url": thumb(ra), "year": ra.get("year"),
                 }, "b": {
-                    "id": rb["id"], "title": rb.get("title", "未命名"), "artist": rb.get("artist", ""),
+                    "id": rb["id"], "image_id": rb.get("image_id", ""), "title": rb.get("title", "未命名"), "artist": rb.get("artist", ""),
                     "thumbnail_url": thumb(rb), "year": rb.get("year"),
                 }})
         conn.close()

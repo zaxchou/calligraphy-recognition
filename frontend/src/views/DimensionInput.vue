@@ -40,7 +40,7 @@
             :key="y"
             :class="['year-btn', { active: selectedYear === y }]"
             @click="selectedYear = y"
-          >{{ y === '全部' ? '全部' : y + '年' }}</button>
+          >{{ y === '全部' ? '全部' : typeof y === 'number' ? y + '年' : y }}</button>
         </div>
         <div class="status-filter">
           <button
@@ -66,7 +66,7 @@
       <!-- 按年份展示 -->
       <div v-for="year in displayYears" :key="year" class="year-section">
         <div class="year-section-header">
-          <span class="year-label">{{ year }}年</span>
+          <span class="year-label">{{ typeof year === 'number' ? year + '年' : year }}</span>
           <span class="year-period">{{ getPeriodLabel(year) }}</span>
           <span class="year-count">{{ getYearFilteredCount(year) }}条</span>
         </div>
@@ -276,12 +276,9 @@ function matchesStatusFilter(item) {
 
 // 计算属性
 const displayYears = computed(() => {
-  // 先筛选符合状态筛选
   if (selectedYear.value === '全部') {
     // 只显示有符合筛选条件记录的年份
-    return years.value.filter(year => {
-      return allItems.value.some(item => item.year === year && matchesStatusFilter(item))
-    })
+    return years.value.filter(year => getYearRecords(year).length > 0)
   }
   return [selectedYear.value]
 })
@@ -347,6 +344,9 @@ async function loadData() {
 
 // 按年份和状态筛选记录
 function getYearRecords(year) {
+  if (year === '年代不详') {
+    return allItems.value.filter(item => (item.year === null || item.year === undefined) && matchesStatusFilter(item))
+  }
   return allItems.value.filter(item => item.year === year && matchesStatusFilter(item))
 }
 

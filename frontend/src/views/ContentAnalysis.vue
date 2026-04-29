@@ -223,7 +223,7 @@
         </el-card>
         <el-card shadow="hover" class="compact-inv-card">
           <template #header>
-            <div class="card-header-title" style="font-size: 13px;">
+            <div class="card-header-title">
               <span>题跋闯入率</span>
               <el-tooltip content="有些题跋闯入了画面中央，有些只在边角——各主题的闯入比例">
                 <span class="hint-icon">?</span>

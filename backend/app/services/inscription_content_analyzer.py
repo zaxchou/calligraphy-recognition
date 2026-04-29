@@ -273,6 +273,18 @@ def score_text_keywords(text: str) -> Tuple[Dict[int, float], float, List[Dict]]
                     "category": category,
                 })
 
+    # 自嘲检测：反转"笑"在自嘲语境下的正向贡献
+    SELF_MOCK_PATTERNS = ["莫笑", "堪笑", "自笑", "一笑", "休笑", "人笑", "应笑", "可笑"]
+    has_self_mock = any(p in text for p in SELF_MOCK_PATTERNS)
+    if has_self_mock:
+        for det in emotion_details:
+            if det["word"] == "笑":
+                emotion_score -= det["score"]
+                emotion_score += -1.5
+                det["score"] = -1.5
+                det["word"] = "笑(自嘲)"
+                det["category"] = "negative_self_mock"
+
     return theme_scores, emotion_score, emotion_details
 
 
@@ -1314,6 +1326,7 @@ async def analyze_tiba_content_dual(
         "intensity": min(abs(v4_sentiment["emotion_score"]) / 3, 1.0),
         "emotion_score": v4_sentiment["emotion_score"],  # 连续值，用于时间序列
         "reasoning": v4_sentiment["reasoning"],
+        "reasoning_steps": v4_sentiment.get("reasoning_steps", []),
         "llm_polarity": llm_polarity,
         "agreement": agreement,
         "channel_v4": v4_sentiment,

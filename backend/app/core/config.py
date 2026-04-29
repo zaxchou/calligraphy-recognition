@@ -147,6 +147,11 @@ class Settings(BaseSettings):
 
     COMPOSITION_LLM_MODEL: str = os.getenv("COMPOSITION_LLM_MODEL", "qwen3-vl-flash")
     COMPOSITION_LLM_MAX_TOKENS: int = int(os.getenv("COMPOSITION_LLM_MAX_TOKENS", "16384"))
+
+    # MinerU 云 API 配置
+    MINERU_API_TOKEN: str = os.getenv("MINERU_API_TOKEN", "")
+    MINERU_API_BASE: str = os.getenv("MINERU_API_BASE", "https://mineru.net")
+    MINERU_MODEL_VERSION: str = os.getenv("MINERU_MODEL_VERSION", "vlm")
     
     class Config:
         env_file = ".env"
