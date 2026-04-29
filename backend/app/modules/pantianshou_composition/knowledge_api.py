@@ -721,12 +721,22 @@ async def get_book_pdf(book_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "书籍不存在")
     
     if not os.path.exists(book.stored_path):
-        raise HTTPException(404, "PDF 文件不存在")
+        # Try resolved absolute path
+        abs_path = os.path.abspath(book.stored_path)
+        if not os.path.exists(abs_path):
+            raise HTTPException(404, "PDF 文件不存在")
+        file_path = abs_path
+    else:
+        file_path = book.stored_path
     
+    file_name = os.path.basename(book.file_name or file_path)
+    # Content-Disposition 不能包含中文字符，用 URL 编码
+    import urllib.parse
+    ascii_name = urllib.parse.quote(file_name, safe='_.-')
     return FileResponse(
-        book.stored_path,
+        file_path,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=\"{book.file_name}\""}
+        headers={"Content-Disposition": f"inline; filename=\"{ascii_name}\""}
     )
 
 
@@ -1509,9 +1519,17 @@ async def get_book_outline(book_id: str, db: Session = Depends(get_db)):
         for sib in siblings:
             offset = sib.page_offset or 1
             for item in (sib.outline or []):
+                raw_page = item.get("page")
+                if raw_page is not None and raw_page > 0:
+                    page = raw_page + offset - 1
+                elif raw_page is not None and raw_page == 0:
+                    # MinerU 对拆分卷无法提取页码，用卷首偏移页作为保底
+                    page = offset
+                else:
+                    page = None
                 merged.append({
                     "title": item["title"],
-                    "page": (item["page"] + offset - 1) if item.get("page") is not None else None,
+                    "page": page,
                     "level": item.get("level", 2),
                     "target_book_id": sib.id,
                 })
