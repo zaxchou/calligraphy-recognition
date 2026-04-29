@@ -152,7 +152,7 @@
                             :src="getImageUrl(img)" 
                             :alt="img.caption || img.figure_id || '插图'"
                             class="inline-image"
-                            @error="handleImageError"
+                            @error="e => { if(e.target.src) { const fallback = img.url || img.id; if(fallback && fallback !== img.stored_url) e.target.src = getImageUrl({stored_url: fallback}); } }"
                           />
                           <div v-if="img.caption || img.figure_id" class="inline-image-caption">
                             {{ img.caption || img.figure_id }}
