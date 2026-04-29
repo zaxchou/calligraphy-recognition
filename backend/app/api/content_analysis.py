@@ -103,6 +103,145 @@ def persist_analysis_result(cur, record_id, result, year=None, artist=None, extr
     return content_analysis
 
 
+async def analyze_single_record(record_id: int, cur) -> dict:
+    """
+    单条记录的统一分析管道（规则引擎 → 低可信度 → LLM修正 → 保存DB）。
+    供 reanalyze_single 和 batch_reanalyze 复用，确保两条路径行为一致。
+
+    Args:
+        record_id: 记录ID
+        cur: 数据库游标（由调用方管理连接和提交）
+
+    Returns:
+        {"success": True, "record_id": ..., "themes": [...], "sentiment": {...},
+         "confidence": ..., "llm_fixed": bool, "llm_error": str|None}
+    """
+    import json
+    from app.services.inscription_content_analyzer import (
+        classify_inscription_v4, THEME_NAME_MIGRATION, llm_analyze_combined
+    )
+    from app.services.auto_tags import compute_tags
+
+    cur.execute("""
+        SELECT id, inscription_content, year, title, analysis_note,
+               artwork_width_cm, artwork_height_cm, artist, content_analysis, period_phase
+        FROM tubi_analyses WHERE id = ?
+    """, (record_id,))
+    row = cur.fetchone()
+    if not row:
+        return {"success": False, "error": "Record not found"}
+
+    text = row["inscription_content"] or ""
+    if not text or len(text.strip()) < 2:
+        return {"success": False, "error": "题跋内容为空"}
+
+    old_ca = None
+    if row["content_analysis"]:
+        try: old_ca = json.loads(row["content_analysis"])
+        except Exception: pass
+
+    # 1. 规则引擎
+    result = classify_inscription_v4(
+        text=text, year=row["year"], title=row["title"],
+        analysis_note=row["analysis_note"],
+        width_cm=row["artwork_width_cm"], height_cm=row["artwork_height_cm"],
+        artist=row["artist"],
+    )
+    conf = result.get("confidence", 0)
+
+    # 2. 低可信度 → DeepSeek
+    llm_fixed = False
+    llm_error = None
+    llm_detail = ""
+    if conf < 0.6 and len(text) > 3:
+        try:
+            llm_raw = await llm_analyze_combined(text, artist=row["artist"])
+            if llm_raw.get("success"):
+                llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
+                v4_primary = result["themes"][0] if result.get("themes") else None
+
+                # 主题分歧
+                if llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code"):
+                    llm_fixed = True
+                    llm_detail = f"{v4_primary['name']}->{llm_primary['name']}"
+                    normalized = []
+                    for t in llm_raw["themes"]:
+                        name = t.get("name", "")
+                        norm_name = THEME_NAME_MIGRATION.get(name, name)
+                        normalized.append({"code": t.get("code", 0), "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
+                    result["themes"] = normalized
+                    result["special_rules"].append(f"[LLM采纳] 主题分歧: {llm_detail}")
+                    result["sentiment"]["reasoning_steps"].append({
+                        "label": "LLM复核",
+                        "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，LLM判[{llm_primary['name']}]",
+                        "offset": 0, "icon": "🤖",
+                    })
+
+                # 情感分歧
+                llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
+                v4_pol = result["sentiment"].get("polarity", "")
+                if llm_pol and v4_pol != llm_pol and llm_pol != "neutral":
+                    result["sentiment"]["polarity"] = llm_pol
+                    llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
+                    if llm_pol == "positive": result["sentiment"]["emotion_score"] = llm_intensity * 5
+                    elif llm_pol == "negative": result["sentiment"]["emotion_score"] = -llm_intensity * 5
+                    result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}->{llm_pol}")
+                    result["sentiment"]["reasoning_steps"].append({
+                        "label": "LLM复核",
+                        "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
+                        "offset": 0, "icon": "🤖",
+                    })
+                # LLM无分歧时也同步emotion_score
+                elif llm_pol == v4_pol and llm_pol != "neutral":
+                    llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
+                    if llm_pol == "positive":
+                        result["sentiment"]["emotion_score"] = max(result["sentiment"].get("emotion_score", 0), llm_intensity * 4)
+                    elif llm_pol == "negative":
+                        result["sentiment"]["emotion_score"] = min(result["sentiment"].get("emotion_score", 0), -llm_intensity * 4)
+            else:
+                llm_error = llm_raw.get("error", "LLM分析返回失败")
+        except Exception as e:
+            llm_error = str(e)[:120]
+
+    # 3. 构建 content_analysis 并保存
+    new_ca = dict(old_ca) if old_ca else {}
+    new_ca["themes"] = result.get("themes", [])
+    new_ca["sentiment"] = result["sentiment"]
+    new_ca["v4_confidence"] = conf
+    new_ca["rules_version"] = "5.6"
+    new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
+
+    theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
+    cur.execute("""
+        UPDATE tubi_analyses SET content_analysis = ?, theme_tags = ? WHERE id = ?
+    """, (json.dumps(new_ca, ensure_ascii=False), theme_tags, record_id))
+
+    # 重新计算自动标签
+    record_for_tags = {
+        "title": row["title"],
+        "period_phase": row["period_phase"],
+        "artwork_height_cm": row["artwork_height_cm"],
+        "artwork_width_cm": row["artwork_width_cm"],
+        "content_analysis": json.dumps(new_ca, ensure_ascii=False),
+        "material_tags": None,
+    }
+    auto_tags = compute_tags(record_for_tags)
+    if auto_tags:
+        cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
+                    (json.dumps(auto_tags, ensure_ascii=False), record_id))
+
+    return {
+        "success": True,
+        "record_id": record_id,
+        "themes": result["themes"],
+        "sentiment": result["sentiment"],
+        "confidence": conf,
+        "llm_fixed": llm_fixed,
+        "llm_error": llm_error,
+        "llm_detail": llm_detail,
+    }
+
+
 def stale_analysis_result(cur, record_id):
     """
     将分析结果标记为过期（清空所有题跋衍生字段）。
@@ -1694,124 +1833,23 @@ async def analyze_single(
 @router.post("/reanalyze-one/{record_id}")
 async def reanalyze_single(record_id: int):
     """
-    单条混合引擎分析：规则引擎→低可信度→DeepSeek修正
-    返回分析结果和LLM修正信息
+    单条混合引擎分析：调用统一管道 analyze_single_record
     """
-    import json
-    from app.services.inscription_content_analyzer import (
-        classify_inscription_v4, THEME_NAME_MIGRATION, llm_analyze_combined
-    )
-    from app.services.auto_tags import compute_tags
-
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, inscription_content, year, title, analysis_note,
-               artwork_width_cm, artwork_height_cm, artist, content_analysis
-        FROM tubi_analyses WHERE id = ?
-    """, (record_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Record not found")
-
-    text = row["inscription_content"] or ""
-    if not text or len(text.strip()) < 2:
-        conn.close()
-        raise HTTPException(status_code=400, detail="题跋内容为空")
-
-    old_ca = None
-    if row["content_analysis"]:
-        try: old_ca = json.loads(row["content_analysis"])
-        except Exception: pass
-
-    # 1. 规则引擎
-    result = classify_inscription_v4(
-        text=text, year=row["year"], title=row["title"],
-        analysis_note=row["analysis_note"],
-        width_cm=row["artwork_width_cm"], height_cm=row["artwork_height_cm"],
-        artist=row["artist"],
-    )
-    conf = result.get("confidence", 0)
-
-    # 2. 低可信度 → DeepSeek
-    llm_fixed = False
-    llm_error = None
-    llm_detail = ""
-    if conf < 0.6 and len(text) > 3:
-        try:
-            llm_raw = await llm_analyze_combined(text, artist=row["artist"])
-            if llm_raw.get("success"):
-                llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
-                v4_primary = result["themes"][0] if result.get("themes") else None
-
-                if llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code"):
-                    llm_fixed = True
-                    llm_detail = f"{v4_primary['name']}->{llm_primary['name']}"
-                    normalized = []
-                    for t in llm_raw["themes"]:
-                        name = t.get("name", "")
-                        norm_name = THEME_NAME_MIGRATION.get(name, name)
-                        normalized.append({"code": t.get("code", 0), "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
-                    result["themes"] = normalized
-                    result["special_rules"].append(f"[LLM采纳] 主题分歧: {llm_detail}")
-                    result["sentiment"]["reasoning_steps"].append({
-                        "label": "LLM复核", "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，LLM判[{llm_primary['name']}]",
-                        "offset": 0, "icon": "🤖",
-                    })
-                # 情感分歧
-                llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
-                v4_pol = result["sentiment"].get("polarity", "")
-                if llm_pol and v4_pol != llm_pol and llm_pol != "neutral":
-                    result["sentiment"]["polarity"] = llm_pol
-                    llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
-                    if llm_pol == "positive": result["sentiment"]["emotion_score"] = llm_intensity * 5
-                    elif llm_pol == "negative": result["sentiment"]["emotion_score"] = -llm_intensity * 5
-                    result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}->{llm_pol}")
-            else:
-                llm_error = llm_raw.get("error", "LLM分析返回失败")
-        except Exception as e:
-            llm_error = str(e)[:120]
-
-    # 3. 保存
-    new_ca = dict(old_ca) if old_ca else {}
-    new_ca["themes"] = result.get("themes", [])
-    new_ca["sentiment"] = result["sentiment"]
-    new_ca["v4_confidence"] = conf
-    new_ca["rules_version"] = "5.6"
-    new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
-
-    theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
-    cur.execute("""
-        UPDATE tubi_analyses SET content_analysis = ?, theme_tags = ? WHERE id = ?
-    """, (json.dumps(new_ca, ensure_ascii=False), theme_tags, record_id))
-
-    record_for_tags = {
-        "title": row["title"],
-        "artwork_height_cm": row["artwork_height_cm"],
-        "artwork_width_cm": row["artwork_width_cm"],
-        "content_analysis": json.dumps(new_ca, ensure_ascii=False),
-        "material_tags": None,
-    }
-    auto_tags = compute_tags(record_for_tags)
-    if auto_tags:
-        cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
-                    (json.dumps(auto_tags, ensure_ascii=False), record_id))
+    result = await analyze_single_record(record_id, cur)
 
     conn.commit()
     conn.close()
 
-    return {
-        "success": True,
-        "record_id": record_id,
-        "confidence": conf,
-        "llm_fixed": llm_fixed,
-        "llm_error": llm_error,
-        "llm_detail": llm_detail,
-        "themes": result["themes"],
-        "sentiment": result["sentiment"],
-    }
+    if not result["success"]:
+        if result.get("error") == "Record not found":
+            raise HTTPException(status_code=404, detail="Record not found")
+        else:
+            raise HTTPException(status_code=400, detail=result.get("error", "分析失败"))
+
+    return result
 
 
 @router.post("/translate/batch")
@@ -2251,7 +2289,7 @@ async def reclassify_themes_sentiment(
 
 
 @router.post("/batch-reanalyze")
-def batch_reanalyze(
+async def batch_reanalyze(
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式：跳过已处理的记录（已有 v4_confidence + rules_version ≥ 5.5）"),
 ):
@@ -2362,88 +2400,26 @@ def batch_reanalyze(
                 old_emotion_scores.append(old_score)
 
         try:
-            # 用本地规则引擎重跑
-            result = classify_inscription_v4(
-                text=text,
-                year=year,
-                title=title,
-                analysis_note=analysis_note,
-                inscription_content=text,
-                width_cm=width_cm,
-                height_cm=height_cm,
-                artist=record_artist,
-            )
+            # 调用统一分析管道
+            result = await analyze_single_record(record_id, cur)
 
-            conf = result.get("confidence", 0)
+            if not result["success"]:
+                errors += 1
+                if errors <= 5:
+                    logger.error(f"批量重跑失败 id={record_id}: {result.get('error')}")
+                continue
+
+            conf = result["confidence"]
             confidences.append(conf)
-
-            # ── 统一混合引擎：低可信度自动调 DeepSeek ─────────
-            llm_overrides = None
-            if conf < 0.6 and text and len(text) > 3:
-                try:
-                    import asyncio
-                    from app.services.inscription_content_analyzer import llm_analyze_combined
-                    llm_raw = asyncio.run(llm_analyze_combined(text, artist=record_artist))
-                    if llm_raw.get("success"):
-                        # 对比分歧
-                        llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
-                        v4_primary = result["themes"][0] if result.get("themes") else None
-                        theme_diverge = llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code")
-                        if theme_diverge:
-                            # 分歧 → 采纳 LLM 结果
-                            llm_overrides = llm_raw
-                            llm_corrected += 1
-                            # 标准化主题名+code
-                            normalized = []
-                            for t in llm_raw["themes"]:
-                                name = t.get("name", "")
-                                norm_name = THEME_NAME_MIGRATION.get(name, name)
-                                code = t.get("code", 0)
-                                normalized.append({"code": code, "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
-                            result["themes"] = normalized
-                            result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
-                            # LLM修正后的推导步骤追加
-                            result["sentiment"]["reasoning_steps"].append({
-                                "label": "LLM复核",
-                                "detail": f"低可信度({conf:.2f})触AutoDeepSeek二次判断，原规则判[v4_primary['name']]，LLM判[llm_primary['name']]",
-                                "offset": 0,
-                                "icon": "🤖",
-                            })
-
-                        # 情感分歧也采纳
-                        llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
-                        v4_pol = result["sentiment"].get("polarity", "")
-                        if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
-                            result["sentiment"]["polarity"] = llm_pol
-                            # LLM返回intensity(0-1)转emotion_score(±5范围)
-                            llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
-                            if llm_pol == "positive":
-                                result["sentiment"]["emotion_score"] = llm_intensity * 5
-                            elif llm_pol == "negative":
-                                result["sentiment"]["emotion_score"] = -llm_intensity * 5
-                            result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
-                            # 情感修正推导步骤
-                            result["sentiment"]["reasoning_steps"].append({
-                                "label": "LLM复核",
-                                "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
-                                "offset": 0,
-                                "icon": "🤖",
-                            })
-                        # LLM无分歧时也同步emotion_score
-                        elif llm_pol == v4_pol and llm_pol != "neutral":
-                            llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
-                            if llm_pol == "positive":
-                                result["sentiment"]["emotion_score"] = max(result["sentiment"].get("emotion_score", 0), llm_intensity * 4)
-                            elif llm_pol == "negative":
-                                result["sentiment"]["emotion_score"] = min(result["sentiment"].get("emotion_score", 0), -llm_intensity * 4)
-                except Exception:
-                    llm_errors += 1
-                    pass  # LLM 不可用则静默降级
+            if result.get("llm_fixed"):
+                llm_corrected += 1
+            if result.get("llm_error"):
+                llm_errors += 1
 
             if conf < 0.6:
                 low_conf_records.append(record_id)
 
-            # 记录新主题/情感
+            # 记录新主题/情感（用于对比报告）
             new_themes_list = result.get("themes", [])
             for t in new_themes_list:
                 new_themes[t["name"]] += 1
@@ -2465,36 +2441,8 @@ def batch_reanalyze(
             if old_main and new_main and old_main != new_main:
                 theme_changes[(old_main, new_main)] += 1
             
-            # 构建新 content_analysis
-            new_ca = dict(old_ca) if old_ca else {}
-            new_ca["themes"] = result.get("themes", [])
-            new_ca["sentiment"] = new_sent
-            new_ca["v4_confidence"] = result.get("confidence", 0)  # v5.5: 整体置信度
-            new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
-            new_ca["rules_version"] = "5.5"  # v5.5: 规则版本标记
-            
-            # 更新数据库
-            theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
-            cur.execute("""
-                UPDATE tubi_analyses
-                SET content_analysis = ?, theme_tags = ?
-                WHERE id = ?
-            """, (json.dumps(new_ca, ensure_ascii=False), theme_tags, record_id))
-            
-            # 重新计算自动标签
-            record_for_tags = {
-                "title": title,
-                "period_phase": row["period_phase"],
-                "artwork_height_cm": height_cm,
-                "artwork_width_cm": width_cm,
-                "content_analysis": json.dumps(new_ca, ensure_ascii=False),
-                "material_tags": None,
-            }
-            auto_tags = compute_tags(record_for_tags)
-            if auto_tags:
-                cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
-                           (json.dumps(auto_tags, ensure_ascii=False), record_id))
-            conn.commit()  # 每条记录提交一次，避免长时间锁库
+            # 注意：analyze_single_record 已经完成了 DB 保存和 auto_tags 计算，只需 commit
+            conn.commit()
 
             updated += 1
         except Exception as e:
@@ -2789,132 +2737,54 @@ async def batch_reanalyze_stream(
                     old_emotion_scores.append(old_score)
 
             try:
-                result = classify_inscription_v4(
-                    text=text, year=year, title=title, analysis_note=analysis_note,
-                    inscription_content=text, width_cm=width_cm, height_cm=height_cm,
-                    artist=record_artist,
-                )
+                # 调用统一分析管道
+                analysis = await analyze_single_record(record_id, cur)
 
-                conf = result.get("confidence", 0)
+                if not analysis["success"]:
+                    errors += 1
+                    yield sse("record_done", {"current": idx + 1, "total": total, "record_id": record_id, "success": False, "error": analysis.get("error", "分析失败")})
+                    continue
+
+                conf = analysis["confidence"]
                 confidences.append(conf)
 
-                # 低可信度 → 调 DeepSeek
-                fixed_by_llm = False
-                if conf < 0.6 and text and len(text) > 3:
-                    try:
-                        import asyncio
-                        llm_raw = await llm_analyze_combined(text, artist=record_artist)
-                        if llm_raw.get("success"):
-                            llm_primary = llm_raw["themes"][0] if llm_raw.get("themes") else None
-                            v4_primary = result["themes"][0] if result.get("themes") else None
-                            theme_diverge = llm_primary and v4_primary and llm_primary.get("code") != v4_primary.get("code")
-                            if theme_diverge:
-                                llm_corrected += 1
-                                fixed_by_llm = True
-                                # 标准化主题名+code
-                                normalized = []
-                                for t in llm_raw["themes"]:
-                                    name = t.get("name", "")
-                                    norm_name = THEME_NAME_MIGRATION.get(name, name)
-                                    code = t.get("code", 0)
-                                    normalized.append({"code": code, "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
-                                result["themes"] = normalized
-                                result["special_rules"].append(f"[LLM采纳] 主题分歧: {v4_primary['name']}→{llm_primary['name']}")
-                                # LLM修正后推导步骤追加
-                                result["sentiment"]["reasoning_steps"].append({
-                                    "label": "LLM复核",
-                                    "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，LLM判[{llm_primary['name']}]",
-                                    "offset": 0,
-                                    "icon": "🤖",
-                                })
-                                yield sse("llm_fix", {
-                                    "record_id": record_id,
-                                    "from_theme": v4_primary['name'],
-                                    "to_theme": llm_primary['name'],
-                                    "confidence": conf,
-                                })
-                            # 情感分歧
-                            llm_pol = llm_raw.get("sentiment", {}).get("polarity", "")
-                            v4_pol = result["sentiment"].get("polarity", "")
-                            if llm_pol and v4_pol and llm_pol != v4_pol and llm_pol != "neutral":
-                                result["sentiment"]["polarity"] = llm_pol
-                                # LLM返回intensity(0-1)转emotion_score(±5范围)
-                                llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
-                                if llm_pol == "positive":
-                                    result["sentiment"]["emotion_score"] = llm_intensity * 5
-                                elif llm_pol == "negative":
-                                    result["sentiment"]["emotion_score"] = -llm_intensity * 5
-                                result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}→{llm_pol}")
-                                # 情感修正推导步骤
-                                result["sentiment"]["reasoning_steps"].append({
-                                    "label": "LLM复核",
-                                    "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
-                                    "offset": 0,
-                                    "icon": "🤖",
-                                })
-                            # LLM无分歧时也同步emotion_score（用intensity换算）
-                            elif llm_pol == v4_pol and llm_pol != "neutral":
-                                llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
-                                if llm_pol == "positive":
-                                    result["sentiment"]["emotion_score"] = max(result["sentiment"].get("emotion_score", 0), llm_intensity * 4)
-                                elif llm_pol == "negative":
-                                    result["sentiment"]["emotion_score"] = min(result["sentiment"].get("emotion_score", 0), -llm_intensity * 4)
-                    except Exception:
-                        llm_errors += 1
-                        pass
+                if analysis.get("llm_fixed"):
+                    llm_corrected += 1
+                    yield sse("llm_fix", {
+                        "record_id": record_id,
+                        "from_theme": analysis.get("llm_detail", ""),
+                        "confidence": conf,
+                    })
+                if analysis.get("llm_error"):
+                    llm_errors += 1
 
                 if conf < 0.6:
                     low_conf_records.append(record_id)
 
-                # 记录新主题/情感
-                new_themes_list = result.get("themes", [])
+                # 记录新主题/情感（用于对比报告）
+                new_themes_list = analysis.get("themes", [])
                 for t in new_themes_list:
                     new_themes[t["name"]] += 1
                 if new_themes_list:
                     new_primary_themes[new_themes_list[0]["name"]] += 1
-                new_sent = result.get("sentiment", {})
+                new_sent = analysis.get("sentiment", {})
                 new_pol = new_sent.get("polarity", "neutral")
                 new_polarities[new_pol] += 1
                 new_score = new_sent.get("emotion_score")
                 if new_score is not None:
                     new_emotion_scores.append(new_score)
 
+                # 记录主题变化
                 old_main = ""
                 if old_ca and old_ca.get("themes"):
                     old_main = old_ca["themes"][0].get("name", "")
                     old_main = THEME_NAME_MIGRATION.get(old_main, old_main)
-                new_main = result["themes"][0]["name"] if result.get("themes") else ""
+                new_main = analysis["themes"][0]["name"] if analysis.get("themes") else ""
                 if old_main and new_main and old_main != new_main:
                     theme_changes[(old_main, new_main)] += 1
 
-                new_ca = dict(old_ca) if old_ca else {}
-                new_ca["themes"] = result.get("themes", [])
-                new_ca["sentiment"] = new_sent
-                new_ca["v4_confidence"] = result.get("confidence", 0)
-                new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
-                new_ca["rules_version"] = "5.5"
-
-                theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
-                cur.execute("""
-                    UPDATE tubi_analyses
-                    SET content_analysis = ?, theme_tags = ?
-                    WHERE id = ?
-                """, (_json.dumps(new_ca, ensure_ascii=False), theme_tags, record_id))
-
-                record_for_tags = {
-                    "title": title,
-                    "period_phase": row["period_phase"],
-                    "artwork_height_cm": height_cm,
-                    "artwork_width_cm": width_cm,
-                    "content_analysis": _json.dumps(new_ca, ensure_ascii=False),
-                    "material_tags": None,
-                }
-                auto_tags = compute_tags(record_for_tags)
-                if auto_tags:
-                    cur.execute("UPDATE tubi_analyses SET tags = ? WHERE id = ?",
-                                (_json.dumps(auto_tags, ensure_ascii=False), record_id))
-
-                conn.commit()  # 每条记录提交一次，避免长时间锁库
+                # 注意：analyze_single_record 已完成 DB 保存和 auto_tags
+                conn.commit()
 
                 updated += 1
 
@@ -2927,8 +2797,8 @@ async def batch_reanalyze_stream(
                 "current": idx + 1,
                 "total": total,
                 "record_id": record_id,
-                "confidence": conf,
-                "fixed_by_llm": fixed_by_llm,
+                "confidence": locals().get("conf", 0),
+                "fixed_by_llm": locals().get("analysis", {}).get("llm_fixed", False),
             })
 
         conn.commit()

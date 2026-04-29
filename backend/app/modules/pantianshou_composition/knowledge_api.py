@@ -1518,15 +1518,27 @@ async def get_book_outline(book_id: str, db: Session = Depends(get_db)):
         merged = []
         for sib in siblings:
             offset = sib.page_offset or 1
-            for item in (sib.outline or []):
+            # Build page map from chunks (outline items in order → chunk page_start)
+            from app.modules.pantianshou_composition.models import TextChunk
+            chunk_pages = []
+            if sib.id != book_id:
+                chunks = db.query(TextChunk.page_start).filter(
+                    TextChunk.book_id == sib.id,
+                    TextChunk.page_start.isnot(None)
+                ).order_by(TextChunk.chunk_index).all()
+                chunk_pages = [c[0] for c in chunks]
+            
+            outline_items = sib.outline or []
+            for i, item in enumerate(outline_items):
                 raw_page = item.get("page")
                 if raw_page is not None and raw_page > 0:
                     page = raw_page + offset - 1
-                elif raw_page is not None and raw_page == 0:
-                    # MinerU 对拆分卷无法提取页码，用卷首偏移页作为保底
-                    page = offset
+                elif raw_page is not None and raw_page == 0 and chunk_pages:
+                    # Map by proportional position: outline[i] ≈ chunk[floor(i/N*M)]
+                    idx = int(i / max(len(outline_items)-1, 1) * (len(chunk_pages)-1))
+                    page = chunk_pages[idx] + offset - 1
                 else:
-                    page = None
+                    page = offset if raw_page == 0 else None
                 merged.append({
                     "title": item["title"],
                     "page": page,

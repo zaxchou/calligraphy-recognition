@@ -176,7 +176,12 @@
             <el-button v-if="currentRecord.inscription_verified" plain class="btn-edit btn-primary" @click="handleAnalyze" :loading="analyzing"><el-icon><DataAnalysis /></el-icon>重新分析</el-button>
           </div>
           <div v-if="analysisPreview" class="analysis-preview">
-            <div class="preview-header"><el-icon><DataAnalysis /></el-icon>AI 分析预览</div>
+            <div class="preview-header">
+              <el-icon><DataAnalysis /></el-icon>AI 分析预览
+              <span v-if="analysisPreview.v4_confidence != null" class="overall-confidence" :class="{ low: analysisPreview.v4_confidence < 0.6 }">
+                可信度 {{ Math.round(analysisPreview.v4_confidence * 100) }}%
+              </span>
+            </div>
             <div class="preview-tags">
               <span v-for="theme in analysisPreview.themes" :key="theme.name" class="theme-tag">{{ theme.name }}<span class="confidence">{{ Math.round(theme.confidence * 100) }}%</span></span>
               <span class="sentiment-tag" :class="analysisPreview.sentiment?.polarity">{{ polarityLabel(analysisPreview.sentiment?.polarity) }} {{ analysisPreview.sentiment?.intensity != null && !isNaN(analysisPreview.sentiment.intensity) ? `${(analysisPreview.sentiment.intensity * 100).toFixed(0)}%` : '' }}</span>
@@ -635,6 +640,8 @@ defineExpose({ nextRecord, jumpToRecordById })
 .analysis-preview{background:#f8f8f6;border:1px solid #e8e6dc;border-radius:10px;padding:14px 16px}
 .analysis-preview.analysis-stale{background:#fef8e8;border-color:#e6a23c}
 .preview-header{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#141413;margin-bottom:10px}
+.overall-confidence{margin-left:auto;font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#166534}
+.overall-confidence.low{background:#fef3c3;color:#92400e}
 .analysis-stale .preview-header{color:#e6a23c}
 .stale-hint{font-size:12px;color:#909399;margin:0;padding:0}
 .preview-tags{display:flex;flex-wrap:wrap;gap:8px}
