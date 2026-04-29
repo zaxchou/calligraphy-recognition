@@ -40,7 +40,7 @@
                 <div class="image-detail-body">
                   <div class="image-detail-main">
                     <img 
-                      :src="getFullImageUrl(result.image?.url || result.associated_images?.[0]?.url)" 
+                      :src="getFullImageUrl(result.image?.stored_url||result.image?.url||result.associated_images?.[0]?.stored_url||result.associated_images?.[0]?.url)" 
                       :alt="cleanLatexSymbols(result.image?.artwork_title) || '配图'" 
                       class="image-detail-img"
                       @click="openImagePreviewDirect(getFullImageUrl(result.image?.url || result.associated_images?.[0]?.url))"

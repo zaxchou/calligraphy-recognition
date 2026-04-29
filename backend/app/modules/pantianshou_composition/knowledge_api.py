@@ -1201,10 +1201,10 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 ).first()
                 if prev_chunk:
                     # 智能截取：从末尾截取到最近的句子边界
-                    context_before = _truncate_to_sentence_boundary(prev_chunk.content, 200, direction="tail")
+                    context_before = _truncate_to_sentence_boundary(_STRIP_LATEX_RE.sub('', prev_chunk.content), 200, direction="tail")
                 if next_chunk:
                     # 智能截取：从开头截取到最近的句子边界
-                    context_after = _truncate_to_sentence_boundary(next_chunk.content, 200, direction="head")
+                    context_after = _truncate_to_sentence_boundary(_STRIP_LATEX_RE.sub('', next_chunk.content), 200, direction="head")
             
             # 智能章节标题
             chapter_title = payload.get("chapter", "")
@@ -1221,6 +1221,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
             raw_content = payload.get("content", "")
             raw_content = _STRIP_LATEX_RE.sub('', raw_content)
             truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
+            full_content = _STRIP_LATEX_RE.sub('', payload.get("content", ""))
             
             results.append({
                 "chunk_id": chunk.id if chunk else None,
@@ -1228,7 +1229,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 "book_id": book_id,
                 "book_title": _extract_book_title(payload),
                 "content": truncated_content,
-                "content_full": raw_content,  # 完整内容供详情弹窗使用
+                "content_full": full_content,  # 完整内容供详情弹窗使用
                 "chapter_title": chapter_title,
                 "page_start": payload.get("page_start", 0),
                 "page_end": payload.get("page_end", 0),
@@ -1582,8 +1583,8 @@ async def get_book_markdown(book_id: str, db: Session = Depends(get_db)):
     
     return {
         "book_id": book_id,
-        "markdown": book.full_md,
-        "length": len(book.full_md),
+        "markdown": _STRIP_LATEX_RE.sub('', book.full_md or ""),
+        "length": len(book.full_md or ""),
     }
 
 
