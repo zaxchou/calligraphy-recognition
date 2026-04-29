@@ -1756,78 +1756,30 @@ async def analyze_single(
     request: AnalyzeRequest = AnalyzeRequest(),
 ):
     """
-    单条记录重新分析：重新计算题跋内容分析（主题/情感/词频等）
+    单条记录重新分析：调用统一管道 analyze_single_record
     """
-    import json
-    from app.services.inscription_content_analyzer import (
-        analyze_tiba_content,
-        analyze_tiba_content_dual,
-        get_period_phase,
-        classify_inscription_v4
-    )
-
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 查询记录
-    cur.execute("""
-        SELECT id, inscription_content, year, title, analysis_note,
-               artwork_width_cm, artwork_height_cm, artist
-        FROM tubi_analyses
-        WHERE id = ?
-    """, (record_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Record not found")
-
-    record_id_db, content, year, title, analysis_note, width_cm, height_cm, record_artist = row
-
-    if not content or len(content.strip()) == 0:
-        conn.close()
-        raise HTTPException(status_code=400, detail="题跋内容为空")
-
-    # 调用分析服务
-    if request.use_llm:
-        result = await analyze_tiba_content_dual(
-            content, year=year, title=title, analysis_note=analysis_note,
-            width_cm=width_cm, height_cm=height_cm, artist=record_artist
-        )
-    else:
-        result = analyze_tiba_content(
-            content, year=year, title=title, analysis_note=analysis_note,
-            width_cm=width_cm, height_cm=height_cm, artist=record_artist
-        )
-
-    content_analysis = {
-        "char_count": result.char_count,
-        "word_count": result.word_count,
-        "ttr": result.ttr,
-        "themes": result.themes,
-        "sentiment": result.sentiment,
-        "feature_words": result.feature_words,
-        "objects_mentioned": result.objects_mentioned,
-    }
-    extra_fields = {}
-    if not request.use_llm:
-        raw_v4 = classify_inscription_v4(
-            content, year=year, title=title, analysis_note=analysis_note,
-            width_cm=width_cm, height_cm=height_cm, artist=record_artist
-        )
-        extra_fields["v4_confidence"] = raw_v4.get("confidence", 0)
-    extra_fields["rules_version"] = "5.5"
-
-    persist_analysis_result(cur, record_id_db, result, year=year, artist=record_artist, extra_fields=extra_fields)
-    content_analysis.update(extra_fields)
+    result = await analyze_single_record(record_id, cur)
 
     conn.commit()
     conn.close()
 
-    return AnalyzeResponse(
-        success=True,
-        record_id=record_id_db,
-        message="分析完成"
-    )
+    if not result["success"]:
+        if result.get("error") == "Record not found":
+            raise HTTPException(status_code=404, detail="Record not found")
+        else:
+            raise HTTPException(status_code=400, detail=result.get("error", "分析失败"))
+
+    return {
+        "success": True,
+        "record_id": record_id,
+        "confidence": result["confidence"],
+        "themes": result["themes"],
+        "sentiment": result["sentiment"],
+        "message": f"分析完成，可信度 {result['confidence']:.0%}"
+    }
 
 
 @router.post("/reanalyze-one/{record_id}")
