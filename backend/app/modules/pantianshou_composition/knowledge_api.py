@@ -1107,7 +1107,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "page_start": payload.get("page_start", 0),
                         "page_end": payload.get("page_end", 0),
                         "chunk_index": 0,
-                        "score": r.get("score", 0),
+                        "score": max(0, min(1.0, r.get("rerank_score", r.get("score", 0)))),
                         "associated_images": [],
                         "context_before": "",
                         "context_after": "",
@@ -1156,7 +1156,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         "page_start": payload.get("page_number") or payload.get("page", 0),
                         "page_end": payload.get("page_number") or payload.get("page", 0),
                         "chunk_index": 0,
-                        "score": r.get("score", 0),
+                        "score": max(0, min(1.0, r.get("rerank_score", r.get("score", 0)))),
                         "associated_images": [{"url": image_url, "stored_url": image_url, "figure_id": fig_id}] if image_url else [],
                         "context_before": "",
                         "context_after": "",
@@ -1205,6 +1205,38 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                         seen_assoc_urls.add(url_key)
                         collected_assoc_images.append(ai)
             
+            # 关联图片不足时，从邻近 chunk 补充（系统性补齐，所有 PDF 通用）
+            if len(associated_images) < 5 and chunk:
+                seen_img_ids = {a["id"] for a in associated_images}
+                nearby_chunks = db.query(TextChunk).filter(
+                    TextChunk.book_id == book_id,
+                    TextChunk.chunk_index >= chunk.chunk_index - 3,
+                    TextChunk.chunk_index <= chunk.chunk_index + 3,
+                    TextChunk.id != chunk.id
+                ).order_by(TextChunk.chunk_index).all()
+                for nc in nearby_chunks:
+                    if len(associated_images) >= 6:
+                        break
+                    if not nc.associated_images:
+                        continue
+                    extra_images = db.query(ExtractedImage).filter(
+                        ExtractedImage.id.in_(nc.associated_images)
+                    ).all()
+                    for ei in extra_images:
+                        if ei.id in seen_img_ids:
+                            continue
+                        seen_img_ids.add(ei.id)
+                        associated_images.append({
+                            "id": ei.id,
+                            "file_name": ei.file_name,
+                            "url": ei.stored_url,
+                            "stored_url": ei.stored_url,
+                            "page": ei.page,
+                            "figure_id": ei.figure_id,
+                            "caption": ei.caption,
+                            "display_label": _parse_caption_for_display(ei.caption) or ei.figure_id or f"图{ei.page}" if ei.page else ei.figure_id or "",
+                        })
+            
             # 获取前后上下文（同章节的相邻块）
             context_before = ""
             context_after = ""
@@ -1252,7 +1284,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 "page_start": payload.get("page_start", 0),
                 "page_end": payload.get("page_end", 0),
                 "chunk_index": chunk.chunk_index if chunk else 0,
-                "score": r.get("score", 0),
+                "score": max(0, min(1.0, r.get("rerank_score", r.get("score", 0)))),
                 "associated_images": associated_images,
                 "context_before": context_before,
                 "context_after": context_after,
