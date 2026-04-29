@@ -38,7 +38,7 @@
             <div v-if="store.searchLoading" class="ks-progress"><div class="ks-progress-fill" :style="{width:store.searchProgress+'%'}"></div></div>
             <div v-if="store.aiSummary?.answer" class="ks-card"><div class="ks-card-hd"><Sparkles class="ks-summary-spark" /><span>AI概述</span><span class="ks-summary-conf" :class="'conf-'+getConfClass(store.aiSummary.confidence)">{{ getConfLabel(store.aiSummary.confidence) }}</span></div>
               <div class="ks-card-body" v-html="renderCitations(store.aiSummary.answer)" @click="onCitationClick($event)"></div>
-              <div v-if="store.relatedImages?.length" class="ks-related-img-row"><div v-for="ri in store.relatedImages.slice(0,6)" :key="ri.url" class="ks-related-img-thumb" @click="openImagePreview(ri)"><img :src="getImageUrl(ri.stored_url||ri.url)" /><span>{{ ri.display_label||ri.figure_id||'' }}</span></div></div>
+              <div v-if="store.relatedImages?.length" class="ks-related-img-row"><div v-for="(ri,i) in store.relatedImages.slice(0,6)" :key="ri.url" class="ks-related-img-thumb" @click="openImagePreview(ri,store.relatedImages.slice(0,6),i)"><img :src="getImageUrl(ri.stored_url||ri.url)" /><span>{{ ri.display_label||ri.figure_id||'' }}</span></div></div>
               <div v-if="store.aiSummary.key_points?.length" class="ks-points"><div class="ks-points-label">核心要点</div><ul><li v-for="(p,i) in store.aiSummary.key_points" :key="i">{{ cleanLatex(p) }}</li></ul></div>
               <div v-if="store.aiSummary.sources?.length" class="ks-sources"><span class="ks-sources-label">参考来源：</span><button v-for="(s,i) in store.aiSummary.sources" :key="i" class="ks-src" @click="scrollToResult(s)">《{{ (s.book||'').replace(/[《》]/g,'') }}》p.{{ s.page||'?' }}</button></div>
             </div>
@@ -56,18 +56,18 @@
         <transition name="slide-right"><div v-if="rightPanelOpen" class="ks-panel">
           <div class="ks-phdr"><span class="ks-ptitle">{{ activeResult?.book_title||'文档查看' }}</span><div class="ks-phdr-acts"><button v-if="pdfUrl" class="ks-pdf-btn" @click="openPdf"><FileDown class="icon-sm" />PDF</button><button class="ks-pclose" @click="closePanel"><X class="icon" /></button></div></div>
           <div class="ks-pbody">
-            <div v-if="activeResult?.result_type==='image'" class="ks-pimg"><img :src="getFullImageUrl(activeResult)" class="ks-pimg-main" @click="openImagePreview(getFullImageUrl(activeResult))" /><ImageRelatedChunks v-if="activeResult.image?.id" :chunks="relatedChunks" :loading="loadingRelated" @chunk-click="onRelatedClick" /></div>
+            <div v-if="activeResult?.result_type==='image'" class="ks-pimg"><img :src="getFullImageUrl(activeResult)" class="ks-pimg-main" @click="openImagePreview(activeResult.image||activeResult.associated_images?.[0],activeResult.associated_images,0)" /><ImageRelatedChunks v-if="activeResult.image?.id" :chunks="relatedChunks" :loading="loadingRelated" @chunk-click="onRelatedClick" /></div>
             <div v-if="activeResult?.result_type!=='image'" class="ks-detail"><div class="ks-dmeta"><span class="ks-dchap">{{ getChapter(activeResult) }}</span><span class="ks-dpage" v-if="activeResult.page_start"><BookOpen class="icon-xs" />第{{ activeResult.page_start }}{{ activeResult.page_end!==activeResult.page_start?'-'+activeResult.page_end:'' }}页</span></div>
               <div v-if="activeResult.context_before" class="ks-dctx"><p class="ks-dctx-txt">{{ cleanLatex(activeResult.context_before) }}</p><div class="ks-dctx-mrk">⋯上文⋯</div></div>
               <div class="ks-dcontent" v-html="highlightDetail(activeResult)"></div>
-              <div v-if="activeResult.associated_images?.length" class="ks-dims"><div class="ks-dims-label"><ImageIcon class="icon-xs" />关联配图</div><div class="ks-dims-grid"><div v-for="(img,i) in activeResult.associated_images" :key="i" class="ks-dim" @click="openImagePreview(img)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" @error="e=>{e.target.src='/placeholder.png'}" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
+              <div v-if="activeResult.associated_images?.length" class="ks-dims"><div class="ks-dims-label"><ImageIcon class="icon-xs" />关联配图</div><div class="ks-dims-grid"><div v-for="(img,i) in activeResult.associated_images" :key="i" class="ks-dim" @click="openImagePreview(img,activeResult.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" @error="e=>{e.target.src='/placeholder.png'}" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
               <div v-if="activeResult.context_after" class="ks-dctx"><div class="ks-dctx-mrk">⋯下文⋯</div><p class="ks-dctx-txt">{{ cleanLatex(activeResult.context_after) }}</p></div>
               <div class="ks-dnav"><button class="ks-dnav-btn" :disabled="loadingChunk||chunkIndex<=0" @click="loadPrevChunk"><ChevronLeft class="icon-xs" />上一段</button><span class="ks-dnav-info" v-if="chunkIndex>0">第{{ chunkIndex+1 }}段</span><button class="ks-dnav-btn" :disabled="loadingChunk" @click="loadNextChunk">下一段<ChevronRight class="icon-xs" /></button></div>
             </div>
             <div class="ks-ptabs"><button :class="{active:panelTab==='outline'}" @click="panelTab='outline'"><ListTree class="icon-xs" />大纲</button><button v-if="markdownContent" :class="{active:panelTab==='markdown'}" @click="panelTab='markdown'"><FileCode class="icon-xs" />原文</button><button v-if="activeResult?.associated_images?.length" :class="{active:panelTab==='images'}" @click="panelTab='images'"><ImageIcon class="icon-xs" />配图</button></div>
             <div v-show="panelTab==='outline'" class="ks-ptab"><input v-model="outlineFilter" class="ks-outline-filter" placeholder="筛选大纲标题..." /><DocumentOutline :outline="filteredOutline" :loading="loadingOutline" @item-click="onOutlineClick" /></div>
             <div v-show="panelTab==='markdown'" class="ks-ptab" ref="mdContentRef"><MarkdownViewer :markdown="markdownContent" :loading="loadingMarkdown" /></div>
-            <div v-show="panelTab==='images'" class="ks-ptab"><div class="ks-pimg-grid"><div v-for="(img,i) in activeResult?.associated_images" :key="i" class="ks-pimg-item" @click="openImagePreview(img)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
+            <div v-show="panelTab==='images'" class="ks-ptab"><div class="ks-pimg-grid"><div v-for="(img,i) in activeResult?.associated_images" :key="i" class="ks-pimg-item" @click="openImagePreview(img,activeResult?.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
           </div>
         </div></transition>
       </div>
@@ -118,7 +118,7 @@
   </div></transition>
 
   <UploadModal v-model:visible="showUploadModal" @upload-success="onUploaded" />
-  <div v-if="previewVisible" class="ks-preview-overlay" @click="previewVisible=false"><img :src="previewImageUrl" class="ks-preview-img" @click.stop /><button class="ks-preview-close" @click="previewVisible=false"><X class="icon" /></button></div>
+  <div v-if="previewVisible" class="ks-preview-overlay" @click="previewVisible=false"><button v-if="previewList.length>1" class="ks-preview-nav ks-preview-prev" @click.stop="prevPreview"><ChevronLeft class="icon" /></button><img :src="previewImageUrl" class="ks-preview-img" @click.stop /><button v-if="previewList.length>1" class="ks-preview-nav ks-preview-next" @click.stop="nextPreview"><ChevronRight class="icon" /></button><button class="ks-preview-close" @click="previewVisible=false"><X class="icon" /></button><span v-if="previewList.length>1" class="ks-preview-counter">{{previewIndex+1}}/{{previewList.length}}</span></div>
 </div>
 </template>
 
@@ -135,7 +135,7 @@ import ImageRelatedChunks from '@/components/ImageRelatedChunks.vue'
 
 const store = useKnowledgeStore()
 const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), selectedBooks = ref([]), showUploadModal = ref(false), highlightedIndex = ref(-1), reingestingId = ref(null), searchInputRef = ref(null), activeMode = ref('search'), activeResult = ref(null), rightPanelOpen = ref(false), panelTab = ref('outline'), pdfUrl = ref('')
-const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
+const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
 const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null)
 const graphNodes = ref([]), graphEdges = ref([]), graphSvgW = ref(1000), graphSvgH = ref(700), graphLoading = ref(false), graphCanvasRef = ref(null), graphZoom = ref(1), graphPanX = ref(0), graphPanY = ref(0), graphDragging = ref(false), graphDragStart = ref({x:0,y:0})
@@ -202,8 +202,11 @@ function onUploaded(){store.fetchBooks();store.fetchStats()}
 async function reingest(id){reingestingId.value=id;try{await store.reingestBook(id)}catch{}finally{reingestingId.value=null}}
 async function delBook(id){try{await ElMessageBox.confirm('确定删除此书及其所有关联数据？','确认删除',{type:'warning'});await store.deleteBook(id)}catch{}}
 async function clearHistory(){try{await ElMessageBox.confirm('确定清空所有搜索历史？','确认',{type:'warning'});await store.clearSearchHistory()}catch{}}
-function openImagePreview(img){previewImageUrl.value=getImageUrl(img.stored_url||img.url||img.id||img);previewVisible.value=true}
-onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);nextTick(()=>searchInputRef.value?.focus())})
+function openImagePreview(img,list,n){previewList.value=list&&list.length>1?list:[];previewIndex.value=n>=0?n:0;previewImageUrl.value=getImageUrl(img.stored_url||img.url||img.id||img);previewVisible.value=true}
+function nextPreview(){if(previewIndex.value<previewList.value.length-1){previewIndex.value++;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
+function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
+function onPreviewKey(e){if(e.key==='ArrowRight')nextPreview();else if(e.key==='ArrowLeft')prevPreview();else if(e.key==='Escape')previewVisible.value=false}
+onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);nextTick(()=>searchInputRef.value?.focus());document.addEventListener('keydown',onPreviewKey)})
 </script>
 
 <style scoped>
@@ -393,10 +396,15 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-hist-item{border:1px solid #e0ddd3;background:#fff;padding:3px 10px;border-radius:6px;font-size:12px;color:#6b6b66;cursor:pointer;transition:all 0.15s}
 .ks-hist-item:hover{background:#fdf8f5;color:#c96442}
 
-.ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:999}
+.ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center}
 .ks-preview-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px}
-.ks-preview-close{position:absolute;top:24px;right:24px;border:none;background:rgba(255,255,255,0.15);color:#fff;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ks-preview-close{position:absolute;top:20px;right:20px;border:none;background:rgba(255,255,255,0.15);color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ks-preview-close:hover{background:rgba(255,255,255,0.3)}
+.ks-preview-nav{position:absolute;top:50%;transform:translateY(-50%);border:none;background:rgba(255,255,255,0.15);color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s}
+.ks-preview-nav:hover{background:rgba(255,255,255,0.3)}
+.ks-preview-prev{left:24px}
+.ks-preview-next{right:24px}
+.ks-preview-counter{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:10px}
 
 /* 动画 */
 .fade-enter-active,.fade-leave-active{transition:all 0.35s ease}.fade-enter-from,.fade-leave-to{opacity:0;transform:translateY(8px)}
