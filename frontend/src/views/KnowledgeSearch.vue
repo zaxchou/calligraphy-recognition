@@ -1,7 +1,7 @@
 <template>
 <div class="ks-root">
   <!-- ===== 居中欢迎态 ===== -->
-  <transition name="fade">
+  <transition name="fade-scale">
     <div v-if="centered" class="ks-center-wrap" key="center">
       <div class="ks-center-body">
         <h1 class="ks-center-title">写意知识库</h1>
@@ -12,9 +12,8 @@
           <button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
         </div>
         <div class="ks-mode-row">
-          <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索</button>
-          <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家</button>
-          <button :class="['ks-mode-pill',{active:activeMode==='graph'}]" @click="switchMode('graph');fetchGraph()"><Share2 class="icon-xs" /> 图谱</button>
+          <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索模式</button>
+          <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button>
           <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
         </div>
         <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
@@ -23,15 +22,15 @@
   </transition>
 
   <!-- ===== 搜索态（带顶栏） ===== -->
-  <transition name="fade">
+  <transition name="fade-slide">
     <div v-if="!centered && activeMode==='search'" class="ks-search-view" key="search">
       <header class="ks-bar"><h1 class="ks-bar-title">写意知识库</h1>
-        <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" @input="centered=true" />
+        <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" />
           <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button><button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
         </div>
-        <button class="ks-barlib-btn" @click="libOpen=!libOpen; if(libOpen&&centered)centered=false" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
+        <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
       </header>
-      <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button><button :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家</button><button :class="['ks-mode-pill']" @click="switchMode('graph');fetchGraph()"><Share2 class="icon-xs" /> 图谱</button></div>
+      <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button></div>
       <div class="ks-body-wrap" :class="{'with-panel':rightPanelOpen}">
         <div class="ks-main">
           <div class="ks-search-panel">
@@ -45,7 +44,7 @@
             <div v-if="hasSearched&&!store.searchLoading" class="ks-results">
               <div class="ks-rbar"><span>共{{ store.searchResults.length }}条结果</span><button class="ks-clear-btn" @click="clearSearch">清除</button></div>
               <div v-if="store.searchResults.length===0" class="ks-empty"><FileSearch class="ks-empty-icon" /><p>未找到相关结果</p></div>
-              <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" @click="openDetail(r,i)">
+              <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" :style="{animationDelay:`${i*0.06}s`}" @click="openDetail(r,i)">
                 <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div></div></template>
                 <template v-else-if="r.result_type==='table'"><TableResultCard :result="r" @click="openDetail(r,i)" /></template>
                 <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
@@ -74,33 +73,18 @@
     </div>
   </transition>
 
-  <!-- ===== 专家/图谱全屏态（无顶栏） ===== -->
-  <transition name="fade">
-    <div v-if="!centered && activeMode!=='search'" class="ks-full-view" :key="activeMode">
+  <!-- ===== 专家全屏态（无顶栏） ===== -->
+  <transition name="fade-scale">
+    <div v-if="!centered && activeMode==='chat'" class="ks-full-view" key="chat">
       <div class="ks-full-top">
         <div class="ks-mode-row">
-          <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button>
-          <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="activeMode='chat'"><MessageCircle class="icon-xs" /> 专家</button>
-          <button :class="['ks-mode-pill',{active:activeMode==='graph'}]" @click="activeMode='graph';fetchGraph()"><Share2 class="icon-xs" /> 图谱</button>
-          <button class="ks-mode-pill ks-mode-pill-icon" @click="libOpen=!libOpen" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
+          <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button>
+          <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="activeMode='chat'"><MessageCircle class="icon-xs" /> 专家模式</button>
+          <button class="ks-mode-pill ks-mode-pill-icon" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
         </div>
       </div>
       <div class="ks-full-body">
-        <div v-if="activeMode==='graph'" class="ks-graph-box" ref="graphCanvasRef"
-               @wheel.prevent="onGraphWheel"
-               @mousedown="onGraphMouseDown"
-               @mousemove="onGraphMouseMove"
-               @mouseup="onGraphMouseUp"
-               @mouseleave="onGraphMouseUp">
-            <div class="ks-graph-viewport">
-               <svg :viewBox="`0 0 ${graphSvgW} ${graphSvgH}`" class="ks-graph-svg" :style="{transform:`translate(${graphPanX}px,${graphPanY}px) scale(${graphZoom})`,willChange:'transform'}"><line v-for="(e,i) in graphEdges" :key="'e'+i" :x1="e.x1" :y1="e.y1" :x2="e.x2" :y2="e.y2" stroke="#ddd" stroke-width="1" /><g v-for="n in graphNodes" :key="n.id" :transform="`translate(${n.x},${n.y})`" class="ks-gnode"><circle :r="n.r" :fill="n.color" stroke="#fff" stroke-width="2" /><text :y="n.r+12" text-anchor="middle" :font-size="n.fontSize" fill="#3d3d3a">{{ n.label }}</text></g></svg>
-             </div>
-            <div class="ks-graph-hint">滚轮缩放 · 拖拽平移</div>
-          <div v-if="!graphNodes.length&&!graphLoading" class="ks-gempty">点击"图谱"加载知识关系</div>
-          <div v-if="graphLoading" class="ks-gloading"><Loader2 class="icon spin" /> 加载中...</div>
-          </div>
-          <div v-if="activeMode==='graph'" class="ks-glegend"><span><span class="ks-ldot" style="background:#c96442"></span>画家</span><span><span class="ks-ldot" style="background:#e8a060"></span>作品</span><span><span class="ks-ldot" style="background:#5a7d5a"></span>朝代</span><span><span class="ks-ldot" style="background:#4a7ab8"></span>画册</span><span><span class="ks-ldot" style="background:#6b8eb5"></span>章节</span><span><span class="ks-ldot" style="background:#b8a47e"></span>技法</span></div>
-          <div v-if="activeMode==='chat'" class="ks-chat"><div class="ks-chat-msgs" ref="chatMsgsRef">
+        <div class="ks-chat"><div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
           <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon" /><User v-else class="icon" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" v-html="renderMd(m.content,m.loading)"></div></div></div>
         </div><div class="ks-chat-input"><textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="输入问题..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="2" :disabled="chatLoading"></textarea><button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading"><Send class="icon" /></button></div></div>
@@ -113,7 +97,6 @@
     <div class="ks-lib-inner"><div class="ks-lib-row"><button class="ks-upload-btn" @click="showUploadModal=true"><span class="ks-upload-icon">+</span>上传PDF</button><div class="ks-lib-stats" v-if="store.stats"><span>{{ store.stats.books?.total||0 }}书</span><span>{{ store.stats.contents?.chunks||0 }}块</span><span>{{ store.stats.contents?.images||0 }}图</span></div></div>
       <div class="ks-lib-books" v-if="store.books.length"><div v-for="b in store.books" :key="b.id" class="ks-lib-book"><label class="ks-lib-bl"><input type="checkbox" v-model="selectedBooks" :value="b.id" :disabled="b.status==='processing'" /><span class="ks-lib-bn">{{ b.title||b.file_name }}</span><span :class="['ks-lib-bs',b.status]">{{ statusLabel(b.status) }}</span></label><div class="ks-lib-bacts"><button class="ks-lib-act" @click="reingest(b.id)" :disabled="reingestingId===b.id"><RefreshCw v-if="reingestingId!==b.id" class="icon-xs" /><Loader2 v-else class="icon-xs spin" /></button><button class="ks-lib-act del" @click="delBook(b.id)"><Trash2 class="icon-xs" /></button></div></div></div>
       <p v-else class="ks-lib-empty">暂无已入库的书籍</p>
-      <div v-if="store.searchHistory.length" class="ks-lib-hist"><div class="ks-lib-hdr"><History class="icon-xs" />搜索历史<button class="ks-lib-act" @click="clearHistory">清空</button></div><div class="ks-lib-hlist"><button v-for="h in store.searchHistory.slice(0,8)" :key="h.id" class="ks-hist-item" @click="searchByTag(h.query)">{{ h.query }}</button></div></div>
     </div>
   </div></transition>
 
@@ -124,7 +107,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { Search, Loader2, BookOpen, History, Clock, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, Share2, FileDown } from 'lucide-vue-next'
+import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
@@ -138,7 +121,6 @@ const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), sel
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
 const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null)
-const graphNodes = ref([]), graphEdges = ref([]), graphSvgW = ref(1000), graphSvgH = ref(700), graphLoading = ref(false), graphCanvasRef = ref(null), graphZoom = ref(1), graphPanX = ref(0), graphPanY = ref(0), graphDragging = ref(false), graphDragStart = ref({x:0,y:0})
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
 function cleanLatex(s){return(s||'').replace(/\$[^$]*\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
@@ -157,11 +139,12 @@ function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>':'';return t.replace(/\n/g,'<br>')}
 
 function switchMode(m){
-  if(m==='lib'){libOpen.value=!libOpen.value;if(libOpen.value)centered.value=false;return}
+  if(m==='lib'){toggleLib();return}
   centered.value=false
   activeMode.value=m
   libOpen.value=false
 }
+function toggleLib(){libOpen.value=!libOpen.value}
 
 function goCentered(){centered.value=true;activeMode.value='search';closePanel();searchInput.value='';hasSearched.value=false;store.clearSearchResults();nextTick(()=>searchInputRef.value?.focus())}
 
@@ -182,7 +165,7 @@ async function performSearch(){if(!searchInput.value.trim())return;centered.valu
 function searchByTag(t){searchInput.value=t;performSearch()}
 function clearSearch(){searchInput.value='';hasSearched.value=false;centered.value=true;store.clearSearchResults();closePanel();nextTick(()=>searchInputRef.value?.focus())}
 function onCitationClick(e){const c=e.target.closest('.ks-cite');if(!c)return;const m=c.textContent.match(/\d+/);if(!m)return;const s=(store.aiSummary?.sources||[])[parseInt(m[0])-1];if(s)scrollToResult(s)}
-function scrollToResult(src){const i=store.searchResults.findIndex(r=>r.page_start===src.page&&r.book_title?.includes((src.book||'').replace(/[《》]/g,'')));if(i>=0)openDetail(store.searchResults[i],i)}
+function scrollToResult(src){var bk=(src.book||'').replace(/[《》]/g,'').trim(),pg=parseInt(src.page)||0;var i=store.searchResults.findIndex(function(r){var rbk=(r.book_title||'').replace(/[《》]/g,'').trim();var rpg=parseInt(r.page_start)||0;return rbk.includes(bk)||bk.includes(rbk)||(rbk&&bk&&rbk.toLowerCase()===bk.toLowerCase())});if(i<0&&pg>0)i=store.searchResults.findIndex(function(r){var rpg=parseInt(r.page_start)||0;return Math.abs(rpg-pg)<=2});if(i>=0)openDetail(store.searchResults[i],i)}
 function closePanel(){rightPanelOpen.value=false;activeResult.value=null;pdfUrl.value='';documentOutline.value=[];markdownContent.value='';relatedChunks.value=[];outlineFilter.value=''}
 function openDetail(r,i){activeResult.value=r;highlightedIndex.value=i;rightPanelOpen.value=true;panelTab.value='outline';documentOutline.value=[];markdownContent.value='';relatedChunks.value=[];outlineFilter.value='';chunkIndex.value=r.chunk_index??0;const b=r.book_id;if(r.result_type!=='image'&&b){pdfUrl.value=`/api/v1/knowledge/books/${b}/pdf`;loadOutline(b);loadMarkdown(b)}else if(r.result_type==='image'){pdfUrl.value='';if(r.image?.id)loadRelated(r.image.id)}}
 async function loadPrevChunk(){if(loadingChunk.value||chunkIndex.value<=0)return;const id=activeResult.value?.book_id;if(!id)return;loadingChunk.value=true;try{const i=chunkIndex.value-1;const r=await fetch(`/api/v1/knowledge/books/${id}/chunks?offset=${i}&limit=1`);if(r.ok){const d=await r.json();if(d.length>0){chunkIndex.value=i;activeResult.value={...activeResult.value,...d[0],chunk_index:i}}}}catch{}finally{loadingChunk.value=false}}
@@ -193,15 +176,9 @@ async function loadRelated(id){loadingRelated.value=true;try{const r=await fetch
 function onOutlineClick(item){var isCross=item.target_book_id&&item.page&&item.target_book_id!==activeResult.value?.book_id;if(!isCross&&item.title&&markdownContent.value){panelTab.value='markdown';nextTick(()=>{if(mdContentRef.value){const el=mdContentRef.value.querySelector(`[data-section-id="${item.id}"]`)||[...mdContentRef.value.querySelectorAll('h1,h2,h3,h4')].find(h=>h.textContent?.trim()===item.title?.trim());if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}})};if(isCross){window.open(`/api/v1/knowledge/books/${item.target_book_id}/pdf#page=${item.page}`,'_blank')}else if(item.page&&pdfUrl.value&&!item.target_book_id){window.open(`${pdfUrl.value}#page=${item.page}`,'_blank')}}
 async function sendChat(msg){const t=(msg||chatInput.value).trim();if(!t||chatLoading.value)return;if(!msg)chatInput.value='';chatMessages.value.push({role:'user',content:t});chatMessages.value.push({role:'assistant',content:'',thinking:true});chatLoading.value=true;try{var ctx=chatMessages.value.filter(m=>m.role==='user').slice(-4).map(m=>m.content).join('\n');var query=ctx||t;const r=await fetch('/api/v1/knowledge/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:t,limit:5})});const d=await r.json();chatMessages.value.pop();chatMessages.value.push({role:'assistant',content:d.ai_summary?.answer||'未找到相关信息',thinking:false})}catch{chatMessages.value.pop();chatMessages.value.push({role:'assistant',content:'查询失败，请重试',thinking:false})}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
 function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='auto';chatInputRef.value.style.height=Math.min(chatInputRef.value.scrollHeight,120)+'px'}}
-async function fetchGraph(){if(graphNodes.value.length)return;graphLoading.value=true;try{const r=await fetch('/api/v1/knowledge/graph');const d=await r.json(),raw=d.nodes||[],edges=d.edges||[];const colors={artist:'#c96442',artwork:'#e8a060',era:'#5a7d5a',book:'#4a7ab8',section:'#6b8eb5',technique:'#b8a47e'};const sizeMap={artist:{r:18,fs:11},artwork:{r:12,fs:10},era:{r:16,fs:11},book:{r:12,fs:10},section:{r:10,fs:9},technique:{r:9,fs:9}};const byType={};for(const n of raw)(byType[n.type]||=[]).push(n);const types=['artist','artwork','era','book','section','technique'];const cxMap={artist:120,artwork:330,era:530,book:730,section:880,technique:980};const W=1060,H=520;const pos=[];for(const t of types){const arr=byType[t]||[];const cx=cxMap[t]||500;const sz=sizeMap[t]||{r:10,fs:9};const rad=Math.max(40,Math.min(180,arr.length*13));for(let i=0;i<arr.length;i++){const a=(i/Math.max(arr.length-1,1))*Math.PI-Math.PI*0.5;const x=cx+Math.cos(a)*rad*0.5,y=H/2+Math.sin(a)*rad*0.4;const cnt=arr[i].count||1;const r=Math.max(sz.r-4,Math.min(sz.r,sz.r-4+Math.log(cnt+1)*3));pos.push({...arr[i],x,y,r,color:colors[arr[i].type]||'#888',fontSize:sz.fs})}}const nm={};for(const n of pos)nm[n.id]=n;const pe=[];for(const e of edges){const f=nm[e.from],t=nm[e.to];if(f&&t)pe.push({x1:f.x,y1:f.y,x2:t.x,y2:t.y})};graphNodes.value=pos;graphEdges.value=pe;graphSvgW.value=W;graphSvgH.value=H;graphZoom.value=1;graphPanX.value=0;graphPanY.value=0}catch{}finally{graphLoading.value=false}}
-function onGraphWheel(e){e.preventDefault();const d=e.deltaY>0?0.9:1.1;const nv=Math.max(0.3,Math.min(5,graphZoom.value*d));graphZoom.value=nv}
-function onGraphMouseDown(e){graphDragging.value=true;graphDragStart.value={x:e.clientX-graphPanX.value,y:e.clientY-graphPanY.value}}
-function onGraphMouseMove(e){if(!graphDragging.value)return;graphPanX.value=e.clientX-graphDragStart.value.x;graphPanY.value=e.clientY-graphDragStart.value.y}
-function onGraphMouseUp(){graphDragging.value=false}
 function onUploaded(){store.fetchBooks();store.fetchStats()}
 async function reingest(id){reingestingId.value=id;try{await store.reingestBook(id)}catch{}finally{reingestingId.value=null}}
 async function delBook(id){try{await ElMessageBox.confirm('确定删除此书及其所有关联数据？','确认删除',{type:'warning'});await store.deleteBook(id)}catch{}}
-async function clearHistory(){try{await ElMessageBox.confirm('确定清空所有搜索历史？','确认',{type:'warning'});await store.clearSearchHistory()}catch{}}
 function openImagePreview(img,list,n){previewList.value=list&&list.length>1?list:[];previewIndex.value=n>=0?n:0;previewImageUrl.value=getImageUrl(img.stored_url||img.url||img.id||img);previewVisible.value=true}
 function nextPreview(){if(previewIndex.value<previewList.value.length-1){previewIndex.value++;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
@@ -216,8 +193,11 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-center-body{text-align:center;max-width:640px;width:100%;margin-top:-80px}
 .ks-center-title{font-family:'Noto Serif SC',serif;font-size:36px;font-weight:700;color:#141413;margin:0 0 6px}
 .ks-center-sub{font-size:15px;color:#b0aca2;margin:0 0 32px}
-.ks-center-search{display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;overflow:hidden;width:100%;margin-bottom:16px;transition:all 0.2s}
-.ks-center-search:focus-within,.ks-bar-search:focus-within{border-color:#c96442;box-shadow:0 0 0 3px rgba(201,100,66,0.08)}
+.ks-center-search{display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;overflow:hidden;width:100%;margin-bottom:16px;transition:all 0.3s ease;position:relative}
+.ks-center-search::before{content:'';position:absolute;inset:-4px;border-radius:16px;background:transparent;transition:all 0.5s cubic-bezier(0.25,0.1,0.25,1);pointer-events:none;z-index:-1}
+.ks-center-search:focus-within{border-color:#c96442;box-shadow:0 0 0 4px rgba(201,100,66,0.06)}
+.ks-center-search:focus-within::before{box-shadow:0 0 24px 6px rgba(201,100,66,0.08);animation:ks-glow-pulse 2s ease-in-out infinite}
+@keyframes ks-glow-pulse{0%,100%{box-shadow:0 0 20px 4px rgba(201,100,66,0.06)}50%{box-shadow:0 0 32px 8px rgba(201,100,66,0.12)}}
 .ks-search-icon{color:#b8b4aa;margin-left:14px;width:18px;height:18px;flex-shrink:0}
 .ks-center-input{flex:1;border:none;outline:none;padding:12px 10px;font-size:15px;color:#141413;background:transparent}
 .ks-center-input::placeholder{color:#c0bdb3}
@@ -225,20 +205,24 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-search-btn:hover{background:#a8513a}
 .ks-search-btn:disabled{opacity:0.6;cursor:not-allowed}
 .ks-mode-row{display:flex;justify-content:center;gap:8px;margin-bottom:16px}
-.ks-mode-pill{border:1px solid #e0ddd3;background:#fff;padding:6px 16px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.15s}
-.ks-mode-pill:hover{border-color:#c96442;color:#c96442}
-.ks-mode-pill.active{background:#c96442;color:#fff;border-color:#c96442}
-.ks-mode-pill-icon{padding:6px 10px}
-.ks-tags{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
-.ks-tag-label{font-size:13px;color:#6b6b66;line-height:32px;margin-right:4px}
-.ks-tag{border:1px solid #e0ddd3;background:#fff;padding:5px 16px;border-radius:20px;font-size:14px;color:#5e5d59;cursor:pointer;transition:all 0.15s}
-.ks-tag:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
+.ks-mode-pill{border:1.5px solid #e0ddd3;background:#fff;padding:7px 18px;border-radius:22px;font-size:13px;font-weight:600;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.25s cubic-bezier(0.25,0.1,0.25,1)}
+.ks-mode-pill:hover{border-color:#c96442;color:#c96442;transform:translateY(-1px)}
+.ks-mode-pill:active{transform:scale(0.96)}
+.ks-mode-pill.active{background:#c96442;color:#fff;border-color:#c96442;box-shadow:0 2px 8px rgba(201,100,66,0.25);transform:none}
+.ks-mode-pill-icon{padding:7px 12px}
+.ks-tags{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:20px;padding-top:16px;border-top:1px solid #f0ede4}
+.ks-tag-label{font-size:12px;color:#a8a59d;line-height:28px;margin-right:2px}
+.ks-tag{border:none;background:#f5f2eb;padding:4px 14px;border-radius:14px;font-size:12px;color:#8a877e;cursor:pointer;transition:all 0.2s ease}
+.ks-tag:hover{background:#fdf8f5;color:#c96442}
 
 /* ===== 搜索视图 ===== */
 .ks-search-view{padding:16px 24px 32px}
 .ks-bar{display:flex;align-items:center;gap:12px;margin-bottom:0}
 .ks-bar-title{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;color:#141413;margin:0;white-space:nowrap}
-.ks-bar-search{flex:1;max-width:520px;display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;overflow:hidden;transition:all 0.2s}
+.ks-bar-search{flex:1;max-width:520px;display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;overflow:hidden;transition:all 0.3s ease;position:relative}
+.ks-bar-search::before{content:'';position:absolute;inset:-3px;border-radius:15px;background:transparent;transition:all 0.5s cubic-bezier(0.25,0.1,0.25,1);pointer-events:none;z-index:-1}
+.ks-bar-search:focus-within{border-color:#c96442;box-shadow:0 0 0 3px rgba(201,100,66,0.06)}
+.ks-bar-search:focus-within::before{box-shadow:0 0 18px 4px rgba(201,100,66,0.08);animation:ks-glow-pulse 2s ease-in-out infinite}
 .ks-bar-input{flex:1;border:none;outline:none;padding:10px 8px;font-size:14px;color:#141413;background:transparent}
 .ks-bar-input::placeholder{color:#c0bdb3}
 .ks-bar-clear{border:none;background:none;padding:4px;cursor:pointer;color:#c0bdb3;display:flex}
@@ -250,11 +234,12 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-main{flex:1;min-width:0;transition:margin-right 0.3s}
 .ks-body-wrap.with-panel .ks-main{margin-right:60vw}
 .ks-search-panel{margin-bottom:16px}
-.ks-progress{height:3px;background:#f0ede4;border-radius:2px;margin-bottom:16px;overflow:hidden}
-.ks-progress-fill{height:100%;background:#c96442;border-radius:2px;transition:width 0.3s}
+.ks-progress{height:3px;background:#f0ede4;border-radius:2px;margin-bottom:16px;overflow:hidden;animation:ks-card-in 0.3s both}
+.ks-progress-fill{height:100%;background:linear-gradient(90deg,#c96442,#e8a060,#c96442);background-size:200% 100%;border-radius:2px;transition:width 0.3s;animation:ks-shimmer 1.5s ease-in-out infinite}
+@keyframes ks-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* AI摘要 */
-.ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px}
+.ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px;animation:ks-card-in 0.5s 0.05s cubic-bezier(0.25,0.1,0.25,1) both}
 .ks-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;font-weight:600;color:#141413}
 .ks-summary-spark{color:#c96442;width:18px;height:18px}
 .ks-summary-conf{font-size:11px;padding:2px 8px;border-radius:10px;margin-left:auto}
@@ -277,7 +262,8 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-empty{text-align:center;padding:40px 0;color:#c0bdb3}
 .ks-empty-icon{width:36px;height:36px;margin-bottom:10px}
 .ks-rlist{display:flex;flex-direction:column;gap:8px}
-.ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.15s;display:flex}
+.ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.2s ease;display:flex;animation:ks-card-in 0.45s cubic-bezier(0.25,0.1,0.25,1) both}
+@keyframes ks-card-in{from{opacity:0;transform:translateY(16px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .ks-rcard:hover{border-color:#c96442;box-shadow:0 2px 8px rgba(201,100,66,0.08)}
 .ks-rcard.active{border-color:#c96442;background:#fdf8f5}
 .ks-rimg{width:120px;flex-shrink:0;min-height:120px;display:flex;align-items:center;justify-content:center;background:#f5f2eb;border-radius:8px 0 0 8px}
@@ -298,18 +284,6 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-full-top{display:flex;justify-content:center;margin-bottom:8px}
 .ks-full-body{flex:1;display:flex;flex-direction:column;max-width:800px;width:100%;margin:0 auto}
 
-/* 图谱 */
-.ks-graph-box{flex:1;background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;min-height:300px;cursor:grab;touch-action:none}
-.ks-graph-box:active{cursor:grabbing}
-.ks-graph-viewport{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.ks-graph-svg{max-width:100%;max-height:100%;flex-shrink:0;will-change:transform}
-.ks-graph-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:11px;color:#ccc;pointer-events:none}
-.ks-gnode circle{transition:r 0.2s;cursor:pointer}
-.ks-gnode:hover circle{filter:brightness(0.9)}
-.ks-gempty,.ks-gloading{color:#c0bdb3;font-size:14px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px}
-.ks-glegend{display:flex;justify-content:center;gap:16px;padding:8px 0;font-size:12px;color:#888}
-.ks-ldot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
-
 /* 聊天 */
 .ks-chat{display:flex;flex-direction:column;flex:1;min-height:200px;max-height:calc(100vh - 180px)}
 .ks-chat-msgs{flex:1;overflow-y:auto;padding:8px 0}
@@ -320,7 +294,8 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-chat-sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .ks-sug-btn{border:1px solid #e0ddd3;background:#fff;padding:5px 12px;border-radius:20px;font-size:12px;color:#5e5d59;cursor:pointer}
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442}
-.ks-cmsg{display:flex;gap:8px;margin-bottom:12px}
+.ks-cmsg{display:flex;gap:8px;margin-bottom:12px;animation:ks-msg-in 0.3s ease both}
+@keyframes ks-msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.user{flex-direction:row-reverse}
 .ks-cavatar{width:28px;height:28px;border-radius:50%;background:#f5f2eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ks-cmsg.user .ks-cavatar{background:#c96442;color:#fff}
@@ -391,10 +366,6 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 .ks-lib-act{border:none;background:none;padding:3px;border-radius:4px;cursor:pointer;color:#b8b4aa;display:flex}
 .ks-lib-act:hover{color:#6b6b66;background:#f0ede4}.ks-lib-act.del:hover{color:#c96442}
 .ks-lib-empty{font-size:13px;color:#c0bdb3;text-align:center;padding:12px 0}
-.ks-lib-hdr{font-size:13px;font-weight:600;color:#303133;margin-bottom:6px;display:flex;align-items:center;gap:6px}
-.ks-lib-hlist{display:flex;flex-wrap:wrap;gap:4px}
-.ks-hist-item{border:1px solid #e0ddd3;background:#fff;padding:3px 10px;border-radius:6px;font-size:12px;color:#6b6b66;cursor:pointer;transition:all 0.15s}
-.ks-hist-item:hover{background:#fdf8f5;color:#c96442}
 
 .ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center}
 .ks-preview-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px}
@@ -408,6 +379,12 @@ onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),sto
 
 /* 动画 */
 .fade-enter-active,.fade-leave-active{transition:all 0.35s ease}.fade-enter-from,.fade-leave-to{opacity:0;transform:translateY(8px)}
+.fade-scale-enter-active,.fade-scale-leave-active{transition:all 0.5s cubic-bezier(0.35,0,0.25,1)}
+.fade-scale-enter-from{opacity:0;transform:scale(0.96) translateY(16px)}
+.fade-scale-leave-to{opacity:0;transform:scale(1.02) translateY(-12px)}
+.fade-slide-enter-active,.fade-slide-leave-active{transition:all 0.45s cubic-bezier(0.35,0,0.25,1)}
+.fade-slide-enter-from{opacity:0;transform:translateY(-24px)}
+.fade-slide-leave-to{opacity:0;transform:translateY(12px)}
 .slide-right-enter-active,.slide-right-leave-active{transition:all 0.3s}.slide-right-enter-from,.slide-right-leave-to{transform:translateX(100%);opacity:0}
 .drop-enter-active,.drop-leave-active{transition:all 0.2s}.drop-enter-from,.drop-leave-to{opacity:0;transform:translateY(-8px)}
 

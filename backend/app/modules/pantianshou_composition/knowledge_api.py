@@ -1293,6 +1293,23 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 "bbox": payload.get("bbox"),  # 添加 bbox 字段
             })
         
+        # ---- 内容级去重：同一段文字可能被不同 query/collection 命中，按 (book_id, content_fingerprint) 去重 ----
+        seen_content = set()
+        deduped_results = []
+        for r in results:
+            if r.get("result_type") == "image":
+                img_url = (r.get("image") or {}).get("url") or (r.get("associated_images") or [{}])[0].get("url", "")
+                key = f"img:{img_url}" if img_url else f"img:{r.get('vector_id')}"
+            else:
+                content_key = (r.get("content") or "")[:80].strip()
+                book_id = r.get("book_id", "")
+                key = f"txt:{book_id}:{content_key}"
+            if key not in seen_content:
+                seen_content.add(key)
+                deduped_results.append(r)
+        logger.info("内容去重: before=%d, after=%d", len(results), len(deduped_results))
+        results = deduped_results
+
         # 记录搜索历史（相同 query 只保留最新一条）
         existing = db.query(SearchHistory).filter(
             SearchHistory.query == request.query
