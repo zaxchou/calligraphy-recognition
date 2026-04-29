@@ -85,8 +85,8 @@
           </div>
           <!-- 面积统计（右下角） -->
           <div v-if="item.inscriptionPercent !== undefined || item.paintingPercent > 0" class="gallery-labels">
-            <span v-if="item.inscriptionPercent !== undefined" class="gallery-label stat-label danger">{{ item.inscriptionPercent?.toFixed(1) }}%</span>
-            <span v-if="item.paintingPercent > 0" class="gallery-label stat-label primary">{{ item.paintingPercent?.toFixed(1) }}%画</span>
+            <span v-if="item.inscriptionPercent !== undefined" class="gallery-label stat-label danger">{{ item.inscriptionPercent?.toFixed(1) }}%题跋</span>
+            <span v-if="item.paintingPercent > 0" class="gallery-label stat-label primary">{{ item.paintingPercent?.toFixed(1) }}%绘画</span>
           </div>
         </div>
         <div class="gallery-info">
