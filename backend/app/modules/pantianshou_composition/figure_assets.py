@@ -220,14 +220,20 @@ def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
         return _qdrant_cache[fid] or None
     try:
         from app.modules.pantianshou_composition.qdrant_client import scroll_by_filter, KNOWLEDGE_IMAGES_COLLECTION
-        flt = {"must": [{"key": "figure_id", "match": {"value": fid}}]}
-        points = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, flt, limit=2)
-        for pt in points:
-            payload = pt.get("payload") or {}
-            url = payload.get("image_url") or payload.get("stored_url")
-            if url:
-                _qdrant_cache[fid] = url
-                return url
+        candidates = [fid]
+        # also try without parenthetical/sub-figure suffix (图一① → 图一)
+        cleaned = re.sub(r'[\(\)（（）①②③④⑤⑥⑦⑧⑨⑩⑪⑫].*$', '', fid).strip()
+        if cleaned and cleaned != fid:
+            candidates.append(cleaned)
+        for cid in candidates:
+            flt = {"must": [{"key": "figure_id", "match": {"value": cid}}]}
+            points = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, flt, limit=2)
+            for pt in points:
+                payload = pt.get("payload") or {}
+                url = payload.get("image_url") or payload.get("stored_url")
+                if url:
+                    _qdrant_cache[fid] = url
+                    return url
         _qdrant_cache[fid] = ""
         return None
     except Exception:

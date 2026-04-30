@@ -328,9 +328,10 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
             (cheng_pt[0], cheng_pt[1], zhuan_pt[0], zhuan_pt[1]),
             (zhuan_pt[0], zhuan_pt[1], he_pt[0], he_pt[1]),
         ]
-        from app.modules.pantianshou_composition.qichengzhuanhe import draw_arrows_on_lineart
+        from app.modules.pantianshou_composition.qichengzhuanhe import draw_arrows_on_lineart, generate_lineart
         from app.modules.pantianshou_composition.storage import get_arrow_overlay_path, ensure_composition_dirs, build_static_url, THUMBNAIL_SIZE
-        arrow_canvas = draw_arrows_on_lineart(ctx.img_bgr, arrows, labels)
+        lineart = generate_lineart(ctx.img_bgr)
+        arrow_canvas = draw_arrows_on_lineart(lineart, arrows, labels)
         arrow_path = get_arrow_overlay_path(ctx.task_id)
         cv2.imwrite(arrow_path, arrow_canvas)
         dirs = ensure_composition_dirs()
