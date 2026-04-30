@@ -356,6 +356,37 @@ def analyze_arrow_flow(ctx: CompositionContext) -> None:
         # 不中断主流程，起承转合分析失败不影响其他阶段
 
 
+def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> List[str]:
+    try:
+        from app.modules.pantianshou_composition.embedding_service import EmbeddingService
+        from app.modules.pantianshou_composition import qdrant_client as qc
+
+        terms = set()
+        for r in (matched_rules or [])[:8]:
+            for k in ("rule_name", "category", "subcategory"):
+                v = (r.get(k) or "").strip()
+                if v:
+                    terms.add(v)
+        if not terms:
+            return []
+        search_query = "。".join(sorted(terms))
+        service = EmbeddingService()
+        emb_result = service.embed_text_sync(search_query)
+        if not emb_result or not emb_result.embedding:
+            return []
+        hits = qc.search_collection(
+            qc.KNOWLEDGE_TEXTS_COLLECTION,
+            emb_result.embedding,
+            limit=5,
+        )
+        chunks = [h.get("payload", {}).get("content", "") for h in (hits or [])]
+        logger = __import__("logging").getLogger(__name__)
+        logger.info("知识库原文搜索: query_terms=%d, hits=%d", len(terms), len(chunks))
+        return [c for c in chunks if c]
+    except Exception:
+        return []
+
+
 def write_llm_narrative(ctx: CompositionContext) -> None:
     """调用 LLM 生成构图分析讲评，结果存入 ctx.llm。"""
     issues = ctx.issues or []
@@ -364,6 +395,9 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
     theory_basis = ctx.theory_basis or []
     matched_rules = ctx.matched_rules or []
     metrics = ctx.metrics
+
+    # ---- 搜索知识库原文（潘天寿+花鸟教程），注入 LLM prompt 增强讲评权威性 ----
+    context_knowledge = _fetch_knowledge_context(matched_rules)
 
     # Pre-compute dimension scores so LLM uses real scores in its table
     _total, _dims = build_dimension_scores(metrics, adv=ctx.advanced_metrics)
@@ -412,6 +446,7 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
             if (r.get("reference_images") or [{}])[0].get("image_url")
         ][:5],
         dimension_scores=dim_scores_payload,
+        context_knowledge=context_knowledge,
     )
 
 

@@ -48,6 +48,24 @@ def _safe_json(obj: Any, max_len: int = 4000) -> str:
     return s[: max_len - 3] + "..."
 
 
+def _safe_knowledge(chunks: List[str] | None, max_total: int = 2000) -> str:
+    if not chunks:
+        return "暂无相关原文"
+    lines = []
+    total = 0
+    for i, c in enumerate(chunks):
+        text = (c or "").strip()[:250]
+        if not text:
+            continue
+        line = f"[{i+1}] {text}"
+        if total + len(line) > max_total:
+            lines.append(f"[{i+1}] ...(已截断，共{len(chunks)}段原文可达)")
+            break
+        lines.append(line)
+        total += len(line)
+    return "\n".join(lines) if lines else "暂无相关原文"
+
+
 def _slim_example_images(images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Only keep essential fields for example images to save tokens."""
     out = []
@@ -75,19 +93,25 @@ def _slim_comparisons(comparisons: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
 
 def _build_score_table(dimension_scores: Optional[Dict[str, Any]]) -> str:
-    """Build a formatted score table string for the LLM prompt."""
     if not dimension_scores:
         return "暂无系统评分数据，请根据分析自行给出合理评分。"
     dims = dimension_scores.get("dimensions", [])
     total = dimension_scores.get("total_score", "—")
     if not dims:
         return f"总分: {total}，各维度分数暂缺。"
-    lines = [f"总分: {total}分", "各维度得分:"]
+    lines = [f"总分: {total}分", "各维度得分与分析:"]
     for d in dims:
         name = d.get("name", "—")
         score = d.get("score", 0)
         max_score = d.get("max", 0)
-        lines.append(f"  - {name}: {score}/{max_score}")
+        analysis = (d.get("analysis") or "").strip()
+        suggest = (d.get("suggestion") or "").strip()
+        line = f"  - {name}: {score}/{max_score}"
+        if analysis:
+            line += f" | 系统分析: {analysis[:120]}"
+        if suggest and suggest != analysis:
+            line += f" | 建议: {suggest[:100]}"
+        lines.append(line)
     return "\n".join(lines)
 
 
@@ -102,6 +126,7 @@ def generate_composition_narrative(
     comparisons: List[Dict[str, Any]],
     theory_basis: List[Dict[str, Any]],
     example_images: List[Dict[str, Any]],
+    context_knowledge: List[str] | None = None,
     model: Optional[str] = None,
     dimension_scores: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -156,6 +181,9 @@ def generate_composition_narrative(
 【对比差异 comparisons】{_safe_json(_slim_comparisons(comparisons))}
 【原文依据 theory_basis（来自 pan.md + panplus.md 规则表）】{_safe_json(theory_basis)}
 【可用示例图片（用于插入正文）example_images】{_safe_json(_slim_example_images(example_images))}
+
+【知识库原文 context_knowledge（来自潘天寿《关于构图问题》+《中国写意花鸟画教程》中与当前作品最相关的原文节选，请在分析中参考引述这些原文观点与案例，让讲评更有权威依据）】
+{_safe_knowledge(context_knowledge)}
 
 输出要求：
 1) 必须输出 Markdown，结构参考：

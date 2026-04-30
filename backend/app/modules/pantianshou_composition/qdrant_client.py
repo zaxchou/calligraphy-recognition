@@ -119,10 +119,7 @@ def search_rules(vector: List[float], limit: int = 5, rule_type: str | None = No
 
 
 def search_cases(vector: List[float], limit: int = 3) -> List[Dict[str, Any]]:
-    # Search uploaded images in knowledge_images (1024-dim multimodal embeddings).
-    # composition_cases has been deprecated — all images now live in knowledge_images.
-    flt = {"must": [{"key": "source", "match": {"value": "uploaded_images"}}]}
-    return _search(KNOWLEDGE_IMAGES_COLLECTION, vector, limit=limit, query_filter=flt)
+    return _search(KNOWLEDGE_IMAGES_COLLECTION, vector, limit=limit)
 
 
 def ensure_collection(collection: str, vector_size: int = 512, recreate: bool = False) -> bool:
