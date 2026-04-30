@@ -228,17 +228,29 @@ def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
         for cid in candidates:
             flt = {"must": [{"key": "figure_id", "match": {"value": cid}}]}
             points = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, flt, limit=2)
-            for pt in points:
-                payload = pt.get("payload") or {}
-                url = payload.get("image_url") or payload.get("stored_url")
-                if url:
-                    _qdrant_cache[fid] = url
-                    import logging
-                    logging.getLogger(__name__).info("Qdrant figure found: %s → %s (via cid=%s)", fid, url[:60], cid)
-                    return url
+            if points:
+                for pt in points:
+                    payload = pt.get("payload") or {}
+                    url = payload.get("image_url") or payload.get("stored_url")
+                    actual_fid = payload.get("figure_id", "")
+                    if url:
+                        _qdrant_cache[fid] = url
+                        import logging
+                        logging.getLogger(__name__).info("Qdrant figure found: %s → %s (cid=%s, actual=%s)", fid, url[:60], cid, actual_fid)
+                        return url
+                # points found but no url
+                p0 = points[0].get("payload", {})
+                import logging
+                logging.getLogger(__name__).warning("Qdrant figure HIT but no url: %s (cid=%s) payload keys=%s", fid, cid, list(p0.keys())[:8])
         _qdrant_cache[fid] = ""
         import logging
-        logging.getLogger(__name__).warning("Qdrant figure MISS: %s (tried %s)", fid, candidates)
+        gid = ""
+        try:
+            pts = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, {}, limit=3)
+            gid = [p.get("payload", {}).get("figure_id", "?") for p in (pts or [])[:3]]
+        except Exception:
+            pass
+        logging.getLogger(__name__).warning("Qdrant figure MISS: %s (tried %s), sample_ids=%s", fid, candidates, gid)
         return None
     except Exception:
         _qdrant_cache[fid] = ""

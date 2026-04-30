@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 def _pipeline_log(msg: str) -> None:
     import datetime
     try:
-        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "pipeline.log")
+        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "pipeline.log")
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} {msg}\n")
     except Exception:
@@ -319,12 +319,13 @@ def analyze_arrow_flow(ctx: CompositionContext) -> None:
 
 def draw_qczh_from_llm(ctx: CompositionContext) -> None:
     llm_result = ctx.llm or {}
-    llm_text = llm_result.get("text") or ""
+    llm_text = llm_result.get("_raw_text") or llm_result.get("text") or ""
     if not llm_text:
         return
     coords = extract_qczh_coords(llm_text)
     if not coords:
-        _pipeline_log("[arrow] no qczh coords extracted from LLM text")
+        tail = llm_text[-500:] if len(llm_text) > 500 else llm_text
+        _pipeline_log(f"[arrow] no qczh coords. LLM tail: {tail[:300]}")
         return
     try:
         qi = coords.get("qi") or {}

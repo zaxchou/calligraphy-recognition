@@ -252,10 +252,11 @@ def generate_composition_narrative(
             text = (content or "").strip()
             if text.startswith("```"):
                 text = text.lstrip("`").strip()
+            raw_text = text
             text = _postprocess_text(text, example_images, dimension_scores=dimension_scores)
             if finish_reason == "length":
                 text += "\n\n> ⚠️ *（内容因长度限制被截断，部分分析未完整输出）*"
-            return {"ok": True, "model": model, "text": text, "finish_reason": finish_reason}
+            return {"ok": True, "model": model, "text": text, "finish_reason": finish_reason, "_raw_text": raw_text}
     except Exception as e:
         fallback = (settings.QWEN_MODEL or "").strip()
         if fallback and fallback != model:
@@ -271,10 +272,11 @@ def generate_composition_narrative(
                     text = (content or "").strip()
                     if text.startswith("```"):
                         text = text.lstrip("`").strip()
+                    raw_text = text
                     text = _postprocess_text(text, example_images, dimension_scores=dimension_scores)
                     if finish_reason == "length":
                         text += "\n\n> ⚠️ *（内容因长度限制被截断，部分分析未完整输出）*"
-                    return {"ok": True, "model": fallback, "text": text, "finish_reason": finish_reason}
+                    return {"ok": True, "model": fallback, "text": text, "finish_reason": finish_reason, "_raw_text": raw_text}
             except Exception:
                 pass
         return {"ok": False, "error": str(e), "model": model}
