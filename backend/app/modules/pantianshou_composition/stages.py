@@ -361,7 +361,8 @@ def _extract_qczh_from_glm(img_bgr) -> dict | None:
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
         ]}],
-        "stream": False, "max_tokens": 1024, "temperature": 0.1,
+        "stream": False, "max_tokens": 4096, "temperature": 0.1,
+        "thinking": {"type": "disabled"},
     }
     headers = {"Authorization": f"Bearer {settings.ZHIPU_API_KEY}", "Content-Type": "application/json"}
     for attempt in range(3):
