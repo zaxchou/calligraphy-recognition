@@ -29,6 +29,17 @@ from app.modules.pantianshou_composition.rule_matcher import select_rules
 from app.modules.pantianshou_composition.storage import build_static_url, get_heatmap_path, get_pdf_path, get_report_json_path, read_upload_meta, to_abs_path
 
 logger = logging.getLogger(__name__)
+
+
+def _pipeline_log(msg: str) -> None:
+    import datetime
+    try:
+        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "pipeline.log")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} {msg}\n")
+    except Exception:
+        pass
+
 settings = get_settings()
 
 
@@ -283,13 +294,14 @@ def search_and_match(ctx: CompositionContext) -> None:
 
     issues, matched_rules, theory_basis = _build_rules_payload(sel)
     n_with_images = sum(1 for r in (matched_rules or []) if r.get("reference_images"))
-    logger.info("search_and_match: %d rules (ref_figs=%d rules_with=%d matched, %d with images)",
-                len(matched_rules or []),
-                sum(1 for r in (matched_rules or []) if r.get("reference_figures")),
-                n_with_images)
-    if n_with_images == 0 and any(r.get("reference_figures") for r in (matched_rules or [])):
-        logger.warning("All reference_figures lookup failed (filesystem+Qdrant) — report will have no illustrations")
+    _pipeline_log(f"[search] rules={len(matched_rules or [])}, with_ref_figs={sum(1 for r in (matched_rules or []) if r.get('reference_figures'))}, with_images={n_with_images}")
+    if matched_rules:
+        for r in matched_rules[:3]:
+            refs = r.get("reference_figures", [])
+            imgs = r.get("reference_images", [])
+            _pipeline_log(f"  rule={r.get('rule_id')} refs={refs[:2]} imgs={[i.get('image_url','')[:50] for i in imgs]}")
     references = _build_references(case_hits)
+    _pipeline_log(f"[search] case_hits={len(case_hits or [])}")
     comparisons = _build_comparisons(references, ctx.metrics, bucket=ctx.bucket)
     checks = _build_checks(ctx.metrics)
 
@@ -312,7 +324,7 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
         return
     coords = extract_qczh_coords(llm_text)
     if not coords:
-        logger.warning("Arrow draw: no qczh coords found in LLM output for %s", ctx.task_id)
+        _pipeline_log("[arrow] no qczh coords extracted from LLM text")
         return
     try:
         qi = coords.get("qi") or {}
@@ -372,9 +384,9 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
             "llm_analysis": "",
             "thumb_url": build_static_url(rel_thumb),
         }
-        logger.info("Arrow draw from LLM: %s path=%s", ctx.task_id, coords.get("path_shape"))
+        _pipeline_log(f"[arrow] ok qi=({qi_pt[0]},{qi_pt[1]})->he=({he_pt[0]},{he_pt[1]}) path={coords.get('path_shape')} swapped={qi_he_swapped}")
     except Exception as e:
-        logger.warning("Arrow draw failed for %s: %s", ctx.task_id, e, exc_info=True)
+        _pipeline_log(f"[arrow] FAIL: {e}")
 
 
 def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> List[str]:
@@ -434,7 +446,10 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
         for r in (matched_rules[:8] if isinstance(matched_rules, list) else [])
         if (r.get("reference_images") or [{}])[0].get("image_url")
     ][:5]
-    logger.info("write_llm_narrative: %d example_images for LLM prompt", len(example_images))
+    _pipeline_log(f"[llm] example_images={len(example_images)}, context_chunks={len(context_knowledge)}")
+    if example_images:
+        for ei in example_images[:2]:
+            _pipeline_log(f"  img: url={ei.get('image_url','')[:60]}")
 
     ctx.llm = generate_composition_narrative(
         image_path=to_abs_path(ctx.job.upload_path),

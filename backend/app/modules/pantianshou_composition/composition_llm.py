@@ -291,6 +291,10 @@ def _postprocess_text(text: str, example_images: List[Dict[str, Any]], dimension
     t = (text or "").strip()
     t = _FORBIDDEN_RE.sub("", t)
 
+    # --- Strip qczh coords JSON block from final text (used internally, not shown) ---
+    t = re.sub(r'\n?```json\s*\n\{[^{}]*"qi"\s*:.*?"path_shape"[^}]*\}\s*\n```', '', t, flags=re.DOTALL)
+    t = re.sub(r'\n?\{[^{}]*"qi"\s*:\s*\{[^}]*\}[^}]*"path_shape"[^}]*\}', '', t, flags=re.DOTALL)
+
     # --- Build whitelist of valid image URLs from example_images ---
     valid_urls = set()
     for img in (example_images or []):
