@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import logging
 import os
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.log"), encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
