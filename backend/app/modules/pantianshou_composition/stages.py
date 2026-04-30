@@ -324,8 +324,9 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
             x = float(pt.get("x", 50))
             y = float(pt.get("y", 50))
             return min(x, y, 100 - x, 100 - y)
+        qi_he_swapped = False
         if _edge_dist(qi) > _edge_dist(he):
-            logger.info("Swapping qi/he: qi_edge=%.0f > he_edge=%.0f", _edge_dist(qi), _edge_dist(he))
+            qi_he_swapped = True
             qi, he = he, qi
         img_h, img_w = ctx.img_bgr.shape[:2]
         qi_pt = (int(qi["x"] * img_w / 100), int(qi["y"] * img_h / 100))
@@ -338,6 +339,8 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
             zhuan.get("label") or "转",
             he.get("label") or "合",
         ]
+        if qi_he_swapped:
+            labels[0], labels[3] = labels[3], labels[0]
         arrows = [
             (qi_pt[0], qi_pt[1], cheng_pt[0], cheng_pt[1]),
             (cheng_pt[0], cheng_pt[1], zhuan_pt[0], zhuan_pt[1]),
