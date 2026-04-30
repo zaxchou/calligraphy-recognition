@@ -19,11 +19,65 @@ def _plog(msg: str) -> None:
     import datetime
     try:
         if _plog_path is None:
-            _plog_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "pipeline.log")
+            _plog_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "pipeline.log")
         with open(_plog_path, "a", encoding="utf-8") as f:
             f.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} [figure] {msg}\n")
     except Exception:
         pass
+
+
+def _build_qdrant_cache() -> Dict[str, str]:
+    try:
+        from app.modules.pantianshou_composition.qdrant_client import scroll_by_filter, KNOWLEDGE_IMAGES_COLLECTION
+        pts = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, {}, limit=500)
+        out = {}
+        for pt in (pts or []):
+            p = pt.get("payload") or {}
+            fid = p.get("figure_id", "")
+            url = p.get("image_url") or p.get("stored_url", "")
+            if fid and url:
+                out[str(fid)] = url
+        _plog(f"qdrant_cache built: {len(pts)} points, {len(out)} with url")
+        return out
+    except Exception as e:
+        _plog(f"qdrant_cache FAIL: {e}")
+        return {}
+
+
+def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
+    global _qdrant_cache, _qdrant_full_cache
+    if _qdrant_cache is None:
+        _qdrant_cache = {}
+    fid = str(figure_id)
+    if fid in _qdrant_cache:
+        return _qdrant_cache[fid] or None
+    if _qdrant_full_cache is None:
+        _qdrant_full_cache = _build_qdrant_cache()
+    if not _qdrant_full_cache:
+        _qdrant_cache[fid] = ""
+        return None
+    candidates = [fid]
+    cleaned = re.sub(r'[\(\)（（）①②③④⑤⑥⑦⑧⑨⑩⑪⑫].*$', '', fid).strip()
+    if cleaned and cleaned != fid:
+        candidates.append(cleaned)
+    for cid in candidates:
+        if cid in _qdrant_full_cache:
+            url = _qdrant_full_cache[cid]
+            _qdrant_cache[fid] = url
+            _plog(f"FOUND: {fid} → {url[:60]}")
+            return url
+    # Fuzzy: extract Chinese number from fid and try matching
+    num_match = re.search(r'[一二三四五六七八九十百〇]+', fid)
+    if num_match:
+        num = num_match.group(0)
+        for k, v in _qdrant_full_cache.items():
+            if num in k:
+                _qdrant_cache[fid] = v
+                _plog(f"FUZZY_MATCH: {fid} → {v[:60]} (via num={num} matched key={k})")
+                return v
+    _qdrant_cache[fid] = ""
+    _plog(f"MISS: {fid} tried={candidates}, qdrant_keys_sample={list(_qdrant_full_cache.keys())[:10]}")
+    return None
 
 
 _cache: Dict[str, Tuple[str, str]] | None = None
@@ -226,47 +280,6 @@ def figure_image_path(figure_id: str, *, bird_flower: bool = False) -> Optional[
     return v[0] if v else None
 
 
-def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
-    global _qdrant_cache
-    if _qdrant_cache is None:
-        _qdrant_cache = {}
-    fid = str(figure_id)
-    if fid in _qdrant_cache:
-        return _qdrant_cache[fid] or None
-    try:
-        from app.modules.pantianshou_composition.qdrant_client import scroll_by_filter, KNOWLEDGE_IMAGES_COLLECTION
-        candidates = [fid]
-        # also try without parenthetical/sub-figure suffix (图一① → 图一)
-        cleaned = re.sub(r'[\(\)（（）①②③④⑤⑥⑦⑧⑨⑩⑪⑫].*$', '', fid).strip()
-        if cleaned and cleaned != fid:
-            candidates.append(cleaned)
-        for cid in candidates:
-            flt = {"must": [{"key": "figure_id", "match": {"value": cid}}]}
-            points = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, flt, limit=2)
-            if points:
-                for pt in points:
-                    payload = pt.get("payload") or {}
-                    url = payload.get("image_url") or payload.get("stored_url")
-                    actual_fid = payload.get("figure_id", "")
-                    if url:
-                        _qdrant_cache[fid] = url
-                        _plog(f"FOUND: {fid} → {url[:60]} (cid={cid}, actual={actual_fid})")
-                        return url
-                p0 = points[0].get("payload", {})
-                _plog(f"HIT_NO_URL: {fid} (cid={cid}) keys={list(p0.keys())[:8]}")
-        _qdrant_cache[fid] = ""
-        gid = ""
-        try:
-            pts = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, {}, limit=3)
-            gid = [p.get("payload", {}).get("figure_id", "?") for p in (pts or [])[:3]]
-        except Exception:
-            pass
-        _plog(f"MISS: {fid} tried={candidates} sample_ids={gid}")
-        return None
-    except Exception:
-        _qdrant_cache[fid] = ""
-        return None
-
-
 # Qdrant figure_id -> url cache
 _qdrant_cache: Dict[str, str] | None = None
+_qdrant_full_cache: Dict[str, str] | None = None
