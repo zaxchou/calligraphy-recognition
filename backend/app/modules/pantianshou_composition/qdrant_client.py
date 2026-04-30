@@ -106,6 +106,31 @@ def _search(collection: str, vector: List[float], limit: int = 5, query_filter: 
         return []
     except Exception as e:
         logger.error("Qdrant 搜索未知错误 [%s]: %s", collection, e)
+        return results
+
+
+def scroll_by_filter(
+    collection: str,
+    query_filter: Dict[str, Any],
+    limit: int = 5,
+) -> List[Dict[str, Any]]:
+    base = _base_url()
+    if not base:
+        return []
+    url = f"{base}/collections/{collection}/points/scroll"
+    try:
+        client = _get_client(5.0)
+        r = client.post(url, json={
+            "filter": query_filter,
+            "limit": limit,
+            "with_payload": True,
+            "with_vector": False,
+        }, headers=_headers())
+        r.raise_for_status()
+        data = r.json()
+        return data.get("result", {}).get("points", [])
+    except Exception as e:
+        logger.error("Qdrant scroll 失败 [%s]: %s", collection, e)
         return []
 
 

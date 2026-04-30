@@ -16,8 +16,8 @@ from app.modules.pantianshou_composition.pipeline import StageMaps, try_get_redi
 from app.modules.pantianshou_composition.progress import update_job
 from app.modules.pantianshou_composition.stages import (
     CompositionContext,
-    analyze_arrow_flow,
     detect_placeholder,
+    draw_qczh_from_llm,
     extract_feature_vector,
     load_job_image,
     preprocess_image,
@@ -140,19 +140,19 @@ def analyze_composition(self, task_id: str) -> None:
             task_id=task_id,
             r=r,
             bucket=bucket,
-            stage="arrow_analysis",
+            stage="llm_narrative",
             maps=maps,
-            message="正在分析起承转合",
-            fn=lambda: analyze_arrow_flow(ctx),
+            message="正在生成更丰富的文字讲评",
+            fn=lambda: write_llm_narrative(ctx),
         )
         run_stage(
             task_id=task_id,
             r=r,
             bucket=bucket,
-            stage="llm_narrative",
+            stage="arrow_analysis",
             maps=maps,
-            message="正在生成更丰富的文字讲评",
-            fn=lambda: write_llm_narrative(ctx),
+            message="正在根据讲评绘制起承转合箭头",
+            fn=lambda: draw_qczh_from_llm(ctx),
         )
         run_stage(
             task_id=task_id,

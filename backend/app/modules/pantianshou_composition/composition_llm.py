@@ -41,6 +41,18 @@ def _build_chat_url(base_url: str) -> str:
     return f"{base}/chat/completions"
 
 
+def extract_qczh_coords(llm_text: str) -> dict | None:
+    m = re.search(r'```json\s*\n(\{.*?"qi".*?\})\s*\n```', llm_text, re.DOTALL)
+    if not m:
+        m = re.search(r'\{[^{}]*"qi"\s*:\s*\{[^}]*\}[^}]*"path_shape"[^}]*\}', llm_text, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1) if m.lastindex else m.group(0))
+    except (json.JSONDecodeError, KeyError):
+        return None
+
+
 def _safe_json(obj: Any, max_len: int = 4000) -> str:
     s = json.dumps(obj, ensure_ascii=False)
     if len(s) <= max_len:
@@ -202,7 +214,13 @@ def generate_composition_narrative(
    c) example_images 中的 title/note/caption 字段说明了该图对应的构图规则，请据此判断图片应放在哪个维度或建议段落。
    d) 只能使用 example_images 中提供的 image_url，不得编造路径。如无合适图片可跳过。
 7) 新增维度（均衡节奏/穿插结构/边角空间）的建议可适当引用刘海勇《中国写意花鸟画教程》中的概念，如"杆秤式平衡""女字交叉""金边银角""大实空白"等。
-8) 【重要】必须完整输出所有内容直至"结语"部分。不要因为篇幅限制而中途截断。如果空间不够，适当精简每段的论述，但确保7个维度分析和精进建议全部输出。"""
+8) 【重要】必须完整输出所有内容直至"结语"部分。不要因为篇幅限制而中途截断。如果空间不够，适当精简每段的论述，但确保7个维度分析和精进建议全部输出。
+9) 【起承转合坐标标注——新增要求】
+   在"结语"后空一行，输出一个 JSON 代码块，标注画面起承转合四点坐标（百分比，x∈[0,100], y∈[0,100]，原点在左上角）。四点必须与你在正文分析中描述的起承转合完全对应：
+   ```json
+   {"qi":{"x":85,"y":90,"label":"起·鸡足踏地"},"cheng":{"x":55,"y":60,"label":"承·枝条穿插"},"zhuan":{"x":35,"y":35,"label":"转·花头方向"},"he":{"x":20,"y":12,"label":"合·题款收束"},"path_shape":"之字形"}
+   ```
+   要求：label 尽量简洁（5字内）；path_shape 为"之字形"/"对角线"/"三角形"/"回环"/"上升"之一；qi 坐标通常靠近画面边缘。"""
 
     payload: Dict[str, Any] = {
         "model": model,

@@ -20,8 +20,8 @@ from app.modules.pantianshou_composition.analyzer import (
     to_feature_vector_1024,
 )
 from app.modules.pantianshou_composition.composition_cv import compute_advanced_metrics
-from app.modules.pantianshou_composition.composition_llm import generate_composition_narrative
-from app.modules.pantianshou_composition.figure_assets import figure_image_path, figure_image_url
+from app.modules.pantianshou_composition.composition_llm import generate_composition_narrative, extract_qczh_coords
+from app.modules.pantianshou_composition.figure_assets import figure_image_path, figure_image_url, figure_image_url_from_qdrant
 from app.modules.pantianshou_composition.pdf_generator import generate_rich_pdf
 from app.modules.pantianshou_composition.qdrant_client import search_cases
 from app.modules.pantianshou_composition.report_builder import build_report, build_dimension_scores
@@ -103,6 +103,8 @@ def _build_rules_payload(sel: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Lis
         is_bird_flower = (rule_source == "panplus.md")
         for fid in ref_figs[:6]:
             url = figure_image_url(str(fid), bird_flower=is_bird_flower)
+            if not url:
+                url = figure_image_url_from_qdrant(str(fid))
             if url:
                 ref_images.append({"figure_id": str(fid), "image_url": url})
         rel = float(rr.get("relevance") or 0.0)
@@ -293,67 +295,67 @@ def search_and_match(ctx: CompositionContext) -> None:
 
 
 def analyze_arrow_flow(ctx: CompositionContext) -> None:
-    """起承转合分析阶段：调用共享模块 qichengzhuanhe.analyze_qichengzhuanhe()。
+    pass
 
-    将结果存入 ctx.arrow_analysis 和 ctx.arrow_overlay_url。
-    同时生成缩略图。
-    失败不中断主流程。
-    """
+
+def draw_qczh_from_llm(ctx: CompositionContext) -> None:
+    llm_result = ctx.llm or {}
+    llm_text = llm_result.get("text") or ""
+    if not llm_text:
+        return
+    coords = extract_qczh_coords(llm_text)
+    if not coords:
+        logger.warning("Arrow draw: no qczh coords found in LLM output for %s", ctx.task_id)
+        return
     try:
-        from app.modules.pantianshou_composition.qichengzhuanhe import analyze_qichengzhuanhe
+        qi = coords.get("qi") or {}
+        cheng = coords.get("cheng") or {}
+        zhuan = coords.get("zhuan") or {}
+        he = coords.get("he") or {}
+        img_h, img_w = ctx.img_bgr.shape[:2]
+        qi_pt = (int(qi["x"] * img_w / 100), int(qi["y"] * img_h / 100))
+        cheng_pt = (int(cheng["x"] * img_w / 100), int(cheng["y"] * img_h / 100))
+        zhuan_pt = (int(zhuan["x"] * img_w / 100), int(zhuan["y"] * img_h / 100))
+        he_pt = (int(he["x"] * img_w / 100), int(he["y"] * img_h / 100))
+        labels = [
+            qi.get("label") or "起",
+            cheng.get("label") or "承",
+            zhuan.get("label") or "转",
+            he.get("label") or "合",
+        ]
+        arrows = [
+            (qi_pt[0], qi_pt[1], cheng_pt[0], cheng_pt[1]),
+            (cheng_pt[0], cheng_pt[1], zhuan_pt[0], zhuan_pt[1]),
+            (zhuan_pt[0], zhuan_pt[1], he_pt[0], he_pt[1]),
+        ]
+        from app.modules.pantianshou_composition.qichengzhuanhe import draw_arrows_on_lineart
         from app.modules.pantianshou_composition.storage import get_arrow_overlay_path, ensure_composition_dirs, build_static_url, THUMBNAIL_SIZE
-
-        result = analyze_qichengzhuanhe(ctx.img_bgr)
-        arrow_canvas = result["arrow_canvas"]
-
-        # 保存箭头叠加图（原图）
+        arrow_canvas = draw_arrows_on_lineart(ctx.img_bgr, arrows, labels)
         arrow_path = get_arrow_overlay_path(ctx.task_id)
         cv2.imwrite(arrow_path, arrow_canvas)
-
-        # 生成缩略图
         dirs = ensure_composition_dirs()
         arrow_thumb_path = os.path.join(dirs["thumbs_dir"], f"{ctx.task_id}_arrow.jpg")
         h, w = arrow_canvas.shape[:2]
         if w > h:
-            new_w = THUMBNAIL_SIZE
-            new_h = int(h * THUMBNAIL_SIZE / w)
+            new_w, new_h = THUMBNAIL_SIZE, int(h * THUMBNAIL_SIZE / w)
         else:
-            new_h = THUMBNAIL_SIZE
-            new_w = int(w * THUMBNAIL_SIZE / h)
-        arrow_thumb = cv2.resize(arrow_canvas, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        cv2.imwrite(arrow_thumb_path, arrow_thumb, [cv2.IMWRITE_JPEG_QUALITY, 80])
-
+            new_h, new_w = THUMBNAIL_SIZE, int(w * THUMBNAIL_SIZE / h)
+        cv2.imwrite(arrow_thumb_path, cv2.resize(arrow_canvas, (new_w, new_h), interpolation=cv2.INTER_AREA),
+                     [cv2.IMWRITE_JPEG_QUALITY, 80])
         base_data_dir = os.path.dirname(settings.UPLOAD_DIR)
         rel_arrow = os.path.relpath(arrow_path, base_data_dir)
-        arrow_url = build_static_url(rel_arrow)
-        rel_arrow_thumb = os.path.relpath(arrow_thumb_path, base_data_dir)
-        arrow_thumb_url = build_static_url(rel_arrow_thumb)
-
-        # 存入 context
+        rel_thumb = os.path.relpath(arrow_thumb_path, base_data_dir)
+        ctx.arrow_overlay_url = build_static_url(rel_arrow)
         ctx.arrow_analysis = {
-            "arrows": result["arrows"],
-            "arrow_labels": result["arrow_labels"],
-            "llm_analysis": result["llm_analysis"],
-            "path_type": result["path_type"],
-            "points": result["points"],
-            "model": result["model"],
-            "material_type": result.get("material_type", ""),
-            "growth_direction": result.get("growth_direction", ""),
-            "has_inscription": result.get("has_inscription", True),
-            "inscription_edge": result.get("inscription_edge", ""),
-            "seal_positions": result.get("seal_positions", []),
-            # CV+AI 融合数据（v2）
-            "cv_preprocess": result.get("cv_preprocess", {}),
+            "arrows": arrows,
+            "arrow_labels": labels,
+            "path_type": coords.get("path_shape", "之字形"),
+            "llm_analysis": "",
+            "thumb_url": build_static_url(rel_thumb),
         }
-        ctx.arrow_overlay_url = arrow_url
-        # 将缩略图URL也存入arrow_analysis供前端使用
-        ctx.arrow_analysis["thumb_url"] = arrow_thumb_url
-
-        logger.info("Arrow analysis complete for %s, path_type=%s", ctx.task_id, ctx.arrow_analysis.get("path_type"))
-
+        logger.info("Arrow draw from LLM: %s path=%s", ctx.task_id, coords.get("path_shape"))
     except Exception as e:
-        logger.warning("Arrow analysis failed for %s: %s", ctx.task_id, e, exc_info=True)
-        # 不中断主流程，起承转合分析失败不影响其他阶段
+        logger.warning("Arrow draw failed for %s: %s", ctx.task_id, e, exc_info=True)
 
 
 def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> List[str]:

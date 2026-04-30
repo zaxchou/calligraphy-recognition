@@ -209,3 +209,31 @@ def figure_image_path(figure_id: str, *, bird_flower: bool = False) -> Optional[
         if v:
             return v[0]
     return v[0] if v else None
+
+
+def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
+    global _qdrant_cache
+    if _qdrant_cache is None:
+        _qdrant_cache = {}
+    fid = str(figure_id)
+    if fid in _qdrant_cache:
+        return _qdrant_cache[fid] or None
+    try:
+        from app.modules.pantianshou_composition.qdrant_client import scroll_by_filter, KNOWLEDGE_IMAGES_COLLECTION
+        flt = {"must": [{"key": "figure_id", "match": {"value": fid}}]}
+        points = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, flt, limit=2)
+        for pt in points:
+            payload = pt.get("payload") or {}
+            url = payload.get("image_url") or payload.get("stored_url")
+            if url:
+                _qdrant_cache[fid] = url
+                return url
+        _qdrant_cache[fid] = ""
+        return None
+    except Exception:
+        _qdrant_cache[fid] = ""
+        return None
+
+
+# Qdrant figure_id -> url cache
+_qdrant_cache: Dict[str, str] | None = None
