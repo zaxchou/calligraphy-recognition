@@ -233,8 +233,12 @@ def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
                 url = payload.get("image_url") or payload.get("stored_url")
                 if url:
                     _qdrant_cache[fid] = url
+                    import logging
+                    logging.getLogger(__name__).info("Qdrant figure found: %s → %s (via cid=%s)", fid, url[:60], cid)
                     return url
         _qdrant_cache[fid] = ""
+        import logging
+        logging.getLogger(__name__).warning("Qdrant figure MISS: %s (tried %s)", fid, candidates)
         return None
     except Exception:
         _qdrant_cache[fid] = ""

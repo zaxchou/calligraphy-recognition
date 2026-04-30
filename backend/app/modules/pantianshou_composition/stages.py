@@ -282,6 +282,13 @@ def search_and_match(ctx: CompositionContext) -> None:
     sel = select_rules(metrics=ctx.metrics, adv=ctx.advanced_metrics, limit=12)
 
     issues, matched_rules, theory_basis = _build_rules_payload(sel)
+    n_with_images = sum(1 for r in (matched_rules or []) if r.get("reference_images"))
+    logger.info("search_and_match: %d rules (ref_figs=%d rules_with=%d matched, %d with images)",
+                len(matched_rules or []),
+                sum(1 for r in (matched_rules or []) if r.get("reference_figures")),
+                n_with_images)
+    if n_with_images == 0 and any(r.get("reference_figures") for r in (matched_rules or [])):
+        logger.warning("All reference_figures lookup failed (filesystem+Qdrant) — report will have no illustrations")
     references = _build_references(case_hits)
     comparisons = _build_comparisons(references, ctx.metrics, bucket=ctx.bucket)
     checks = _build_checks(ctx.metrics)
@@ -312,6 +319,14 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
         cheng = coords.get("cheng") or {}
         zhuan = coords.get("zhuan") or {}
         he = coords.get("he") or {}
+        # LLM sometimes reverses qi and he; ensure qi is closer to an edge
+        def _edge_dist(pt):
+            x = float(pt.get("x", 50))
+            y = float(pt.get("y", 50))
+            return min(x, y, 100 - x, 100 - y)
+        if _edge_dist(qi) > _edge_dist(he):
+            logger.info("Swapping qi/he: qi_edge=%.0f > he_edge=%.0f", _edge_dist(qi), _edge_dist(he))
+            qi, he = he, qi
         img_h, img_w = ctx.img_bgr.shape[:2]
         qi_pt = (int(qi["x"] * img_w / 100), int(qi["y"] * img_h / 100))
         cheng_pt = (int(cheng["x"] * img_w / 100), int(cheng["y"] * img_h / 100))
@@ -406,6 +421,18 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
     _total, _dims = build_dimension_scores(metrics, adv=ctx.advanced_metrics)
     dim_scores_payload = {"total_score": _total, "dimensions": _dims}
 
+    example_images = [
+        {
+            "title": (r.get("rule_name") or "规则示例").strip(),
+            "image_url": (r.get("reference_images") or [{}])[0].get("image_url"),
+            "caption": (r.get("condition") or "").strip(),
+            "note": f"{r.get('category', '')} · {r.get('rule_name', '')}".strip(" ·"),
+        }
+        for r in (matched_rules[:8] if isinstance(matched_rules, list) else [])
+        if (r.get("reference_images") or [{}])[0].get("image_url")
+    ][:5]
+    logger.info("write_llm_narrative: %d example_images for LLM prompt", len(example_images))
+
     ctx.llm = generate_composition_narrative(
         image_path=to_abs_path(ctx.job.upload_path),
         original_url=ctx.job.original_url,
@@ -438,16 +465,7 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
             }
             for r in (theory_basis[:10] if isinstance(theory_basis, list) else [])
         ],
-        example_images=[
-            {
-                "title": (r.get("rule_name") or "规则示例").strip(),
-                "image_url": (r.get("reference_images") or [{}])[0].get("image_url"),
-                "caption": (r.get("condition") or "").strip(),
-                "note": f"{r.get('category', '')} · {r.get('rule_name', '')}".strip(" ·"),
-            }
-            for r in (matched_rules[:8] if isinstance(matched_rules, list) else [])
-            if (r.get("reference_images") or [{}])[0].get("image_url")
-        ][:5],
+        example_images=example_images,
         dimension_scores=dim_scores_payload,
         context_knowledge=context_knowledge,
     )
