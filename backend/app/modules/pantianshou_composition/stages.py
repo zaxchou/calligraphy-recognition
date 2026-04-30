@@ -389,8 +389,10 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
     try:
         from app.modules.pantianshou_composition.embedding_service import EmbeddingService
         from app.modules.pantianshou_composition import qdrant_client as qc
-        from app.core.database import SessionLocal
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
         from app.modules.pantianshou_composition.models import TextChunk, ExtractedImage
+        import os as _os
 
         terms = set()
         for r in (matched_rules or [])[:8]:
@@ -415,7 +417,11 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
         chunks = [h.get("payload", {}).get("content", "") for h in (hits or [])]
         images: List[Dict[str, Any]] = []
         seen_urls = set()
-        db = SessionLocal()
+        data_dir = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+        knowledge_db = _os.path.join(data_dir, "data", "knowledge.db")
+        kb_engine = create_engine(f"sqlite:///{knowledge_db}", connect_args={"timeout": 30})
+        KbSession = sessionmaker(bind=kb_engine)
+        db = KbSession()
         try:
             for h in (hits or []):
                 vector_id = h.get("id", "")
@@ -439,6 +445,7 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
                     images.append({"title": title, "image_url": url, "caption": note, "note": note})
         finally:
             db.close()
+            kb_engine.dispose()
         _pipeline_log(f"knowledge_context: text_chunks={len(chunks)}, images={len(images)}, query_terms={len(terms)}")
         return [c for c in chunks if c], images[:6]
     except Exception as e:

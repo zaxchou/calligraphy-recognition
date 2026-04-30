@@ -432,8 +432,34 @@ class EmbeddingService:
         return asyncio.run(self.embed_texts(texts, batch_size))
 
     def embed_text_sync(self, text: str) -> EmbeddingResult:
-        """同步版本：单条文本向量化"""
-        return asyncio.run(self.embed_text(text))
+        """同步版本：单条文本向量化（直接 requests，不经过 asyncio）"""
+        h = self._text_hash(text)
+        if h in self._cache:
+            self._cache_hits += 1
+            return EmbeddingResult(
+                embedding=self._cache[h],
+                text=text,
+                dimensions=len(self._cache[h]),
+                cache_hit=True,
+            )
+        self._cache_misses += 1
+        payload = {
+            "model": self.model,
+            "input": [text],
+            "encoding_format": "float",
+        }
+        data = self._sync_post(self.DASHSCOPE_TEXT_API_URL, self.headers, payload)
+        if "data" not in data:
+            raise Exception(f"Embedding API 返回格式错误: {data}")
+        emb = data["data"][0]
+        result = EmbeddingResult(
+            embedding=emb["embedding"],
+            text=text,
+            dimensions=len(emb["embedding"]),
+        )
+        self._cache[h] = result.embedding
+        self._save_persistent_cache()
+        return result
 
     def embed_image_sync(self, image_path: str) -> EmbeddingResult:
         """同步版本：图像向量化（用于 Celery worker 等非异步环境）"""

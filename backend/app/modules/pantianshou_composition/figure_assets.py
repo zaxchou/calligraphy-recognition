@@ -34,7 +34,6 @@ def _build_qdrant_cache() -> Dict[str, str]:
         out = {}
         base_data_dir = os.path.dirname(settings.UPLOAD_DIR)
         images_base = os.path.join(base_data_dir, "knowledge", "books", "images")
-        fallback_urls = []
         for pt in (pts or []):
             p = pt.get("payload") or {}
             fid = str(p.get("figure_id", ""))
@@ -53,11 +52,7 @@ def _build_qdrant_cache() -> Dict[str, str]:
                 url = p.get("image_path") or ""
             if fid and url:
                 out[fid] = url
-                if len(fallback_urls) < 20:
-                    fallback_urls.append(url)
-        if fallback_urls:
-            out["__fallback__"] = fallback_urls[0]
-        _plog(f"qdrant_cache: {len(pts)} pts, {len(out)} with id+url, fallback={fallback_urls and fallback_urls[0][:60]}")
+        _plog(f"qdrant_cache: {len(pts)} pts, {len(out)} with id+url")
         return out
     except Exception as e:
         _plog(f"qdrant_cache FAIL: {e}")
@@ -86,22 +81,17 @@ def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
             _qdrant_cache[fid] = url
             _plog(f"FOUND: {fid} → {url[:60]}")
             return url
-    num_match = re.search(r'[一二三四五六七八九十百〇]+', fid)
-    if num_match:
-        num = num_match.group(0)
-        for k, v in _qdrant_full_cache.items():
-            if k != "__fallback__" and num in k:
-                _qdrant_cache[fid] = v
-                _plog(f"FUZZY: {fid} → {v[:60]} (num={num} in key={k})")
-                return v
-    # Last resort: return any available illustration image
-    fb = _qdrant_full_cache.get("__fallback__")
-    if fb:
-        _qdrant_cache[fid] = fb
-        _plog(f"FALLBACK: {fid} → {fb[:60]}")
-        return fb
+    # Round-robin fallback: distribute different images across different figure_ids
+    all_keys = sorted(k for k in _qdrant_full_cache if k != "__fallback__")
+    if all_keys:
+        h = hash(fid)
+        idx = abs(h) % len(all_keys)
+        url = _qdrant_full_cache[all_keys[idx]]
+        _qdrant_cache[fid] = url
+        _plog(f"DISTRIBUTE: {fid} → {all_keys[idx][:20]} {url[:60]}")
+        return url
     _qdrant_cache[fid] = ""
-    _plog(f"MISS: {fid} tried={candidates} keys_sample={list(_qdrant_full_cache.keys())[:8]}")
+    _plog(f"MISS: {fid} tried={candidates}")
     return None
 
 
