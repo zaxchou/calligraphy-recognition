@@ -29,23 +29,35 @@ def _plog(msg: str) -> None:
 def _build_qdrant_cache() -> Dict[str, str]:
     try:
         from app.modules.pantianshou_composition.qdrant_client import scroll_by_filter, KNOWLEDGE_IMAGES_COLLECTION
+        from app.modules.pantianshou_composition.storage import build_static_url
         pts = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, {}, limit=500)
         out = {}
-        sample_keys = []
+        base_data_dir = os.path.dirname(settings.UPLOAD_DIR)
+        images_base = os.path.join(base_data_dir, "knowledge", "books", "images")
         fallback_urls = []
         for pt in (pts or []):
             p = pt.get("payload") or {}
-            fid = p.get("figure_id", "")
-            url = p.get("image_url") or p.get("stored_url") or p.get("image_path") or ""
+            fid = str(p.get("figure_id", ""))
+            if not fid:
+                continue
+            book_id = p.get("book_id", "")
+            book_img_dir = os.path.join(images_base, book_id)
+            url = ""
+            if os.path.isdir(book_img_dir):
+                files = sorted([f for f in os.listdir(book_img_dir) if f.endswith(('.png', '.jpg', '.jpeg'))])
+                if files:
+                    img_path = os.path.join(book_img_dir, files[0])
+                    rel = os.path.relpath(img_path, base_data_dir)
+                    url = build_static_url(rel)
+            if not url:
+                url = p.get("image_path") or ""
             if fid and url:
-                out[str(fid)] = url
+                out[fid] = url
                 if len(fallback_urls) < 20:
                     fallback_urls.append(url)
-            if len(sample_keys) < 3 and p:
-                sample_keys.append(sorted(p.keys()))
-        _plog(f"qdrant_cache: {len(pts)} pts, {len(out)} with id+url. sample_keys={sample_keys}")
         if fallback_urls:
-            out["__fallback__"] = fallback_urls[0]  # marker
+            out["__fallback__"] = fallback_urls[0]
+        _plog(f"qdrant_cache: {len(pts)} pts, {len(out)} with id+url, fallback={fallback_urls and fallback_urls[0][:60]}")
         return out
     except Exception as e:
         _plog(f"qdrant_cache FAIL: {e}")
