@@ -385,10 +385,12 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
         _pipeline_log(f"[arrow] FAIL: {e}")
 
 
-def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> List[str]:
+def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[str], List[Dict[str, Any]]]:
     try:
         from app.modules.pantianshou_composition.embedding_service import EmbeddingService
         from app.modules.pantianshou_composition import qdrant_client as qc
+        from app.core.database import SessionLocal
+        from app.modules.pantianshou_composition.models import TextChunk, ExtractedImage
 
         terms = set()
         for r in (matched_rules or [])[:8]:
@@ -397,23 +399,48 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> List[str]:
                 if v:
                     terms.add(v)
         if not terms:
-            return []
+            return [], []
         search_query = "。".join(sorted(terms))
         service = EmbeddingService()
         emb_result = service.embed_text_sync(search_query)
         if not emb_result or not emb_result.embedding:
-            return []
+            return [], []
         hits = qc.search_collection(
             qc.KNOWLEDGE_TEXTS_COLLECTION,
             emb_result.embedding,
             limit=5,
         )
         chunks = [h.get("payload", {}).get("content", "") for h in (hits or [])]
-        logger = __import__("logging").getLogger(__name__)
-        logger.info("知识库原文搜索: query_terms=%d, hits=%d", len(terms), len(chunks))
-        return [c for c in chunks if c]
+        images: List[Dict[str, Any]] = []
+        seen_urls = set()
+        db = SessionLocal()
+        try:
+            for h in (hits or []):
+                vector_id = h.get("id", "")
+                if not vector_id:
+                    continue
+                chunk = db.query(TextChunk).filter(TextChunk.vector_id == vector_id).first()
+                if not chunk or not chunk.associated_images:
+                    continue
+                for img_id in chunk.associated_images[:3]:
+                    img = db.query(ExtractedImage).filter(ExtractedImage.id == img_id).first()
+                    if not img or not img.stored_url:
+                        continue
+                    url = img.stored_url
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    fig_id = (img.figure_id or "").strip()
+                    caption = (img.caption or "").strip()
+                    title = fig_id if fig_id else "插图"
+                    note = caption[:120] if caption else ""
+                    images.append({"title": title, "image_url": url, "caption": note, "note": note})
+        finally:
+            db.close()
+        _pipeline_log(f"knowledge_context: text_chunks={len(chunks)}, images={len(images)}, query_terms={len(terms)}")
+        return [c for c in chunks if c], images[:6]
     except Exception:
-        return []
+        return [], []
 
 
 def write_llm_narrative(ctx: CompositionContext) -> None:
@@ -425,27 +452,15 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
     matched_rules = ctx.matched_rules or []
     metrics = ctx.metrics
 
-    # ---- 搜索知识库原文（潘天寿+花鸟教程），注入 LLM prompt 增强讲评权威性 ----
-    context_knowledge = _fetch_knowledge_context(matched_rules)
-
-    # Pre-compute dimension scores so LLM uses real scores in its table
-    _total, _dims = build_dimension_scores(metrics, adv=ctx.advanced_metrics)
-    dim_scores_payload = {"total_score": _total, "dimensions": _dims}
-
-    example_images = [
-        {
-            "title": (r.get("rule_name") or "规则示例").strip(),
-            "image_url": (r.get("reference_images") or [{}])[0].get("image_url"),
-            "caption": (r.get("condition") or "").strip(),
-            "note": f"{r.get('category', '')} · {r.get('rule_name', '')}".strip(" ·"),
-        }
-        for r in (matched_rules[:8] if isinstance(matched_rules, list) else [])
-        if (r.get("reference_images") or [{}])[0].get("image_url")
-    ][:5]
+    # ---- 搜索知识库原文 + 关联插图（潘天寿+花鸟教程），注入 LLM prompt ----
+    context_knowledge, example_images = _fetch_knowledge_context(matched_rules)
     _pipeline_log(f"[llm] example_images={len(example_images)}, context_chunks={len(context_knowledge)}")
     if example_images:
         for ei in example_images[:2]:
-            _pipeline_log(f"  img: url={ei.get('image_url','')[:60]}")
+            _pipeline_log(f"  img: title={ei.get('title')} url={ei.get('image_url','')[:60]}")
+
+    _total, _dims = build_dimension_scores(metrics, adv=ctx.advanced_metrics)
+    dim_scores_payload = {"total_score": _total, "dimensions": _dims}
 
     ctx.llm = generate_composition_narrative(
         image_path=to_abs_path(ctx.job.upload_path),
