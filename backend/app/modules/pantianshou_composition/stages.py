@@ -399,11 +399,13 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
                 if v:
                     terms.add(v)
         if not terms:
+            _pipeline_log("knowledge_context: no terms from matched_rules")
             return [], []
         search_query = "。".join(sorted(terms))
         service = EmbeddingService()
         emb_result = service.embed_text_sync(search_query)
         if not emb_result or not emb_result.embedding:
+            _pipeline_log(f"knowledge_context: embedding failed (result={bool(emb_result)}, has_embedding={bool(emb_result and emb_result.embedding)})")
             return [], []
         hits = qc.search_collection(
             qc.KNOWLEDGE_TEXTS_COLLECTION,
@@ -439,7 +441,8 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
             db.close()
         _pipeline_log(f"knowledge_context: text_chunks={len(chunks)}, images={len(images)}, query_terms={len(terms)}")
         return [c for c in chunks if c], images[:6]
-    except Exception:
+    except Exception as e:
+        _pipeline_log(f"knowledge_context FAIL: {e}")
         return [], []
 
 
@@ -454,6 +457,22 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
 
     # ---- 搜索知识库原文 + 关联插图（潘天寿+花鸟教程），注入 LLM prompt ----
     context_knowledge, example_images = _fetch_knowledge_context(matched_rules)
+    if not example_images:
+        # fallback: use Qdrant-cached images from rule matching
+        seen = set()
+        for r in (matched_rules or []):
+            for ri in (r.get("reference_images") or []):
+                url = ri.get("image_url", "")
+                if url and url not in seen:
+                    seen.add(url)
+                    example_images.append({
+                        "title": (r.get("rule_name") or "规则示例").strip(),
+                        "image_url": url,
+                        "caption": (r.get("condition") or "").strip(),
+                        "note": f"{r.get('category','')} · {r.get('rule_name','')}".strip(" ·"),
+                    })
+            if len(example_images) >= 5:
+                break
     _pipeline_log(f"[llm] example_images={len(example_images)}, context_chunks={len(context_knowledge)}")
     if example_images:
         for ei in example_images[:2]:
