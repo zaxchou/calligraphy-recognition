@@ -427,6 +427,12 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
         if _edge_dist(qi) > _edge_dist(he):
             qi_he_swapped = True
             qi, he = he, qi
+        # Chinese painting convention: qi is on the LEFT side. Mirror x if wrong.
+        if qi.get("x", 50) > 50:
+            for pt in (qi, cheng, zhuan, he):
+                if pt:
+                    pt["x"] = 100 - pt["x"]
+            _pipeline_log("[arrow] mirrored x (qi was on right half)")
         img_h, img_w = ctx.img_bgr.shape[:2]
         qi_pt = (int(qi["x"] * img_w / 100), int(qi["y"] * img_h / 100))
         cheng_pt = (int(cheng["x"] * img_w / 100), int(cheng["y"] * img_h / 100))
