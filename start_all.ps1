@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     One-click start all services (Windows)
@@ -241,5 +241,9 @@ Write-Host '  Celery:     Worker window'
 Write-Host '  Tubi:       Worker window'
 Write-Host "  Frontend:   http://localhost:$FrontendPort"
 Write-Host ''
-Write-Host '  Close each window to stop its service.' -ForegroundColor DarkGray
+Write-Host '  Logs:' -ForegroundColor DarkGray
+Write-Host "    backend\app.log        - FastAPI"
+Write-Host '    backend\pipeline.log   - Composition analysis'
+Write-Host ''
+Write-Host '  Restart: Close all windows -> run .\start_all.ps1' -ForegroundColor DarkGray
 Write-Host '============================================' -ForegroundColor Cyan
