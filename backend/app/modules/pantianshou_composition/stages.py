@@ -346,12 +346,7 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
         cheng_pt = (int(cheng["x"] * img_w / 100), int(cheng["y"] * img_h / 100))
         zhuan_pt = (int(zhuan["x"] * img_w / 100), int(zhuan["y"] * img_h / 100))
         he_pt = (int(he["x"] * img_w / 100), int(he["y"] * img_h / 100))
-        labels = [
-            qi.get("label") or "起",
-            cheng.get("label") or "承",
-            zhuan.get("label") or "转",
-            he.get("label") or "合",
-        ]
+        labels = ["起", "承", "转", "合"]
         if qi_he_swapped:
             labels[0], labels[3] = labels[3], labels[0]
         arrows = [

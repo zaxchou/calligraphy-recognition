@@ -11,6 +11,21 @@ from app.modules.pantianshou_composition.storage import build_static_url
 
 settings = get_settings()
 
+_plog_path: str | None = None
+
+
+def _plog(msg: str) -> None:
+    global _plog_path
+    import datetime
+    try:
+        if _plog_path is None:
+            _plog_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "pipeline.log")
+        with open(_plog_path, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} [figure] {msg}\n")
+    except Exception:
+        pass
+
+
 _cache: Dict[str, Tuple[str, str]] | None = None
 _bird_flower_cache: Dict[str, Tuple[str, str]] | None = None
 _resolve_cache: Dict[str, Optional[str]] = {}
@@ -235,22 +250,18 @@ def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
                     actual_fid = payload.get("figure_id", "")
                     if url:
                         _qdrant_cache[fid] = url
-                        import logging
-                        logging.getLogger(__name__).info("Qdrant figure found: %s → %s (cid=%s, actual=%s)", fid, url[:60], cid, actual_fid)
+                        _plog(f"FOUND: {fid} → {url[:60]} (cid={cid}, actual={actual_fid})")
                         return url
-                # points found but no url
                 p0 = points[0].get("payload", {})
-                import logging
-                logging.getLogger(__name__).warning("Qdrant figure HIT but no url: %s (cid=%s) payload keys=%s", fid, cid, list(p0.keys())[:8])
+                _plog(f"HIT_NO_URL: {fid} (cid={cid}) keys={list(p0.keys())[:8]}")
         _qdrant_cache[fid] = ""
-        import logging
         gid = ""
         try:
             pts = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, {}, limit=3)
             gid = [p.get("payload", {}).get("figure_id", "?") for p in (pts or [])[:3]]
         except Exception:
             pass
-        logging.getLogger(__name__).warning("Qdrant figure MISS: %s (tried %s), sample_ids=%s", fid, candidates, gid)
+        _plog(f"MISS: {fid} tried={candidates} sample_ids={gid}")
         return None
     except Exception:
         _qdrant_cache[fid] = ""
