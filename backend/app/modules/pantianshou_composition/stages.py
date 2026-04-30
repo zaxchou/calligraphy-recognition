@@ -317,15 +317,84 @@ def analyze_arrow_flow(ctx: CompositionContext) -> None:
     pass
 
 
+def _extract_qczh_from_glm(img_bgr) -> dict | None:
+    """使用 GLM-5V-Turbo 独立提取起承转合四点坐标（视觉定位更准）。"""
+    import base64, time, httpx
+    import cv2
+    try:
+        if not (settings.ZHIPU_ENABLED and settings.ZHIPU_API_KEY and settings.ZHIPU_BASE_URL):
+            return None
+    except Exception:
+        return None
+    _, buf = cv2.imencode('.jpg', img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    b64 = base64.b64encode(buf).decode()
+    model = (settings.ZHIPU_MODEL or "").strip() or "glm-5v-turbo"
+    base = (settings.ZHIPU_BASE_URL or "").rstrip("/")
+    if base.endswith("/chat/completions"):
+        url = base
+    else:
+        url = f"{base}/chat/completions"
+    prompt = (
+        "你是中国画构图专家。请在画面上标注起承转合四个关键位置（百分比坐标，x∈[0,100], y∈[0,100]，原点左上角）。\n"
+        "注意：你的左手边是「左」，右手边是「右」。请仔细确认画材实际位置再给出坐标。\n"
+        "- 起(qi)：画面主要势能起点，在画面边缘附近\n"
+        "- 承(cheng)：势能承接发展的中间节点\n"
+        "- 转(zhuan)：势能转折变化处\n"
+        "- 合(he)：势能收束终点，通常靠近题款或视觉终点\n"
+        "path_shape 从「之字形/对角线/三角形/回环/上升」中选择。\n"
+        "只返回 JSON，不要任何解释：\n"
+        '{"qi":{"x":数字,"y":数字},"cheng":{"x":数字,"y":数字},"zhuan":{"x":数字,"y":数字},"he":{"x":数字,"y":数字},"path_shape":"之字形"}'
+    )
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+        ]}],
+        "stream": False, "max_tokens": 512, "temperature": 0.1,
+    }
+    headers = {"Authorization": f"Bearer {settings.ZHIPU_API_KEY}", "Content-Type": "application/json"}
+    for attempt in range(3):
+        try:
+            with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+                r = client.post(url, json=payload, headers=headers)
+                r.raise_for_status()
+                data = r.json()
+                choice = data.get("choices", [{}])[0]
+                content = (choice.get("message", {}).get("content") or "").strip()
+                if not content:
+                    content = choice.get("reasoning_content") or ""
+                import re as _re
+                m = _re.search(r'\{[^{}]*"qi"\s*:.*?"path_shape"[^}]*\}', content, _re.DOTALL)
+                if m:
+                    import json as _json
+                    coords = _json.loads(m.group(0))
+                    if all(k in coords for k in ("qi", "cheng", "zhuan", "he")):
+                        _pipeline_log(f"[arrow] GLM coords: qi=({coords['qi'].get('x')},{coords['qi'].get('y')}) he=({coords['he'].get('x')},{coords['he'].get('y')}) path={coords.get('path_shape')}")
+                        return coords
+        except Exception:
+            if attempt < 2:
+                time.sleep(1 + attempt)
+    return None
+
+
 def draw_qczh_from_llm(ctx: CompositionContext) -> None:
     llm_result = ctx.llm or {}
     llm_text = llm_result.get("_raw_text") or llm_result.get("text") or ""
-    if not llm_text:
+    if not llm_text and not ctx.img_bgr:
         return
-    coords = extract_qczh_coords(llm_text)
+    # try GLM first for better left/right accuracy
+    coords = None
+    if ctx.img_bgr is not None:
+        coords = _extract_qczh_from_glm(ctx.img_bgr)
+    if not coords and llm_text:
+        coords = extract_qczh_coords(llm_text)
     if not coords:
-        tail = llm_text[-500:] if len(llm_text) > 500 else llm_text
-        _pipeline_log(f"[arrow] no qczh coords. LLM tail: {tail[:300]}")
+        if not llm_text:
+            _pipeline_log("[arrow] no GLM and no LLM text")
+        else:
+            tail = llm_text[-300:] if len(llm_text) > 300 else llm_text
+            _pipeline_log(f"[arrow] no qczh coords. LLM tail: {tail[:200]}")
         return
     try:
         qi = coords.get("qi") or {}
@@ -418,8 +487,21 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
         chunks = [h.get("payload", {}).get("content", "") for h in (hits or [])]
         images: List[Dict[str, Any]] = []
         seen_urls = set()
+        term_words = set()
+        for t in terms:
+            for w in t:
+                term_words.add(w)
+        def _relevance(fig_id: str, cap: str) -> int:
+            s = 0
+            for tw in term_words:
+                if tw in fig_id:
+                    s += 3
+                if tw in cap:
+                    s += 1
+            return s
+
         data_dir = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
-        base_data_dir = _os.path.join(data_dir, "data")  # same as os.path.dirname(settings.UPLOAD_DIR)
+        base_data_dir = _os.path.join(data_dir, "data")
         knowledge_db = _os.path.join(data_dir, "data", "knowledge.db")
         kb_engine = create_engine(f"sqlite:///{knowledge_db}", connect_args={"timeout": 30})
         KbSession = sessionmaker(bind=kb_engine)
@@ -432,7 +514,7 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
                 chunk = db.query(TextChunk).filter(TextChunk.vector_id == vector_id).first()
                 if not chunk or not chunk.associated_images:
                     continue
-                for img_id in chunk.associated_images[:3]:
+                for img_id in chunk.associated_images[:4]:
                     img = db.query(ExtractedImage).filter(ExtractedImage.id == img_id).first()
                     if not img or not img.stored_path:
                         continue
@@ -448,10 +530,15 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
                     caption = (img.caption or "").strip()
                     title = fig_id if fig_id else "插图"
                     note = caption[:120] if caption else ""
-                    images.append({"title": title, "image_url": url, "caption": note, "note": note})
+                    rel_score = _relevance(fig_id, caption)
+                    images.append({"title": title, "image_url": url, "caption": note, "note": note, "_rel": rel_score})
         finally:
             db.close()
             kb_engine.dispose()
+        images.sort(key=lambda x: -x.get("_rel", 0))
+        # strip internal _rel key
+        for img in images:
+            img.pop("_rel", None)
         _pipeline_log(f"knowledge_context: text_chunks={len(chunks)}, images={len(images)}, query_terms={len(terms)}")
         return [c for c in chunks if c], images[:6]
     except Exception as e:
