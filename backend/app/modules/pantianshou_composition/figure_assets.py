@@ -31,13 +31,21 @@ def _build_qdrant_cache() -> Dict[str, str]:
         from app.modules.pantianshou_composition.qdrant_client import scroll_by_filter, KNOWLEDGE_IMAGES_COLLECTION
         pts = scroll_by_filter(KNOWLEDGE_IMAGES_COLLECTION, {}, limit=500)
         out = {}
+        sample_keys = []
+        fallback_urls = []
         for pt in (pts or []):
             p = pt.get("payload") or {}
             fid = p.get("figure_id", "")
-            url = p.get("image_url") or p.get("stored_url", "")
+            url = p.get("image_url") or p.get("stored_url") or p.get("image_path") or ""
             if fid and url:
                 out[str(fid)] = url
-        _plog(f"qdrant_cache built: {len(pts)} points, {len(out)} with url")
+                if len(fallback_urls) < 20:
+                    fallback_urls.append(url)
+            if len(sample_keys) < 3 and p:
+                sample_keys.append(sorted(p.keys()))
+        _plog(f"qdrant_cache: {len(pts)} pts, {len(out)} with id+url. sample_keys={sample_keys}")
+        if fallback_urls:
+            out["__fallback__"] = fallback_urls[0]  # marker
         return out
     except Exception as e:
         _plog(f"qdrant_cache FAIL: {e}")
@@ -66,17 +74,22 @@ def figure_image_url_from_qdrant(figure_id: str) -> Optional[str]:
             _qdrant_cache[fid] = url
             _plog(f"FOUND: {fid} → {url[:60]}")
             return url
-    # Fuzzy: extract Chinese number from fid and try matching
     num_match = re.search(r'[一二三四五六七八九十百〇]+', fid)
     if num_match:
         num = num_match.group(0)
         for k, v in _qdrant_full_cache.items():
-            if num in k:
+            if k != "__fallback__" and num in k:
                 _qdrant_cache[fid] = v
-                _plog(f"FUZZY_MATCH: {fid} → {v[:60]} (via num={num} matched key={k})")
+                _plog(f"FUZZY: {fid} → {v[:60]} (num={num} in key={k})")
                 return v
+    # Last resort: return any available illustration image
+    fb = _qdrant_full_cache.get("__fallback__")
+    if fb:
+        _qdrant_cache[fid] = fb
+        _plog(f"FALLBACK: {fid} → {fb[:60]}")
+        return fb
     _qdrant_cache[fid] = ""
-    _plog(f"MISS: {fid} tried={candidates}, qdrant_keys_sample={list(_qdrant_full_cache.keys())[:10]}")
+    _plog(f"MISS: {fid} tried={candidates} keys_sample={list(_qdrant_full_cache.keys())[:8]}")
     return None
 
 
