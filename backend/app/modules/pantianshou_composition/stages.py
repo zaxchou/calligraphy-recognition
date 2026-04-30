@@ -326,8 +326,18 @@ def _extract_qczh_from_glm(img_bgr) -> dict | None:
             return None
     except Exception:
         return None
-    _, buf = cv2.imencode('.jpg', img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    # resize to reasonable size for API
+    h, w = img_bgr.shape[:2]
+    max_dim = 1280
+    if max(h, w) > max_dim:
+        scale = max_dim / max(h, w)
+        img_small = cv2.resize(img_bgr, (int(w*scale), int(h*scale)), interpolation=cv2.INTER_AREA)
+    else:
+        img_small = img_bgr
+    _, buf = cv2.imencode('.jpg', img_small, [cv2.IMWRITE_JPEG_QUALITY, 75])
     b64 = base64.b64encode(buf).decode()
+    kb = len(b64) / 1024
+    _pipeline_log(f"GLM image encoded: {kb:.0f} KB base64")
     model = (settings.ZHIPU_MODEL or "").strip() or "glm-5v-turbo"
     base = (settings.ZHIPU_BASE_URL or "").rstrip("/")
     if base.endswith("/chat/completions"):
@@ -351,7 +361,7 @@ def _extract_qczh_from_glm(img_bgr) -> dict | None:
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
         ]}],
-        "stream": False, "max_tokens": 512, "temperature": 0.1,
+        "stream": False, "max_tokens": 1024, "temperature": 0.1,
     }
     headers = {"Authorization": f"Bearer {settings.ZHIPU_API_KEY}", "Content-Type": "application/json"}
     for attempt in range(3):
@@ -364,6 +374,9 @@ def _extract_qczh_from_glm(img_bgr) -> dict | None:
                 content = (choice.get("message", {}).get("content") or "").strip()
                 if not content:
                     content = choice.get("reasoning_content") or ""
+                if not content:
+                    _pipeline_log(f"GLM empty content, finish_reason={choice.get('finish_reason')}")
+                    continue
                 import re as _re
                 m = _re.search(r'\{[^{}]*"qi"\s*:.*?"path_shape"[^}]*\}', content, _re.DOTALL)
                 if m:
@@ -372,9 +385,12 @@ def _extract_qczh_from_glm(img_bgr) -> dict | None:
                     if all(k in coords for k in ("qi", "cheng", "zhuan", "he")):
                         _pipeline_log(f"[arrow] GLM coords: qi=({coords['qi'].get('x')},{coords['qi'].get('y')}) he=({coords['he'].get('x')},{coords['he'].get('y')}) path={coords.get('path_shape')}")
                         return coords
-        except Exception:
+                _pipeline_log(f"GLM no valid JSON in: {content[:150]}")
+        except Exception as e2:
+            _pipeline_log(f"GLM attempt {attempt+1} error: {e2}")
             if attempt < 2:
                 time.sleep(1 + attempt)
+    _pipeline_log("GLM all 3 attempts failed")
     return None
 
 
