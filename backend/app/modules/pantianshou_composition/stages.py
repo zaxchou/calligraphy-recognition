@@ -392,6 +392,7 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
         from app.modules.pantianshou_composition.models import TextChunk, ExtractedImage
+        from app.modules.pantianshou_composition.storage import build_static_url
         import os as _os
 
         terms = set()
@@ -432,10 +433,14 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
                     continue
                 for img_id in chunk.associated_images[:3]:
                     img = db.query(ExtractedImage).filter(ExtractedImage.id == img_id).first()
-                    if not img or not img.stored_url:
+                    if not img or not img.stored_path:
                         continue
-                    url = img.stored_url
-                    if url in seen_urls:
+                    try:
+                        rel = _os.path.relpath(img.stored_path, data_dir)
+                        url = build_static_url(rel)
+                    except (ValueError, OSError):
+                        url = img.stored_url or ""
+                    if not url or url in seen_urls:
                         continue
                     seen_urls.add(url)
                     fig_id = (img.figure_id or "").strip()
