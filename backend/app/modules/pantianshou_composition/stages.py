@@ -419,6 +419,7 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
         images: List[Dict[str, Any]] = []
         seen_urls = set()
         data_dir = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
+        base_data_dir = _os.path.join(data_dir, "data")  # same as os.path.dirname(settings.UPLOAD_DIR)
         knowledge_db = _os.path.join(data_dir, "data", "knowledge.db")
         kb_engine = create_engine(f"sqlite:///{knowledge_db}", connect_args={"timeout": 30})
         KbSession = sessionmaker(bind=kb_engine)
@@ -436,7 +437,7 @@ def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[
                     if not img or not img.stored_path:
                         continue
                     try:
-                        rel = _os.path.relpath(img.stored_path, data_dir)
+                        rel = _os.path.relpath(img.stored_path, base_data_dir)
                         url = build_static_url(rel)
                     except (ValueError, OSError):
                         url = img.stored_url or ""
