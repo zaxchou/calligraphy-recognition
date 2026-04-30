@@ -18,7 +18,7 @@ if errorlevel 1 (
 )
 
 :: 启动 Redis（使用内置的 redis\redis-server.exe）
-echo [1/3] 启动 Redis...
+echo [1/4] 启动 Redis...
 tasklist /FI "IMAGENAME eq redis-server.exe" 2>nul | find /I "redis-server.exe" >nul
 if %errorlevel%==0 (
     echo   Redis 已在运行
@@ -33,9 +33,20 @@ if %errorlevel%==0 (
     )
 )
 
+:: 启动 Celery Worker（构图分析 etc.）
+echo [2/4] 启动 Celery Worker...
+tasklist /FI "WINDOWTITLE eq CeleryWorker" 2>nul | find /I "celery" >nul
+if %errorlevel%==0 (
+    echo   Celery Worker 已在运行
+) else (
+    start /B "CeleryWorker" cmd /c ".\venv\Scripts\python.exe -m celery -A app.core.celery_app worker -l info -P threads"
+    echo   Celery Worker 启动中（等待 5 秒）...
+    timeout /t 5 /nobreak >nul
+)
+
 :: 启动 FastAPI
-echo [2/3] 启动 FastAPI (uvicorn)...
-tasklist /FI "IMAGENAME eq python.exe" 2>nul | find /I "uvicorn" >nul
+echo [3/4] 启动 FastAPI (uvicorn)...
+tasklist /FI "WINDOWTITLE eq FastAPI" 2>nul | find /I "uvicorn" >nul
 if %errorlevel%==0 (
     echo   FastAPI 已在运行
 ) else (
@@ -45,8 +56,8 @@ if %errorlevel%==0 (
 )
 
 :: 启动 tubi_worker
-echo [3/3] 启动 tubi_worker...
-tasklist /FI "IMAGENAME eq python.exe" 2>nul | find /I "tubi_worker" >nul
+echo [4/4] 启动 tubi_worker...
+tasklist /FI "WINDOWTITLE eq tubi_worker" 2>nul | find /I "tubi_worker" >nul
 if %errorlevel%==0 (
     echo   tubi_worker 已在运行
 ) else (
@@ -65,6 +76,10 @@ echo   FastAPI:   http://localhost:8001
 echo   前端:      http://localhost:3000
 echo   Redis:     localhost:6379
 echo.
-echo 批量处理：.\venv\Scripts\python.exe batch_process_tubi.py
+echo 查看日志：
+echo   后端:      backend\app.log
+echo   Pipeline:  backend\pipeline.log
+echo.
+echo 重启流程：双击 stop_all.bat → 再双击本文件
 echo.
 pause
