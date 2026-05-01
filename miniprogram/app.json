@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "pages/analyze/analyze"
+  ],
+  "window": {
+    "navigationBarTitleText": "潘天寿教你构图",
+    "navigationBarBackgroundColor": "#faf8f3",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#faf8f3"
+  },
+  "sitemapLocation": "sitemap.json"
+}
