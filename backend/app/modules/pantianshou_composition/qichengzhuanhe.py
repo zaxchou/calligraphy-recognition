@@ -119,6 +119,34 @@ QICHENGZHUANHE_PROMPT = """你是一位专业的中国画构图分析专家，�
 
 
 # ---------------------------------------------------------------------------
+# 引导模式 Prompt（当已有构图分析文本时使用）
+# ---------------------------------------------------------------------------
+GUIDED_QCZH_PROMPT_TEMPLATE = """你是中国画构图专家。请基于以下专家讲评，在画面上标注一条流畅的起承转合曲线路径。
+
+【构图分析（来自专家讲评）】
+{llm_analysis}
+
+你需要输出一条包含 8-12 个节点的连续路径（百分比坐标，x∈[0,100], y∈[0,100]，原点左上角）：
+
+【关键约束——必须遵守】
+1. 起(qi)：画面势能起点，靠近边缘。**必须从物象的生长根源出发**（树根、石基、最粗主枝干的入画处），**绝不从题跋、树叶、花、果实等末梢开始**。若题跋恰好在边缘，忽略它。
+2. 承节点(path_points)：沿主干方向推进 2-4 个中间点，必须经过画眼（鸟/禽/大果实/主花头/主体器物）或其附近。
+3. 转节点(path_points)：在方向/节奏突变处设 2-3 个点，如从上升转为下落、从左向右弹回。
+4. 合(he)：势能收束点。优先选主物象气口或留白回旋处，**不要将寥寥数字的穷款当作合点**。
+5. 整条路径为 qi → path_points[0..N] → he 的连续序列，共 8-12 个点。
+
+【坐标域提示】
+- 起点在墨色最重、最粗的枝干/石块入画边缘，排除文字区域。
+- 承沿主干推进，经画眼。
+- 转在方向变化最大处。
+- 合在留白回旋处或主物象的收束气口。
+
+只返回 JSON：
+{{"qi":{{"x":数字,"y":数字,"label":"起·描述"}},"path_points":[{{"x":数字,"y":数字,"label":"承·描述"}},{{"x":数字,"y":数字,"label":"承·描述"}},{{"x":数字,"y":数字,"label":"转·描述"}},{{"x":数字,"y":数字,"label":"转·描述"}},...],"he":{{"x":数字,"y":数字,"label":"合·描述"}},"path_shape":"之字形/对角线/C形/三角形/回环/上升"}}
+"""
+
+
+# ---------------------------------------------------------------------------
 # 中文字体（PIL 渲染）
 # ---------------------------------------------------------------------------
 _CJK_FONT_PATHS = [
@@ -171,7 +199,7 @@ def encode_bgr_to_base64(img_bgr: np.ndarray, max_side: int = 1024) -> str:
     return base64.b64encode(buf.tobytes()).decode("utf-8")
 
 
-def encode_preview(img_bgr: np.ndarray, max_side: int = 800) -> str:
+def encode_preview(img_bgr: np.ndarray, max_side: int = 1600) -> str:
     """把 cv2 BGR 图像缩放到 max_side 后 base64 编码为 data:image/jpeg;base64,..."""
     h, w = img_bgr.shape[:2]
     if max(h, w) > max_side:
@@ -295,13 +323,41 @@ def generate_lineart(img_bgr: np.ndarray) -> np.ndarray:
     return lineart
 
 
-def draw_arrows_on_lineart(lineart: np.ndarray, arrows: list, labels: list) -> np.ndarray:
-    """在线稿图（灰度或BGR）上绘制彩色起承转合箭头，用 PIL 渲染中文标签
+def _catmull_rom_spline(points, num_segments=50):
+    """生成穿过所有控制点的 Catmull-Rom 平滑曲线点序列。"""
+    if len(points) < 2:
+        return [(int(p[0]), int(p[1])) for p in points]
+    pts = [(float(p[0]), float(p[1])) for p in points]
+    n = len(pts)
+    result = []
+    for i in range(n - 1):
+        p0 = pts[max(0, i - 1)]
+        p1 = pts[i]
+        p2 = pts[i + 1]
+        p3 = pts[min(n - 1, i + 2)]
+        for t in range(num_segments):
+            t0 = t / num_segments
+            t2 = t0 * t0
+            t3 = t2 * t0
+            x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t0 +
+                       (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+                       (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3)
+            y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t0 +
+                       (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+                       (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
+            result.append((int(x), int(y)))
+    result.append((int(pts[-1][0]), int(pts[-1][1])))
+    return result
 
-    labels[i] 对应 arrows[i] 的**起点**标签，最后一个 labels 对应最后一段 arrows 的终点标签。
-    字体/线条/圆圈大小根据图片尺寸自适应。
-    """
-    if not arrows:
+
+def _lerp_color(c1, c2, t):
+    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+
+
+def draw_arrows_on_lineart(lineart: np.ndarray, arrows: list, labels: list,
+                           curve_points: list | None = None) -> np.ndarray:
+    """在线稿图上绘制起承转合路径。curve_points 不为空时绘制平滑曲线，否则绘制折线箭头。"""
+    if not arrows and not curve_points:
         return lineart
 
     if len(lineart.shape) == 2:
@@ -311,32 +367,60 @@ def draw_arrows_on_lineart(lineart: np.ndarray, arrows: list, labels: list) -> n
 
     h, w = canvas.shape[:2]
     max_side = max(h, w)
-
-    # 自适应缩放：以 800px 为基准
     scale = max(1.0, max_side / 800)
 
     colors_bgr = [
-        (229, 57, 53),   # 红 - 起
-        (255, 152, 0),   # 橙 - 承
-        (25, 118, 210),  # 蓝 - 转
-        (46, 125, 50),   # 绿 - 合
-        (123, 31, 162),  # 紫
-        (0, 131, 143),   # 青
+        (229, 57, 53),
+        (255, 152, 0),
+        (25, 118, 210),
+        (46, 125, 50),
+        (123, 31, 162),
+        (0, 131, 143),
     ]
     colors_rgb = [(c[2], c[1], c[0]) for c in colors_bgr]
 
     line_thickness = max(3, int(3 * scale))
     tip_length = 0.08
 
-    for idx, arr in enumerate(arrows):
-        color = colors_bgr[idx % len(colors_bgr)]
-        sx, sy, ex, ey = int(arr[0]), int(arr[1]), int(arr[2]), int(arr[3])
-        # clamp 到画面范围（起点可能在画外）
-        sx = max(0, min(w - 1, sx))
-        sy = max(0, min(h - 1, sy))
-        ex = max(0, min(w - 1, ex))
-        ey = max(0, min(h - 1, ey))
-        cv2.arrowedLine(canvas, (sx, sy), (ex, ey), color, line_thickness, tipLength=tip_length)
+    if curve_points and len(curve_points) >= 4:
+        clamped = []
+        for px, py in curve_points:
+            clamped.append((max(0, min(w - 1, int(px))), max(0, min(h - 1, int(py)))))
+        spline = _catmull_rom_spline(clamped, num_segments=60)
+        curve_thick = max(5, int(6 * scale))
+
+        for i in range(len(spline) - 1):
+            t = i / max(1, len(spline) - 2)
+            if t < 0.333:
+                color = _lerp_color(colors_bgr[0], colors_bgr[1], t / 0.333)
+            elif t < 0.666:
+                color = _lerp_color(colors_bgr[1], colors_bgr[2], (t - 0.333) / 0.333)
+            else:
+                color = _lerp_color(colors_bgr[2], colors_bgr[3], (t - 0.666) / 0.334)
+            cv2.line(canvas, spline[i], spline[i + 1], color, curve_thick)
+
+        steps = len(spline)
+        for ai in range(3):
+            idx = int((ai + 1) * steps / 4)
+            if idx + 4 < steps:
+                p0 = spline[idx]
+                p1 = spline[idx + 4]
+                dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+                length = (dx * dx + dy * dy) ** 0.5
+                if length > 0:
+                    dx, dy = dx / length, dy / length
+                    tip = (int(p1[0] + dx * 10 * scale), int(p1[1] + dy * 10 * scale))
+                    cv2.arrowedLine(canvas, spline[idx], tip, colors_bgr[ai + 1],
+                                    max(2, int(2.5 * scale)), tipLength=0.3)
+    else:
+        for idx, arr in enumerate(arrows):
+            color = colors_bgr[idx % len(colors_bgr)]
+            sx, sy, ex, ey = int(arr[0]), int(arr[1]), int(arr[2]), int(arr[3])
+            sx = max(0, min(w - 1, sx))
+            sy = max(0, min(h - 1, sy))
+            ex = max(0, min(w - 1, ex))
+            ey = max(0, min(h - 1, ey))
+            cv2.arrowedLine(canvas, (sx, sy), (ex, ey), color, line_thickness, tipLength=tip_length)
 
     def _draw_label_pil(cv_canvas, x, y, text, color_rgb):
         radius = max(20, int(20 * scale))
@@ -356,13 +440,29 @@ def draw_arrows_on_lineart(lineart: np.ndarray, arrows: list, labels: list) -> n
         draw.text((tx, ty), text, fill=(255, 255, 255), font=font)
         return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
+    if curve_points and len(curve_points) >= 4:
+        n = len(curve_points)
+        label_indices = [0, n // 3, 2 * n // 3, n - 1]
+        for li, ci in enumerate(label_indices):
+            if li >= len(labels):
+                break
+            px, py = int(curve_points[ci][0]), int(curve_points[ci][1])
+            px = max(0, min(w - 1, px))
+            py = max(0, min(h - 1, py))
+            canvas = _draw_label_pil(canvas, px, py, labels[li], colors_rgb[li])
+        return canvas
+
     for idx in range(min(len(arrows), len(labels) - 1)):
         arr = arrows[idx]
-        canvas = _draw_label_pil(canvas, arr[0], arr[1], labels[idx], colors_rgb[idx])
+        sx = max(0, min(w - 1, int(arr[0])))
+        sy = max(0, min(h - 1, int(arr[1])))
+        canvas = _draw_label_pil(canvas, sx, sy, labels[idx], colors_rgb[idx])
 
     if len(labels) > len(arrows):
         last_arr = arrows[-1]
-        canvas = _draw_label_pil(canvas, last_arr[2], last_arr[3], labels[-1],
+        ex = max(0, min(w - 1, int(last_arr[2])))
+        ey = max(0, min(h - 1, int(last_arr[3])))
+        canvas = _draw_label_pil(canvas, ex, ey, labels[-1],
                                   colors_rgb[(len(labels) - 1) % len(colors_rgb)])
 
     return canvas
@@ -379,24 +479,124 @@ def _build_chat_url(base_url: str) -> str:
     return f"{base}/chat/completions"
 
 
-def _parse_llm_result(llm_result: dict, w: int, h: int) -> Dict[str, Any]:
-    """将 LLM 返回的 JSON 结果转换为箭头坐标格式。"""
+def _parse_llm_result(llm_result: dict, w: int, h: int, *, guided_analysis_text: str = "") -> Dict[str, Any]:
+    """将 LLM 返回的 JSON 结果转换为箭头坐标格式。
+
+    支持两种输出格式：
+    - 引导模式：{"qi":{"x":..,"y":..,"label":".."}, "path_points":[{...},...], "he":{..}, "path_shape":".."}
+    - 自主模式：{"qi":{..}, "cheng_list":[{..}], "zhuan_list":[{..}], "he":{..}, "path_shape":"..", ...}
+    """
+    is_guided = isinstance(llm_result.get("path_points"), list) and len(llm_result.get("path_points", [])) >= 2
+
+    def _edge_dist(pt):
+        x = float(pt.get("x", 50))
+        y = float(pt.get("y", 50))
+        return min(x, y, 100 - x, 100 - y)
+
     def pct_to_px(pct_dict, allow_out_of_frame=False):
         if not isinstance(pct_dict, dict):
-            return {"x": w // 2, "y": h // 2, "reason": "", "in_frame": True}
+            return {"x": w // 2, "y": h // 2, "reason": "", "in_frame": True, "label": ""}
         result = {
             "x": int(pct_dict.get("x", 50) * w / 100),
             "y": int(pct_dict.get("y", 50) * h / 100),
             "reason": pct_dict.get("reason", ""),
             "in_frame": pct_dict.get("in_frame", True),
+            "label": (pct_dict.get("label") or "").strip(),
         }
-        # 若不在画内，坐标允许超出画面范围（用于箭头绘制时 clamp）
-        if not result["in_frame"] or not allow_out_of_frame:
-            pass  # 保持原始值，绘制时会 clamp
         return result
 
+    if is_guided:
+        qi_raw = llm_result.get("qi") or {"x": 10, "y": 85, "label": "起"}
+        he_raw = llm_result.get("he") or {"x": 80, "y": 15, "label": "合"}
+        mid_raw = llm_result.get("path_points") or []
+        path_shape = llm_result.get("path_shape", "之字形")
+
+        qi_pct = dict(qi_raw) if isinstance(qi_raw, dict) else {}
+        he_pct = dict(he_raw) if isinstance(he_raw, dict) else {}
+
+        n_mid = len(mid_raw)
+        logger.info("QCZH GLM raw: qi=(%s,%s) he=(%s,%s) path_points=%d path=%s",
+                    qi_pct.get("x"), qi_pct.get("y"),
+                    he_pct.get("x"), he_pct.get("y"), n_mid, path_shape)
+
+        qi = pct_to_px(qi_pct, allow_out_of_frame=True)
+        he = pct_to_px(he_pct)
+        he["x"] = max(int(w * 0.05), min(int(w * 0.95), he["x"]))
+        he["y"] = max(int(h * 0.05), min(int(h * 0.95), he["y"]))
+
+        mid_px = []
+        for i, mp in enumerate(mid_raw):
+            if isinstance(mp, dict):
+                px = pct_to_px(mp)
+                px["type"] = "承" if i < len(mid_raw) // 2 else "转"
+                mid_px.append(px)
+
+        all_pts = [qi] + mid_px + [he]
+
+        arrows = []
+        arrow_labels = []
+        prev = all_pts[0]
+        for pt in all_pts[1:]:
+            arrows.append([prev["x"], prev["y"], pt["x"], pt["y"]])
+            arrow_labels.append(pt.get("type", "承"))
+            prev = pt
+        arrow_labels.insert(0, "起")
+        if arrow_labels[-1] != "合":
+            arrow_labels[-1] = "合"
+
+        glm_labels = {}
+        if isinstance(qi_raw, dict):
+            glm_labels["qi"] = (qi_raw.get("label") or "起").strip()
+        if isinstance(he_raw, dict):
+            glm_labels["he"] = (he_raw.get("label") or "合").strip()
+        for i, mp in enumerate(mid_raw):
+            if isinstance(mp, dict):
+                glm_labels[f"mid_{i}"] = (mp.get("label") or "").strip()
+
+        narrative = guided_analysis_text if guided_analysis_text else f"路径：{path_shape}"
+
+        curve_points = [[p["x"], p["y"]] for p in all_pts]
+
+        return {
+            "is_valid": True,
+            "validation_reason": "",
+            "arrows": arrows,
+            "arrow_labels": arrow_labels,
+            "points": {"qi": qi, "mid": mid_px, "he": he},
+            "llm_analysis": narrative,
+            "path_type": path_shape,
+            "material_type": "",
+            "growth_direction": "",
+            "has_inscription": True,
+            "inscription_edge": "",
+            "seal_positions": [],
+            "glm_labels": glm_labels,
+            "curve_points": curve_points,
+        }
+
+    # 自主模式（完整学术 prompt）
     qi_raw = llm_result.get("qi")
-    qi = pct_to_px(qi_raw, allow_out_of_frame=True) if qi_raw else {"x": w // 10, "y": h * 9 // 10, "reason": "默认左下", "in_frame": True}
+    he_raw = llm_result.get("he")
+    qi_pct = dict(qi_raw) if isinstance(qi_raw, dict) else {}
+    he_pct = dict(he_raw) if isinstance(he_raw, dict) else {}
+
+    qi_he_swapped = False
+    if qi_pct and he_pct:
+        if _edge_dist(qi_pct) > _edge_dist(he_pct):
+            qi_he_swapped = True
+            qi_pct, he_pct = he_pct, qi_pct
+            llm_result["qi"], llm_result["he"] = he_pct, qi_pct
+        if qi_pct.get("x", 50) > 50:
+            for key in ("qi", "cheng_list", "zhuan_list", "he"):
+                val = llm_result.get(key)
+                if isinstance(val, dict) and "x" in val:
+                    val["x"] = 100 - val["x"]
+                elif isinstance(val, list):
+                    for item in val:
+                        if isinstance(item, dict) and "x" in item:
+                            item["x"] = 100 - item["x"]
+
+    qi = pct_to_px(qi_raw, allow_out_of_frame=True) if qi_raw else {"x": w // 10, "y": h * 9 // 10, "reason": "默认左下", "in_frame": True, "label": ""}
 
     cheng_raw = llm_result.get("cheng_list") or llm_result.get("cheng") or []
     if not isinstance(cheng_raw, list):
@@ -410,30 +610,24 @@ def _parse_llm_result(llm_result: dict, w: int, h: int) -> Dict[str, Any]:
         zhuan_raw = [zhuan_raw]
     zhuan_list = [pct_to_px(z) for z in zhuan_raw if z]
     if not zhuan_list:
-        zhuan_list = [{"x": w // 2, "y": h // 3, "reason": "默认中央", "in_frame": True}]
+        zhuan_list = [{"x": w // 2, "y": h // 3, "reason": "默认中央", "in_frame": True, "label": ""}]
     zhuan_list = zhuan_list[:1]
 
-    he = pct_to_px(llm_result.get("he")) if llm_result.get("he") else {"x": w * 9 // 10, "y": h // 10, "reason": "默认右上", "in_frame": True}
-
-    # 合必须在画面内（5%-95%）
+    he = pct_to_px(he_raw) if he_raw else {"x": w * 9 // 10, "y": h // 10, "reason": "默认右上", "in_frame": True, "label": ""}
     he["x"] = max(int(w * 0.05), min(int(w * 0.95), he["x"]))
     he["y"] = max(int(h * 0.05), min(int(h * 0.95), he["y"]))
 
-    # 构建路径点列表：起 →（承/转交替）→ 合
-    # 每个中间点标记 type="承" 或 "转"
     path_points = []
     for c in cheng_list:
         path_points.append({**c, "type": "承"})
     for z in zhuan_list:
         path_points.append({**z, "type": "转"})
 
-    # 按从起点到终点的路径顺序排列（贪心最近邻）
     if path_points:
         ordered = []
         remaining = list(range(len(path_points)))
         cur_x, cur_y = qi["x"], qi["y"]
         while remaining:
-            # 找距离当前点最近的未访问点
             best_idx = min(remaining,
                            key=lambda i: (path_points[i]["x"] - cur_x) ** 2 + (path_points[i]["y"] - cur_y) ** 2)
             ordered.append(path_points[best_idx])
@@ -441,7 +635,6 @@ def _parse_llm_result(llm_result: dict, w: int, h: int) -> Dict[str, Any]:
             cur_x, cur_y = path_points[best_idx]["x"], path_points[best_idx]["y"]
         path_points = ordered
 
-    # 构建箭头和标签
     arrows = []
     labels = []
     prev = qi
@@ -449,14 +642,11 @@ def _parse_llm_result(llm_result: dict, w: int, h: int) -> Dict[str, Any]:
         arrows.append([prev["x"], prev["y"], pt["x"], pt["y"]])
         labels.append(pt["type"])
         prev = pt
-
-    # 最后一段到合
     last_pt = path_points[-1] if path_points else qi
     arrows.append([last_pt["x"], last_pt["y"], he["x"], he["y"]])
     labels.append("合")
     labels.insert(0, "起")
 
-    # V8 新增字段透传
     material_type = llm_result.get("material_types", llm_result.get("material_type", "未知"))
     growth_direction = llm_result.get("growth_direction", "未知")
     has_inscription = llm_result.get("has_inscription", True)
@@ -464,7 +654,6 @@ def _parse_llm_result(llm_result: dict, w: int, h: int) -> Dict[str, Any]:
     seal_positions = llm_result.get("seal_positions", [])
     path_shape = llm_result.get("path_shape", "未知")
 
-    # 生成自然语言分析摘要
     analysis = llm_result.get("analysis", "")
     narrative = (
         f"画材：{material_type}，{growth_direction}。\n"
@@ -491,45 +680,157 @@ def _parse_llm_result(llm_result: dict, w: int, h: int) -> Dict[str, Any]:
         "has_inscription": has_inscription,
         "inscription_edge": inscription_edge,
         "seal_positions": seal_positions,
+        "qi_he_swapped": qi_he_swapped,
     }
 
 
-def analyze_qichengzhuanhe(img_bgr: np.ndarray) -> Dict[str, Any]:
+QWEN_QCZH_PRE_PROMPT = """你是中国画构图分析专家。请基于以下知识，用简洁的自然语言分析这幅画作的起承转合关系。
+
+【写意知识库原文（潘天寿《关于构图问题》+《中国写意花鸟画教程》相关原文）】
+{knowledge_context}
+
+【用户自定义起承转合知识】
+{user_markdown}
+
+请根据以上知识规则，分析：
+1. **起**：视觉从哪里进入画面？在画面什么位置（如左下角、右上边缘等）？所对应物象是什么？
+2. **承**：视线如何承接发展？在中途经过了哪些关键物象？
+3. **转**：画面何处发生了方向或节奏的转折？什么元素造成了变化？
+4. **合**：画面在何处收束？收束点与题款、印章有什么关系？
+5. **整体走势形态**：之字形、对角线、三段式、边角、中心辐射等？
+
+请直接描述，不要输出JSON。控制在400字以内。"""
+
+
+def _fetch_qczh_knowledge_context() -> str:
+    """从 Qdrant 写意知识库搜索起承转合相关的原文。"""
+    try:
+        from app.modules.pantianshou_composition.embedding_service import EmbeddingService
+        from app.modules.pantianshou_composition import qdrant_client as qc
+        search_query = "起承转合 构图 视线 气韵 虚实 疏密 留白 穿插 边角 题款"
+        service = EmbeddingService()
+        emb_result = service.embed_text_sync(search_query)
+        if not emb_result or not emb_result.embedding:
+            logger.warning("QCZH knowledge search: embedding failed")
+            return "暂无知识库原文"
+        hits = qc.search_collection(
+            qc.KNOWLEDGE_TEXTS_COLLECTION,
+            emb_result.embedding,
+            limit=5,
+        )
+        chunks = [h.get("payload", {}).get("content", "") for h in (hits or [])]
+        valid = [c.strip()[:100] for c in chunks if c and c.strip()]
+        if not valid:
+            return "暂无知识库原文"
+        lines = [f"[{i+1}] {c}" for i, c in enumerate(valid[:5])]
+        total = 0
+        for i, ln in enumerate(lines):
+            if total + len(ln) > 800:
+                break
+            total += len(ln)
+        result = "\n".join(lines[:i+1]) if i > 0 else lines[0]
+        logger.info("QCZH knowledge search: %d chunks (%d chars)", len(valid), len(result))
+        return result
+    except Exception as e:
+        logger.warning("QCZH knowledge search failed: %s", e)
+        return "暂无知识库原文"
+
+
+def _glm_qczh_pre_analysis(img_bgr: np.ndarray) -> str | None:
+    """调用 GLM-5V-Turbo 对图像做初步起承转合文字分析（含写意知识库+用户自定义知识注入）。"""
+    import time as _time
+    try:
+        if not (settings.ZHIPU_ENABLED and settings.ZHIPU_API_KEY and settings.ZHIPU_BASE_URL):
+            return None
+    except Exception:
+        return None
+
+    from app.modules.pantianshou_composition.user_markdown import load_user_qczh_markdowns, build_user_markdown_context
+    user_markdowns = load_user_qczh_markdowns()
+    user_md_context = build_user_markdown_context(user_markdowns, max_total=1200)
+    knowledge_context = _fetch_qczh_knowledge_context()
+    logger.info("QCZH pre-analysis: loaded %d user markdown files (%d chars), knowledge=%d chars",
+                len(user_markdowns), len(user_md_context), len(knowledge_context))
+
+    prompt = QWEN_QCZH_PRE_PROMPT.format(
+        knowledge_context=knowledge_context,
+        user_markdown=user_md_context,
+    )
+
+    b64 = encode_bgr_to_base64(img_bgr, max_side=1024)
+    glm_model = settings.ZHIPU_MODEL.strip() or "glm-5v-turbo"
+    glm_url = _build_chat_url(settings.ZHIPU_BASE_URL)
+    payload = {
+        "model": glm_model,
+        "messages": [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+        ]}],
+        "stream": False, "max_tokens": 1024, "temperature": 0.15,
+    }
+    headers = {"Authorization": f"Bearer {settings.ZHIPU_API_KEY}", "Content-Type": "application/json"}
+    for attempt in range(2):
+        try:
+            with httpx.Client(timeout=httpx.Timeout(90.0, connect=10.0)) as client:
+                r = client.post(glm_url, json=payload, headers=headers)
+                r.raise_for_status()
+                data = r.json()
+                text = (data["choices"][0]["message"].get("content") or "").strip()
+                if text:
+                    logger.info("GLM QCZH pre-analysis OK: %d chars, model=%s", len(text), glm_model)
+                    return text
+        except Exception as e:
+            logger.warning("GLM QCZH pre-analysis attempt %d failed: %s", attempt + 1, e)
+            if attempt < 1:
+                _time.sleep(1)
+    return None
+
+
+def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None = None) -> Dict[str, Any]:
     """
-    核心起承转合分析函数（同步）。
+    核心起承转合分析函数（同步）— 统一入口。
 
-    接收 BGR 图像，返回分析结果 dict：
-    - arrows, arrow_labels, points, llm_analysis, path_type
-    - arrow_canvas: BGR 线稿+箭头图（numpy array）
-    - model: 使用的模型名
-    - cv_preprocess: CV 预处理结果（用于调试/展示）
-    - path_validation: 路径几何验证结果
+    接收 BGR 图像，可选接收已有的构图分析文本作为引导。
+    返回分析结果 dict（含 arrows/arrow_labels/points/llm_analysis/path_type/arrow_canvas 等）。
 
-    流程 (v2: CV+AI 融合)：
-    1. CV 预处理 → 提取精确几何信息
-    2. 生成线稿（使用双边滤波优化）
-    3. 将 CV 数据注入 LLM Prompt
-    4. LLM 分析（基于精确数据辅助决策）
-    5. 路径几何验证
-    6. 绘制箭头
+    两模式：
+    - 引导模式：传入 llm_analysis_text → GLM 基于已有分析精确定位坐标
+    - 自主模式：不传 llm_analysis_text → GLM 使用完整学术 prompt 自主分析
 
-    此函数被 qichengzhuanhe_api.py（HTTP API）和
-    stages.py（composition pipeline）共同调用。
+    此函数被：
+    - qichengzhuanhe_api.py（独立 QCZH HTTP API）
+    - stages.py（composition Celery 管线）
+    共同调用，规则统一于本文件。
     """
     h, w = img_bgr.shape[:2]
 
     if not (settings.ZHIPU_ENABLED and settings.ZHIPU_API_KEY and settings.ZHIPU_BASE_URL):
         raise RuntimeError("ZhipuAI GLM not configured")
 
-    # ---- 1. 生成线稿 ----
     lineart = generate_lineart(img_bgr)
-
-    # ---- 2. 编码原图为 base64 ----
     b64 = encode_bgr_to_base64(img_bgr)
 
-    # ---- 5. 调用 GLM-5V-Turbo（视觉语言模型）----
     model = settings.ZHIPU_MODEL.strip() or "glm-5v-turbo"
     url = _build_chat_url(settings.ZHIPU_BASE_URL)
+
+    if llm_analysis_text:
+        prompt = GUIDED_QCZH_PROMPT_TEMPLATE.format(
+            llm_analysis=llm_analysis_text[:2000]
+        )
+        guided_text = llm_analysis_text
+        logger.info("QCZH guided mode: using LLM analysis text (%d chars)", len(llm_analysis_text))
+    else:
+        glm_text = _glm_qczh_pre_analysis(img_bgr)
+        if glm_text:
+            prompt = GUIDED_QCZH_PROMPT_TEMPLATE.format(
+                llm_analysis=glm_text[:2000]
+            )
+            guided_text = glm_text
+            logger.info("QCZH standalone → guided: GLM pre-analysis (%d chars)", len(glm_text))
+        else:
+            prompt = QICHENGZHUANHE_PROMPT
+            guided_text = ""
+            logger.info("QCZH standalone fallback: using full comprehensive prompt (Qwen unavailable)")
 
     payload = {
         "model": model,
@@ -537,14 +838,14 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray) -> Dict[str, Any]:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": QICHENGZHUANHE_PROMPT},
+                    {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                 ],
             }
         ],
         "stream": False,
         "max_tokens": 8192,
-        "temperature": 0.3,
+        "temperature": 0.15,
     }
 
     headers = {
@@ -652,13 +953,16 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray) -> Dict[str, Any]:
     logger.debug("LLM result keys: %s", list(llm_result.keys()))
 
     # ---- 6. 解析并构建结果 ----
-    parsed = _parse_llm_result(llm_result, w, h)
+    parsed = _parse_llm_result(llm_result, w, h, guided_analysis_text=guided_text)
 
     # ---- 7. 构建箭头 + 绘制 ----
-    arrow_canvas = draw_arrows_on_lineart(lineart, parsed["arrows"], parsed["arrow_labels"])
+    display_labels = ["起", "承", "转", "合"] if parsed.get("curve_points") else parsed["arrow_labels"]
+    arrow_canvas = draw_arrows_on_lineart(lineart, parsed["arrows"], display_labels,
+                                           curve_points=parsed.get("curve_points"))
 
     parsed["arrow_canvas"] = arrow_canvas
     parsed["model"] = model
     parsed["raw_response"] = raw_content
+    parsed["qwen_analysis"] = guided_text
 
     return parsed
