@@ -20,7 +20,8 @@ from app.modules.pantianshou_composition.analyzer import (
     to_feature_vector_1024,
 )
 from app.modules.pantianshou_composition.composition_cv import compute_advanced_metrics
-from app.modules.pantianshou_composition.composition_llm import generate_composition_narrative, extract_qczh_coords
+from app.modules.pantianshou_composition.composition_llm import generate_composition_narrative
+from app.modules.pantianshou_composition.user_markdown import load_user_qczh_markdowns, build_user_markdown_context
 from app.modules.pantianshou_composition.figure_assets import figure_image_path, figure_image_url, figure_image_url_from_qdrant
 from app.modules.pantianshou_composition.pdf_generator import generate_rich_pdf
 from app.modules.pantianshou_composition.qdrant_client import search_cases
@@ -317,164 +318,51 @@ def analyze_arrow_flow(ctx: CompositionContext) -> None:
     pass
 
 
-def _extract_qczh_from_glm(img_bgr) -> dict | None:
-    """使用 GLM-5V-Turbo 独立提取起承转合四点坐标（视觉定位更准）。"""
-    import base64, time, httpx
-    import cv2
-    try:
-        if not (settings.ZHIPU_ENABLED and settings.ZHIPU_API_KEY and settings.ZHIPU_BASE_URL):
-            return None
-    except Exception:
-        return None
-    # resize to reasonable size for API
-    h, w = img_bgr.shape[:2]
-    max_dim = 1280
-    if max(h, w) > max_dim:
-        scale = max_dim / max(h, w)
-        img_small = cv2.resize(img_bgr, (int(w*scale), int(h*scale)), interpolation=cv2.INTER_AREA)
-    else:
-        img_small = img_bgr
-    _, buf = cv2.imencode('.jpg', img_small, [cv2.IMWRITE_JPEG_QUALITY, 75])
-    b64 = base64.b64encode(buf).decode()
-    kb = len(b64) / 1024
-    _pipeline_log(f"GLM image encoded: {kb:.0f} KB base64")
-    model = (settings.ZHIPU_MODEL or "").strip() or "glm-5v-turbo"
-    base = (settings.ZHIPU_BASE_URL or "").rstrip("/")
-    if base.endswith("/chat/completions"):
-        url = base
-    else:
-        url = f"{base}/chat/completions"
-    prompt = (
-        "你是中国画构图专家。请在画面上标注起承转合四个关键位置（百分比坐标，x∈[0,100], y∈[0,100]，原点左上角）。\n"
-        "注意：你的左手边是「左」，右手边是「右」。请仔细确认画材实际位置再给出坐标。\n"
-        "- 起(qi)：画面主要势能起点，在画面边缘附近\n"
-        "- 承(cheng)：势能承接发展的中间节点\n"
-        "- 转(zhuan)：势能转折变化处\n"
-        "- 合(he)：势能收束终点，通常靠近题款或视觉终点\n"
-        "path_shape 从「之字形/对角线/三角形/回环/上升」中选择。\n"
-        "只返回 JSON，不要任何解释：\n"
-        '{"qi":{"x":数字,"y":数字},"cheng":{"x":数字,"y":数字},"zhuan":{"x":数字,"y":数字},"he":{"x":数字,"y":数字},"path_shape":"之字形"}'
-    )
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-        ]}],
-        "stream": False, "max_tokens": 4096, "temperature": 0.1,
-        "thinking": {"type": "disabled"},
-    }
-    headers = {"Authorization": f"Bearer {settings.ZHIPU_API_KEY}", "Content-Type": "application/json"}
-    for attempt in range(3):
-        try:
-            with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
-                r = client.post(url, json=payload, headers=headers)
-                r.raise_for_status()
-                data = r.json()
-                choice = data.get("choices", [{}])[0]
-                content = (choice.get("message", {}).get("content") or "").strip()
-                if not content:
-                    content = choice.get("reasoning_content") or ""
-                if not content:
-                    _pipeline_log(f"GLM empty content, finish_reason={choice.get('finish_reason')}")
-                    continue
-                import re as _re
-                m = _re.search(r'\{[^{}]*"qi"\s*:.*?"path_shape"[^}]*\}', content, _re.DOTALL)
-                if m:
-                    import json as _json
-                    coords = _json.loads(m.group(0))
-                    if all(k in coords for k in ("qi", "cheng", "zhuan", "he")):
-                        _pipeline_log(f"[arrow] GLM coords: qi=({coords['qi'].get('x')},{coords['qi'].get('y')}) he=({coords['he'].get('x')},{coords['he'].get('y')}) path={coords.get('path_shape')}")
-                        return coords
-                _pipeline_log(f"GLM no valid JSON in: {content[:150]}")
-        except Exception as e2:
-            _pipeline_log(f"GLM attempt {attempt+1} error: {e2}")
-            if attempt < 2:
-                time.sleep(1 + attempt)
-    _pipeline_log("GLM all 3 attempts failed")
-    return None
-
-
 def draw_qczh_from_llm(ctx: CompositionContext) -> None:
+    """调用统一 QCZH 核心函数生成起承转合箭头图（通过 analyze_qichengzhuanhe）。"""
+    from app.modules.pantianshou_composition.qichengzhuanhe import analyze_qichengzhuanhe
+    from app.modules.pantianshou_composition.storage import get_arrow_overlay_path, ensure_composition_dirs, build_static_url, THUMBNAIL_SIZE
+
     llm_result = ctx.llm or {}
     llm_text = llm_result.get("_raw_text") or llm_result.get("text") or ""
-    if not llm_text and not ctx.img_bgr:
+    if not ctx.img_bgr:
         return
-    # try GLM first for better left/right accuracy
-    coords = None
-    if ctx.img_bgr is not None:
-        coords = _extract_qczh_from_glm(ctx.img_bgr)
-    if not coords and llm_text:
-        coords = extract_qczh_coords(llm_text)
-    if not coords:
-        if not llm_text:
-            _pipeline_log("[arrow] no GLM and no LLM text")
-        else:
-            tail = llm_text[-300:] if len(llm_text) > 300 else llm_text
-            _pipeline_log(f"[arrow] no qczh coords. LLM tail: {tail[:200]}")
-        return
+
     try:
-        qi = coords.get("qi") or {}
-        cheng = coords.get("cheng") or {}
-        zhuan = coords.get("zhuan") or {}
-        he = coords.get("he") or {}
-        # LLM sometimes reverses qi and he; ensure qi is closer to an edge
-        def _edge_dist(pt):
-            x = float(pt.get("x", 50))
-            y = float(pt.get("y", 50))
-            return min(x, y, 100 - x, 100 - y)
-        qi_he_swapped = False
-        if _edge_dist(qi) > _edge_dist(he):
-            qi_he_swapped = True
-            qi, he = he, qi
-        # Chinese painting convention: qi is on the LEFT side. Mirror x if wrong.
-        if qi.get("x", 50) > 50:
-            for pt in (qi, cheng, zhuan, he):
-                if pt:
-                    pt["x"] = 100 - pt["x"]
-            _pipeline_log("[arrow] mirrored x (qi was on right half)")
-        img_h, img_w = ctx.img_bgr.shape[:2]
-        qi_pt = (int(qi["x"] * img_w / 100), int(qi["y"] * img_h / 100))
-        cheng_pt = (int(cheng["x"] * img_w / 100), int(cheng["y"] * img_h / 100))
-        zhuan_pt = (int(zhuan["x"] * img_w / 100), int(zhuan["y"] * img_h / 100))
-        he_pt = (int(he["x"] * img_w / 100), int(he["y"] * img_h / 100))
-        labels = ["起", "承", "转", "合"]
-        if qi_he_swapped:
-            labels[0], labels[3] = labels[3], labels[0]
-        arrows = [
-            (qi_pt[0], qi_pt[1], cheng_pt[0], cheng_pt[1]),
-            (cheng_pt[0], cheng_pt[1], zhuan_pt[0], zhuan_pt[1]),
-            (zhuan_pt[0], zhuan_pt[1], he_pt[0], he_pt[1]),
-        ]
-        from app.modules.pantianshou_composition.qichengzhuanhe import draw_arrows_on_lineart, generate_lineart
-        from app.modules.pantianshou_composition.storage import get_arrow_overlay_path, ensure_composition_dirs, build_static_url, THUMBNAIL_SIZE
-        lineart = generate_lineart(ctx.img_bgr)
-        arrow_canvas = draw_arrows_on_lineart(lineart, arrows, labels)
-        arrow_path = get_arrow_overlay_path(ctx.task_id)
-        cv2.imwrite(arrow_path, arrow_canvas)
-        dirs = ensure_composition_dirs()
-        arrow_thumb_path = os.path.join(dirs["thumbs_dir"], f"{ctx.task_id}_arrow.jpg")
-        h, w = arrow_canvas.shape[:2]
-        if w > h:
-            new_w, new_h = THUMBNAIL_SIZE, int(h * THUMBNAIL_SIZE / w)
-        else:
-            new_h, new_w = THUMBNAIL_SIZE, int(w * THUMBNAIL_SIZE / h)
-        cv2.imwrite(arrow_thumb_path, cv2.resize(arrow_canvas, (new_w, new_h), interpolation=cv2.INTER_AREA),
-                     [cv2.IMWRITE_JPEG_QUALITY, 80])
-        base_data_dir = os.path.dirname(settings.UPLOAD_DIR)
-        rel_arrow = os.path.relpath(arrow_path, base_data_dir)
-        rel_thumb = os.path.relpath(arrow_thumb_path, base_data_dir)
-        ctx.arrow_overlay_url = build_static_url(rel_arrow)
-        ctx.arrow_analysis = {
-            "arrows": arrows,
-            "arrow_labels": labels,
-            "path_type": coords.get("path_shape", "之字形"),
-            "llm_analysis": "",
-            "thumb_url": build_static_url(rel_thumb),
-        }
-        _pipeline_log(f"[arrow] ok qi=({qi_pt[0]},{qi_pt[1]})->he=({he_pt[0]},{he_pt[1]}) path={coords.get('path_shape')} swapped={qi_he_swapped}")
+        result = analyze_qichengzhuanhe(ctx.img_bgr, llm_analysis_text=llm_text if llm_text else None)
     except Exception as e:
-        _pipeline_log(f"[arrow] FAIL: {e}")
+        _pipeline_log(f"[arrow] analyze_qichengzhuanhe FAIL: {e}")
+        return
+
+    arrow_canvas = result.get("arrow_canvas")
+    if arrow_canvas is None:
+        _pipeline_log("[arrow] analyze_qichengzhuanhe returned no arrow_canvas")
+        return
+
+    arrow_path = get_arrow_overlay_path(ctx.task_id)
+    cv2.imwrite(arrow_path, arrow_canvas)
+    dirs = ensure_composition_dirs()
+    arrow_thumb_path = os.path.join(dirs["thumbs_dir"], f"{ctx.task_id}_arrow.jpg")
+    h, w = arrow_canvas.shape[:2]
+    if w > h:
+        new_w, new_h = THUMBNAIL_SIZE, int(h * THUMBNAIL_SIZE / w)
+    else:
+        new_h, new_w = THUMBNAIL_SIZE, int(w * THUMBNAIL_SIZE / h)
+    cv2.imwrite(arrow_thumb_path, cv2.resize(arrow_canvas, (new_w, new_h), interpolation=cv2.INTER_AREA),
+                 [cv2.IMWRITE_JPEG_QUALITY, 80])
+    base_data_dir = os.path.dirname(settings.UPLOAD_DIR)
+    rel_arrow = os.path.relpath(arrow_path, base_data_dir)
+    rel_thumb = os.path.relpath(arrow_thumb_path, base_data_dir)
+    ctx.arrow_overlay_url = build_static_url(rel_arrow)
+    ctx.arrow_analysis = {
+        "arrows": result.get("arrows", []),
+        "arrow_labels": result.get("arrow_labels", []),
+        "path_type": result.get("path_type", "之字形"),
+        "llm_analysis": llm_text[:500] if llm_text else "",
+        "thumb_url": build_static_url(rel_thumb),
+        "glm_labels": result.get("glm_labels", {}),
+    }
+    _pipeline_log(f"[arrow] ok via analyze_qichengzhuanhe, path={result.get('path_type')}")
 
 
 def _fetch_knowledge_context(matched_rules: List[Dict[str, Any]]) -> Tuple[List[str], List[Dict[str, Any]]]:
@@ -604,6 +492,10 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
     _total, _dims = build_dimension_scores(metrics, adv=ctx.advanced_metrics)
     dim_scores_payload = {"total_score": _total, "dimensions": _dims}
 
+    user_markdowns = load_user_qczh_markdowns()
+    user_md_context = build_user_markdown_context(user_markdowns)
+    _pipeline_log(f"[llm] user_markdowns={len(user_markdowns)}, context_len={len(user_md_context)}")
+
     ctx.llm = generate_composition_narrative(
         image_path=to_abs_path(ctx.job.upload_path),
         original_url=ctx.job.original_url,
@@ -639,6 +531,7 @@ def write_llm_narrative(ctx: CompositionContext) -> None:
         example_images=example_images,
         dimension_scores=dim_scores_payload,
         context_knowledge=context_knowledge,
+        user_qczh_markdown_context=user_md_context,
     )
 
 

@@ -37,7 +37,7 @@ router = APIRouter(prefix="/composition", tags=["起承转合分析"])
 @router.post("/qichengzhuanhe-analyze")
 async def qichengzhuanhe_analyze(file: UploadFile = File(...)):
     """
-    使用 Qwen VL 视觉模型分析起承转合。
+    起承转合分析：Qwen 多模态模型做初步文字分析 → GLM 视觉模型精准提取坐标与标注。
     分析完成后自动保存到历史记录。
     """
     MAX_SIZE = 10 * 1024 * 1024
@@ -102,6 +102,7 @@ async def qichengzhuanhe_analyze(file: UploadFile = File(...)):
         "has_inscription": result.get("has_inscription", True),
         "inscription_edge": result.get("inscription_edge", ""),
         "seal_positions": result.get("seal_positions", []),
+        "qwen_analysis": result.get("qwen_analysis", ""),
         # CV+AI 融合数据（v2）
         "cv_preprocess": result.get("cv_preprocess", {}),
     }

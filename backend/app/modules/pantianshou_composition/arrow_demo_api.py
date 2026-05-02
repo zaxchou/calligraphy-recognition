@@ -85,4 +85,5 @@ async def arrow_demo_llm(file: UploadFile = File(...)):
         "has_inscription": result.get("has_inscription", True),
         "inscription_edge": result.get("inscription_edge", ""),
         "seal_positions": result.get("seal_positions", []),
+        "qwen_analysis": result.get("qwen_analysis", ""),
     }

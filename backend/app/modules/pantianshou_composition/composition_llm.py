@@ -139,6 +139,7 @@ def generate_composition_narrative(
     theory_basis: List[Dict[str, Any]],
     example_images: List[Dict[str, Any]],
     context_knowledge: List[str] | None = None,
+    user_qczh_markdown_context: str | None = None,
     model: Optional[str] = None,
     dimension_scores: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -198,12 +199,16 @@ def generate_composition_narrative(
 【知识库原文 context_knowledge（来自潘天寿《关于构图问题》+《中国写意花鸟画教程》中与当前作品最相关的原文节选，请在分析中参考引述这些原文观点与案例，让讲评更有权威依据）】
 {_safe_knowledge(context_knowledge)}
 
+【用户自定义起承转合知识（来自用户整理的markdown笔记，请在起承转合分析中重点参考这些观点和判定标准）】
+{user_qczh_markdown_context if user_qczh_markdown_context else "暂无用户自定义笔记"}
+
 输出要求：
 1) 必须输出 Markdown，结构参考：
    - ## 一、作品概述与优点（先判断构图范式，再从整体上肯定作品的构图特色和亮点）
    - ## 二、分项分析（每个维度单独一行标题，如"1. **开合之势**"，然后换行写分析段落；共7个维度：开合之势、虚实相生、疏密有致、辅助元素、均衡节奏、穿插结构、边角空间。每个维度按"审美判断框架"三步走：状态判断→与整体关系→改善方向）
    - ## 综合评分表（必须严格使用上方"系统计算得分"中的分数，用 Markdown 表格输出7个维度 + 总分行，不得修改任何数值）
    - ## 精进建议（如需提升，可参考潘天寿及历代名家的经验，编号列表，3-5条即可。每条建议需说明与当前构图范式的关联）
+   - ## 起承转合分析（重点：详细分析本幅作品的起承转合关系，说清楚四个阶段的视觉位置、物象依据和势能流动过程）
    - ## 结语（总结性正面评价，呼应开头构图范式判断）
 2) 不要输出任何内部编号与算法术语：不得输出 rule_id、图号编号（如 KH-01-03、JH-01-01）、不得输出 blank_ratio/角度差等原始数值。
 3) 每条建议必须说明"依据"：用老师口吻引用原文要点（来自 theory_basis 的 rule_name/condition/quantitative_standard，但不要带编号），并说明该条与当前作品如何对应。
@@ -215,13 +220,15 @@ def generate_composition_narrative(
    c) example_images 中的 title/note/caption 字段说明了该图对应的构图规则，请据此判断图片应放在哪个维度或建议段落。
    d) 只能使用 example_images 中提供的 image_url，不得编造路径。如无合适图片可跳过。
 7) 新增维度（均衡节奏/穿插结构/边角空间）的建议可适当引用刘海勇《中国写意花鸟画教程》中的概念，如"杆秤式平衡""女字交叉""金边银角""大实空白"等。
-8) 【重要】必须完整输出所有内容直至"结语"部分。不要因为篇幅限制而中途截断。如果空间不够，适当精简每段的论述，但确保7个维度分析和精进建议全部输出。
-9) 【起承转合坐标标注——新增要求】
-   在"结语"后空一行，输出一个 JSON 代码块，标注画面起承转合四点坐标（百分比，x∈[0,100], y∈[0,100]，原点在左上角）。四点必须与你在正文分析中描述的起承转合完全对应：
-   ```json
-   {{"qi":{{"x":85,"y":90,"label":"起·鸡足踏地"}},"cheng":{{"x":55,"y":60,"label":"承·枝条穿插"}},"zhuan":{{"x":35,"y":35,"label":"转·花头方向"}},"he":{{"x":20,"y":12,"label":"合·题款收束"}},"path_shape":"之字形"}}
-   ```
-   要求：label 尽量简洁（5字内）；path_shape 为"之字形"/"对角线"/"三角形"/"回环"/"上升"之一；qi 坐标通常靠近画面边缘。"""
+8) 【重要】必须完整输出所有内容直至"结语"部分。不要因为篇幅限制而中途截断。如果空间不够，适当精简每段的论述，但确保7个维度分析、精进建议和起承转合分析全部输出。
+9) 【起承转合分析要求——重要新增】
+   在"起承转合分析"章节中，请完成以下分析（不要输出JSON坐标，只需定性文字描述）：
+   - **起**：势能起点在哪里？视觉注意力首先被什么吸引？描述具体位置（如画面左下角、右上方等）和所对应的物象
+   - **承**：势能如何承接发展？视线如何从起点流动到画面内部？描述承接路径上的关键物象
+   - **转**：势能在哪里转折变化？什么元素（方向改变、疏密切换、虚实过渡）造成了转折？
+   - **合**：势能如何收束？画面如何达到平衡？收束点与题款、印章的关系
+   - **路径形状**：整体走势呈什么形态？（之字形/对角线/三段式/边角/中心辐射/纵横/全景等）
+   - 每条分析需引用知识库原文或用户笔记中的判定标准作为依据"""
 
     payload: Dict[str, Any] = {
         "model": model,
@@ -257,7 +264,7 @@ def generate_composition_narrative(
             text = _postprocess_text(text, example_images, dimension_scores=dimension_scores)
             if finish_reason == "length":
                 text += "\n\n> ⚠️ *（内容因长度限制被截断，部分分析未完整输出）*"
-            return {"ok": True, "model": model, "text": text, "finish_reason": finish_reason, "_raw_text": raw_text}
+            return {"ok": True, "model": model, "text": text, "finish_reason": finish_reason, "_raw_text": raw_text, "prompt": prompt}
     except Exception as e:
         fallback = (settings.QWEN_MODEL or "").strip()
         if fallback and fallback != model:
@@ -277,7 +284,7 @@ def generate_composition_narrative(
                     text = _postprocess_text(text, example_images, dimension_scores=dimension_scores)
                     if finish_reason == "length":
                         text += "\n\n> ⚠️ *（内容因长度限制被截断，部分分析未完整输出）*"
-                    return {"ok": True, "model": fallback, "text": text, "finish_reason": finish_reason, "_raw_text": raw_text}
+                    return {"ok": True, "model": fallback, "text": text, "finish_reason": finish_reason, "_raw_text": raw_text, "prompt": prompt}
             except Exception:
                 pass
         return {"ok": False, "error": str(e), "model": model}
@@ -457,6 +464,15 @@ def _distribute_images_into_sections(text: str, example_images: List[Dict[str, A
                     t = t[:end_pos] + img_md + t[end_pos:]
                     inserted = True
                     break
+            # Special case: if target_dim is "开合之势" but text has "起承转合分析" section,
+            # also try inserting into the "起承转合分析" section for 起承转合-keyword images
+            if target_dim == "开合之势":
+                qczh_pattern = rf'(##\s*起承转合分析.*?)(?=\n\n##|\n\n【精进建议】|\n\n## 精进建议|$)'
+                qczh_match = re.search(qczh_pattern, t, re.DOTALL)
+                if qczh_match:
+                    end_pos = qczh_match.end()
+                    t = t[:end_pos] + img_md + t[end_pos:]
+                    inserted = True
         
         # 如果找不到对应维度，插入到"精进建议"之前
         if not inserted:

@@ -106,7 +106,7 @@ def _search(collection: str, vector: List[float], limit: int = 5, query_filter: 
         return []
     except Exception as e:
         logger.error("Qdrant 搜索未知错误 [%s]: %s", collection, e)
-        return results
+        return []
 
 
 def scroll_by_filter(

@@ -135,11 +135,11 @@ GUIDED_QCZH_PROMPT_TEMPLATE = """你是中国画构图专家。请基于以下�
 4. 合(he)：势能收束点。优先选主物象气口或留白回旋处，**不要将寥寥数字的穷款当作合点**。
 5. 整条路径为 qi → path_points[0..N] → he 的连续序列，共 8-12 个点。
 
-【坐标域提示】
-- 起点在墨色最重、最粗的枝干/石块入画边缘，排除文字区域。
+【坐标域提示——严格遵守】
+- **起点(qi)的 x 坐标必须位于画面中墨色最重、最粗的枝干/石块所在的边缘，严禁落在题跋/文字区域**。若题跋在右侧，qi 的 x 必须 < 30；若题跋在左侧，qi 的 x 必须 > 70。起点不能是文字。
 - 承沿主干推进，经画眼。
 - 转在方向变化最大处。
-- 合在留白回旋处或主物象的收束气口。
+- 合在留白回旋处或主物象的收束气口，穷款文字区不得作为合。
 
 只返回 JSON：
 {{"qi":{{"x":数字,"y":数字,"label":"起·描述"}},"path_points":[{{"x":数字,"y":数字,"label":"承·描述"}},{{"x":数字,"y":数字,"label":"承·描述"}},{{"x":数字,"y":数字,"label":"转·描述"}},{{"x":数字,"y":数字,"label":"转·描述"}},...],"he":{{"x":数字,"y":数字,"label":"合·描述"}},"path_shape":"之字形/对角线/C形/三角形/回环/上升"}}
@@ -389,28 +389,54 @@ def draw_arrows_on_lineart(lineart: np.ndarray, arrows: list, labels: list,
         spline = _catmull_rom_spline(clamped, num_segments=60)
         curve_thick = max(5, int(6 * scale))
 
-        for i in range(len(spline) - 1):
-            t = i / max(1, len(spline) - 2)
+        total_path = 0.0
+        for i in range(len(clamped) - 1):
+            dx = clamped[i+1][0] - clamped[i][0]
+            dy = clamped[i+1][1] - clamped[i][1]
+            total_path += (dx*dx + dy*dy) ** 0.5
+        s_amplitude = max(20, int(total_path * 0.08)) * scale
+
+        dx_total = clamped[-1][0] - clamped[0][0]
+        dy_total = clamped[-1][1] - clamped[0][1]
+        span = (dx_total * dx_total + dy_total * dy_total) ** 0.5
+        if span > 0:
+            perp_dx = -dy_total / span
+            perp_dy = dx_total / span
+        else:
+            perp_dx, perp_dy = 0, 0
+
+        waved = []
+        for i, (sx, sy) in enumerate(spline):
+            t = i / max(1, len(spline) - 1)
+            offset = s_amplitude * (t - t * t) * 4 * (0.5 - t) * 3.2
+            nx = int(sx + perp_dx * offset)
+            ny = int(sy + perp_dy * offset)
+            nx = max(0, min(w - 1, nx))
+            ny = max(0, min(h - 1, ny))
+            waved.append((nx, ny))
+
+        for i in range(len(waved) - 1):
+            t = i / max(1, len(waved) - 2)
             if t < 0.333:
                 color = _lerp_color(colors_bgr[0], colors_bgr[1], t / 0.333)
             elif t < 0.666:
                 color = _lerp_color(colors_bgr[1], colors_bgr[2], (t - 0.333) / 0.333)
             else:
                 color = _lerp_color(colors_bgr[2], colors_bgr[3], (t - 0.666) / 0.334)
-            cv2.line(canvas, spline[i], spline[i + 1], color, curve_thick)
+            cv2.line(canvas, waved[i], waved[i + 1], color, curve_thick)
 
-        steps = len(spline)
+        steps = len(waved)
         for ai in range(3):
             idx = int((ai + 1) * steps / 4)
             if idx + 4 < steps:
-                p0 = spline[idx]
-                p1 = spline[idx + 4]
+                p0 = waved[idx]
+                p1 = waved[idx + 4]
                 dx, dy = p1[0] - p0[0], p1[1] - p0[1]
                 length = (dx * dx + dy * dy) ** 0.5
                 if length > 0:
                     dx, dy = dx / length, dy / length
                     tip = (int(p1[0] + dx * 10 * scale), int(p1[1] + dy * 10 * scale))
-                    cv2.arrowedLine(canvas, spline[idx], tip, colors_bgr[ai + 1],
+                    cv2.arrowedLine(canvas, waved[idx], tip, colors_bgr[ai + 1],
                                     max(2, int(2.5 * scale)), tipLength=0.3)
     else:
         for idx, arr in enumerate(arrows):
@@ -736,11 +762,11 @@ def _fetch_qczh_knowledge_context() -> str:
         return "暂无知识库原文"
 
 
-def _glm_qczh_pre_analysis(img_bgr: np.ndarray) -> str | None:
-    """调用 GLM-5V-Turbo 对图像做初步起承转合文字分析（含写意知识库+用户自定义知识注入）。"""
+def _qwen_qczh_pre_analysis(img_bgr: np.ndarray) -> str | None:
+    """调用 Qwen 多模态模型对图像做初步起承转合文字分析（含写意知识库+用户自定义知识注入）。"""
     import time as _time
     try:
-        if not (settings.ZHIPU_ENABLED and settings.ZHIPU_API_KEY and settings.ZHIPU_BASE_URL):
+        if not (settings.QWEN_ENABLED and settings.QWEN_API_KEY and settings.QWEN_BASE_URL):
             return None
     except Exception:
         return None
@@ -758,29 +784,29 @@ def _glm_qczh_pre_analysis(img_bgr: np.ndarray) -> str | None:
     )
 
     b64 = encode_bgr_to_base64(img_bgr, max_side=1024)
-    glm_model = settings.ZHIPU_MODEL.strip() or "glm-5v-turbo"
-    glm_url = _build_chat_url(settings.ZHIPU_BASE_URL)
+    qwen_model = getattr(settings, "QWEN_MODEL", "qwen3.5-plus").strip() or "qwen3.5-plus"
+    qwen_url = _build_chat_url(settings.QWEN_BASE_URL)
     payload = {
-        "model": glm_model,
+        "model": qwen_model,
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
         ]}],
         "stream": False, "max_tokens": 1024, "temperature": 0.15,
     }
-    headers = {"Authorization": f"Bearer {settings.ZHIPU_API_KEY}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {settings.QWEN_API_KEY}", "Content-Type": "application/json"}
     for attempt in range(2):
         try:
             with httpx.Client(timeout=httpx.Timeout(90.0, connect=10.0)) as client:
-                r = client.post(glm_url, json=payload, headers=headers)
+                r = client.post(qwen_url, json=payload, headers=headers)
                 r.raise_for_status()
                 data = r.json()
                 text = (data["choices"][0]["message"].get("content") or "").strip()
                 if text:
-                    logger.info("GLM QCZH pre-analysis OK: %d chars, model=%s", len(text), glm_model)
+                    logger.info("Qwen QCZH pre-analysis OK: %d chars, model=%s", len(text), qwen_model)
                     return text
         except Exception as e:
-            logger.warning("GLM QCZH pre-analysis attempt %d failed: %s", attempt + 1, e)
+            logger.warning("Qwen QCZH pre-analysis attempt %d failed: %s", attempt + 1, e)
             if attempt < 1:
                 _time.sleep(1)
     return None
@@ -804,14 +830,14 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None
     """
     h, w = img_bgr.shape[:2]
 
-    if not (settings.ZHIPU_ENABLED and settings.ZHIPU_API_KEY and settings.ZHIPU_BASE_URL):
-        raise RuntimeError("ZhipuAI GLM not configured")
+    if not (settings.QWEN_ENABLED and settings.QWEN_API_KEY and settings.QWEN_BASE_URL):
+        raise RuntimeError("Qwen not configured")
 
     lineart = generate_lineart(img_bgr)
     b64 = encode_bgr_to_base64(img_bgr)
 
-    model = settings.ZHIPU_MODEL.strip() or "glm-5v-turbo"
-    url = _build_chat_url(settings.ZHIPU_BASE_URL)
+    model = "qwen3-vl-plus"
+    url = _build_chat_url(settings.QWEN_BASE_URL)
 
     if llm_analysis_text:
         prompt = GUIDED_QCZH_PROMPT_TEMPLATE.format(
@@ -820,17 +846,17 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None
         guided_text = llm_analysis_text
         logger.info("QCZH guided mode: using LLM analysis text (%d chars)", len(llm_analysis_text))
     else:
-        glm_text = _glm_qczh_pre_analysis(img_bgr)
-        if glm_text:
+        qwen_text = _qwen_qczh_pre_analysis(img_bgr)
+        if qwen_text:
             prompt = GUIDED_QCZH_PROMPT_TEMPLATE.format(
-                llm_analysis=glm_text[:2000]
+                llm_analysis=qwen_text[:2000]
             )
-            guided_text = glm_text
-            logger.info("QCZH standalone → guided: GLM pre-analysis (%d chars)", len(glm_text))
+            guided_text = qwen_text
+            logger.info("QCZH standalone → guided: Qwen pre-analysis (%d chars)", len(qwen_text))
         else:
             prompt = QICHENGZHUANHE_PROMPT
             guided_text = ""
-            logger.info("QCZH standalone fallback: using full comprehensive prompt (Qwen unavailable)")
+            logger.info("QCZH standalone fallback: using full comprehensive prompt")
 
     payload = {
         "model": model,
@@ -849,7 +875,7 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None
     }
 
     headers = {
-        "Authorization": f"Bearer {settings.ZHIPU_API_KEY}",
+        "Authorization": f"Bearer {settings.QWEN_API_KEY}",
         "Content-Type": "application/json",
     }
 
@@ -860,7 +886,7 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None
     last_error = None
     for attempt in range(1, max_retries + 2):
         try:
-            with httpx.Client(timeout=httpx.Timeout(180.0, connect=15.0, read=150.0)) as client:
+            with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
                 r = client.post(url, headers=headers, json=payload)
                 r.raise_for_status()
                 data = r.json()
@@ -874,35 +900,15 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None
             message = data["choices"][0]["message"]
             raw_content = message.get("content") or ""
 
-            # glm-5v-turbo 是推理模型：content 可能为空，所有内容在 reasoning_content 中
-            finish_reason = data["choices"][0].get("finish_reason", "")
-            if (not raw_content or not raw_content.strip()) and finish_reason == "length":
-                # finish_reason=length 意味着输出被截断，content 一定为空
-                # 尝试从 reasoning_content 中提取 JSON
-                reasoning = message.get("reasoning_content") or ""
-                if reasoning:
-                    logger.info("content 为空 (finish_reason=length)，尝试从 reasoning_content 提取 JSON, reasoning_len=%d", len(reasoning))
-                    # 从 reasoning_content 中提取 JSON 块
-                    json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', reasoning)
-                    if json_match:
-                        raw_content = json_match.group(1)
-                        logger.info("从 reasoning_content 提取到 JSON 块, len=%d", len(raw_content))
-                    else:
-                        # 尝试找到最后一个 { ... } 块
-                        brace_match = re.search(r'\{[\s\S]*\}', reasoning)
-                        if brace_match:
-                            raw_content = brace_match.group(0)
-                            logger.info("从 reasoning_content 提取到 JSON 对象, len=%d", len(raw_content))
-
             if not raw_content or not raw_content.strip():
-                logger.error("LLM 返回空内容, finish_reason=%s, reasoning_len=%d",
-                             finish_reason, len(message.get("reasoning_content", "")))
-                raise ValueError("LLM 返回空内容")
+                logger.error("Qwen 返回空内容, finish_reason=%s",
+                             data["choices"][0].get("finish_reason", ""))
+                raise ValueError("Qwen 返回空内容")
 
             # 清洗中文引号，避免 JSON 解析失败
             raw_content = raw_content.replace('"', '"').replace('"', '"')
 
-            logger.info("起承转合 LLM response OK, model=%s, len=%d, attempt=%d",
+            logger.info("起承转合 Qwen response OK, model=%s, len=%d, attempt=%d",
                         model, len(raw_content), attempt)
             break
         except Exception as e:

@@ -55,6 +55,12 @@
 
         <div v-if="error" class="error-box">{{ error }}</div>
 
+        <!-- Qwen 预分析结果（传给 GLM 的 prompt） -->
+        <div v-if="result && result.qwen_analysis" class="debug-section">
+          <h3>🔍 Qwen 预分析 输出（→ 传给 GLM 精确定位）</h3>
+          <div class="debug-text">{{ result.qwen_analysis }}</div>
+        </div>
+
         <!-- 分析结果 -->
         <div v-if="result && result.llm_analysis" class="llm-result">
           <h3>分析</h3>
@@ -72,12 +78,10 @@
           上传国画图片并点击"分析起承转合"后，<br>AI 将生成白底线稿并标注起承转合箭头
         </div>
         <div v-else class="canvas-wrap">
-          <div class="img-container" :style="{ width: displayW + 'px', height: displayH + 'px' }">
+          <div class="img-container" :style="{ maxWidth: displayW + 'px' }">
             <img
               :src="result.preview_image"
               class="bg-img"
-              :width="displayW"
-              :height="displayH"
             />
           </div>
         </div>
@@ -185,7 +189,7 @@ const activeHistoryId = ref(null)
 const confirmDialog = ref({ show: false, title: '', message: '', onConfirm: () => {} })
 
 // 显示尺寸（限制最大宽度）
-const MAX_DISPLAY = 700
+const MAX_DISPLAY = 1200
 const displayW = computed(() => {
   if (!result.value) return 0
   const { width, height } = result.value
@@ -283,7 +287,7 @@ function compressImage(file, maxSide = 1500, quality = 0.85) {
 const PROGRESS_STAGES = [
   { at: 0,  text: '正在上传图片...',       pct: 10 },
   { at: 3,  text: '正在预处理图像，生成线稿...', pct: 25 },
-  { at: 8,  text: '正在调用 Qwen VL 视觉模型分析...', pct: 40 },
+  { at: 8,  text: '正在调用智能系统分析...', pct: 40 },
   { at: 25, text: 'AI 模型推理中，请耐心等待...',     pct: 55 },
   { at: 50, text: '正在解析构图走势...',   pct: 70 },
   { at: 70, text: '正在生成线稿分析图...', pct: 85 },
@@ -464,7 +468,15 @@ function clearAllHistory() {
 }
 
 function showConfirm(title, message, onConfirm) {
-  confirmDialog.value = { show: true, title, message, onConfirm }
+  confirmDialog.value = {
+    show: true,
+    title,
+    message,
+    onConfirm: async () => {
+      await onConfirm()
+      confirmDialog.value.show = false
+    }
+  }
 }
 
 function formatTime(isoStr) {
@@ -724,10 +736,13 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: 8px;
+  max-width: 100%;
+  overflow: auto;
 }
 .img-container {
   position: relative;
   display: inline-block;
+  max-width: 100%;
   border: 1px solid var(--border-warm, #e8e6dc);
   border-radius: var(--radius-lg, 12px);
   overflow: hidden;
@@ -735,6 +750,8 @@ onMounted(() => {
 }
 .bg-img {
   display: block;
+  max-width: 100%;
+  height: auto;
 }
 .no-arrow-warn {
   margin-top: 16px;
@@ -781,6 +798,29 @@ onMounted(() => {
   color: var(--dark-warm, #3d3d3a);
   line-height: 1.7;
   white-space: pre-wrap;
+}
+
+/* Qwen 预分析调试区域 */
+.debug-section {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e8c48c;
+  border-radius: var(--radius-md, 8px);
+  background: #fffdf5;
+}
+.debug-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b87a20;
+}
+.debug-text {
+  font-size: 13px;
+  color: var(--dark-warm, #3d3d3a);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 /* ========== 历史记录区域 ========== */
