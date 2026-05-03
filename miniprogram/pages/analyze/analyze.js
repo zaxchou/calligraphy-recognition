@@ -101,13 +101,24 @@ Page({
       that.setData({ progress: pct, stageText: stages[idx], etaSeconds: Math.round(70 - elapsed) })
     }, 500)
 
+    // 最大等待时间：150 秒后强制合并现有结果
+    this._mergeTimeout = setTimeout(function () {
+      console.log('[MERGE] force merge after 150s')
+      that._reportDone = true
+      that._qczhDone = true
+      that._stopPolling()
+      that._tryMerge()
+    }, 150000)
+
     // 请求1: 原构图评分系统
     this._startTimeout()
     api.upload(filePath).then(function (res) {
       that._taskId = res.task_id
       that._startPolling()
-    }).catch(function () {
+    }).catch(function (err) {
+      console.log('[MERGE] upload composition failed:', err)
       that._reportDone = true
+      that._tryMerge()
     })
 
     // 请求2: 起承转合曲线
@@ -115,7 +126,8 @@ Page({
       that._qczhDone = true
       that._pendingQczh = res
       that._tryMerge()
-    }).catch(function () {
+    }).catch(function (err) {
+      console.log('[MERGE] qczh failed:', err)
       that._qczhDone = true
       that._tryMerge()
     })
@@ -126,7 +138,12 @@ Page({
     this._pollTimer = setInterval(function () {
       api.getTask(that._taskId).then(function (data) {
         if (data.status === 'done') { that._stopPolling(); that._loadReport() }
-        else if (data.status === 'failed') { that._stopPolling(); that._reportDone = true; that.setData({ errorMsg: data.error_message || '分析失败' }) }
+        else if (data.status === 'failed') {
+          that._stopPolling()
+          that._reportDone = true
+          console.log('[MERGE] task failed:', data.error_message)
+          that._tryMerge()
+        }
       }).catch(function () {})
     }, this.POLL_INTERVAL)
   },
@@ -145,6 +162,8 @@ Page({
 
   _tryMerge: function () {
     if (!this._reportDone || !this._qczhDone) return
+    if (this.data.state !== 'analyzing') return
+    if (this._mergeTimeout) { clearTimeout(this._mergeTimeout); this._mergeTimeout = null }
     if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null }
     this._stopPolling()
 
@@ -275,6 +294,7 @@ Page({
     if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null }
     if (this._timeoutTimer) { clearTimeout(this._timeoutTimer); this._timeoutTimer = null }
     if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null }
+    if (this._mergeTimeout) { clearTimeout(this._mergeTimeout); this._mergeTimeout = null }
   },
 
   resetPage: function () {
