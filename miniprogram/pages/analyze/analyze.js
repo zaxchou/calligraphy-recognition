@@ -238,7 +238,11 @@ Page({
     var hasQczh = this.data.hasQczh
     var qczhImg = this.data.qczhImage || ''
 
-    wx.showLoading({ title: '生成中...' })
+    function progress(title) {
+      wx.showLoading({ title: title + '...', mask: true })
+    }
+
+    progress('准备素材')
 
     function begin(radarPath) {
       var query = wx.createSelectorQuery()
@@ -254,12 +258,15 @@ Page({
 
         var loaded = { radar: null, qczh: null }
         var needCount = imgsToLoad.length
+
+        if (needCount > 0) progress('下载图表')
         var doneCount = 0
 
         function doDraw() {
           doneCount++
           if (doneCount < needCount) return
 
+          progress('排版绘制')
           var dpr = 2
           var W = 600
           var padding = 60
@@ -371,6 +378,8 @@ Page({
           ctx.beginPath(); ctx.moveTo(80, footerY - 16); ctx.lineTo(W - 80, footerY - 16); ctx.stroke()
           ctx.fillStyle = '#a8a29e'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'
           ctx.fillText('分析由 AI 生成 · 仅供学习参考', W / 2, footerY + 10)
+
+          progress('保存图片')
 
           wx.canvasToTempFilePath({
             canvas: canvas,
