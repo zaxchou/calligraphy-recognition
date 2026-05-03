@@ -276,6 +276,42 @@ page {
   border-radius: 12rpx;
 }
 
+/* ========= qczh 加载中占位 ========= */
+.qczh-loading-card {
+  border: 2rpx dashed #d6d3d1;
+  background: #faf8f3;
+}
+
+.qczh-loading-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 0;
+}
+
+.qczh-loading-icon {
+  font-size: 52rpx;
+  color: #a8a29e;
+  animation: qczhSpin 2s linear infinite;
+}
+
+@keyframes qczhSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.qczh-loading-text {
+  font-size: 28rpx;
+  color: #78716c;
+  margin-top: 24rpx;
+}
+
+.qczh-loading-hint {
+  font-size: 22rpx;
+  color: #c4bfb8;
+  margin-top: 12rpx;
+}
+
 /* ========= Mock 起承转合覆层 ========= */
 .mock-overlay {
   position: relative;

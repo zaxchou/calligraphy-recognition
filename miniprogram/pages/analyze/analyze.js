@@ -40,10 +40,11 @@ Page({
     stageText: '',
     etaSeconds: null,
     totalScore: null,
-    qczhImage: '',
-    pathType: '',
     llmHtml: '',
     radarDims: [],
+    qczhImage: '',
+    pathType: '',
+    qczhLoading: false,
     errorMsg: '',
     showDemoBtn: true,
     hasRadar: false,
@@ -54,11 +55,8 @@ Page({
   _taskId: null,
   _pollTimer: null,
   _timeoutTimer: null,
-  _progressTimer: null,
-  _reportDone: false,
-  _qczhDone: false,
-  _pendingReport: null,
-  _pendingQczh: null,
+  _qczhRes: null,
+  _reportText: '',
   POLL_INTERVAL: 2000,
   TIMEOUT_MS: 300000,
 
@@ -78,58 +76,24 @@ Page({
     var filePath = this.data.imagePath
     if (!filePath) return
 
-    this._reportDone = false
-    this._qczhDone = false
-    this._pendingReport = null
-    this._pendingQczh = null
+    this._qczhRes = null
+    this._reportText = ''
+    this.setData({ state: 'analyzing', progress: 0, stageText: '正在上传图片...', qczhLoading: false, hasQczh: false })
 
-    this.setData({ state: 'analyzing', progress: 0, stageText: '正在上传图片...' })
-
-    // 模拟进度
-    var elapsed = 0
-    this._progressTimer = setInterval(function () {
-      elapsed += 0.5
-      var pct = Math.min(95, Math.round(elapsed / 70 * 100))
-      var stages = [
-        '正在分析构图要素...',
-        '正在评估开合虚实...',
-        '正在分析起承转合走势...',
-        '正在定位关键节点...',
-        '正在生成分析报告...'
-      ]
-      var idx = Math.min(stages.length - 1, Math.floor(elapsed / (70 / stages.length)))
-      that.setData({ progress: pct, stageText: stages[idx], etaSeconds: Math.round(70 - elapsed) })
-    }, 500)
-
-    // 最大等待时间：150 秒后强制合并现有结果
-    this._mergeTimeout = setTimeout(function () {
-      console.log('[MERGE] force merge after 150s')
-      that._reportDone = true
-      that._qczhDone = true
-      that._stopPolling()
-      that._tryMerge()
-    }, 150000)
-
-    // 请求1: 原构图评分系统
+    // 请求1: 构图评分系统 (上传 + 轮询)
     this._startTimeout()
     api.upload(filePath).then(function (res) {
       that._taskId = res.task_id
       that._startPolling()
-    }).catch(function (err) {
-      console.log('[MERGE] upload composition failed:', err)
-      that._reportDone = true
-      that._tryMerge()
+    }).catch(function () {
+      that.setData({ state: 'error', errorMsg: '上传失败，请检查网络' })
     })
 
-    // 请求2: 起承转合曲线
+    // 请求2: 起承转合曲线 (独立，不阻塞评分)
     api.uploadQczh(filePath).then(function (res) {
-      that._qczhDone = true
-      that._pendingQczh = res
-      that._tryMerge()
-    }).catch(function (err) {
-      console.log('[MERGE] qczh failed:', err)
-      that._qczhDone = true
-      that._tryMerge()
+      that._onQczhDone(res)
+    }).catch(function () {
+      that._onQczhDone(null)
     })
   },
 
@@ -137,12 +101,15 @@ Page({
     var that = this
     this._pollTimer = setInterval(function () {
       api.getTask(that._taskId).then(function (data) {
+        that.setData({
+          progress: data.progress || 0,
+          stageText: data.stage_text || data.stage || '',
+          etaSeconds: data.eta_seconds || null
+        })
         if (data.status === 'done') { that._stopPolling(); that._loadReport() }
         else if (data.status === 'failed') {
           that._stopPolling()
-          that._reportDone = true
-          console.log('[MERGE] task failed:', data.error_message)
-          that._tryMerge()
+          that.setData({ state: 'error', errorMsg: data.error_message || '分析失败' })
         }
       }).catch(function () {})
     }, this.POLL_INTERVAL)
@@ -151,74 +118,16 @@ Page({
   _loadReport: function () {
     var that = this
     api.getReport(this._taskId).then(function (report) {
-      that._reportDone = true
-      that._pendingReport = report
-      that._tryMerge()
+      that._renderResult(report)
     }).catch(function () {
-      that._reportDone = true
-      that._tryMerge()
+      that.setData({ state: 'error', errorMsg: '获取报告失败' })
     })
-  },
-
-  _tryMerge: function () {
-    if (!this._reportDone || !this._qczhDone) return
-    if (this.data.state !== 'analyzing') return
-    if (this._mergeTimeout) { clearTimeout(this._mergeTimeout); this._mergeTimeout = null }
-    if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null }
-    this._stopPolling()
-
-    var report = this._pendingReport
-    var qczhRes = this._pendingQczh
-
-    var totalScore = null
-    var llmText = ''
-    var radarDims = []
-    var hasOverlay = false
-
-    if (report && report.summary && report.summary.total_score != null) {
-      var ts = Number(report.summary.total_score)
-      if (!isNaN(ts)) totalScore = ts
-    }
-    if (report && report.llm && report.llm.text) {
-      llmText = String(report.llm.text)
-    }
-    radarDims = _buildRadarDims(report)
-    hasOverlay = !!(report && report.assets && report.assets.arrow_overlay_url)
-
-    var qczhImg = ''
-    var pathType = ''
-    if (qczhRes) {
-      qczhImg = qczhRes.preview_image || ''
-      pathType = qczhRes.path_type || ''
-
-      // 追记: 在第一段大报告后插入起承转合分析
-      var qczhText = qczhRes.llm_analysis || qczhRes.qwen_analysis || ''
-      if (qczhText) {
-        llmText = llmText + '\n\n---\n\n## 起承转合分析\n\n' + qczhText
-      }
-    }
-
-    this.setData({
-      state: 'done', progress: 100,
-      totalScore: totalScore,
-      llmHtml: md.blocksToHtml(llmText),
-      radarDims: radarDims,
-      qczhImage: qczhImg,
-      pathType: pathType,
-      showDemoBtn: false,
-      hasRadar: radarDims.length > 0,
-      hasOverlay: hasOverlay,
-      hasQczh: !!qczhImg
-    })
-
-    if (radarDims.length > 0) {
-      var that = this
-      setTimeout(function () { _drawRadar(that) }, 400)
-    }
   },
 
   _renderResult: function (report) {
     var llmText = (report && report.llm && report.llm.text) ? String(report.llm.text) : ''
+    this._reportText = llmText
+
     var totalScore = null
     if (report && report.summary && report.summary.total_score != null) {
       var ts = Number(report.summary.total_score)
@@ -226,12 +135,14 @@ Page({
     }
     var hasOverlay = !!(report && report.assets && report.assets.arrow_overlay_url)
     var radarDims = _buildRadarDims(report)
+    var qczhPending = this._qczhRes === null
 
     this.setData({
       state: 'done', progress: 100,
       totalScore: totalScore,
       llmHtml: md.blocksToHtml(llmText),
       radarDims: radarDims,
+      qczhLoading: qczhPending,
       showDemoBtn: false,
       hasRadar: radarDims.length > 0,
       hasOverlay: hasOverlay,
@@ -241,6 +152,49 @@ Page({
     if (radarDims.length > 0) {
       var that = this
       setTimeout(function () { _drawRadar(that) }, 400)
+    }
+
+    // qczh 可能在报告之前就已经返回了
+    if (this._qczhRes) {
+      this._applyQczh(this._qczhRes)
+    }
+  },
+
+  _onQczhDone: function (res) {
+    this._qczhRes = res
+    if (this.data.state === 'done') {
+      this._applyQczh(res)
+    }
+  },
+
+  _applyQczh: function (res) {
+    this._qczhRes = null
+    var img = ''
+    var pathType = ''
+    var text = ''
+
+    if (res) {
+      img = res.preview_image || ''
+      pathType = res.path_type || ''
+      text = res.llm_analysis || res.qwen_analysis || ''
+    }
+
+    var currentText = this._reportText
+    if (text && currentText) {
+      currentText = currentText + '\n\n---\n\n## 起承转合分析\n\n' + text
+      this._reportText = currentText
+    }
+
+    this.setData({
+      qczhImage: img,
+      pathType: pathType,
+      hasQczh: !!img,
+      qczhLoading: false,
+      llmHtml: md.blocksToHtml(currentText || text)
+    })
+
+    if (!!img) {
+      wx.showToast({ title: '起承转合分析完成', icon: 'success', duration: 2000 })
     }
   },
 
@@ -260,7 +214,8 @@ Page({
           { label:'穿插', score:7,  max:10, pct:70, color:'#b0a28a' },
           { label:'边角', score:6,  max:8,  pct:75, color:'#7d9b8a' }
         ],
-        showDemoBtn: false, hasRadar: true, hasOverlay: true, hasQczh: false
+        qczhLoading: false, hasQczh: false,
+        showDemoBtn: false, hasRadar: true, hasOverlay: true
       })
       setTimeout(function () { _drawRadar(that) }, 500)
     }, 300)
@@ -293,21 +248,18 @@ Page({
   _stopPolling: function () {
     if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null }
     if (this._timeoutTimer) { clearTimeout(this._timeoutTimer); this._timeoutTimer = null }
-    if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null }
-    if (this._mergeTimeout) { clearTimeout(this._mergeTimeout); this._mergeTimeout = null }
   },
 
   resetPage: function () {
-    this._reportDone = false
-    this._qczhDone = false
-    this._pendingReport = null
-    this._pendingQczh = null
+    this._qczhRes = null
+    this._reportText = ''
     this._stopPolling()
     this.setData({
       state: 'idle', imagePath: '', loading: false, progress: 0,
       stageText: '', etaSeconds: null, totalScore: null,
-      qczhImage: '', pathType: '', llmHtml: '',
-      radarDims: [], errorMsg: '',
+      llmHtml: '', radarDims: [],
+      qczhImage: '', pathType: '', qczhLoading: false,
+      errorMsg: '',
       showDemoBtn: true, hasRadar: false, hasOverlay: false, hasQczh: false
     })
   },

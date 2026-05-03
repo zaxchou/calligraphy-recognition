@@ -48,7 +48,17 @@
       <text class="media-note">各维度得分雷达分布</text>
     </view>
 
-    <!-- qczh 真实曲线图 -- 新插入的模块 -->
+    <!-- qczh 加载中占位 -->
+    <view class="media-card qczh-loading-card" wx:if="{{qczhLoading}}">
+      <view class="media-label">起承转合 · 曲线分析</view>
+      <view class="qczh-loading-body">
+        <text class="qczh-loading-icon">⟳</text>
+        <text class="qczh-loading-text">正在分析中，请稍候...</text>
+        <text class="qczh-loading-hint">您可先阅读下方专家分析</text>
+      </view>
+    </view>
+
+    <!-- qczh 真实曲线图 -->
     <view class="media-card" wx:if="{{hasQczh}}">
       <view class="media-label">起承转合 · 曲线分析{{pathType ? '（' + pathType + '）' : ''}}</view>
       <image class="qczh-result-img" src="{{qczhImage}}" mode="widthFix" />
