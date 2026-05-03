@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import traceback
 
 import os
 
@@ -167,6 +168,8 @@ def analyze_composition(self, task_id: str) -> None:
 
         update_job(task_id, status="done", progress=100, stage="done", stage_text="完成", message="", eta_seconds=0, eta_confidence=0.85)
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Pipeline failed for {task_id}: {e}", exc_info=True)
         update_job(task_id, status="failed", stage="failed", stage_text="失败", message="", error_code="analysis_failed", error_message=_safe_error_message(e))
     finally:
         total = time.time() - started_at

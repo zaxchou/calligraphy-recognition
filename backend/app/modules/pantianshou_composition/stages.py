@@ -325,7 +325,7 @@ def draw_qczh_from_llm(ctx: CompositionContext) -> None:
 
     llm_result = ctx.llm or {}
     llm_text = llm_result.get("_raw_text") or llm_result.get("text") or ""
-    if not ctx.img_bgr:
+    if ctx.img_bgr is None:
         return
 
     try:
