@@ -93,6 +93,9 @@
       <button class="btn-outline flex-1" bindtap="resetPage">分析另一张</button>
       <button class="btn-share flex-1" open-type="share">分享给朋友</button>
     </view>
+    <view class="footer-actions">
+      <button class="btn-img-share" bindtap="generateShareImage">生成分享图片</button>
+    </view>
     <view class="footer-meta"><text>分析由 AI 生成，仅供学习参考</text></view>
   </block>
 
@@ -101,5 +104,7 @@
     <text class="error-msg">{{errorMsg || '分析失败，请重试'}}</text>
     <button class="btn-outline" bindtap="resetPage">重试</button>
   </view>
+
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
 
 </view>

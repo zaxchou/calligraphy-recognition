@@ -228,6 +228,168 @@ Page({
     }).catch(function () { wx.hideLoading(); wx.showToast({ title: '获取历史记录失败', icon: 'none' }) })
   },
 
+  generateShareImage: function () {
+    var that = this
+    var totalScore = this.data.totalScore || this.data._lastScore || 0
+    var summary = this._getShareSummary()
+
+    wx.showLoading({ title: '生成中...' })
+
+    var query = wx.createSelectorQuery()
+    query.select('#shareCanvas').fields({ node: true, size: true }).exec(function (res) {
+      if (!res || !res[0] || !res[0].node) { wx.hideLoading(); return }
+      var canvas = res[0].node
+      var ctx = canvas.getContext('2d')
+      var dpr = 2
+      var W = 600, H = 800  // logical pixels
+      canvas.width = W * dpr
+      canvas.height = H * dpr
+      ctx.scale(dpr, dpr)
+
+      // Background
+      ctx.fillStyle = '#faf8f3'
+      ctx.fillRect(0, 0, W, H)
+
+      // Top accent bar
+      ctx.fillStyle = '#292524'
+      ctx.fillRect(0, 0, W, 6)
+
+      // Title
+      ctx.fillStyle = '#292524'
+      ctx.font = 'bold 36px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('潘天寿教你构图', W / 2, 70)
+
+      // Subtitle
+      ctx.fillStyle = '#a8a29e'
+      ctx.font = '20px sans-serif'
+      ctx.fillText('AI 中国画构图分析', W / 2, 104)
+
+      // Divider
+      ctx.strokeStyle = '#e7e5e4'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(80, 130)
+      ctx.lineTo(W - 80, 130)
+      ctx.stroke()
+
+      // Score ring
+      var ringCx = W / 2, ringCy = 230, ringR = 80
+      ctx.beginPath()
+      ctx.arc(ringCx, ringCy, ringR, 0, Math.PI * 2)
+      ctx.strokeStyle = '#292524'
+      ctx.lineWidth = 6
+      ctx.stroke()
+
+      ctx.fillStyle = '#292524'
+      ctx.font = 'bold 64px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(String(totalScore), ringCx, ringCy - 6)
+
+      ctx.fillStyle = '#78716c'
+      ctx.font = '18px sans-serif'
+      ctx.fillText('分', ringCx, ringCy + 38)
+      ctx.textBaseline = 'alphabetic'
+
+      // Label under ring
+      ctx.fillStyle = '#78716c'
+      ctx.font = '16px sans-serif'
+      ctx.fillText('综合构图评分', ringCx, ringCy + ringR + 36)
+
+      // Divider 2
+      ctx.strokeStyle = '#e7e5e4'
+      ctx.beginPath()
+      ctx.moveTo(80, ringCy + ringR + 70)
+      ctx.lineTo(W - 80, ringCy + ringR + 70)
+      ctx.stroke()
+
+      // Summary text
+      var textY = ringCy + ringR + 105
+      ctx.fillStyle = '#44403c'
+      ctx.font = '18px sans-serif'
+      ctx.textAlign = 'left'
+      var lines = that._wrapText(ctx, summary, W - 120, 5)
+      for (var i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], 60, textY + i * 28)
+      }
+
+      // Footer
+      var footerY = H - 60
+      ctx.strokeStyle = '#e7e5e4'
+      ctx.beginPath()
+      ctx.moveTo(80, footerY - 20)
+      ctx.lineTo(W - 80, footerY - 20)
+      ctx.stroke()
+
+      ctx.fillStyle = '#a8a29e'
+      ctx.font = '16px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('分析由 AI 生成 · 仅供学习参考', W / 2, footerY + 10)
+
+      // Export
+      wx.canvasToTempFilePath({
+        canvas: canvas,
+        success: function (res) {
+          wx.hideLoading()
+          wx.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: function () {
+              wx.showToast({ title: '已保存到相册', icon: 'success' })
+            },
+            fail: function () {
+              wx.previewImage({ urls: [res.tempFilePath] })
+            }
+          })
+        },
+        fail: function () {
+          wx.hideLoading()
+          wx.showToast({ title: '生成失败', icon: 'none' })
+        }
+      })
+    })
+  },
+
+  _getShareSummary: function () {
+    var text = this._reportText || ''
+    var lines = text.split('\n')
+    var summary = ''
+    for (var i = 0; i < lines.length; i++) {
+      var t = lines[i].trim()
+      if (!t) continue
+      if (t.indexOf('#') === 0) continue
+      if (t.indexOf('---') === 0) continue
+      if (t.indexOf('|') === 0) continue
+      if (t.indexOf('![') === 0) continue
+      if (t.length < 10) continue
+      summary = t
+      break
+    }
+    if (!summary) {
+      summary = text.replace(/[#*|\-!\[\]]/g, '').replace(/\n/g, ' ').slice(0, 200).trim()
+    }
+    if (summary.length > 280) summary = summary.slice(0, 277) + '...'
+    return summary || 'AI 已完成对该中国画作品的构图分析，请查看详细报告。'
+  },
+
+  _wrapText: function (ctx, text, maxWidth, maxLines) {
+    var lines = []
+    var chars = text.split('')
+    var line = ''
+    for (var i = 0; i < chars.length; i++) {
+      var test = line + chars[i]
+      if (ctx.measureText(test).width > maxWidth) {
+        lines.push(line)
+        line = chars[i]
+        if (lines.length >= maxLines) break
+      } else {
+        line = test
+      }
+    }
+    if (line && lines.length < maxLines) lines.push(line)
+    return lines
+  },
+
   _startTimeout: function () {
     var that = this
     this._timeoutTimer = setTimeout(function () {
