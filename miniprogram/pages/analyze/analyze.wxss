@@ -501,5 +501,4 @@ page {
   left: 0;
   top: 9999rpx;
   width: 600rpx;
-  height: 800rpx;
 }

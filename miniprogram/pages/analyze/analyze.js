@@ -49,7 +49,8 @@ Page({
     showDemoBtn: true,
     hasRadar: false,
     hasOverlay: false,
-    hasQczh: false
+    hasQczh: false,
+    shareCanvasH: 800
   },
 
   _taskId: null,
@@ -230,8 +231,9 @@ Page({
 
   generateShareImage: function () {
     var that = this
-    var totalScore = this.data.totalScore || this.data._lastScore || 0
-    var summary = this._getShareSummary()
+    var totalScore = this.data.totalScore || 0
+    var rawText = this._reportText || ''
+    var maxChars = 6000
 
     wx.showLoading({ title: '生成中...' })
 
@@ -241,12 +243,37 @@ Page({
       var canvas = res[0].node
       var ctx = canvas.getContext('2d')
       var dpr = 2
-      var W = 600, H = 800  // logical pixels
+      var W = 600
+
+      var padding = 60
+      var textW = W - padding * 2
+      var titleFont = 'bold 28px sans-serif'
+      var bodyFont = '16px sans-serif'
+      var smallFont = '14px sans-serif'
+      var lineH = 26
+      var titleLineH = 36
+
+      // Header height (fixed)
+      var headerH = 360
+
+      // Pre-compute text block height
+      var textLines = that._buildShareLines(ctx, rawText, maxChars, textW, titleFont, bodyFont, smallFont, titleLineH, lineH)
+      var textBlockH = 0
+      for (var i = 0; i < textLines.length; i++) { textBlockH += textLines[i].h }
+
+      var footerH = 80
+      var H = headerH + textBlockH + footerH
+
+      // Cap at reasonable max
+      var maxH = 8000
+      if (H > maxH) H = maxH
+
+      that.setData({ shareCanvasH: H })
+
       canvas.width = W * dpr
       canvas.height = H * dpr
       ctx.scale(dpr, dpr)
 
-      // Background
       ctx.fillStyle = '#faf8f3'
       ctx.fillRect(0, 0, W, H)
 
@@ -268,125 +295,149 @@ Page({
       // Divider
       ctx.strokeStyle = '#e7e5e4'
       ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(80, 130)
-      ctx.lineTo(W - 80, 130)
-      ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(80, 130); ctx.lineTo(W - 80, 130); ctx.stroke()
 
       // Score ring
-      var ringCx = W / 2, ringCy = 230, ringR = 80
-      ctx.beginPath()
-      ctx.arc(ringCx, ringCy, ringR, 0, Math.PI * 2)
-      ctx.strokeStyle = '#292524'
-      ctx.lineWidth = 6
-      ctx.stroke()
+      var ringCx = W / 2, ringCy = 220, ringR = 70
+      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR, 0, Math.PI * 2)
+      ctx.strokeStyle = '#292524'; ctx.lineWidth = 6; ctx.stroke()
 
       ctx.fillStyle = '#292524'
-      ctx.font = 'bold 64px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(String(totalScore), ringCx, ringCy - 6)
+      ctx.font = 'bold 56px sans-serif'
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.fillText(String(totalScore || '—'), ringCx, ringCy - 4)
 
-      ctx.fillStyle = '#78716c'
-      ctx.font = '18px sans-serif'
-      ctx.fillText('分', ringCx, ringCy + 38)
-      ctx.textBaseline = 'alphabetic'
-
-      // Label under ring
       ctx.fillStyle = '#78716c'
       ctx.font = '16px sans-serif'
-      ctx.fillText('综合构图评分', ringCx, ringCy + ringR + 36)
+      ctx.fillText('分', ringCx, ringCy + 32)
+      ctx.textBaseline = 'alphabetic'
+
+      ctx.fillStyle = '#78716c'
+      ctx.font = '15px sans-serif'
+      ctx.fillText('综合构图评分', ringCx, ringCy + ringR + 30)
 
       // Divider 2
+      var bodyStartY = ringCy + ringR + 66
       ctx.strokeStyle = '#e7e5e4'
-      ctx.beginPath()
-      ctx.moveTo(80, ringCy + ringR + 70)
-      ctx.lineTo(W - 80, ringCy + ringR + 70)
-      ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(80, bodyStartY); ctx.lineTo(W - 80, bodyStartY); ctx.stroke()
 
-      // Summary text
-      var textY = ringCy + ringR + 105
-      ctx.fillStyle = '#44403c'
-      ctx.font = '18px sans-serif'
-      ctx.textAlign = 'left'
-      var lines = that._wrapText(ctx, summary, W - 120, 5)
-      for (var i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], 60, textY + i * 28)
+      // Render text block
+      var curY = bodyStartY + 24
+      for (var i = 0; i < textLines.length; i++) {
+        var tl = textLines[i]
+        if (curY + tl.h > H - footerH) break
+        ctx.fillStyle = tl.color
+        ctx.font = tl.font
+        ctx.textAlign = tl.center ? 'center' : 'left'
+        var tx = tl.center ? W / 2 : padding
+        ctx.fillText(tl.text, tx, curY + tl.h - 6)
+        curY += tl.h
       }
 
       // Footer
-      var footerY = H - 60
+      var footerY = H - 50
       ctx.strokeStyle = '#e7e5e4'
-      ctx.beginPath()
-      ctx.moveTo(80, footerY - 20)
-      ctx.lineTo(W - 80, footerY - 20)
-      ctx.stroke()
-
+      ctx.beginPath(); ctx.moveTo(80, footerY - 16); ctx.lineTo(W - 80, footerY - 16); ctx.stroke()
       ctx.fillStyle = '#a8a29e'
-      ctx.font = '16px sans-serif'
+      ctx.font = '14px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText('分析由 AI 生成 · 仅供学习参考', W / 2, footerY + 10)
 
-      // Export
       wx.canvasToTempFilePath({
         canvas: canvas,
         success: function (res) {
           wx.hideLoading()
           wx.saveImageToPhotosAlbum({
             filePath: res.tempFilePath,
-            success: function () {
-              wx.showToast({ title: '已保存到相册', icon: 'success' })
-            },
-            fail: function () {
-              wx.previewImage({ urls: [res.tempFilePath] })
-            }
+            success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }) },
+            fail: function () { wx.previewImage({ urls: [res.tempFilePath] }) }
           })
         },
-        fail: function () {
-          wx.hideLoading()
-          wx.showToast({ title: '生成失败', icon: 'none' })
-        }
+        fail: function () { wx.hideLoading(); wx.showToast({ title: '生成失败', icon: 'none' }) }
       })
     })
   },
 
-  _getShareSummary: function () {
-    var text = this._reportText || ''
+  _buildShareLines: function (ctx, rawText, maxChars, textW, titleFont, bodyFont, smallFont, titleLineH, lineH) {
+    var result = []
+    var text = rawText.slice(0, maxChars)
     var lines = text.split('\n')
-    var summary = ''
+    var foundContent = false
+    var tableMode = false
+
     for (var i = 0; i < lines.length; i++) {
       var t = lines[i].trim()
-      if (!t) continue
-      if (t.indexOf('#') === 0) continue
-      if (t.indexOf('---') === 0) continue
-      if (t.indexOf('|') === 0) continue
-      if (t.indexOf('![') === 0) continue
-      if (t.length < 10) continue
-      summary = t
-      break
+      if (!t) {
+        if (foundContent) result.push({ text: ' ', h: 10, font: bodyFont, color: '#faf8f3' })
+        result.push({ text: '', h: 8, font: bodyFont, color: '#444' })
+        continue
+      }
+
+      if (t.indexOf('|') === 0) {
+        var clean = t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\|/g, '  ').trim()
+        if (clean.length > 2) {
+          result.push({ text: clean, h: lineH, font: smallFont, color: '#78716c' })
+        }
+        continue
+      }
+
+      if (t.indexOf('---') === 0) {
+        result.push({ text: '— — — — —', h: titleLineH, font: smallFont, color: '#d6d3d1', center: true })
+        continue
+      }
+
+      // Heading
+      if (t.indexOf('## ') === 0) {
+        foundContent = true
+        var hd = t.slice(3).replace(/\*\*(.+?)\*\*/g, '$1')
+        result.push({ text: hd, h: titleLineH, font: titleFont, color: '#1c1917' })
+        continue
+      }
+      if (t.indexOf('### ') === 0) {
+        foundContent = true
+        var hd = t.slice(4).replace(/\*\*(.+?)\*\*/g, '$1')
+        result.push({ text: hd, h: lineH + 4, font: 'bold 17px sans-serif', color: '#44403c' })
+        continue
+      }
+
+      // List
+      var isLi = t.indexOf('- ') === 0 || t.indexOf('* ') === 0
+      var isOli = /^\d+\.\s/.test(t)
+      var prefix = ''
+      if (isLi) { prefix = '— '; t = t.slice(2) }
+      if (isOli) { prefix = t.replace(/^(\d+)\.\s.*/, '$1. ') + ' '; t = t.replace(/^\d+\.\s/, '') }
+
+      t = prefix + t.replace(/\*\*(.+?)\*\*/g, '$1')
+      foundContent = true
+
+      var wrapped = this._wrapLines(ctx, t, textW, bodyFont)
+      for (var w = 0; w < wrapped.length; w++) {
+        result.push({ text: wrapped[w], h: lineH, font: isLi || isOli ? smallFont : bodyFont, color: '#44403c' })
+      }
     }
-    if (!summary) {
-      summary = text.replace(/[#*|\-!\[\]]/g, '').replace(/\n/g, ' ').slice(0, 200).trim()
+
+    // Ensure minimum text block
+    if (result.filter(function(l) { return l.text && l.text.length > 2 }).length < 3) {
+      result = [{ text: 'AI 已完成对该中国画作品的构图分析。', h: lineH, font: bodyFont, color: '#44403c' }]
     }
-    if (summary.length > 280) summary = summary.slice(0, 277) + '...'
-    return summary || 'AI 已完成对该中国画作品的构图分析，请查看详细报告。'
+
+    return result
   },
 
-  _wrapText: function (ctx, text, maxWidth, maxLines) {
+  _wrapLines: function (ctx, text, maxWidth, font) {
+    ctx.font = font
     var lines = []
     var chars = text.split('')
     var line = ''
     for (var i = 0; i < chars.length; i++) {
       var test = line + chars[i]
       if (ctx.measureText(test).width > maxWidth) {
-        lines.push(line)
-        line = chars[i]
-        if (lines.length >= maxLines) break
+        lines.push(line); line = chars[i]
       } else {
         line = test
       }
     }
-    if (line && lines.length < maxLines) lines.push(line)
+    if (line) lines.push(line)
     return lines
   },
 

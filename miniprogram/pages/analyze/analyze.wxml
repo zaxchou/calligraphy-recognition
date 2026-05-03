@@ -105,6 +105,6 @@
     <button class="btn-outline" bindtap="resetPage">重试</button>
   </view>
 
-  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+  <canvas type="2d" id="shareCanvas" class="share-canvas" style="height: {{shareCanvasH}}rpx;"></canvas>
 
 </view>
