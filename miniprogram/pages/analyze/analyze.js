@@ -234,128 +234,179 @@ Page({
     var totalScore = this.data.totalScore || 0
     var rawText = this._reportText || ''
     var maxChars = 6000
+    var hasRadar = this.data.hasRadar
+    var hasQczh = this.data.hasQczh
+    var qczhImg = this.data.qczhImage || ''
 
     wx.showLoading({ title: '生成中...' })
 
-    var query = wx.createSelectorQuery()
-    query.select('#shareCanvas').fields({ node: true, size: true }).exec(function (res) {
-      if (!res || !res[0] || !res[0].node) { wx.hideLoading(); return }
-      var canvas = res[0].node
-      var ctx = canvas.getContext('2d')
-      var dpr = 2
-      var W = 600
+    function begin(radarPath) {
+      var query = wx.createSelectorQuery()
+      query.select('#shareCanvas').fields({ node: true, size: true }).exec(function (res) {
+        if (!res || !res[0] || !res[0].node) { wx.hideLoading(); return }
+        var canvas = res[0].node
+        var ctx = canvas.getContext('2d')
 
-      var padding = 60
-      var textW = W - padding * 2
-      var titleFont = 'bold 28px sans-serif'
-      var bodyFont = '16px sans-serif'
-      var smallFont = '14px sans-serif'
-      var lineH = 26
-      var titleLineH = 36
+        // 收集需要加载的图片
+        var imgsToLoad = []
+        if (radarPath) imgsToLoad.push({ key: 'radar', src: radarPath })
+        if (hasQczh && qczhImg) imgsToLoad.push({ key: 'qczh', src: qczhImg })
 
-      // Header height (fixed)
-      var headerH = 360
+        var loaded = { radar: null, qczh: null }
+        var needCount = imgsToLoad.length
+        var doneCount = 0
 
-      // Pre-compute text block height
-      var textLines = that._buildShareLines(ctx, rawText, maxChars, textW, titleFont, bodyFont, smallFont, titleLineH, lineH)
-      var textBlockH = 0
-      for (var i = 0; i < textLines.length; i++) { textBlockH += textLines[i].h }
+        function doDraw() {
+          doneCount++
+          if (doneCount < needCount) return
 
-      var footerH = 80
-      var H = headerH + textBlockH + footerH
+          var dpr = 2
+          var W = 600
+          var padding = 60
+          var textW = W - padding * 2
+          var titleFont = 'bold 28px sans-serif'
+          var bodyFont = '16px sans-serif'
+          var smallFont = '14px sans-serif'
+          var lineH = 26
+          var titleLineH = 36
 
-      // Cap at reasonable max
-      var maxH = 8000
-      if (H > maxH) H = maxH
+          // 图片区域高度
+          var imgAreaH = 0
+          var radarDH = 0, qczhDH = 0
+          if (loaded.radar && loaded.radar.width > 0) {
+            var rs = Math.min(1, textW / loaded.radar.width)
+            radarDH = loaded.radar.height * rs + 24
+            imgAreaH += radarDH
+          }
+          if (loaded.qczh && loaded.qczh.width > 0) {
+            var qs = Math.min(1, textW / loaded.qczh.width)
+            qczhDH = loaded.qczh.height * qs + 24
+            imgAreaH += qczhDH
+          }
+          if (imgAreaH > 0) imgAreaH += 16
 
-      that.setData({ shareCanvasH: H })
+          var textLines = that._buildShareLines(ctx, rawText, maxChars, textW, titleFont, bodyFont, smallFont, titleLineH, lineH)
+          var textBlockH = 0
+          for (var i = 0; i < textLines.length; i++) { textBlockH += textLines[i].h }
 
-      canvas.width = W * dpr
-      canvas.height = H * dpr
-      ctx.scale(dpr, dpr)
+          var footerH = 80
+          var headerH = 360
+          var H = headerH + imgAreaH + textBlockH + footerH
+          if (H > 8000) H = 8000
 
-      ctx.fillStyle = '#faf8f3'
-      ctx.fillRect(0, 0, W, H)
+          that.setData({ shareCanvasH: H })
+          canvas.width = W * dpr
+          canvas.height = H * dpr
+          ctx.scale(dpr, dpr)
 
-      // Top accent bar
-      ctx.fillStyle = '#292524'
-      ctx.fillRect(0, 0, W, 6)
+          ctx.fillStyle = '#faf8f3'
+          ctx.fillRect(0, 0, W, H)
 
-      // Title
-      ctx.fillStyle = '#292524'
-      ctx.font = 'bold 36px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('潘天寿教你构图', W / 2, 70)
+          ctx.fillStyle = '#292524'
+          ctx.fillRect(0, 0, W, 6)
 
-      // Subtitle
-      ctx.fillStyle = '#a8a29e'
-      ctx.font = '20px sans-serif'
-      ctx.fillText('AI 中国画构图分析', W / 2, 104)
+          ctx.fillStyle = '#292524'
+          ctx.font = 'bold 36px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillText('潘天寿教你构图', W / 2, 70)
 
-      // Divider
-      ctx.strokeStyle = '#e7e5e4'
-      ctx.lineWidth = 1
-      ctx.beginPath(); ctx.moveTo(80, 130); ctx.lineTo(W - 80, 130); ctx.stroke()
+          ctx.fillStyle = '#a8a29e'
+          ctx.font = '20px sans-serif'
+          ctx.fillText('AI 中国画构图分析', W / 2, 104)
 
-      // Score ring
-      var ringCx = W / 2, ringCy = 220, ringR = 70
-      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR, 0, Math.PI * 2)
-      ctx.strokeStyle = '#292524'; ctx.lineWidth = 6; ctx.stroke()
+          ctx.strokeStyle = '#e7e5e4'; ctx.lineWidth = 1
+          ctx.beginPath(); ctx.moveTo(80, 130); ctx.lineTo(W - 80, 130); ctx.stroke()
 
-      ctx.fillStyle = '#292524'
-      ctx.font = 'bold 56px sans-serif'
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      ctx.fillText(String(totalScore || '—'), ringCx, ringCy - 4)
+          var ringCx = W / 2, ringCy = 220, ringR = 70
+          ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR, 0, Math.PI * 2)
+          ctx.strokeStyle = '#292524'; ctx.lineWidth = 6; ctx.stroke()
 
-      ctx.fillStyle = '#78716c'
-      ctx.font = '16px sans-serif'
-      ctx.fillText('分', ringCx, ringCy + 32)
-      ctx.textBaseline = 'alphabetic'
+          ctx.fillStyle = '#292524'; ctx.font = 'bold 56px sans-serif'
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText(String(totalScore || '—'), ringCx, ringCy - 4)
+          ctx.fillStyle = '#78716c'; ctx.font = '16px sans-serif'
+          ctx.fillText('分', ringCx, ringCy + 32); ctx.textBaseline = 'alphabetic'
+          ctx.fillStyle = '#78716c'; ctx.font = '15px sans-serif'
+          ctx.fillText('综合构图评分', ringCx, ringCy + ringR + 30)
 
-      ctx.fillStyle = '#78716c'
-      ctx.font = '15px sans-serif'
-      ctx.fillText('综合构图评分', ringCx, ringCy + ringR + 30)
+          var curY = ringCy + ringR + 70
+          ctx.strokeStyle = '#e7e5e4'
+          ctx.beginPath(); ctx.moveTo(80, curY); ctx.lineTo(W - 80, curY); ctx.stroke()
+          curY += 24
 
-      // Divider 2
-      var bodyStartY = ringCy + ringR + 66
-      ctx.strokeStyle = '#e7e5e4'
-      ctx.beginPath(); ctx.moveTo(80, bodyStartY); ctx.lineTo(W - 80, bodyStartY); ctx.stroke()
+          if (loaded.radar && radarDH > 0) {
+            ctx.fillStyle = '#78716c'; ctx.font = '14px sans-serif'; ctx.textAlign = 'left'
+            ctx.fillText('七维雷达图', padding, curY); curY += 22
+            var rs = Math.min(1, textW / loaded.radar.width)
+            ctx.drawImage(loaded.radar, (W - loaded.radar.width * rs) / 2, curY, loaded.radar.width * rs, loaded.radar.height * rs)
+            curY += loaded.radar.height * rs + 16
+          }
 
-      // Render text block
-      var curY = bodyStartY + 24
-      for (var i = 0; i < textLines.length; i++) {
-        var tl = textLines[i]
-        if (curY + tl.h > H - footerH) break
-        ctx.fillStyle = tl.color
-        ctx.font = tl.font
-        ctx.textAlign = tl.center ? 'center' : 'left'
-        var tx = tl.center ? W / 2 : padding
-        ctx.fillText(tl.text, tx, curY + tl.h - 6)
-        curY += tl.h
-      }
+          if (loaded.qczh && qczhDH > 0) {
+            ctx.fillStyle = '#78716c'; ctx.font = '14px sans-serif'; ctx.textAlign = 'left'
+            ctx.fillText('起承转合 · 曲线分析', padding, curY); curY += 22
+            var qs = Math.min(1, textW / loaded.qczh.width)
+            ctx.drawImage(loaded.qczh, (W - loaded.qczh.width * qs) / 2, curY, loaded.qczh.width * qs, loaded.qczh.height * qs)
+            curY += loaded.qczh.height * qs + 16
+          }
 
-      // Footer
-      var footerY = H - 50
-      ctx.strokeStyle = '#e7e5e4'
-      ctx.beginPath(); ctx.moveTo(80, footerY - 16); ctx.lineTo(W - 80, footerY - 16); ctx.stroke()
-      ctx.fillStyle = '#a8a29e'
-      ctx.font = '14px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('分析由 AI 生成 · 仅供学习参考', W / 2, footerY + 10)
+          if (imgAreaH > 0) {
+            curY += 4
+            ctx.strokeStyle = '#e7e5e4'
+            ctx.beginPath(); ctx.moveTo(80, curY); ctx.lineTo(W - 80, curY); ctx.stroke()
+            curY += 20
+          }
 
-      wx.canvasToTempFilePath({
-        canvas: canvas,
-        success: function (res) {
-          wx.hideLoading()
-          wx.saveImageToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }) },
-            fail: function () { wx.previewImage({ urls: [res.tempFilePath] }) }
+          for (var i = 0; i < textLines.length; i++) {
+            var tl = textLines[i]
+            if (curY + tl.h > H - footerH) break
+            ctx.fillStyle = tl.color; ctx.font = tl.font
+            ctx.textAlign = tl.center ? 'center' : 'left'
+            ctx.fillText(tl.text, tl.center ? W / 2 : padding, curY + tl.h - 6)
+            curY += tl.h
+          }
+
+          var footerY = H - 50
+          ctx.strokeStyle = '#e7e5e4'
+          ctx.beginPath(); ctx.moveTo(80, footerY - 16); ctx.lineTo(W - 80, footerY - 16); ctx.stroke()
+          ctx.fillStyle = '#a8a29e'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'
+          ctx.fillText('分析由 AI 生成 · 仅供学习参考', W / 2, footerY + 10)
+
+          wx.canvasToTempFilePath({
+            canvas: canvas,
+            success: function (res) {
+              wx.hideLoading()
+              wx.saveImageToPhotosAlbum({
+                filePath: res.tempFilePath,
+                success: function () { wx.showToast({ title: '已保存到相册', icon: 'success' }) },
+                fail: function () { wx.previewImage({ urls: [res.tempFilePath] }) }
+              })
+            },
+            fail: function () { wx.hideLoading(); wx.showToast({ title: '生成失败', icon: 'none' }) }
           })
-        },
-        fail: function () { wx.hideLoading(); wx.showToast({ title: '生成失败', icon: 'none' }) }
+        }
+
+        if (needCount === 0) { doDraw(); return }
+
+        for (var i = 0; i < imgsToLoad.length; i++) {
+          ;(function (key, src) {
+            var img = canvas.createImage()
+            img.onload = function () { loaded[key] = img; doDraw() }
+            img.onerror = function () { doDraw() }
+            img.src = src
+          })(imgsToLoad[i].key, imgsToLoad[i].src)
+        }
       })
-    })
+    }
+
+    if (hasRadar) {
+      var rQuery = wx.createSelectorQuery()
+      rQuery.select('#radarCanvas').fields({ node: true }).exec(function (rres) {
+        if (rres && rres[0] && rres[0].node) {
+          wx.canvasToTempFilePath({ canvas: rres[0].node, success: function (tmp) { begin(tmp.tempFilePath) }, fail: function () { begin('') } })
+        } else { begin('') }
+      })
+    } else { begin('') }
   },
 
   _buildShareLines: function (ctx, rawText, maxChars, textW, titleFont, bodyFont, smallFont, titleLineH, lineH) {
