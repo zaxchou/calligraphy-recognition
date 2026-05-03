@@ -44,7 +44,7 @@ function uploadFile(filePath) {
 function uploadQczh(filePath) {
   return new Promise(function (resolve, reject) {
     wx.uploadFile({
-      url: BASE_URL + '/api/v1/composition/qczh',
+      url: BASE_URL + '/api/v1/composition/qichengzhuanhe-analyze',
       filePath: filePath,
       name: 'file',
       timeout: 120000,

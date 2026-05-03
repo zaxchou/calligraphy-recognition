@@ -41,31 +41,29 @@ Page({
     etaSeconds: null,
     totalScore: null,
     qczhImage: '',
-    llmHtml: '',
     pathType: '',
+    llmHtml: '',
     radarDims: [],
     errorMsg: '',
     showDemoBtn: true,
     hasRadar: false,
     hasOverlay: false,
-    isQczh: false
+    hasQczh: false
   },
 
   _taskId: null,
   _pollTimer: null,
   _timeoutTimer: null,
   _progressTimer: null,
+  _reportDone: false,
+  _qczhDone: false,
+  _pendingReport: null,
+  _pendingQczh: null,
   POLL_INTERVAL: 2000,
   TIMEOUT_MS: 300000,
-  QCZH_TIMEOUT_MS: 90000,
 
-  onShareAppMessage: function () {
-    return { title: '潘天寿教你构图 — AI 分析中国画起承转合', path: '/pages/analyze/analyze' }
-  },
-
-  onShareTimeline: function () {
-    return { title: '潘天寿教你构图', query: '' }
-  },
+  onShareAppMessage: function () { return { title: '潘天寿教你构图 — AI 中国画构图分析', path: '/pages/analyze/analyze' } },
+  onShareTimeline: function () { return { title: '潘天寿教你构图', query: '' } },
 
   chooseImage: function () {
     var that = this
@@ -80,48 +78,46 @@ Page({
     var filePath = this.data.imagePath
     if (!filePath) return
 
-    this.setData({ state: 'analyzing', progress: 0, stageText: '正在上传图片并分析起承转合...', isQczh: true })
+    this._reportDone = false
+    this._qczhDone = false
+    this._pendingReport = null
+    this._pendingQczh = null
 
-    var totalSeconds = 70
+    this.setData({ state: 'analyzing', progress: 0, stageText: '正在上传图片...' })
+
+    // 模拟进度
     var elapsed = 0
     this._progressTimer = setInterval(function () {
       elapsed += 0.5
-      var pct = Math.min(95, Math.round(elapsed / totalSeconds * 100))
-      var remaining = Math.round(totalSeconds - elapsed)
+      var pct = Math.min(95, Math.round(elapsed / 70 * 100))
       var stages = [
+        '正在分析构图要素...',
+        '正在评估开合虚实...',
         '正在分析起承转合走势...',
-        '正在识别视觉起点与开合关系...',
-        '正在定位起承转合关键节点...',
-        '正在绘制起承转合曲线...',
+        '正在定位关键节点...',
         '正在生成分析报告...'
       ]
-      var idx = Math.min(stages.length - 1, Math.floor(elapsed / (totalSeconds / stages.length)))
-      that.setData({
-        progress: pct,
-        stageText: stages[idx],
-        etaSeconds: remaining > 0 ? remaining : null
-      })
+      var idx = Math.min(stages.length - 1, Math.floor(elapsed / (70 / stages.length)))
+      that.setData({ progress: pct, stageText: stages[idx], etaSeconds: Math.round(70 - elapsed) })
     }, 500)
 
+    // 请求1: 原构图评分系统
+    this._startTimeout()
+    api.upload(filePath).then(function (res) {
+      that._taskId = res.task_id
+      that._startPolling()
+    }).catch(function () {
+      that._reportDone = true
+    })
+
+    // 请求2: 起承转合曲线
     api.uploadQczh(filePath).then(function (res) {
-      if (that._progressTimer) { clearInterval(that._progressTimer); that._progressTimer = null }
-
-      var llmText = res.llm_analysis || res.qwen_analysis || ''
-      var qczhImg = res.preview_image || ''
-
-      that.setData({
-        state: 'done', progress: 100, stageText: '',
-        qczhImage: qczhImg,
-        llmHtml: md.blocksToHtml(llmText),
-        pathType: res.path_type || '',
-        showDemoBtn: false,
-        hasRadar: false,
-        hasOverlay: !!qczhImg,
-        isQczh: true
-      })
-    }).catch(function (err) {
-      if (that._progressTimer) { clearInterval(that._progressTimer); that._progressTimer = null }
-      that.setData({ state: 'error', errorMsg: (err && err.msg) || '分析失败，请重试' })
+      that._qczhDone = true
+      that._pendingQczh = res
+      that._tryMerge()
+    }).catch(function () {
+      that._qczhDone = true
+      that._tryMerge()
     })
   },
 
@@ -129,21 +125,77 @@ Page({
     var that = this
     this._pollTimer = setInterval(function () {
       api.getTask(that._taskId).then(function (data) {
-        that.setData({ progress: data.progress || 0, stageText: data.stage_text || data.stage || '', etaSeconds: data.eta_seconds || null })
         if (data.status === 'done') { that._stopPolling(); that._loadReport() }
-        else if (data.status === 'failed') { that._stopPolling(); that.setData({ state: 'error', errorMsg: data.error_message || '分析失败' }) }
+        else if (data.status === 'failed') { that._stopPolling(); that._reportDone = true; that.setData({ errorMsg: data.error_message || '分析失败' }) }
       }).catch(function () {})
     }, this.POLL_INTERVAL)
   },
 
   _loadReport: function () {
     var that = this
-    this.setData({ stageText: '分析完成，正在加载报告...' })
     api.getReport(this._taskId).then(function (report) {
-      that._renderResult(report)
+      that._reportDone = true
+      that._pendingReport = report
+      that._tryMerge()
     }).catch(function () {
-      that.setData({ state: 'error', errorMsg: '获取报告失败' })
+      that._reportDone = true
+      that._tryMerge()
     })
+  },
+
+  _tryMerge: function () {
+    if (!this._reportDone || !this._qczhDone) return
+    if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null }
+    this._stopPolling()
+
+    var report = this._pendingReport
+    var qczhRes = this._pendingQczh
+
+    var totalScore = null
+    var llmText = ''
+    var radarDims = []
+    var hasOverlay = false
+
+    if (report && report.summary && report.summary.total_score != null) {
+      var ts = Number(report.summary.total_score)
+      if (!isNaN(ts)) totalScore = ts
+    }
+    if (report && report.llm && report.llm.text) {
+      llmText = String(report.llm.text)
+    }
+    radarDims = _buildRadarDims(report)
+    hasOverlay = !!(report && report.assets && report.assets.arrow_overlay_url)
+
+    var qczhImg = ''
+    var pathType = ''
+    if (qczhRes) {
+      qczhImg = qczhRes.preview_image || ''
+      pathType = qczhRes.path_type || ''
+
+      // 追记: 在第一段大报告后插入起承转合分析
+      var qczhText = qczhRes.llm_analysis || qczhRes.qwen_analysis || ''
+      if (qczhText) {
+        llmText = llmText + '\n\n---\n\n## 起承转合分析\n\n' + qczhText
+      }
+    }
+
+    this.setData({
+      state: 'done', progress: 100,
+      totalScore: totalScore,
+      llmHtml: md.blocksToHtml(llmText),
+      radarDims: radarDims,
+      qczhImage: qczhImg,
+      pathType: pathType,
+      showDemoBtn: false,
+      hasRadar: radarDims.length > 0,
+      hasOverlay: hasOverlay,
+      hasQczh: !!qczhImg
+    })
+
+    if (radarDims.length > 0) {
+      var that = this
+      setTimeout(function () { _drawRadar(that) }, 400)
+    }
   },
 
   _renderResult: function (report) {
@@ -164,7 +216,7 @@ Page({
       showDemoBtn: false,
       hasRadar: radarDims.length > 0,
       hasOverlay: hasOverlay,
-      isQczh: false
+      hasQczh: false
     })
 
     if (radarDims.length > 0) {
@@ -189,7 +241,7 @@ Page({
           { label:'穿插', score:7,  max:10, pct:70, color:'#b0a28a' },
           { label:'边角', score:6,  max:8,  pct:75, color:'#7d9b8a' }
         ],
-        showDemoBtn: false, hasRadar: true, hasOverlay: true, isQczh: false
+        showDemoBtn: false, hasRadar: true, hasOverlay: true, hasQczh: false
       })
       setTimeout(function () { _drawRadar(that) }, 500)
     }, 300)
@@ -203,7 +255,7 @@ Page({
       var done = null
       for (var i = 0; i < items.length; i++) { if (items[i].status === 'done') { done = items[i]; break } }
       if (!done) { wx.hideLoading(); wx.showToast({ title: '没有已完成的历史记录', icon: 'none' }); return }
-      that.setData({ imagePath: done.thumb_url ? (api.BASE_URL + done.thumb_url) : '', isQczh: false })
+      that.setData({ imagePath: done.thumb_url ? (api.BASE_URL + done.thumb_url) : '' })
       api.getReport(done.task_id).then(function (report) {
         wx.hideLoading()
         that._renderResult(report)
@@ -226,13 +278,17 @@ Page({
   },
 
   resetPage: function () {
+    this._reportDone = false
+    this._qczhDone = false
+    this._pendingReport = null
+    this._pendingQczh = null
     this._stopPolling()
     this.setData({
       state: 'idle', imagePath: '', loading: false, progress: 0,
       stageText: '', etaSeconds: null, totalScore: null,
-      qczhImage: '', llmHtml: '', pathType: '',
+      qczhImage: '', pathType: '', llmHtml: '',
       radarDims: [], errorMsg: '',
-      showDemoBtn: true, hasRadar: false, hasOverlay: false, isQczh: false
+      showDemoBtn: true, hasRadar: false, hasOverlay: false, hasQczh: false
     })
   },
 
