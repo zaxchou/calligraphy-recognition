@@ -31,18 +31,31 @@ function uploadFile(filePath) {
       timeout: 120000,
       success: function (res) {
         if (res.statusCode === 200) {
-          try {
-            resolve(JSON.parse(res.data))
-          } catch (e) {
-            reject({ code: -1, msg: '响应解析失败' })
-          }
+          try { resolve(JSON.parse(res.data)) } catch (e) { reject({ code: -1, msg: '响应解析失败' }) }
         } else {
           reject({ code: res.statusCode, msg: '上传失败' })
         }
       },
-      fail: function (err) {
-        reject({ code: -1, msg: '上传网络错误', detail: err })
-      }
+      fail: function (err) { reject({ code: -1, msg: '上传网络错误', detail: err }) }
+    })
+  })
+}
+
+function uploadQczh(filePath) {
+  return new Promise(function (resolve, reject) {
+    wx.uploadFile({
+      url: BASE_URL + '/api/v1/composition/qczh',
+      filePath: filePath,
+      name: 'file',
+      timeout: 120000,
+      success: function (res) {
+        if (res.statusCode === 200) {
+          try { resolve(JSON.parse(res.data)) } catch (e) { reject({ code: -1, msg: '响应解析失败' }) }
+        } else {
+          reject({ code: res.statusCode, msg: '分析失败: ' + res.statusCode })
+        }
+      },
+      fail: function (err) { reject({ code: -1, msg: '分析超时，请重试', detail: err }) }
     })
   })
 }
@@ -50,17 +63,10 @@ function uploadFile(filePath) {
 module.exports = {
   BASE_URL: BASE_URL,
 
-  getTask: function (taskId) {
-    return request('/api/v1/composition/task/' + taskId)
-  },
+  getTask: function (taskId) { return request('/api/v1/composition/task/' + taskId) },
+  getReport: function (taskId) { return request('/api/v1/composition/report/' + taskId) },
+  getHistory: function (limit) { return request('/api/v1/composition/history?limit=' + (limit || 10)) },
 
-  getReport: function (taskId) {
-    return request('/api/v1/composition/report/' + taskId)
-  },
-
-  getHistory: function (limit) {
-    return request('/api/v1/composition/history?limit=' + (limit || 10))
-  },
-
-  upload: uploadFile
+  upload: uploadFile,
+  uploadQczh: uploadQczh
 }

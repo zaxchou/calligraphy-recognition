@@ -270,6 +270,12 @@ page {
   display: block;
 }
 
+/* ========= qczh 结果图 ========= */
+.qczh-result-img {
+  width: 100%;
+  border-radius: 12rpx;
+}
+
 /* ========= Mock 起承转合覆层 ========= */
 .mock-overlay {
   position: relative;

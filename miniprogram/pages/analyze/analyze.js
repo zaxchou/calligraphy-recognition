@@ -40,22 +40,27 @@ Page({
     stageText: '',
     etaSeconds: null,
     totalScore: null,
+    qczhImage: '',
     llmHtml: '',
+    pathType: '',
     radarDims: [],
     errorMsg: '',
     showDemoBtn: true,
     hasRadar: false,
-    hasOverlay: false
+    hasOverlay: false,
+    isQczh: false
   },
 
   _taskId: null,
   _pollTimer: null,
   _timeoutTimer: null,
+  _progressTimer: null,
   POLL_INTERVAL: 2000,
   TIMEOUT_MS: 300000,
+  QCZH_TIMEOUT_MS: 90000,
 
   onShareAppMessage: function () {
-    return { title: '潘天寿教你构图 — AI 分析中国画构图', path: '/pages/analyze/analyze' }
+    return { title: '潘天寿教你构图 — AI 分析中国画起承转合', path: '/pages/analyze/analyze' }
   },
 
   onShareTimeline: function () {
@@ -74,16 +79,49 @@ Page({
     var that = this
     var filePath = this.data.imagePath
     if (!filePath) return
-    this.setData({ loading: true })
-    api.upload(filePath).then(function (res) {
-      var taskId = res.task_id
-      if (!taskId) { that.setData({ state: 'error', errorMsg: '上传返回异常：缺少 task_id' }); return }
-      that._taskId = taskId
-      that.setData({ state: 'analyzing', loading: false, progress: 5, stageText: '图片已上传，正在排队...' })
-      that._startPolling()
-      that._startTimeout()
+
+    this.setData({ state: 'analyzing', progress: 0, stageText: '正在上传图片并分析起承转合...', isQczh: true })
+
+    var totalSeconds = 70
+    var elapsed = 0
+    this._progressTimer = setInterval(function () {
+      elapsed += 0.5
+      var pct = Math.min(95, Math.round(elapsed / totalSeconds * 100))
+      var remaining = Math.round(totalSeconds - elapsed)
+      var stages = [
+        '正在分析起承转合走势...',
+        '正在识别视觉起点与开合关系...',
+        '正在定位起承转合关键节点...',
+        '正在绘制起承转合曲线...',
+        '正在生成分析报告...'
+      ]
+      var idx = Math.min(stages.length - 1, Math.floor(elapsed / (totalSeconds / stages.length)))
+      that.setData({
+        progress: pct,
+        stageText: stages[idx],
+        etaSeconds: remaining > 0 ? remaining : null
+      })
+    }, 500)
+
+    api.uploadQczh(filePath).then(function (res) {
+      if (that._progressTimer) { clearInterval(that._progressTimer); that._progressTimer = null }
+
+      var llmText = res.llm_analysis || res.qwen_analysis || ''
+      var qczhImg = res.preview_image || ''
+
+      that.setData({
+        state: 'done', progress: 100, stageText: '',
+        qczhImage: qczhImg,
+        llmHtml: md.blocksToHtml(llmText),
+        pathType: res.path_type || '',
+        showDemoBtn: false,
+        hasRadar: false,
+        hasOverlay: !!qczhImg,
+        isQczh: true
+      })
     }).catch(function (err) {
-      that.setData({ state: 'error', loading: false, errorMsg: (err && err.msg) || '上传失败，请检查网络' })
+      if (that._progressTimer) { clearInterval(that._progressTimer); that._progressTimer = null }
+      that.setData({ state: 'error', errorMsg: (err && err.msg) || '分析失败，请重试' })
     })
   },
 
@@ -125,7 +163,8 @@ Page({
       radarDims: radarDims,
       showDemoBtn: false,
       hasRadar: radarDims.length > 0,
-      hasOverlay: hasOverlay
+      hasOverlay: hasOverlay,
+      isQczh: false
     })
 
     if (radarDims.length > 0) {
@@ -150,7 +189,7 @@ Page({
           { label:'穿插', score:7,  max:10, pct:70, color:'#b0a28a' },
           { label:'边角', score:6,  max:8,  pct:75, color:'#7d9b8a' }
         ],
-        showDemoBtn: false, hasRadar: true, hasOverlay: true
+        showDemoBtn: false, hasRadar: true, hasOverlay: true, isQczh: false
       })
       setTimeout(function () { _drawRadar(that) }, 500)
     }, 300)
@@ -164,7 +203,7 @@ Page({
       var done = null
       for (var i = 0; i < items.length; i++) { if (items[i].status === 'done') { done = items[i]; break } }
       if (!done) { wx.hideLoading(); wx.showToast({ title: '没有已完成的历史记录', icon: 'none' }); return }
-      that.setData({ imagePath: done.thumb_url ? (api.BASE_URL + done.thumb_url) : '' })
+      that.setData({ imagePath: done.thumb_url ? (api.BASE_URL + done.thumb_url) : '', isQczh: false })
       api.getReport(done.task_id).then(function (report) {
         wx.hideLoading()
         that._renderResult(report)
@@ -183,6 +222,7 @@ Page({
   _stopPolling: function () {
     if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null }
     if (this._timeoutTimer) { clearTimeout(this._timeoutTimer); this._timeoutTimer = null }
+    if (this._progressTimer) { clearInterval(this._progressTimer); this._progressTimer = null }
   },
 
   resetPage: function () {
@@ -190,8 +230,9 @@ Page({
     this.setData({
       state: 'idle', imagePath: '', loading: false, progress: 0,
       stageText: '', etaSeconds: null, totalScore: null,
-      llmHtml: '', radarDims: [], errorMsg: '',
-      showDemoBtn: true, hasRadar: false, hasOverlay: false
+      qczhImage: '', llmHtml: '', pathType: '',
+      radarDims: [], errorMsg: '',
+      showDemoBtn: true, hasRadar: false, hasOverlay: false, isQczh: false
     })
   },
 

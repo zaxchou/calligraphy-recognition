@@ -3,7 +3,7 @@
   <view class="hero" wx:if="{{state === 'idle'}}">
     <view class="hero-icon">◌</view>
     <text class="hero-title">潘天寿教你构图</text>
-    <text class="hero-desc">上传一幅中国画，AI 为您解析构图之中的笔墨意趣与空间美学</text>
+    <text class="hero-desc">上传一幅中国画，AI 为您解析构图之中的起承转合与空间美学</text>
     <view class="hero-actions">
       <button class="btn-primary" bindtap="chooseImage">选择图片 / 拍照</button>
       <view class="demo-link" wx:if="{{showDemoBtn}}" bindtap="loadDemo">
@@ -27,7 +27,7 @@
   <block wx:if="{{state === 'analyzing'}}">
     <image class="preview-img dim" src="{{imagePath}}" mode="widthFix" />
     <view class="progress-section">
-      <text class="progress-label">正在分析</text>
+      <text class="progress-label">{{isQczh ? '起承转合分析中' : '正在分析'}}</text>
       <view class="progress-track"><view class="progress-fill" style="width: {{progress}}%"></view></view>
       <text class="progress-num">{{progress}}%</text>
       <text class="progress-stage">{{stageText || '正在上传...'}}</text>
@@ -37,18 +37,26 @@
 
   <block wx:if="{{state === 'done'}}">
 
-    <view class="score-card">
-      <view class="score-ring"><view class="score-ring-inner"><text class="score-num">{{totalScore || '—'}}</text><text class="score-unit">分</text></view></view>
+    <view class="score-card" wx:if="{{!isQczh && totalScore != null}}">
+      <view class="score-ring"><view class="score-ring-inner"><text class="score-num">{{totalScore}}</text><text class="score-unit">分</text></view></view>
       <view class="score-meta"><text class="score-label">综合构图评分</text><text class="score-note">基于空间布局、疏密节奏、气韵生动等维度</text></view>
     </view>
 
-    <view class="media-card" wx:if="{{hasRadar}}">
+    <view class="media-card" wx:if="{{hasRadar && !isQczh}}">
       <view class="media-label">七维雷达图</view>
       <canvas type="2d" id="radarCanvas" class="radar-canvas"></canvas>
       <text class="media-note">各维度得分雷达分布</text>
     </view>
 
-    <view class="media-card" wx:if="{{hasOverlay && imagePath}}">
+    <!-- qczh 真实曲线图 -->
+    <view class="media-card" wx:if="{{isQczh && qczhImage}}">
+      <view class="media-label">起承转合 · 曲线分析{{pathType ? '（' + pathType + '）' : ''}}</view>
+      <image class="qczh-result-img" src="{{qczhImage}}" mode="widthFix" />
+      <text class="media-note">AI 自动识别起承转合走势并绘制曲线</text>
+    </view>
+
+    <!-- 历史记录 mock 覆层 -->
+    <view class="media-card" wx:if="{{!isQczh && hasOverlay && imagePath}}">
       <view class="media-label">起承转合 · 覆层分析</view>
       <view class="mock-overlay">
         <image class="ov-bg-img" src="{{imagePath}}" mode="aspectFill" />
