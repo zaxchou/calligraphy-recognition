@@ -65,7 +65,7 @@
       <text class="media-note">AI 自动识别起承转合走势并绘制曲线</text>
     </view>
 
-    <view class="media-card" wx:if="{{hasOverlay && imagePath}}">
+    <view class="media-card" wx:if="{{hasOverlay && imagePath && !hasQczh}}">
       <view class="media-label">起承转合 · 覆层分析</view>
       <view class="mock-overlay">
         <image class="ov-bg-img" src="{{imagePath}}" mode="aspectFill" />

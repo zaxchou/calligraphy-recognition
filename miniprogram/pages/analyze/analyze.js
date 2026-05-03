@@ -171,26 +171,17 @@ Page({
     this._qczhRes = null
     var img = ''
     var pathType = ''
-    var text = ''
 
     if (res) {
       img = res.preview_image || ''
       pathType = res.path_type || ''
-      text = res.llm_analysis || res.qwen_analysis || ''
-    }
-
-    var currentText = this._reportText
-    if (text && currentText) {
-      currentText = currentText + '\n\n---\n\n## 起承转合分析\n\n' + text
-      this._reportText = currentText
     }
 
     this.setData({
       qczhImage: img,
       pathType: pathType,
       hasQczh: !!img,
-      qczhLoading: false,
-      llmHtml: md.blocksToHtml(currentText || text)
+      qczhLoading: false
     })
 
     if (!!img) {
