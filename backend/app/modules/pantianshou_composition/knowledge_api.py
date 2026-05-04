@@ -1012,25 +1012,6 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
         # ---- 过滤非文本内容 ----
         search_results = [r for r in search_results if _should_include_in_search(r.get("payload", {}))]
 
-        # ---- 过滤孤立向量（book_id 不存在于 SQLite 的结果）----
-        # 收集所有结果中涉及的 book_id，批量查询数据库
-        result_book_ids = set()
-        for r in search_results:
-            bid = r.get("payload", {}).get("book_id")
-            if bid:
-                result_book_ids.add(bid)
-        
-        if result_book_ids:
-            existing_book_ids = set(
-                row[0] for row in db.query(PdfBook.id).filter(PdfBook.id.in_(result_book_ids)).all()
-            )
-            # 过滤掉 book_id 存在但不在数据库中的结果
-            # 注意：没有 book_id 的结果（如花鸟教程章节）保留
-            search_results = [
-                r for r in search_results
-                if not r.get("payload", {}).get("book_id") 
-                or r.get("payload", {}).get("book_id") in existing_book_ids
-            ]
 
         # ---- ③ AI 摘要回答（带缓存）----
         # 缓存 key 包含 query + book_ids，不同书库过滤结果不同
