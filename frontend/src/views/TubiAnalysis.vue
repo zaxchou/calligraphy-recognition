@@ -117,6 +117,7 @@ import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { tubiApi } from '../api'
+import { getSharedAnalyticsData, setSharedAnalyticsData } from '../tubi/sharedCache'
 import { ARTISTS } from '../tubi/constants'
 import {
   calculateAge,
@@ -186,22 +187,20 @@ const historyPageSize = ref(16)
 const historyPage = ref(1)
 const historyHasMore = ref(true)
 
-// 全量作品列表（用于 prev/next 导航，不限分页）
-// 模块级缓存：同 session 内只按 artist 拉一次
-const _fullItemListCache = {}
+// 全量作品列表（用于 prev/next 导航）
+// 使用 sharedCache 与 TubiHome 共享数据，避免重复 API 请求
 const fullItemList = ref([])
 async function loadFullItemList(force = false) {
-  const key = currentArtist.value === '李鱓' ? '__all__' : currentArtist.value
-  if (_fullItemListCache[key] && !force) {
-    fullItemList.value = _fullItemListCache[key]
+  const cached = getSharedAnalyticsData()
+  if (cached && !force) {
+    fullItemList.value = cached
     return
   }
   try {
-    const artistParam = key === '__all__' ? undefined : key
-    const res = await tubiApi.getAllResults(0, 2000, artistParam)
+    const res = await tubiApi.getAllResults(0, 2000)
     if (res.success) {
       const data = res.data || []
-      _fullItemListCache[key] = data
+      setSharedAnalyticsData(data)
       fullItemList.value = data
     }
   } catch (e) {
@@ -576,7 +575,7 @@ function onArtistChange(artist) {
   historyHasMore.value = true
   // 重新加载历史记录（服务端过滤）
   loadHistory(1)
-  loadFullItemList(true)  // force=true 清除缓存，用新作者重拉
+  // fullItemList 已经有全量缓存，不需要重新拉取
   // 更新 URL 参数，刷新后保持
   const query = { ...route.query, artist }
   // 如果切回默认画家（李鱓），可以去掉 artist 参数保持 URL 整洁

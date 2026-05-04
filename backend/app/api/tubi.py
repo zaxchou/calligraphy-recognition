@@ -153,6 +153,38 @@ def _cached_isfile(path: str) -> bool:
     return v
 
 
+# ── 全量作品列表缓存（服务端持久化，所有用户共享） ──
+# 当有新作品上传/分析完成/删除时自动失效
+_RESULTS_CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cache", "tubi_results_all.json")
+
+def _get_results_cache():
+    """读取全量作品列表缓存，不存在返回 None"""
+    try:
+        if os.path.exists(_RESULTS_CACHE_FILE):
+            with open(_RESULTS_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+def _set_results_cache(data):
+    """写入全量作品列表缓存"""
+    try:
+        os.makedirs(os.path.dirname(_RESULTS_CACHE_FILE), exist_ok=True)
+        with open(_RESULTS_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+    except Exception as e:
+        logger.warning("写入作品列表缓存失败: %s", e)
+
+def _clear_results_cache():
+    """清除全量作品列表缓存 — 有新作品上传/分析完成/删除时调用"""
+    try:
+        if os.path.exists(_RESULTS_CACHE_FILE):
+            os.remove(_RESULTS_CACHE_FILE)
+    except Exception as e:
+        logger.warning("清除作品列表缓存失败: %s", e)
+
+
 from app.services.siliconflow_service import (
     analyze_image_regions,
     calculate_area_stats
@@ -706,6 +738,9 @@ async def upload_image(
         db.add(db_analysis)
         db.commit()
         db.refresh(db_analysis)
+
+        # 清除作品列表缓存（有新作品即失效）
+        _clear_results_cache()
 
         # 自动追加到图像搜索索引
         try:
@@ -1530,13 +1565,19 @@ async def get_all_results(
     db: Session = Depends(get_db)
 ):
     """获取所有分析结果列表"""
+    # 全量查询（无筛选且 limit 足够大时）走持久缓存，所有用户共享
+    if not artist and limit >= 500:
+        cached = _get_results_cache()
+        if cached:
+            return cached
+
     query = db.query(TubiAnalysis)
     if artist:
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
         query = query.filter(TubiAnalysis.artist.in_(aliases))
     analyses = query.order_by(TubiAnalysis.created_at.desc()).offset(skip).limit(limit).all()
-    
+
     results = []
     for analysis in analyses:
         # 从 filepath 提取文件名 - 使用跨平台路径处理
@@ -1622,11 +1663,15 @@ async def get_all_results(
             })
         })
 
-    return {
+    response = {
         "success": True,
         "data": results,
         "total": db.query(TubiAnalysis).count()
     }
+    # 全量查询（无筛选）写入持久缓存
+    if not artist and limit >= 500:
+        _set_results_cache(response)
+    return response
 
 
 @router.get("/search")
@@ -1773,6 +1818,7 @@ async def delete_image(image_id: str, request: Request, db: Session = Depends(ge
     # 删除数据库记录
     db.delete(db_analysis)
     db.commit()
+    _clear_results_cache()  # 删除后使缓存失效
 
     return {
         "success": True,
@@ -2714,6 +2760,7 @@ async def update_regions_manual(
     db_analysis.updated_at = datetime.now()
     db_analysis.status = "analyzed"  # 标记为已分析
     db_analysis.is_manual_annotated = 1  # 标记为手动标注
+    _clear_results_cache()  # 分析完成后使缓存失效
 
     # 自动标签持久化：将 compute_tags 结果追加写入 tags 字段
     try:

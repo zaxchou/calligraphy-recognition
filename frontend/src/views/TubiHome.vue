@@ -68,6 +68,7 @@ import TubiGallery from '../components/tubi/TubiGallery.vue'
 import TubiComparison from '../components/tubi/TubiComparison.vue'
 
 import { tubiApi } from '../api'
+import { getSharedAnalyticsData, setSharedAnalyticsData, clearSharedAnalyticsData } from '../tubi/sharedCache'
 
 const props = defineProps({
   historyList: { type: Array, default: () => [] },
@@ -79,14 +80,14 @@ const props = defineProps({
 })
 
 // ── 分析图表数据（独立于 Gallery 翻页，一次拉全量） ──
-// 模块级缓存：同 session 内只拉一次，除非主动刷新
-let _analyticsCache = null
+// 共享缓存：同 session 内 TubiHome + TubiAnalysis 共用同一份
 const analyticsData = ref([])
 const analyticsLoading = ref(true)
 
 async function fetchAnalyticsData(force = false) {
-  if (_analyticsCache && !force) {
-    analyticsData.value = _analyticsCache
+  const cached = getSharedAnalyticsData()
+  if (cached && !force) {
+    analyticsData.value = cached
     analyticsLoading.value = false
     return
   }
@@ -94,14 +95,15 @@ async function fetchAnalyticsData(force = false) {
   try {
     const res = await tubiApi.getAllResults(0, 2000)
     if (res.success) {
-      _analyticsCache = (res.data || []).map(item => ({
+      const data = (res.data || []).map(item => ({
         ...item,
         inscriptionPercent: item.inscription_percent,
         paintingPercent: item.painting_percent,
         blankPercent: item.blank_percent,
         thumbnailUrl: item.thumbnail_url,
       }))
-      analyticsData.value = _analyticsCache
+      setSharedAnalyticsData(data)
+      analyticsData.value = data
     }
   } catch (e) {
     console.error('加载分析数据失败', e)
@@ -113,7 +115,7 @@ async function fetchAnalyticsData(force = false) {
 // 监听 refreshKey prop 变化 → 强制刷新分析数据
 watch(() => props.refreshKey, (val) => {
   if (val > 0) {
-    _analyticsCache = null  // 清除缓存
+    clearSharedAnalyticsData()
     fetchAnalyticsData(true)
   }
 })
