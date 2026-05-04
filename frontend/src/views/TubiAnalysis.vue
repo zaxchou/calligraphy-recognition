@@ -187,13 +187,22 @@ const historyPage = ref(1)
 const historyHasMore = ref(true)
 
 // 全量作品列表（用于 prev/next 导航，不限分页）
+// 模块级缓存：同 session 内只按 artist 拉一次
+const _fullItemListCache = {}
 const fullItemList = ref([])
-async function loadFullItemList() {
+async function loadFullItemList(force = false) {
+  const key = currentArtist.value === '李鱓' ? '__all__' : currentArtist.value
+  if (_fullItemListCache[key] && !force) {
+    fullItemList.value = _fullItemListCache[key]
+    return
+  }
   try {
-    const artistParam = currentArtist.value && currentArtist.value !== '李鱓' ? currentArtist.value : undefined
+    const artistParam = key === '__all__' ? undefined : key
     const res = await tubiApi.getAllResults(0, 2000, artistParam)
     if (res.success) {
-      fullItemList.value = res.data || []
+      const data = res.data || []
+      _fullItemListCache[key] = data
+      fullItemList.value = data
     }
   } catch (e) {
     console.error('加载全量作品列表失败', e)
@@ -567,7 +576,7 @@ function onArtistChange(artist) {
   historyHasMore.value = true
   // 重新加载历史记录（服务端过滤）
   loadHistory(1)
-  loadFullItemList()
+  loadFullItemList(true)  // force=true 清除缓存，用新作者重拉
   // 更新 URL 参数，刷新后保持
   const query = { ...route.query, artist }
   // 如果切回默认画家（李鱓），可以去掉 artist 参数保持 URL 整洁
@@ -619,7 +628,6 @@ function backToHome() {
   historyPage.value = 1
   historyHasMore.value = true
   loadHistory(1)
-  loadFullItemList()
 }
 
 // ============ 上传回调 ============
@@ -2228,9 +2236,6 @@ onMounted(async () => {
       console.error('loadHistory 失败（已捕获，页面不会白屏）:', err)
       ElMessage.error('加载历史记录失败，请刷新页面')
     }
-    // 异步加载全量作品列表（支持跨页 prev/next 导航，不阻塞 UI）
-    loadFullItemList()
-
     // 检查 sessionStorage（标签筛选）并滚动到作品库
     try {
       const storedTag = sessionStorage.getItem('filterTag')
