@@ -1580,17 +1580,17 @@ async def get_all_results(
         query = query.filter(TubiAnalysis.artist.in_(aliases))
     analyses = query.order_by(TubiAnalysis.created_at.desc()).offset(skip).limit(limit).all()
 
+    is_full_list = not artist and limit >= 500  # 全量查询 → 轻量 response + 持久缓存
+
     results = []
     for analysis in analyses:
-        # 从 filepath 提取文件名 - 使用跨平台路径处理
+        # 从 filepath 提取文件名
         if analysis.filepath:
             actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
-            # 检查文件是否实际存在
             file_path_local = _to_local_path(analysis.filepath)
             file_exists = _cached_exists(file_path_local)
         elif analysis.filename:
             actual_filename = analysis.filename
-            # 检查文件是否存在于 uploads 目录
             file_exists = _cached_exists(os.path.join(UPLOAD_DIR, analysis.filename))
         else:
             actual_filename = None
@@ -1604,24 +1604,10 @@ async def get_all_results(
                 thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
                 thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
         elif actual_filename and file_exists:
-            # 如果没有缩略图，使用原图（但这样会影响性能）
             thumbnail_url = get_static_url(f"uploads/{actual_filename}")
 
-        # 检查标注图片是否存在
-        annotated_exists = False
-        if analysis.annotated_image_path:
-            annotated_path_local = _to_local_path(analysis.annotated_image_path)
-            annotated_exists = _cached_exists(annotated_path_local)
-
-        # 解析 position_analysis JSON
-        pos_analysis_data = None
-        if analysis.position_analysis:
-            try:
-                pos_analysis_data = json.loads(analysis.position_analysis) if isinstance(analysis.position_analysis, str) else analysis.position_analysis
-            except Exception:
-                pos_analysis_data = None
-
-        results.append({
+        # 基础字段（所有查询都需要）
+        item = {
             "id": analysis.image_id,
             "db_id": analysis.id,
             "image_id": analysis.image_id,
@@ -1630,48 +1616,69 @@ async def get_all_results(
             "artist": analysis.artist,
             "year": analysis.year,
             "period": analysis.period,
-            "image_width": analysis.image_width,
-            "image_height": analysis.image_height,
             "inscription_percent": analysis.inscription_percent,
             "painting_percent": analysis.painting_percent,
             "blank_percent": analysis.blank_percent,
-            "regions": analysis.regions,
-            "position_analysis": pos_analysis_data,
             "status": analysis.status,
             "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
             "url": get_static_url(f"uploads/{actual_filename}") if actual_filename and file_exists else None,
             "thumbnail_url": thumbnail_url,
-            "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
-            "is_manual_annotated": bool(analysis.is_manual_annotated) if analysis.is_manual_annotated is not None else False,
-            "analysis_note": analysis.analysis_note,
-            "inscription_content": analysis.inscription_content,
-            "inscription_modern": analysis.inscription_modern,
-            "seal_content": analysis.seal_content,
-            "content_analysis": json.loads(analysis.content_analysis) if analysis.content_analysis else None,
-            "artwork_width_cm": analysis.artwork_width_cm,
-            "artwork_height_cm": analysis.artwork_height_cm,
             "album_name": analysis.album_name,
             "album_index": analysis.album_index,
             "tags": analysis.tags,
-            "material_tags": analysis.material_tags,
-            "period_phase": analysis.period_phase,
-            "computed_tags": compute_tags_cached({
-                "title": analysis.title,
-                "period_phase": analysis.period_phase,
-                "artwork_height_cm": analysis.artwork_height_cm,
+        }
+
+        # 全量查询跳过重字段（regions, 分析文本, JSON解析等），大幅减小缓存体积
+        if not is_full_list:
+            # 检查标注图片是否存在
+            annotated_exists = False
+            if analysis.annotated_image_path:
+                annotated_path_local = _to_local_path(analysis.annotated_image_path)
+                annotated_exists = _cached_exists(annotated_path_local)
+
+            # 解析 position_analysis JSON
+            pos_analysis_data = None
+            if analysis.position_analysis:
+                try:
+                    pos_analysis_data = json.loads(analysis.position_analysis) if isinstance(analysis.position_analysis, str) else analysis.position_analysis
+                except Exception:
+                    pos_analysis_data = None
+
+            item.update({
+                "image_width": analysis.image_width,
+                "image_height": analysis.image_height,
+                "regions": analysis.regions,
+                "position_analysis": pos_analysis_data,
+                "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
+                "is_manual_annotated": bool(analysis.is_manual_annotated) if analysis.is_manual_annotated is not None else False,
+                "analysis_note": analysis.analysis_note,
+                "inscription_content": analysis.inscription_content,
+                "inscription_modern": analysis.inscription_modern,
+                "seal_content": analysis.seal_content,
+                "content_analysis": json.loads(analysis.content_analysis) if analysis.content_analysis else None,
                 "artwork_width_cm": analysis.artwork_width_cm,
-                "content_analysis": analysis.content_analysis,
+                "artwork_height_cm": analysis.artwork_height_cm,
                 "material_tags": analysis.material_tags,
+                "period_phase": analysis.period_phase,
+                "computed_tags": compute_tags_cached({
+                    "title": analysis.title,
+                    "period_phase": analysis.period_phase,
+                    "artwork_height_cm": analysis.artwork_height_cm,
+                    "artwork_width_cm": analysis.artwork_width_cm,
+                    "content_analysis": analysis.content_analysis,
+                    "material_tags": analysis.material_tags,
+                })
             })
-        })
+
+        results.append(item)
 
     response = {
         "success": True,
         "data": results,
         "total": db.query(TubiAnalysis).count()
     }
-    # 全量查询（无筛选）写入持久缓存
-    if not artist and limit >= 500:
+    # 全量查询写入持久缓存（轻量版本）
+    if is_full_list:
         _set_results_cache(response)
     return response
 
