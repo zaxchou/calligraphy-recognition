@@ -15,7 +15,7 @@ jobs:
 
       - name: Upload backend + deploy to server
         run: |
-          tar czf /tmp/deploy.tar.gz backend/ deploy/ --exclude='.git' --exclude='__pycache__' --exclude='*.pyc'
+          tar czf /tmp/deploy.tar.gz --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='backend/data' backend/ deploy/ .github/workflows/
           echo "${{ secrets.SSH_KEY }}" > /tmp/key.pem && chmod 600 /tmp/key.pem
           scp -o StrictHostKeyChecking=no -i /tmp/key.pem /tmp/deploy.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/
 
