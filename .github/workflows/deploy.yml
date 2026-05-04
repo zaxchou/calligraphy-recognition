@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'deploy/**'
+      - '.github/workflows/**'
 
 jobs:
   deploy:
