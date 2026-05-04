@@ -19,9 +19,9 @@
               size="small"
               :disabled="!nextImage"
               @click="$emit('navigate', nextImage)"
+              :icon="ArrowRight"
             >
               下一幅
-              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
           </div>
         </template>
@@ -78,10 +78,10 @@
         </div>
         <div class="info-card-actions">
           <el-button plain size="small" class="btn-action" @click="$emit('edit-current')">
-            <el-icon><Edit /></el-icon> 编辑
+            <el-icon><Edit /></el-icon><span class="btn-label">编辑</span>
           </el-button>
           <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
-            返回
+            <span class="btn-label">返回</span>
           </el-button>
         </div>
       </div>
@@ -450,6 +450,7 @@ const detailSealTags = computed(() => {
 })
 
 async function loadSealLibraryForDetail() {
+  if (!props.currentImage?.sealContent) return  // 无印章内容不请求
   try {
     const res = await sealsApi.list({ limit: 200 })
     if (res.success) {
@@ -527,7 +528,7 @@ const relatedWorks = computed(() => {
 })
 
 function openRanking() {
-  window.open('/#/tubi/ranking', '_blank')
+  window.open('/#/tubi/list', '_blank')
 }
 
 // ── 册页缩略图滚轮横向滚动 ──────────────────────
@@ -1412,5 +1413,46 @@ defineExpose({
   color: #c96442;
   margin-left: 6px;
   font-weight: 500;
+}
+
+/* ── 响应式 ── */
+
+/* 强制导航栏不换行（父级 card-header 有 flex-wrap: wrap） */
+.navigation-header {
+  flex-wrap: nowrap;
+}
+
+/* 手机：导航按钮更紧凑 */
+@media (max-width: 768px) {
+  .navigation-header :deep(.el-button) {
+    padding: 5px 6px !important;
+    font-size: 11px !important;
+  }
+  .nav-title {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navigation-header {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+  .navigation-header :deep(.el-button) {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    padding: 8px 10px !important;
+    font-size: 0 !important;
+  }
+  .navigation-header :deep(.el-button .el-icon) {
+    font-size: 16px !important;
+  }
+  .nav-title {
+    font-size: 12px;
+  }
+  /* 操作按钮只显示图标 */
+  .info-card-actions .btn-action .btn-label {
+    display: none;
+  }
 }
 </style>

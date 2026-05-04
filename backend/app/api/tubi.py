@@ -18,7 +18,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path
 from app.models.tubi_analysis import TubiAnalysis
-from app.services.auto_tags import compute_tags
+from app.services.auto_tags import compute_tags_cached
 from app.services.inscription_content_analyzer import get_period_phase
 
 settings = get_settings()
@@ -120,6 +120,38 @@ def _to_local_path(p: str) -> str:
         return os.path.normpath(p2)
     p2 = p2.lstrip("\\/")
     return os.path.normpath(os.path.join(PROJECT_ROOT, p2))
+
+
+# ── 文件存在性缓存（避免重复 stat 调用） ──
+_file_exists_cache = {}
+_FILE_CACHE_TTL = 60  # 秒
+
+
+def _cached_exists(path: str) -> bool:
+    """带 TTL 的 os.path.exists 缓存，减少重复 stat 系统调用"""
+    if not path:
+        return False
+    now = time.monotonic()
+    cached = _file_exists_cache.get(path)
+    if cached is not None and now - cached["t"] < _FILE_CACHE_TTL:
+        return cached["v"]
+    v = os.path.exists(path)
+    _file_exists_cache[path] = {"v": v, "t": now}
+    return v
+
+
+def _cached_isfile(path: str) -> bool:
+    """带 TTL 的 os.path.isfile 缓存"""
+    if not path:
+        return False
+    now = time.monotonic()
+    cached = _file_exists_cache.get(path)
+    if cached is not None and now - cached["t"] < _FILE_CACHE_TTL:
+        return cached["v"]
+    v = os.path.isfile(path)
+    _file_exists_cache[path] = {"v": v, "t": now}
+    return v
+
 
 from app.services.siliconflow_service import (
     analyze_image_regions,
@@ -1011,7 +1043,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
     thumbnail_url = None
     if db_analysis.thumbnail_path:
         thumbnail_path_local = _to_local_path(db_analysis.thumbnail_path)
-        if os.path.exists(thumbnail_path_local):
+        if _cached_exists(thumbnail_path_local):
             thumbnail_filename = os.path.basename(db_analysis.thumbnail_path.replace('/', os.sep))
             thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
     elif image_url:
@@ -1066,7 +1098,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
             "tags": db_analysis.tags,
             "material_tags": db_analysis.material_tags,
             "period_phase": db_analysis.period_phase,
-            "computed_tags": compute_tags({
+            "computed_tags": compute_tags_cached({
                 "title": db_analysis.title,
                 "period_phase": db_analysis.period_phase,
                 "artwork_height_cm": db_analysis.artwork_height_cm,
@@ -1493,7 +1525,7 @@ async def replace_image(
 @router.get("/results")
 async def get_all_results(
     skip: int = 0,
-    limit: int = 500,
+    limit: int = 16,
     artist: Optional[str] = Query(default=None, description="画家名称筛选"),
     db: Session = Depends(get_db)
 ):
@@ -1512,11 +1544,11 @@ async def get_all_results(
             actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
             # 检查文件是否实际存在
             file_path_local = _to_local_path(analysis.filepath)
-            file_exists = os.path.exists(file_path_local)
+            file_exists = _cached_exists(file_path_local)
         elif analysis.filename:
             actual_filename = analysis.filename
             # 检查文件是否存在于 uploads 目录
-            file_exists = os.path.exists(os.path.join(UPLOAD_DIR, analysis.filename))
+            file_exists = _cached_exists(os.path.join(UPLOAD_DIR, analysis.filename))
         else:
             actual_filename = None
             file_exists = False
@@ -1525,7 +1557,7 @@ async def get_all_results(
         thumbnail_url = None
         if analysis.thumbnail_path:
             thumbnail_path_local = _to_local_path(analysis.thumbnail_path)
-            if os.path.exists(thumbnail_path_local):
+            if _cached_exists(thumbnail_path_local):
                 thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
                 thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
         elif actual_filename and file_exists:
@@ -1536,7 +1568,7 @@ async def get_all_results(
         annotated_exists = False
         if analysis.annotated_image_path:
             annotated_path_local = _to_local_path(analysis.annotated_image_path)
-            annotated_exists = os.path.exists(annotated_path_local)
+            annotated_exists = _cached_exists(annotated_path_local)
 
         # 解析 position_analysis JSON
         pos_analysis_data = None
@@ -1580,7 +1612,7 @@ async def get_all_results(
             "tags": analysis.tags,
             "material_tags": analysis.material_tags,
             "period_phase": analysis.period_phase,
-            "computed_tags": compute_tags({
+            "computed_tags": compute_tags_cached({
                 "title": analysis.title,
                 "period_phase": analysis.period_phase,
                 "artwork_height_cm": analysis.artwork_height_cm,
@@ -1650,10 +1682,10 @@ async def search_images(
             if analysis.filepath:
                 actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
                 file_path_local = _to_local_path(analysis.filepath)
-                file_exists = os.path.exists(file_path_local)
+                file_exists = _cached_exists(file_path_local)
             elif analysis.filename:
                 actual_filename = analysis.filename
-                file_exists = os.path.exists(os.path.join(UPLOAD_DIR, analysis.filename))
+                file_exists = _cached_exists(os.path.join(UPLOAD_DIR, analysis.filename))
             else:
                 actual_filename = None
                 file_exists = False
@@ -1662,7 +1694,7 @@ async def search_images(
             thumbnail_url = None
             if analysis.thumbnail_path:
                 thumbnail_path_local = _to_local_path(analysis.thumbnail_path)
-                if os.path.exists(thumbnail_path_local):
+                if _cached_exists(thumbnail_path_local):
                     thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
                     thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
             elif actual_filename and file_exists:
@@ -1672,7 +1704,7 @@ async def search_images(
             annotated_exists = False
             if analysis.annotated_image_path:
                 annotated_path_local = _to_local_path(analysis.annotated_image_path)
-                annotated_exists = os.path.exists(annotated_path_local)
+                annotated_exists = _cached_exists(annotated_path_local)
 
             # 解析 position_analysis JSON
             pos_analysis_data = None
@@ -1731,11 +1763,11 @@ async def delete_image(image_id: str, request: Request, db: Session = Depends(ge
     # 删除文件 - 使用跨平台路径处理
     if db_analysis.filepath:
         file_path_local = get_full_file_path(db_analysis.filepath, PROJECT_ROOT)
-        if os.path.exists(file_path_local):
+        if _cached_exists(file_path_local):
             os.remove(file_path_local)
     if db_analysis.annotated_image_path:
         annotated_path_local = get_full_file_path(db_analysis.annotated_image_path, PROJECT_ROOT)
-        if os.path.exists(annotated_path_local):
+        if _cached_exists(annotated_path_local):
             os.remove(annotated_path_local)
 
     # 删除数据库记录
@@ -2537,7 +2569,7 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
     thumbnail_url = None
     if db_analysis.thumbnail_path:
         thumb_local = _to_local_path(db_analysis.thumbnail_path)
-        if os.path.exists(thumb_local):
+        if _cached_exists(thumb_local):
             thumb_fn = os.path.basename(db_analysis.thumbnail_path.replace('/', os.sep))
             thumbnail_url = get_static_url(f"thumbnails/{thumb_fn}")
         else:
@@ -2693,7 +2725,7 @@ async def update_regions_manual(
             "content_analysis": db_analysis.content_analysis,
             "material_tags": db_analysis.material_tags,
         }
-        auto_tags = compute_tags(record_for_tags)
+        auto_tags = compute_tags_cached(record_for_tags)
         if auto_tags:
             existing_tags = []
             if db_analysis.tags:

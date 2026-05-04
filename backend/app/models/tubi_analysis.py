@@ -13,7 +13,7 @@ class TubiAnalysis(Base):
     
     # 画作信息
     title = Column(String(255), comment="画作标题")
-    artist = Column(String(100), comment="画家/作者")
+    artist = Column(String(100), index=True, comment="画家/作者")
     year = Column(Integer, comment="创作年份")
     period = Column(String(50), comment="时期（早期/中期/晚期）")
     notes = Column(Text, comment="备注说明")
@@ -49,10 +49,10 @@ class TubiAnalysis(Base):
     thumbnail_path = Column(String(500), comment="缩略图路径")
     
     # 状态
-    status = Column(String(20), default="uploaded", comment="状态：uploaded/analyzed/error")
+    status = Column(String(20), default="uploaded", index=True, comment="状态：uploaded/analyzed/error")
     
     # 时间戳
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # ── 李鱓题跋学术分析新增字段 ───────────────────────────────────────────
@@ -83,7 +83,7 @@ class TubiAnalysis(Base):
     is_manual_annotated = Column(Integer, default=0, comment="是否手动标注区域：0否/1是")
 
     # ── 册页分组 ───────────────────────────────────────────
-    album_name = Column(String(200), nullable=True, default=None, comment="册页名称，如花鸟册")
+    album_name = Column(String(200), nullable=True, default=None, index=True, comment="册页名称，如花鸟册")
     album_index = Column(Integer, nullable=True, default=None, comment="册页页码，如1表示第一开")
     
     # ── 标签 ───────────────────────────────────────────

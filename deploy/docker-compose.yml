@@ -32,6 +32,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
       - /opt/calligraphy-recognition/frontend/dist:/opt/calligraphy-recognition/frontend/dist:ro
+      - /opt/calligraphy-recognition/backend/data:/opt/calligraphy-recognition/backend/data:ro
 
 volumes:
   qdrant_data:

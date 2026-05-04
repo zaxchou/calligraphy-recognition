@@ -26,12 +26,16 @@
       :history-list="historyList"
       :filter-tag="filterTag"
       :artist-filter="currentArtist"
+      :has-more="historyHasMore"
+      :history-loading="historyLoading"
+      :refresh-key="refreshAnalyticsKey"
       @item-click="loadHistoryItem"
       @edit="editImageInfo"
       @delete="deleteImage"
       @search="handleSearch"
       @load-more="loadMoreGallery"
       @clear-tag-filter="clearTagFilter"
+      @go-list="navigateToRanking"
       @more="navigateToRanking"
       @artist-change="onArtistChange"
       @trend-click="(id) =&gt; loadHistoryItem(historyList.find(h =&gt; h.id === id))"
@@ -149,7 +153,7 @@ let ctx = null
 // 当前选中的画家（先给默认值，再通过 watch 响应 URL 参数变化）
 const currentArtist = ref('李鱓')
 
-// 用 watch 响应 route.query.artist，避免初始化时 query 尚未解析完成
+// 用 watch 响应 route.query.artist 变化（初始加载由 onMounted 处理）
 watch(
   () => route.query.artist,
   (newVal) => {
@@ -162,19 +166,39 @@ watch(
       } else {
         query.artist = newVal
       }
-      router.replace({ 
-        name: route.name, 
-        params: route.params, 
-        query 
+      router.replace({
+        name: route.name,
+        params: route.params,
+        query
       })
+      // 重新加载历史列表（服务端过滤）
+      historyPage.value = 1
+      historyHasMore.value = true
+      loadHistory(1)
     }
-  },
-  { immediate: true }
+  }
 )
 
 // 历史记录相关
+const refreshAnalyticsKey = ref(0) // 递增触发 TubiHome 刷新分析数据
 const historyList = ref([])
-const historyPageSize = ref(500)
+const historyPageSize = ref(16)
+const historyPage = ref(1)
+const historyHasMore = ref(true)
+
+// 全量作品列表（用于 prev/next 导航，不限分页）
+const fullItemList = ref([])
+async function loadFullItemList() {
+  try {
+    const artistParam = currentArtist.value && currentArtist.value !== '李鱓' ? currentArtist.value : undefined
+    const res = await tubiApi.getAllResults(0, 2000, artistParam)
+    if (res.success) {
+      fullItemList.value = res.data || []
+    }
+  } catch (e) {
+    console.error('加载全量作品列表失败', e)
+  }
+}
 
 // 搜索相关
 const searchKeyword = ref('')
@@ -219,8 +243,8 @@ function getDetailAllTags() {
 const filterTag = ref(null)
 
 function filterByTag(tag) {
-  // 新窗口打开 ranking 页面，通过 URL 参数传递标签
-  window.open(`${window.location.origin}/#/tubi/ranking?tag=${encodeURIComponent(tag)}`, '_blank')
+  // 新窗口打开 list 页面，通过 URL 参数传递标签
+  window.open(`${window.location.origin}/#/tubi/list?tag=${encodeURIComponent(tag)}`, '_blank')
 }
 
 function clearTagFilter() {
@@ -228,27 +252,56 @@ function clearTagFilter() {
 }
 
 function loadMoreGallery() {
-  // TubiGallery handles pagination locally via displayLimit
+  if (!historyHasMore.value || historyLoading.value) return
+  loadHistory(historyPage.value + 1)
+}
+
+// 在 historyList 或 fullItemList 中查找作品索引
+function _findItemIndex(id) {
+  let idx = historyList.value.findIndex(item => item.id === id)
+  if (idx >= 0) return { list: historyList.value, idx, isFullList: false }
+  idx = fullItemList.value.findIndex(item => item.id === id)
+  if (idx >= 0) return { list: fullItemList.value, idx, isFullList: true }
+  return null
 }
 
 // 上一幅和下一幅作品
 const prevImage = computed(() => {
-  if (!currentImage.value || historyList.value.length === 0) return null
-  const currentIndex = historyList.value.findIndex(item => item.id === currentImage.value.id)
-  if (currentIndex <= 0) return null
-  return historyList.value[currentIndex - 1]
+  if (!currentImage.value) return null
+  const found = _findItemIndex(currentImage.value.id)
+  if (!found || found.idx <= 0) return null
+  return found.list[found.idx - 1]
 })
 
 const nextImage = computed(() => {
-  if (!currentImage.value || historyList.value.length === 0) return null
-  const currentIndex = historyList.value.findIndex(item => item.id === currentImage.value.id)
-  if (currentIndex < 0 || currentIndex >= historyList.value.length - 1) return null
-  return historyList.value[currentIndex + 1]
+  if (!currentImage.value) return null
+  const found = _findItemIndex(currentImage.value.id)
+  if (!found) return null
+  // 如果当前不是所在列表的最后一条，直接返回下一条
+  if (found.idx < found.list.length - 1) {
+    return found.list[found.idx + 1]
+  }
+  // 如果是最后一条但还有更多页（仅限 historyList），返回翻页占位符
+  if (!found.isFullList && historyHasMore.value) {
+    return { _placeholder: true, id: '__next_page__' }
+  }
+  return null
 })
 
 // 导航到指定作品
-function navigateToImage(image) {
+async function navigateToImage(image) {
   if (!image) return
+  // 如果是翻页占位符，先加载下一页再导航
+  if (image._placeholder && historyHasMore.value) {
+    await loadHistory(historyPage.value + 1)
+    // 加载后取新追加的第一条（即原最后一条的下一条）
+    if (currentImage.value) {
+      const idx = historyList.value.findIndex(item => item.id === currentImage.value.id)
+      const next = historyList.value[idx + 1]
+      if (next) { loadHistoryItem(next); return }
+    }
+    return
+  }
   loadHistoryItem(image)
 }
 
@@ -499,7 +552,7 @@ const artistStats = computed(() => {
 
 // 跳转到排行榜页面
 function navigateToRanking() {
-  router.push('/tubi/ranking')
+  router.push('/tubi/list')
 }
 
 // 趋势图作者筛选变化
@@ -510,16 +563,21 @@ function onTrendArtistChange() {
 // 画家筛选变化（来自 TubiHome）
 function onArtistChange(artist) {
   currentArtist.value = artist
+  historyPage.value = 1
+  historyHasMore.value = true
+  // 重新加载历史记录（服务端过滤）
+  loadHistory(1)
+  loadFullItemList()
   // 更新 URL 参数，刷新后保持
   const query = { ...route.query, artist }
   // 如果切回默认画家（李鱓），可以去掉 artist 参数保持 URL 整洁
   if (artist === '李鱓') {
     delete query.artist
   }
-  router.replace({ 
-    name: route.name, 
-    params: route.params, 
-    query 
+  router.replace({
+    name: route.name,
+    params: route.params,
+    query
   })
 }
 
@@ -557,6 +615,11 @@ function backToHome() {
     updateTrendChart()
     artistStatsCardRef.value?.refresh() // 刷新统计数据
   })
+  // 重新加载历史列表（保持当前画家筛选）
+  historyPage.value = 1
+  historyHasMore.value = true
+  loadHistory(1)
+  loadFullItemList()
 }
 
 // ============ 上传回调 ============
@@ -963,6 +1026,7 @@ async function autoAnalyze() {
     tubiDetailRef.value?.updatePieChart?.()
 
     await loadHistory()
+    refreshAnalyticsKey.value++  // 通知 TubiHome 刷新分析图表缓存
 
     ElMessage.success('AI分析完成')
   } catch (error) {
@@ -1258,15 +1322,16 @@ function updateTrendChart() {
 }
 
 // 搜索画作
-async function handleSearch() {
-  if (!searchKeyword.value.trim()) {
+async function handleSearch(keyword) {
+  const kw = (keyword || searchKeyword.value || '').trim()
+  if (!kw) {
     ElMessage.warning('请输入搜索关键词')
     return
   }
   searchDialogVisible.value = true
   searchLoading.value = true
   try {
-    const response = await tubiApi.searchImages(searchKeyword.value.trim())
+    const response = await tubiApi.searchImages(kw)
     if (response.success) {
       // 转换字段名（下划线转驼峰）
       searchResults.value = (response.data || []).map(item => ({
@@ -1345,11 +1410,11 @@ async function loadHistory(page = 1) {
   historyLoading.value = true
   try {
     const skip = (page - 1) * historyPageSize.value
-    const response = await tubiApi.getAllResults(skip, historyPageSize.value)
+    const artistParam = currentArtist.value && currentArtist.value !== '李鱓' ? currentArtist.value : undefined
+    const response = await tubiApi.getAllResults(skip, historyPageSize.value, artistParam)
     console.log('历史记录API响应:', response)
     if (response.success) {
-      // 转换字段名（下划线转驼峰）并提取题跋内容
-      historyList.value = (response.data || []).map(item => {
+      const items = (response.data || []).map(item => {
         const analysisNote = item.analysis_note || ''
         const inscriptionContent = item.inscription_content || extractInscriptionContent(analysisNote)
         
@@ -1369,7 +1434,14 @@ async function loadHistory(page = 1) {
           sealContent: item.seal_content || ''
         }
       })
-      console.log('历史记录加载成功:', historyList.value.length, '条')
+      if (page === 1) {
+        historyList.value = items
+      } else {
+        historyList.value = historyList.value.concat(items)
+      }
+      historyPage.value = page
+      historyHasMore.value = items.length >= historyPageSize.value
+      console.log('历史记录加载成功:', historyList.value.length, '条，还有更多:', historyHasMore.value)
       // 加载完成后更新趋势图
       await nextTick()
       updateTrendChart()
@@ -1478,7 +1550,7 @@ async function loadHistoryItem(row) {
         // 滚动到页面顶部
         window.scrollTo({ top: 0, behavior: 'smooth' })
         
-        ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent' })
+        ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent', center: true })
       } else {
         ElMessage.error(response.message || '加载失败')
       }
@@ -2123,10 +2195,11 @@ onMounted(async () => {
           uploadedImages.value.push(historyImage)
         }
         selectImage(historyImage)
-        ElMessage.success('已加载指定作品')
+        ElMessage({ message: '已加载指定作品', type: 'success', customClass: 'toast-transparent', center: true })
 
-        // 详情页加载完成后，再异步加载历史列表（不阻塞 UI）
+        // 详情页加载完成后，再异步加载历史列表和全量作品列表（不阻塞 UI）
         loadHistory()
+        loadFullItemList()
       }
     } catch (error) {
       console.error('加载指定作品失败:', error)
@@ -2143,13 +2216,20 @@ onMounted(async () => {
       initialLoading.value = false
     }
   } else {
-    // 首页模式：正常加载历史列表（包 try-catch 防止白屏）
+    // 首页模式：处理 URL 中的 artist 参数
+    const artistFromUrl = route.query.artist
+    if (artistFromUrl && typeof artistFromUrl === 'string') {
+      currentArtist.value = artistFromUrl
+    }
+    // 正常加载历史列表（包 try-catch 防止白屏）
     try {
       await loadHistory()
     } catch (err) {
       console.error('loadHistory 失败（已捕获，页面不会白屏）:', err)
       ElMessage.error('加载历史记录失败，请刷新页面')
     }
+    // 异步加载全量作品列表（支持跨页 prev/next 导航，不阻塞 UI）
+    loadFullItemList()
 
     // 检查 sessionStorage（标签筛选）并滚动到作品库
     try {
@@ -2726,9 +2806,14 @@ watch(currentImage, (newVal) => {
 <style>
 /* ElMessage 透明+靠右样式（非 scoped，因为 ElMessage DOM 在组件外） */
 .toast-transparent {
-  opacity: 0.75 !important;
+  opacity: 0.5 !important;
   backdrop-filter: blur(4px);
-  top: 20px !important;
-  left: 20px !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  min-width: 140px !important;
+  max-width: 80vw !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
 }
 </style>

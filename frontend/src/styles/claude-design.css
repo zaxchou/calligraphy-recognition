@@ -692,14 +692,14 @@ p.welcome-subtitle {
 }
 
 /* ============================================
-   TubiRanking 排行榜页面 — Claude 风格
+   TubiList 作品浏览页面 — Claude 风格
    ============================================ */
-.tubi-ranking {
+.tubi-list {
   font-family: var(--font-sans);
   background: var(--parchment);
 }
 
-.tubi-ranking .ranking-list-card {
+.tubi-list .ranking-list-card {
   border-radius: var(--radius-lg);
   border-color: var(--border-cream);
   box-shadow: var(--shadow-whisper);
@@ -897,8 +897,8 @@ p.welcome-subtitle {
 .recognize-page h4,
 .steles-page h3,
 .steles-page h4,
-.tubi-ranking h3,
-.tubi-ranking h4 {
+.tubi-list h3,
+.tubi-list h4 {
   color: var(--near-black);
 }
 

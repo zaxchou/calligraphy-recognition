@@ -15,6 +15,7 @@ logging.basicConfig(
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
+from sqlalchemy import text
 from app.api import recognition, steles, tubi, seals, artists, artist_rules
 
 try:
@@ -41,6 +42,24 @@ settings = get_settings()
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
+
+# 确保常用查询字段有索引（给已有表加索引）
+_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_created_at ON tubi_analyses(created_at);
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_artist ON tubi_analyses(artist);
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_status ON tubi_analyses(status);
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_album_name ON tubi_analyses(album_name);
+"""
+try:
+    with engine.connect() as conn:
+        for stmt in _INDEX_SQL.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                conn.execute(text(stmt))
+        conn.commit()
+    logging.getLogger(__name__).info("数据库索引已确保")
+except Exception as e:
+    logging.getLogger(__name__).warning(f"创建索引失败（非致命）: {e}")
 
 # 初始化知识库 Qdrant 集合
 try:

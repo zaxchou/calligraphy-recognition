@@ -4,7 +4,7 @@ import Recognize from '../views/Recognize.vue'
 import Steles from '../views/Steles.vue'
 import SteleDetail from '../views/SteleDetail.vue'
 import TubiAnalysis from '../views/TubiAnalysis.vue'
-import TubiRanking from '../views/TubiRanking.vue'
+import TubiList from '../views/TubiList.vue'
 import DimensionInput from '../views/DimensionInput.vue'
 import CompositionAnalyze from '../modules/pantianshou-composition/pages/CompositionAnalyze.vue'
 import CompositionPrint from '../modules/pantianshou-composition/pages/CompositionPrint.vue'
@@ -56,9 +56,9 @@ const routes = [
     meta: { title: '题跋分析' }
   },
   {
-    path: '/tubi/ranking',
-    name: 'TubiRanking',
-    component: TubiRanking,
+    path: '/tubi/list',
+    name: 'TubiList',
+    component: TubiList,
     meta: { title: '数据排行' }
   },
   {
@@ -126,6 +126,19 @@ const router = createRouter({
 router.afterEach((to) => {
   const pageTitle = to.meta?.title
   document.title = pageTitle ? `${pageTitle} - ${SITE_NAME}` : SITE_NAME
+})
+
+// 管理后台路由保护
+const ADMIN_ROUTES = ['ContentVerify', 'AlbumManager', 'TagManager', 'ArtistInfoManager', 'ArtistRulesManager']
+router.beforeEach((to, _from, next) => {
+  if (ADMIN_ROUTES.includes(to.name)) {
+    const auth = localStorage.getItem('admin_auth')
+    if (!auth || Date.now() > parseInt(auth, 10)) {
+      next({ name: 'Home' })
+      return
+    }
+  }
+  next()
 })
 
 export default router

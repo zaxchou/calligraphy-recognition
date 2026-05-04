@@ -592,7 +592,7 @@ const loadHistoryResult = (row) => {
     uploaded_image_url: getImageUrl(row.uploaded_image_path)
   }
   historyDialogVisible.value = false
-  ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent' })
+  ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent', center: true })
 }
 
 // 删除历史记录
@@ -1097,9 +1097,14 @@ onMounted(() => {
 
 <style>
 .toast-transparent {
-  opacity: 0.75 !important;
+  opacity: 0.5 !important;
   backdrop-filter: blur(4px);
-  top: 20px !important;
-  left: 20px !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  min-width: 140px !important;
+  max-width: 80vw !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
 }
 </style>

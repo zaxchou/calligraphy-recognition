@@ -19,8 +19,57 @@
           <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
           <router-link to="/content-analysis" class="nav-item" active-class="active"><span class="nav-text">大数据分析</span></router-link>
         </nav>
+        <!-- 移动端汉堡菜单按钮 -->
+        <button class="mobile-menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
+          <el-icon :size="22"><Menu /></el-icon>
+        </button>
       </div>
     </header>
+
+    <!-- 移动端菜单遮罩层 -->
+    <transition name="drawer-fade">
+      <div v-if="mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu"></div>
+    </transition>
+
+    <!-- 移动端菜单抽屉 -->
+    <transition name="drawer-slide">
+      <div v-if="mobileMenuOpen" class="mobile-drawer">
+        <div class="drawer-header">
+          <div class="drawer-logo">
+            <img src="/logo.png" alt="墨" class="drawer-logo-img">
+            <div class="drawer-logo-text">
+              <span class="drawer-logo-main">中国画与书法</span>
+            </div>
+          </div>
+          <button class="drawer-close" @click="closeMobileMenu" aria-label="关闭菜单">
+            <el-icon :size="20"><Close /></el-icon>
+          </button>
+        </div>
+        <nav class="drawer-nav">
+          <router-link to="/" class="drawer-nav-item" exact-active-class="active" @click="closeMobileMenu">
+            <span class="nav-text">首页</span>
+          </router-link>
+          <router-link to="/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <span class="nav-text">写意知识库</span>
+          </router-link>
+          <router-link to="/tubi" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tubi') }" @click="closeMobileMenu">
+            <span class="nav-text">题跋分析</span>
+          </router-link>
+          <router-link to="/recognize" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <span class="nav-text">字体识别</span>
+          </router-link>
+          <router-link to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="closeMobileMenu">
+            <span class="nav-text">潘天寿教你构图</span>
+          </router-link>
+          <router-link to="/qczh" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <span class="nav-text">起承转合</span>
+          </router-link>
+          <router-link to="/content-analysis" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <span class="nav-text">大数据分析</span>
+          </router-link>
+        </nav>
+      </div>
+    </transition>
 
     <!-- 主内容区 -->
     <main class="main-content">
@@ -43,6 +92,18 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { Menu, Close } from '@element-plus/icons-vue'
+
+const mobileMenuOpen = ref(false)
+
+function toggleMobileMenu() {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
 </script>
 
 <style>
@@ -259,6 +320,11 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateX(-50%) scaleX(1);
 }
 
+/* === 移动端汉堡按钮（PC 隐藏） === */
+.mobile-menu-toggle {
+  display: none;
+}
+
 /* === 主内容区 === */
 .main-content {
   flex: 1;
@@ -320,7 +386,24 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .main-nav {
-    gap: var(--space-lg);
+    display: none;
+  }
+
+  .mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--olive-gray);
+    padding: 4px;
+    border-radius: 6px;
+    transition: background var(--transition-fast);
+  }
+
+  .mobile-menu-toggle:active {
+    background: rgba(0, 0, 0, 0.05);
   }
 
   .nav-text {
@@ -335,6 +418,194 @@ h1, h2, h3, h4, h5, h6 {
     width: 26px;
     height: 26px;
   }
+}
+
+/* === 移动端菜单遮罩层 === */
+.mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+
+/* === 移动端菜单抽屉 === */
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--ivory);
+  z-index: 201;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-cream);
+}
+
+.drawer-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drawer-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.drawer-logo-main {
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--near-black);
+  letter-spacing: 0.08em;
+}
+
+.drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--stone-gray);
+  padding: 6px;
+  border-radius: 6px;
+  transition: background var(--transition-fast);
+}
+
+.drawer-close:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+}
+
+.drawer-nav-item {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  padding: 14px 20px;
+  position: relative;
+  transition: background var(--transition-fast);
+}
+
+.drawer-nav-item:active {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.drawer-nav-item .nav-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--olive-gray);
+  letter-spacing: 0.06em;
+  transition: color var(--transition-fast);
+}
+
+.drawer-nav-item:hover .nav-text,
+.drawer-nav-item.active .nav-text {
+  color: var(--near-black);
+}
+
+/* 抽屉导航下划线 */
+.drawer-nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
+  height: 1px;
+  background: var(--border-cream);
+}
+
+.drawer-nav-item:last-child::after {
+  display: none;
+}
+
+.drawer-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--cinnabar);
+  border-radius: 0 3px 3px 0;
+}
+
+/* 首页深色主题适配 */
+.home-header .mobile-menu-toggle {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.home-header .mobile-drawer {
+  background: rgba(20, 20, 19, 0.98);
+}
+
+.home-header .drawer-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.home-header .drawer-logo-main {
+  color: var(--pure-white);
+}
+
+.home-header .drawer-close {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.home-header .drawer-nav-item .nav-text {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.home-header .drawer-nav-item:hover .nav-text,
+.home-header .drawer-nav-item.active .nav-text {
+  color: var(--pure-white);
+}
+
+.home-header .drawer-nav-item::after {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.home-header .drawer-nav-item.active::before {
+  background: var(--gold);
+}
+
+/* === 过渡动画 === */
+.drawer-fade-enter-active,
+.drawer-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.drawer-fade-enter-from,
+.drawer-fade-leave-to {
+  opacity: 0;
+}
+
+.drawer-slide-enter-active,
+.drawer-slide-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawer-slide-enter-from,
+.drawer-slide-leave-to {
+  transform: translateX(100%);
 }
 
 /* === 首页专属 — 黑底白字 Header === */

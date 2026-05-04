@@ -4003,3 +4003,47 @@ gallery-album-tag {
   transform: translateY(-1px);
   box-shadow: 0 3px 10px rgba(184, 164, 126, 0.2);
 }
+
+/* ── 详情页响应式 ── */
+
+/* 相关作品网格：响应式列数 */
+@media (max-width: 1024px) {
+  .history-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 768px) {
+  .history-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 480px) {
+  .history-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 分析结果区域间距紧凑化 */
+@media (max-width: 768px) {
+  .analysis-result-layout {
+    margin: 10px 4px 4px;
+    gap: 8px;
+  }
+}
+
+/* 右侧面板卡片 padding 紧凑化 */
+@media (max-width: 768px) {
+  .annotated-image-section,
+  .analysis-right-col .inscription-note-main,
+  .analysis-right-col .seal-note-main,
+  .analysis-right-col .stats-section,
+  .analysis-right-col .detail-tags-section,
+  .artwork-info-card,
+  .spatial-analysis-card {
+    padding: 8px 10px;
+  }
+  .theme-sentiment-card {
+    padding: 8px 10px;
+  }
+}
+
+/* 情感分析头部：小屏隐藏次要标签 */
+@media (max-width: 480px) {
+  .sentiment-score-text.confidence-tag {
+    display: none;
+  }
+}

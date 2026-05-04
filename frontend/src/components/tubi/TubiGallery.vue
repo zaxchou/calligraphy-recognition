@@ -20,15 +20,25 @@
           <el-button type="primary" size="small" @click="handleSearch" :icon="Search">
             搜索
           </el-button>
-          <el-tag type="info" size="small" style="margin-left: 8px;">共 {{ historyList.length }} 幅作品</el-tag>
+          <el-button size="small" @click="goToList">
+            更多作品
+          </el-button>
+          <el-button
+            size="small"
+            :type="isAdmin ? 'warning' : 'default'"
+            :icon="isAdmin ? 'lock' : 'unlock'"
+            @click="toggleAdmin"
+          >
+            {{ isAdmin ? '锁定' : '管理' }}
+          </el-button>
         </div>
       </div>
     </template>
     <!-- 标签筛选指示条 -->
     <div v-if="filterTag" class="filter-indicator">
       <span>当前筛选: <strong>{{ filterTag }}</strong></span>
-      <span class="filter-count">共 {{ displayedHistoryList.length }} 幅（全部展开）</span>
-      <el-button size="small" text @click="clearTagFilter">
+      <span class="filter-count">全部展开</span>
+      <el-button size="small" @click="clearTagFilter">
         <el-icon><Close /></el-icon>
         清除
       </el-button>
@@ -67,7 +77,7 @@
             <span>{{ item.status === 'queued' ? '排队中' : item.status === 'analyzing' ? '分析中' : item.status === 'error' ? '失败' : item.status }}</span>
           </div>
 
-          <div class="gallery-actions">
+          <div v-if="isAdmin" class="gallery-actions">
             <div class="action-tl">
               <el-button plain size="small" circle class="btn-edit" @click.stop="handleEdit(item)" title="编辑">
                 <el-icon :size="12"><Edit /></el-icon>
@@ -102,12 +112,12 @@
         </div>
       </div>
     </div>
-    <div v-if="!filterTag && historyList.length > displayLimit" class="gallery-load-more">
-      <el-button type="primary" link @click="handleLoadMore">
-        加载更多 ({{ historyList.length - displayLimit }} 剩余)
+    <div v-if="!filterTag && hasMore" class="gallery-load-more">
+      <el-button type="primary" link @click="handleLoadMore" :loading="fetchLoading">
+        加载更多
       </el-button>
     </div>
-    <div v-if="!loading && !filterTag && historyList.length <= displayLimit" class="gallery-end">
+    <div v-if="!loading && !filterTag && !hasMore" class="gallery-end">
       <span class="gallery-end-text">已经到底</span>
     </div>
   </el-card>
@@ -115,7 +125,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { Plus, Search, Edit, Delete, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
+import { useAdminAuth } from '../../composables/useAdminAuth'
+
+const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
 
 // Props
 const props = defineProps({
@@ -138,11 +152,19 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  hasMore: {
+    type: Boolean,
+    default: true
+  },
+  fetchLoading: {
+    type: Boolean,
+    default: false
   }
 })
 
 // Emits
-const emit = defineEmits(['item-click', 'edit', 'delete', 'search', 'load-more', 'clear-tag-filter'])
+const emit = defineEmits(['item-click', 'edit', 'delete', 'search', 'load-more', 'clear-tag-filter', 'go-list'])
 
 // Local state
 const searchKeyword = ref('')
@@ -155,21 +177,6 @@ const displayedHistoryList = computed(() => {
   if (props.filterTag) {
     list = list.filter(item => props.getItemAllTags(item).includes(props.filterTag))
     return list // 标签筛选模式：全部展开，不限制数量
-  }
-  // 搜索筛选
-  if (searchKeyword.value.trim()) {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    list = list.filter(item => {
-      return (
-        (item.title && item.title.toLowerCase().includes(keyword)) ||
-        (item.artist && item.artist.toLowerCase().includes(keyword)) ||
-        (item.year && String(item.year).includes(keyword)) ||
-        (item.notes && item.notes.toLowerCase().includes(keyword)) ||
-        (item.analysisNote && item.analysisNote.toLowerCase().includes(keyword)) ||
-        (item.inscriptionContent && item.inscriptionContent.toLowerCase().includes(keyword)) ||
-        (item.sealContent && item.sealContent.toLowerCase().includes(keyword))
-      )
-    })
   }
   return list.slice(0, displayLimit.value)
 })
@@ -188,7 +195,9 @@ function handleDelete(item) {
 }
 
 function handleSearch() {
+  if (!searchKeyword.value.trim()) return
   emit('search', searchKeyword.value)
+  searchKeyword.value = ''  // 清空输入框
 }
 
 function handleLoadMore() {
@@ -198,6 +207,30 @@ function handleLoadMore() {
 
 function clearTagFilter() {
   emit('clear-tag-filter')
+}
+
+function goToList() {
+  emit('go-list')
+}
+
+async function toggleAdmin() {
+  if (isAdmin.value) {
+    logout()
+    return
+  }
+  try {
+    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
+      inputType: 'password',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      closeOnClickModal: false,
+    })
+    if (login(pwd.value)) {
+      ElMessage.success('管理验证通过')
+    } else {
+      ElMessage.error('密码错误')
+    }
+  } catch { /* 用户取消 */ }
 }
 </script>
 

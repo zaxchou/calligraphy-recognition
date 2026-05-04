@@ -7,9 +7,9 @@
 
       <!-- 右侧：题跋比排行榜模块 -->
       <TubiRankingCard
-        :history-list="filteredHistoryList"
+        :history-list="filteredAnalyticsData"
         :get-display-age="getDisplayAge"
-        :loading="props.historyList.length === 0"
+        :loading="analyticsLoading"
         style="flex: 3.5;"
         @item-click="$emit('item-click', $event)"
         @more="$emit('more')"
@@ -23,16 +23,19 @@
       :get-item-all-tags="getItemAllTags"
       :filter-tag="filterTag"
       :loading="props.historyList.length === 0"
+      :has-more="props.hasMore"
+      :fetch-loading="props.historyLoading"
       @item-click="$emit('item-click', $event)"
       @edit="$emit('edit', $event)"
       @delete="$emit('delete', $event)"
       @search="$emit('search', $event)"
       @load-more="$emit('load-more')"
+      @go-list="$emit('go-list')"
       @clear-tag-filter="$emit('clear-tag-filter')"
     />
 
     <!-- 名家对比区域（始终显示全部作者数据） -->
-    <TubiComparison :history-list="historyList" />
+    <TubiComparison :history-list="analyticsData" />
 
     <!-- 趋势图卡片 -->
     <el-card shadow="hover" class="trend-card" v-if="filteredTrendChartData.length > 0">
@@ -64,16 +67,61 @@ import TubiRankingCard from '../components/tubi/TubiRankingCard.vue'
 import TubiGallery from '../components/tubi/TubiGallery.vue'
 import TubiComparison from '../components/tubi/TubiComparison.vue'
 
+import { tubiApi } from '../api'
+
 const props = defineProps({
   historyList: { type: Array, default: () => [] },
   filterTag: { type: String, default: null },
-  artistFilter: { type: String, default: null }
+  artistFilter: { type: String, default: null },
+  hasMore: { type: Boolean, default: true },
+  historyLoading: { type: Boolean, default: false },
+  refreshKey: { type: Number, default: 0 }
+})
+
+// ── 分析图表数据（独立于 Gallery 翻页，一次拉全量） ──
+// 模块级缓存：同 session 内只拉一次，除非主动刷新
+let _analyticsCache = null
+const analyticsData = ref([])
+const analyticsLoading = ref(true)
+
+async function fetchAnalyticsData(force = false) {
+  if (_analyticsCache && !force) {
+    analyticsData.value = _analyticsCache
+    analyticsLoading.value = false
+    return
+  }
+  analyticsLoading.value = true
+  try {
+    const res = await tubiApi.getAllResults(0, 2000)
+    if (res.success) {
+      _analyticsCache = (res.data || []).map(item => ({
+        ...item,
+        inscriptionPercent: item.inscription_percent,
+        paintingPercent: item.painting_percent,
+        blankPercent: item.blank_percent,
+        thumbnailUrl: item.thumbnail_url,
+      }))
+      analyticsData.value = _analyticsCache
+    }
+  } catch (e) {
+    console.error('加载分析数据失败', e)
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+// 监听 refreshKey prop 变化 → 强制刷新分析数据
+watch(() => props.refreshKey, (val) => {
+  if (val > 0) {
+    _analyticsCache = null  // 清除缓存
+    fetchAnalyticsData(true)
+  }
 })
 
 const emit = defineEmits([
   'item-click', 'edit', 'delete', 'search',
   'load-more', 'clear-tag-filter',
-  'more', 'trend-click', 'artist-change'
+  'more', 'trend-click', 'artist-change', 'go-list'
 ])
 
 // ── 解析 tags 字段 ──────────────────────────────
@@ -118,11 +166,18 @@ function onHomeArtistChange(artist) {
   emit('artist-change', artist)
 }
 
-// 按画家过滤后的历史列表（传给排行榜、作品库、对比区域）
+// 按画家过滤后的历史列表（传给排行榜、作品库）
 const filteredHistoryList = computed(() => {
   if (!props.historyList || !Array.isArray(props.historyList)) return []
   if (homeArtistFilter.value === 'all') return props.historyList
   return props.historyList.filter(item => item.artist === homeArtistFilter.value)
+})
+
+// 分析数据也按当前作者过滤（排行榜用，名家对比保持全量）
+const filteredAnalyticsData = computed(() => {
+  if (!analyticsData.value || analyticsData.value.length === 0) return []
+  if (homeArtistFilter.value === 'all') return analyticsData.value
+  return analyticsData.value.filter(item => item.artist === homeArtistFilter.value)
 })
 
 // ── 趋势图 ─────────────────────────────────────
@@ -177,7 +232,7 @@ const filteredTrendChartData = computed(() => {
 })
 
 function updateTrendChart() {
-  const list = props.historyList
+  const list = analyticsData.value.length ? analyticsData.value : props.historyList
   // 筛选有年代信息的历史记录
   const validData = list.filter(item => {
     const hasYear = item.year && !isNaN(parseInt(item.year))
@@ -369,7 +424,7 @@ function updateTrendChart() {
 }
 
 // 监听 historyList 和 trendArtistFilter 变化
-watch([() => props.historyList, trendArtistFilter], () => {
+watch([analyticsData, () => props.historyList, trendArtistFilter], () => {
   updateTrendChart()
 }, { deep: true })
 
@@ -379,6 +434,7 @@ function handleResize() {
 
 onMounted(() => {
   fetchArtistList()
+  fetchAnalyticsData()
   window.addEventListener('resize', handleResize)
   updateTrendChart()
 })

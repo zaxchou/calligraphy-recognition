@@ -4,6 +4,7 @@
 """
 
 import json
+import time
 from typing import List, Dict, Any, Optional
 
 
@@ -184,6 +185,35 @@ def get_period_tag(period_phase: Optional[str]) -> Optional[str]:
     if period_phase in ("早期", "中期", "晚期", "年代不详"):
         return period_phase
     return None
+
+
+# ── compute_tags 缓存 ──
+_compute_tags_cache = {}
+_COMPUTE_TAGS_TTL = 120  # 秒
+
+
+def _compute_tags_key(record: Dict[str, Any]) -> str:
+    """从记录字段生成稳定的缓存键"""
+    return json.dumps({
+        "t": record.get("title"),
+        "p": record.get("period_phase"),
+        "h": record.get("artwork_height_cm"),
+        "w": record.get("artwork_width_cm"),
+        "c": record.get("content_analysis"),
+        "m": record.get("material_tags"),
+    }, sort_keys=True, default=str)
+
+
+def compute_tags_cached(record: Dict[str, Any]) -> List[str]:
+    """带缓存的 compute_tags，避免重复计算"""
+    key = _compute_tags_key(record)
+    now = time.monotonic()
+    cached = _compute_tags_cache.get(key)
+    if cached is not None and now - cached["t"] < _COMPUTE_TAGS_TTL:
+        return cached["v"]
+    v = compute_tags(record)
+    _compute_tags_cache[key] = {"v": v, "t": now}
+    return v
 
 
 # ────────────────────────────────────────────────────────────────
