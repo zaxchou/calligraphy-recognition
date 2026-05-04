@@ -155,7 +155,9 @@ def _cached_isfile(path: str) -> bool:
 
 # ── 全量作品列表缓存（服务端持久化，所有用户共享） ──
 # 当有新作品上传/分析完成/删除时自动失效
-_RESULTS_CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cache", "tubi_results_all.json")
+# 项目根目录（同 PROJECT_ROOT），Docker 内为 /app，本地为 repo 根目录
+_PROJECT_BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_RESULTS_CACHE_FILE = os.path.join(_PROJECT_BASE, "data", "cache", "tubi_results_all.json")
 
 def _get_results_cache():
     """读取全量作品列表缓存，不存在返回 None"""
