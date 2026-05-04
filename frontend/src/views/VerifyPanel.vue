@@ -257,8 +257,8 @@ const props = defineProps({
   analyzing: { type: Boolean, default: false },
   verifiedCount: { type: Number, default: 0 },
   totalCount: { type: Number, default: 0 },
-  baseUrl: { type: String, default: 'http://localhost:8001' },
-  apiBase: { type: String, default: 'http://localhost:8001/api/v1' },
+  baseUrl: { type: String, default: '' },
+  apiBase: { type: String, default: '/api/v1' },
   artist: { type: String, default: 'all' },
 })
 const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title', 'reanalyze'])
@@ -273,7 +273,7 @@ const showFullImage = ref(false)
 const reanalyzing = ref(false)
 
 // 印章标签模式
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const sealTags = ref([])
 const sealInput = ref('')
 const sealLibrary = ref([])

@@ -220,7 +220,7 @@ const props = defineProps({
   artist: { type: String, default: 'all' }
 })
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const loading = ref(false)
 const allItems = ref([])

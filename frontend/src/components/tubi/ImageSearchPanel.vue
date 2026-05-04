@@ -104,7 +104,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Upload, WarningFilled, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 
 const emit = defineEmits(['item-click'])
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const uploadRef = ref(null)
 const uploadFile = ref(null)

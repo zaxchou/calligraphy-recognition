@@ -138,7 +138,7 @@ import { ElMessage } from 'element-plus'
 import { MagicStick, Refresh } from '@element-plus/icons-vue'
 import { artistRulesApi } from '../api'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const props = defineProps({
   artist: { type: String, default: '李鱓' }

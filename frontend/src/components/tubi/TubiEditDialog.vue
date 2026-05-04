@@ -181,7 +181,7 @@ import { tubiApi, sealsApi } from '../../api'
 import { ARTISTS } from '../../tubi/constants'
 import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const emit = defineEmits(['saved', 'deleted', 'replaced'])
 

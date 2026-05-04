@@ -186,6 +186,13 @@
               <div class="panel-title">智能专家分析</div>
             </div>
             <div class="md" v-html="llmHtml"></div>
+            <div v-if="report?.llm?.prompt" class="prompt-toggle" @click="showPrompt = !showPrompt">
+              <span class="prompt-toggle-icon">{{ showPrompt ? '▾' : '▸' }}</span>
+              <span>查看分析提示词</span>
+            </div>
+            <div v-if="showPrompt && report?.llm?.prompt" class="prompt-content">
+              <pre class="prompt-pre">{{ report.llm.prompt }}</pre>
+            </div>
           </div>
         </div>
 
@@ -328,6 +335,7 @@ let pollTimer = null
 const zoomOverlay = ref(false)
 const zoomOriginal = ref(false)
 const zoomArrow = ref(false)
+const showPrompt = ref(false)
 
 const viewportWidth = ref(1200)
 
@@ -1960,6 +1968,50 @@ onBeforeUnmount(() => {
   max-height: 85vh;
   object-fit: contain;
   border-radius: 8px;
+}
+
+.prompt-toggle {
+  margin-top: 16px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--stone-gray, #87867f);
+  font-size: 13px;
+  border-top: 1px solid var(--border-cream, #f0eee6);
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.prompt-toggle:hover {
+  color: var(--cinnabar, #c96442);
+}
+
+.prompt-toggle-icon {
+  display: inline-block;
+  width: 16px;
+  font-size: 12px;
+}
+
+.prompt-content {
+  margin-top: 8px;
+  border: 1px solid var(--border-cream, #f0eee6);
+  border-radius: var(--radius-md, 8px);
+  background: var(--ivory, #faf9f5);
+  overflow: hidden;
+}
+
+.prompt-pre {
+  margin: 0;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dark-warm, #3d3d3a);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 500px;
+  overflow-y: auto;
+  background: transparent;
+  border: none;
 }
 
 @media (max-width: 1024px) {

@@ -787,7 +787,7 @@ async function loadRecord() {
     let url = data.data.url || data.data.filepath || ''
     // 确保是完整 URL
     if (url && !url.startsWith('http')) {
-      url = `http://localhost:8001${url.startsWith('/') ? '' : '/'}${url}`
+      url = `${url.startsWith('/') ? '' : '/'}${url}`
     }
     imageUrl.value = url
 

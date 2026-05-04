@@ -103,7 +103,7 @@ import * as echarts from 'echarts'
 
 const emit = defineEmits(['artist-change'])
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 // ── 作者列表 ──
 const artistList = ref([])

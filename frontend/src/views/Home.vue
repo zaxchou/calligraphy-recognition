@@ -159,7 +159,7 @@ const router = useRouter()
 const featuresRef = ref(null)
 
 // ── 常量 ──────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const VIDEO_SRC = '/videos/hero_museum_li_shan.mp4'
 
 const heroImages = [

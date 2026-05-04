@@ -120,9 +120,9 @@ function getImageUrl(img) {
     return img.stored_url
   }
   if (/^[a-f0-9-]{36}$/.test(img.stored_url || '')) {
-    return `http://localhost:8001/api/v1/knowledge/images/${img.stored_url}`
+    return `/api/v1/knowledge/images/${img.stored_url}`
   }
-  return `http://localhost:8001${(img.stored_url || '').replace('/api/knowledge', '/api/v1/knowledge')}`
+  return `${(img.stored_url || '').replace('/api/knowledge', '/api/v1/knowledge')}`
 }
 
 function previewImage(img) {

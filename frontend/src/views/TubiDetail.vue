@@ -432,7 +432,7 @@ import { getDisplayAge } from '../tubi/utils'
 import { sealsApi } from '../api'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api/v1'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 // 印章显示
 const sealLibraryCache = ref([])

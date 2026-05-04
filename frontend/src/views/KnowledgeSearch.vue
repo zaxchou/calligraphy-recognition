@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿<template>
 <div class="ks-root">
 
   <transition name="view-switch" mode="out-in">
