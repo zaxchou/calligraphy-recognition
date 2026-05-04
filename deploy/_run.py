@@ -2,55 +2,57 @@ import subprocess, os
 
 PEM = r"z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\cali_cloud_20260503.pem"
 HOST = "ubuntu@124.223.17.29"
-DEPLOY = r"z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\deploy"
+with open(PEM) as f: key = f.read()
+tk = os.path.join(os.environ["TEMP"], "cali.pem")
+with open(tk, "w") as f: f.write(key.strip() + "\n")
 
-def ssh_stream(cmd, timeout=1800):
-    with open(PEM, "r") as f: key = f.read()
-    tmp = os.path.join(os.environ["TEMP"], "cali.pem")
-    with open(tmp, "w") as f: f.write(key.strip() + "\n")
-    p = subprocess.Popen(
-        ["ssh", "-o", "StrictHostKeyChecking=no", "-i", tmp, HOST, cmd],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
-    try:
-        while True:
-            line = p.stdout.readline()
-            if not line:
-                break
-            txt = line.decode("utf-8", errors="replace").rstrip()
-            if txt:
-                print(txt)
-        p.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        p.kill()
-        print("\n[TIMEOUT]")
-    finally:
-        os.unlink(tmp)
-    print(f"\nEXIT={p.returncode}")
+# Check cert exists
+p = subprocess.Popen(["ssh", "-o", "StrictHostKeyChecking=no", "-i", tk, HOST,
+    "sudo ls /etc/letsencrypt/live/xcx.zhouhouhan.com/"])
+out, _ = p.communicate(timeout=10)
+print("Cert:", out.decode().strip() if out else "missing")
 
-# Upload latest files
-print("=== Uploading ===")
-with open(PEM, "r") as f: key = f.read()
-tmp = os.path.join(os.environ["TEMP"], "cali.pem")
-with open(tmp, "w") as f: f.write(key.strip() + "\n")
+# Check current nginx config
+p = subprocess.Popen(["ssh", "-o", "StrictHostKeyChecking=no", "-i", tk, HOST,
+    "cat /opt/calligraphy-recognition/deploy/nginx.conf"])
+out, _ = p.communicate(timeout=10)
+print("Nginx:", out.decode()[:300] if out else "missing")
 
-# mkdir
-subprocess.Popen(["ssh", "-o", "StrictHostKeyChecking=no", "-i", tmp, HOST,
-    "mkdir -p /opt/calligraphy-recognition/deploy /opt/calligraphy-recognition/.github/workflows"]).communicate(timeout=30)
-
-scp_srcs = {
-    os.path.join(DEPLOY, "Dockerfile"): "/opt/calligraphy-recognition/deploy/Dockerfile",
-    os.path.join(DEPLOY, "nginx.conf"): "/opt/calligraphy-recognition/deploy/nginx.conf",
-    os.path.join(DEPLOY, "docker-compose.yml"): "/opt/calligraphy-recognition/deploy/docker-compose.yml",
-    os.path.join(DEPLOY, "setup.sh"): "/opt/calligraphy-recognition/deploy/setup.sh",
-    os.path.join(r"z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\.github\workflows", "deploy.yml"):
-        "/opt/calligraphy-recognition/.github/workflows/deploy.yml",
+# Write correct HTTPS config
+nginx = """server {
+    listen 80;
+    server_name xcx.zhouhouhan.com;
+    return 301 https://$host$request_uri;
 }
-for src, dest in scp_srcs.items():
-    p = subprocess.Popen(["scp", "-o", "StrictHostKeyChecking=no", "-i", tmp, src, f"{HOST}:{dest}"])
-    p.communicate(timeout=60)
-    print(f"  SCP {os.path.basename(src)} rc={p.returncode}")
+server {
+    listen 443 ssl;
+    server_name xcx.zhouhouhan.com;
+    ssl_certificate /etc/letsencrypt/live/xcx.zhouhouhan.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/xcx.zhouhouhan.com/privkey.pem;
+    client_max_body_size 30M;
+    location / {
+        proxy_pass http://backend:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 180s;
+    }
+}
+"""
+# Write nginx.conf locally
+with open(r"z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\deploy\nginx.conf", "w") as f:
+    f.write(nginx)
+# SCP
+p = subprocess.Popen(["scp", "-o", "StrictHostKeyChecking=no", "-i", tk,
+    r"z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\deploy\nginx.conf",
+    f"{HOST}:/opt/calligraphy-recognition/deploy/nginx.conf"])
+p.communicate(timeout=15)
+print("nginx.conf uploaded")
 
-os.unlink(tmp)
+# Restart nginx
+p = subprocess.Popen(["ssh", "-o", "StrictHostKeyChecking=no", "-i", tk, HOST,
+    "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart nginx && sleep 3 && curl -sk -o /dev/null -w '%{http_code}' https://localhost/ && echo HTTPS_OK"])
+out, _ = p.communicate(timeout=20)
+print(out.decode() if out else "no output")
 
-# Run setup.sh
-ssh_stream("bash /opt/calligraphy-recognition/deploy/setup.sh")
+os.unlink(tk)

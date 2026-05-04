@@ -1,4 +1,4 @@
-var BASE_URL = 'http://localhost:8001'
+var BASE_URL = 'https://xcx.zhouhouhan.com'
 
 function request(url, method, data) {
   method = method || 'GET'

@@ -19,7 +19,9 @@ RUN pip install --no-cache-dir \
     alembic==1.12.1 python-jose[cryptography]==3.3.0 \
     passlib[bcrypt]==1.7.4 dashscope>=1.20.0
 
-RUN pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0
+
+RUN pip install --no-cache-dir jieba
 
 WORKDIR /app
 COPY backend/ /app/
