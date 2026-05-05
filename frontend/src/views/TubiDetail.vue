@@ -19,9 +19,9 @@
               size="small"
               :disabled="!nextImage"
               @click="$emit('navigate', nextImage)"
+              :icon="ArrowRight"
             >
               下一幅
-              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
           </div>
         </template>
@@ -1154,14 +1154,11 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: nowrap;
-  gap: 4px;
 }
 .navigation-header :deep(.el-button) {
   flex: 0 0 auto;
   padding: 5px 8px;
   font-size: 12px;
-  white-space: nowrap;
 }
 .nav-title {
   flex: 1;
@@ -1177,14 +1174,43 @@ defineExpose({
   min-width: 0;
 }
 
-@media (max-width: 480px) {
+/* ── 响应式 ── */
+
+/* 强制导航栏不换行（父级 card-header 有 flex-wrap: wrap） */
+.navigation-header {
+  flex-wrap: nowrap;
+}
+
+/* 手机：导航按钮更紧凑 */
+@media (max-width: 768px) {
   .navigation-header :deep(.el-button) {
-    padding: 4px 4px;
-    font-size: 11px;
+    padding: 5px 6px !important;
+    font-size: 11px !important;
   }
   .nav-title {
-    font-size: 13px;
-    padding: 0 3px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navigation-header {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+  .navigation-header :deep(.el-button) {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    padding: 8px 10px !important;
+    font-size: 0 !important;
+  }
+  .navigation-header :deep(.el-button .el-icon) {
+    font-size: 16px !important;
+  }
+  .nav-title {
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 }
 

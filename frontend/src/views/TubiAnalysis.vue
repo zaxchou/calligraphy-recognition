@@ -611,11 +611,7 @@ function backToHome() {
       : {}
     router.replace({ name: 'TubiAnalysis', query })
   }
-  // 清空图表
-  if (pieChart) {
-    pieChart.dispose()
-    pieChart = null
-  }
+  // 清空图表（pieChart 在 TubiDetail 中管理，不在本作用域）
   if (trendChart) {
     trendChart.dispose()
     trendChart = null
@@ -684,7 +680,11 @@ function stopHistoryPolling() {
 
 // 选择图片
 async function selectImage(img) {
-    currentImage.value = img
+  // 确保全量作品列表已加载（prev/next 导航需要）
+  if (!fullItemList.value || fullItemList.value.length === 0) {
+    await loadFullItemList()
+  }
+  currentImage.value = img
     // 同步当前选中的艺术家：打开哪个艺术家的作品，返回就显示哪个艺术家的列表
     if (img.artist) {
       currentArtist.value = img.artist
@@ -1555,9 +1555,9 @@ async function loadHistoryItem(row) {
           uploadedImages.value.push(historyImage)
         }
 
-        // 选中该图片
+        // 选中该图片（selectImage 内部会自动加载 fullItemList）
         selectImage(historyImage)
-        
+
         // 滚动到页面顶部
         window.scrollTo({ top: 0, behavior: 'smooth' })
         
