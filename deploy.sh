@@ -1,19 +1,17 @@
 #!/bin/bash
-# 用法:
-#   bash deploy.sh            完整部署（前端+后端，代码热挂载仅 restart）
-#   bash deploy.sh --rebuild  完整部署 + Docker 重构（改 pip 包时用）
-#   bash deploy.sh fast       仅前端（跳过后端）
-#
-# 后端代码通过 SCP 传到服务器后 mount 进容器，只需 restart 不需 rebuild
-# 只有改 Python 依赖（requirements/Dockerfile）时才需要 --rebuild
+# 一键部署：自动检测变更，做最快的事
+# 用法: bash deploy.sh
 
 set -o pipefail
 cd "$(dirname "$0")" || exit 1
 
-MODE="${1:-full}"  # fast | full | --rebuild
-
 echo "=== 1. 推送到 GitHub ==="
 git push origin master || echo "⚠️ 推送失败"
+
+# 检测改了哪些文件
+CHANGED=$(git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only HEAD@{1} HEAD 2>/dev/null || echo "")
+HAS_BACKEND=$(echo "$CHANGED" | grep -c '^backend/' || true)
+HAS_DEPLOY=$(echo "$CHANGED" | grep -c '^deploy/Dockerfile\|^deploy/docker-compose' || true)
 
 echo ""
 echo "=== 2. 构建前端 ==="
@@ -22,40 +20,33 @@ echo "=== 2. 构建前端 ==="
 echo ""
 echo "=== 3. 同步前端 dist → 服务器 ==="
 ssh xcx "sudo rm -rf /opt/calligraphy-recognition/frontend/dist && sudo mkdir -p /opt/calligraphy-recognition/frontend/dist && sudo chown ubuntu:ubuntu /opt/calligraphy-recognition/frontend/dist"
-scp -qr frontend/dist/* xcx:/opt/calligraphy-recognition/frontend/dist/ || { echo "SCP 失败"; exit 1; }
+scp -qr frontend/dist/* xcx:/opt/calligraphy-recognition/frontend/dist/
 
-if [ "$MODE" = "fast" ]; then
+if [ "$HAS_BACKEND" -gt 0 ]; then
   echo ""
-  echo "=== 🚀 fast 模式：仅前端 ==="
-  ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart nginx"
-  echo "✅ 完成"
-  exit 0
-fi
+  echo "=== 4. 检测到后端变更，同步源码 ==="
+  tar cz --exclude='data' --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' -C backend . \
+    | ssh xcx "sudo tar xz -C /opt/calligraphy-recognition/backend"
 
-echo ""
-echo "=== 4. 同步后端源码 → 服务器 ==="
-tar cz --exclude='data' --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' -C backend . \
-  | ssh xcx "sudo tar xz -C /opt/calligraphy-recognition/backend"
-
-echo ""
-echo "=== 5. 重启后端 ==="
-if [ "$MODE" = "--rebuild" ]; then
-  echo "（--rebuild 模式，完整 Docker 重构）"
-  ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml up -d --build backend" || exit 1
+  if [ "$HAS_DEPLOY" -gt 0 ]; then
+    echo "（检测到 Dockerfile/docker-compose 变更 → 完整重构）"
+    scp -q deploy/Dockerfile deploy/docker-compose.yml xcx:/opt/calligraphy-recognition/deploy/
+    ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml up -d --build backend"
+  else
+    echo "（仅源码变更 → 快速 restart）"
+    ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart backend"
+  fi
 else
-  ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart backend"
+  echo ""
+  echo "=== 4. 无后端变更，跳过 ==="
 fi
 
 echo ""
-echo "=== 6. 重启 nginx ==="
+echo "=== 5. 重启 nginx ==="
 ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart nginx"
 
 echo ""
-echo "=== 7. 健康检查 ==="
+echo "=== 6. 健康检查 ==="
 sleep 5
 STATUS=$(ssh xcx "curl -s -o /dev/null -w '%{http_code}' http://localhost:8001/api/v1/tubi/results?limit=1" 2>/dev/null || echo "000")
-if [ "$STATUS" = "200" ]; then
-  echo "✅ 部署完成（$STATUS）"
-else
-  echo "⚠️  健康检查返回 $STATUS"
-fi
+echo "$([ "$STATUS" = "200" ] && echo "✅ 部署完成" || echo "⚠️  健康检查返回 $STATUS")"
