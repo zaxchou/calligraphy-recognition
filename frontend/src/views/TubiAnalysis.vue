@@ -191,9 +191,11 @@ const historyHasMore = ref(true)
 // 使用 sharedCache 与 TubiHome 共享数据，避免重复 API 请求
 const fullItemList = ref([])
 async function loadFullItemList(force = false) {
+  console.log('loadFullItemList start, cached=', !!getSharedAnalyticsData())
   const cached = getSharedAnalyticsData()
   if (cached && !force) {
     fullItemList.value = cached
+    console.log('loadFullItemList from cache, items:', cached.length)
     return
   }
   try {
@@ -202,6 +204,7 @@ async function loadFullItemList(force = false) {
       const data = res.data || []
       setSharedAnalyticsData(data)
       fullItemList.value = data
+      console.log('loadFullItemList done, items:', data.length)
     }
   } catch (e) {
     console.error('加载全量作品列表失败', e)
@@ -267,9 +270,10 @@ function loadMoreGallery() {
 // 在 historyList 或 fullItemList 中查找作品索引
 function _findItemIndex(id) {
   let idx = historyList.value.findIndex(item => item.id === id)
-  if (idx >= 0) return { list: historyList.value, idx, isFullList: false }
+  if (idx >= 0) { console.log('_findItemIndex found in historyList at', idx); return { list: historyList.value, idx, isFullList: false } }
   idx = fullItemList.value.findIndex(item => item.id === id)
-  if (idx >= 0) return { list: fullItemList.value, idx, isFullList: true }
+  if (idx >= 0) { console.log('_findItemIndex found in fullItemList at', idx, 'total items:', fullItemList.value.length); return { list: fullItemList.value, idx, isFullList: true } }
+  console.log('_findItemIndex NOT FOUND, historyList:', historyList.value.length, 'fullItemList:', fullItemList.value.length)
   return null
 }
 
@@ -2197,17 +2201,19 @@ onMounted(async () => {
           material_tags: data.material_tags,
           computed_tags: data.computed_tags
         }
+        // 先保存数据到 uploadedImages（供后续使用）
         const exists = uploadedImages.value.find(img => img.id === historyImage.id)
         if (!exists) {
           uploadedImages.value.push(historyImage)
         }
+
+        // 先加载全量作品列表（确保 prev/next 数据就绪），历史列表不阻塞 UI
+        await loadFullItemList()
+        loadHistory()
+
+        // 所有数据就绪后才设置 currentImage，确保 TubiDetail 首次渲染时 prev/next 有数据
         selectImage(historyImage)
         ElMessage({ message: '已加载指定作品', type: 'success', customClass: 'toast-transparent', center: true })
-
-        // 等待全量作品列表加载完成，确保 prev/next 按钮数据就绪
-        await loadFullItemList()
-        // 历史列表不阻塞 UI（作品库分页用）
-        loadHistory()
       }
     } catch (error) {
       console.error('加载指定作品失败:', error)
