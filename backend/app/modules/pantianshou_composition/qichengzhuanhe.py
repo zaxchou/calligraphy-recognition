@@ -461,8 +461,8 @@ def draw_arrows_on_lineart(lineart: np.ndarray, arrows: list, labels: list,
             cv2.arrowedLine(canvas, (sx, sy), (ex, ey), color, line_thickness, tipLength=tip_length)
 
     def _draw_label_pil(cv_canvas, x, y, text, color_rgb):
-        radius = max(20, int(20 * scale))
-        font_size = max(26, int(26 * scale))
+        radius = max(26, int(26 * scale))
+        font_size = max(36, int(36 * scale))
         cv_color = (color_rgb[2], color_rgb[1], color_rgb[0])
         cx, cy = int(x), int(y)
         cv2.circle(cv_canvas, (cx, cy), radius, cv_color, -1)
