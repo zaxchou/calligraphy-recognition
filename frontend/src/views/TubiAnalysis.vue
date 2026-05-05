@@ -2204,9 +2204,10 @@ onMounted(async () => {
         selectImage(historyImage)
         ElMessage({ message: '已加载指定作品', type: 'success', customClass: 'toast-transparent', center: true })
 
-        // 详情页加载完成后，再异步加载历史列表和全量作品列表（不阻塞 UI）
+        // 等待全量作品列表加载完成，确保 prev/next 按钮数据就绪
+        await loadFullItemList()
+        // 历史列表不阻塞 UI（作品库分页用）
         loadHistory()
-        loadFullItemList()
       }
     } catch (error) {
       console.error('加载指定作品失败:', error)
