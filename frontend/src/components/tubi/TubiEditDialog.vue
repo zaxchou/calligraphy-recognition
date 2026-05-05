@@ -166,7 +166,7 @@
     <template #footer>
       <div class="dialog-footer modern-footer">
         <el-button @click="visible = false" class="btn-cancel">取消</el-button>
-        <el-button type="danger" @click="handleDelete" class="btn-delete">删除</el-button>
+        <el-button v-if="isAdmin" type="danger" @click="handleDelete" class="btn-delete">删除</el-button>
         <el-button type="primary" @click="handleSave" class="btn-submit">保存</el-button>
       </div>
     </template>
@@ -180,8 +180,11 @@ import { ArrowDown, Stamp } from '@element-plus/icons-vue'
 import { tubiApi, sealsApi } from '../../api'
 import { ARTISTS } from '../../tubi/constants'
 import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
+import { useAdminAuth } from '../../composables/useAdminAuth'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
+const { isAuthenticated: isAdmin } = useAdminAuth()
 
 const emit = defineEmits(['saved', 'deleted', 'replaced'])
 

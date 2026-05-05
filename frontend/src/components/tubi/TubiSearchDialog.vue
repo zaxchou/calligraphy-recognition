@@ -7,6 +7,15 @@
     class="search-dialog-wide"
   >
     <div class="search-dialog-content">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+        <el-button
+          size="small"
+          :type="isAdmin ? 'warning' : 'default'"
+          @click="toggleAdmin"
+        >
+          {{ isAdmin ? '锁定' : '管理' }}
+        </el-button>
+      </div>
       <div v-if="loading" class="search-loading">
         <el-icon class="is-loading" size="32"><Loading /></el-icon>
         <p>正在搜索...</p>
@@ -79,10 +88,10 @@
               <el-button plain size="small" class="btn-edit" @click="viewItem(scope.row)">
                 查看
               </el-button>
-              <el-button plain size="small" class="btn-edit" @click="editItem(scope.row)">
+              <el-button v-if="isAdmin" plain size="small" class="btn-edit" @click="editItem(scope.row)">
                 编辑
               </el-button>
-              <el-button plain size="small" type="danger" @click="deleteItem(scope.row)">
+              <el-button v-if="isAdmin" plain size="small" type="danger" @click="deleteItem(scope.row)">
                 删除
               </el-button>
             </div>
@@ -95,7 +104,11 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture, Loading, Search } from '@element-plus/icons-vue'
+import { useAdminAuth } from '../../composables/useAdminAuth'
+
+const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
 
 const props = defineProps({
   modelValue: {
@@ -129,6 +142,26 @@ watch(() => props.modelValue, (val) => {
 watch(localVisible, (val) => {
   emit('update:modelValue', val)
 })
+
+async function toggleAdmin() {
+  if (isAdmin.value) {
+    logout()
+    return
+  }
+  try {
+    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
+      inputType: 'password',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      closeOnClickModal: false,
+    })
+    if (login(pwd.value)) {
+      ElMessage.success('管理验证通过')
+    } else {
+      ElMessage.error('密码错误')
+    }
+  } catch { /* 用户取消 */ }
+}
 
 function viewItem(row) {
   emit('view', row)

@@ -114,6 +114,13 @@
             <el-button type="primary" size="small" @click="backToTubi" :icon="ArrowLeft">
               返回题跋分析
             </el-button>
+            <el-button
+              size="small"
+              :type="isAdmin ? 'warning' : 'default'"
+              @click="toggleAdmin"
+            >
+              {{ isAdmin ? '锁定' : '管理' }}
+            </el-button>
           </div>
         </div>
       </template>
@@ -166,12 +173,14 @@
                 <el-button type="primary" size="small" @click.stop="openDetailInNewWindow(item)">
                   详情
                 </el-button>
-                <el-button type="warning" size="small" @click.stop="editItem(item)">
-                  编辑
-                </el-button>
-                <el-button type="danger" size="small" @click.stop="deleteItem(item)">
-                  删除
-                </el-button>
+                <template v-if="isAdmin">
+                  <el-button type="warning" size="small" @click.stop="editItem(item)">
+                    编辑
+                  </el-button>
+                  <el-button type="danger" size="small" @click.stop="deleteItem(item)">
+                    删除
+                  </el-button>
+                </template>
               </div>
             </div>
           </div>
@@ -215,9 +224,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { tubiApi } from '../api'
 import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
+import { useAdminAuth } from '../composables/useAdminAuth'
 
 const router = useRouter()
 const route = useRoute()
+
+const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
 
 // 排行榜数据
 const rankings = ref([])
@@ -411,6 +423,27 @@ async function deleteItem(item) {
       ElMessage.error('删除失败')
     }
   }
+}
+
+// 管理权限切换
+async function toggleAdmin() {
+  if (isAdmin.value) {
+    logout()
+    return
+  }
+  try {
+    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
+      inputType: 'password',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      closeOnClickModal: false,
+    })
+    if (login(pwd.value)) {
+      ElMessage.success('管理验证通过')
+    } else {
+      ElMessage.error('密码错误')
+    }
+  } catch { /* 用户取消 */ }
 }
 
 // 分页处理
