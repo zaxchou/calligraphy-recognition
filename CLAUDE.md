@@ -65,8 +65,10 @@
 - **SSH 用户:** `ubuntu`，端口 `22`
 - **SSH 密钥:** `cali_cloud_20260503.pem`（在项目根目录，已复制到 `~/.ssh/`）
 - **SSH 别名:** `xcx`（配置在 `~/.ssh/config`）
-- **部署流程:** `bash deploy.sh`（一键 push + 本地构建前端 + SCP 到服务器 + 后端 Docker 重启）
-- **手动部署:** 同上，或 `ssh xcx "cd /opt/calligraphy-recognition && sudo bash deploy/auto_deploy.sh"`（走 git pull，腾讯云可能 TLS 超时）
+- **部署流程:**
+  - `bash deploy.sh` — 完整部署（前端 + 后端 Docker 重构）
+  - `bash deploy.sh fast` — 仅前端（跳过后端重构，小改动专用，约 15s 完成）
+- `.dockerignore` 已配置，Docker 上下文从 2GB 降至约 50MB，后端构建快很多
 - **服务器路径:** `/opt/calligraphy-recognition`
 - **cron 保险:** 服务器每 5 分钟自动检查更新（仅当 deploy.sh 没跑时兜底）
 
