@@ -323,6 +323,18 @@ def generate_lineart(img_bgr: np.ndarray) -> np.ndarray:
     return lineart
 
 
+def generate_faded_bg(img_bgr: np.ndarray) -> np.ndarray:
+    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv[:, :, 1] *= 0.12
+    hsv[:, :, 2] = hsv[:, :, 2] * 0.55 + 255 * 0.45
+    hsv = np.clip(hsv, 0, 255).astype(np.uint8)
+    faded = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    faded = faded.astype(np.float32) / 255.0
+    faded = np.power(faded, 0.6) * 255
+    faded = np.clip(faded, 0, 255).astype(np.uint8)
+    return faded
+
+
 def _catmull_rom_spline(points, num_segments=50):
     """生成穿过所有控制点的 Catmull-Rom 平滑曲线点序列。"""
     if len(points) < 2:
@@ -728,8 +740,21 @@ QWEN_QCZH_PRE_PROMPT = """你是中国画构图分析专家。请基于以下知
 请直接描述，不要输出JSON。控制在400字以内。"""
 
 
-def _fetch_qczh_knowledge_context() -> str:
-    """从 Qdrant 写意知识库搜索起承转合相关的原文。"""
+def _get_knowledge_cache_path() -> str:
+    import os as _os
+    data_dir = _os.path.normpath(_os.path.join(
+        _os.path.dirname(_os.path.dirname(_os.path.dirname(
+            _os.path.dirname(_os.path.abspath(__file__))))),
+        "data", "user_markdown", "qczh"
+    ))
+    return _os.path.join(data_dir, "_cached_knowledge.md")
+
+
+def _init_knowledge_cache():
+    import os as _os
+    cache_path = _get_knowledge_cache_path()
+    if _os.path.exists(cache_path):
+        return
     try:
         from app.modules.pantianshou_composition.embedding_service import EmbeddingService
         from app.modules.pantianshou_composition import qdrant_client as qc
@@ -737,17 +762,12 @@ def _fetch_qczh_knowledge_context() -> str:
         service = EmbeddingService()
         emb_result = service.embed_text_sync(search_query)
         if not emb_result or not emb_result.embedding:
-            logger.warning("QCZH knowledge search: embedding failed")
-            return "暂无知识库原文"
-        hits = qc.search_collection(
-            qc.KNOWLEDGE_TEXTS_COLLECTION,
-            emb_result.embedding,
-            limit=5,
-        )
+            return
+        hits = qc.search_collection(qc.KNOWLEDGE_TEXTS_COLLECTION, emb_result.embedding, limit=5)
         chunks = [h.get("payload", {}).get("content", "") for h in (hits or [])]
         valid = [c.strip()[:100] for c in chunks if c and c.strip()]
         if not valid:
-            return "暂无知识库原文"
+            return
         lines = [f"[{i+1}] {c}" for i, c in enumerate(valid[:5])]
         total = 0
         for i, ln in enumerate(lines):
@@ -755,11 +775,32 @@ def _fetch_qczh_knowledge_context() -> str:
                 break
             total += len(ln)
         result = "\n".join(lines[:i+1]) if i > 0 else lines[0]
-        logger.info("QCZH knowledge search: %d chunks (%d chars)", len(valid), len(result))
-        return result
+        _os.makedirs(_os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(result)
+        logger.info("QCZH knowledge cache initialized: %d chars → %s", len(result), cache_path)
     except Exception as e:
-        logger.warning("QCZH knowledge search failed: %s", e)
-        return "暂无知识库原文"
+        logger.warning("QCZH knowledge cache init failed: %s", e)
+
+
+def _fetch_qczh_knowledge_context() -> str:
+    import os as _os
+    cache_path = _get_knowledge_cache_path()
+    try:
+        if _os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            if content.strip():
+                return content.strip()
+    except Exception:
+        pass
+    return "暂无知识库原文"
+
+
+try:
+    _init_knowledge_cache()
+except Exception:
+    pass
 
 
 def _qwen_qczh_pre_analysis(img_bgr: np.ndarray) -> str | None:
@@ -833,7 +874,7 @@ def analyze_qichengzhuanhe(img_bgr: np.ndarray, *, llm_analysis_text: str | None
     if not (settings.QWEN_ENABLED and settings.QWEN_API_KEY and settings.QWEN_BASE_URL):
         raise RuntimeError("Qwen not configured")
 
-    lineart = generate_lineart(img_bgr)
+    lineart = generate_faded_bg(img_bgr)
     b64 = encode_bgr_to_base64(img_bgr)
 
     model = "qwen3-vl-plus"
