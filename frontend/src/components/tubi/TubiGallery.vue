@@ -11,7 +11,7 @@
             size="small"
             clearable
             @keyup.enter="handleSearch"
-            style="width: 180px; margin-right: 8px;"
+            class="gallery-search-input"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
@@ -20,7 +20,7 @@
           <el-button type="primary" size="small" @click="handleSearch" :icon="Search">
             搜索
           </el-button>
-          <el-button size="small" @click="goToList">
+          <el-button size="small" type="primary" @click="goToList" class="btn-more-works">
             更多作品
           </el-button>
           <el-button
@@ -28,6 +28,7 @@
             :type="isAdmin ? 'warning' : 'default'"
             :icon="isAdmin ? 'lock' : 'unlock'"
             @click="toggleAdmin"
+            class="btn-admin-toggle"
           >
             {{ isAdmin ? '锁定' : '管理' }}
           </el-button>
@@ -283,6 +284,38 @@ async function toggleAdmin() {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.gallery-search-input {
+  width: 180px;
+}
+
+.btn-more-works {
+  box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+  .gallery-card .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .gallery-search-input {
+    width: auto;
+    flex: 1;
+    min-width: 100px;
+  }
+  .header-actions .el-button span {
+    display: none;
+  }
+  .header-actions .el-button .el-icon {
+    margin: 0 !important;
+  }
+  .header-actions .el-button {
+    padding: 5px 8px;
+  }
+  .btn-admin-toggle {
+    display: none !important;
+  }
 }
 
 .filter-indicator {
