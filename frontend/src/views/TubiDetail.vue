@@ -105,7 +105,12 @@
               <div class="annotated-image-section">
                 <h4 class="section-title">
                   <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
-                  <el-button v-if="isAdmin" size="small" text class="btn-annotate" @click="$emit('open-annotator')">手动标注</el-button>
+                  <el-button
+                    size="small" text
+                    class="btn-annotate"
+                    :class="{ 'btn-annotate-hidden': !isAdmin }"
+                    @click="$emit('open-annotator')"
+                  >手动标注</el-button>
                 </h4>
                 <div class="annotated-image-wrapper" @mouseenter="showDiagramOverlay = true" @mouseleave="showDiagramOverlay = false">
                   <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
@@ -1180,6 +1185,10 @@ defineExpose({
 .btn-annotate {
   font-size: 11px;
   padding: 3px 10px;
+}
+.btn-annotate-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* 面积示意图容器（用于定位打勾徽章） */

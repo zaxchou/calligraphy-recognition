@@ -65,9 +65,10 @@
 - **SSH 用户:** `ubuntu`，端口 `22`
 - **SSH 密钥:** `cali_cloud_20260503.pem`（在项目根目录，已复制到 `~/.ssh/`）
 - **SSH 别名:** `xcx`（配置在 `~/.ssh/config`）
-- **部署流程:** git push 后 → `ssh xcx "cd /opt/calligraphy-recognition && sudo bash deploy/auto_deploy.sh"`
+- **部署流程:** `bash deploy.sh`（一键 push + SSH 触发服务器部署）
+- **手动部署:** `ssh xcx "cd /opt/calligraphy-recognition && sudo bash deploy/auto_deploy.sh"`
 - **服务器路径:** `/opt/calligraphy-recognition`
-- **cron 保险:** 服务器每 5 分钟自动检查更新（`auto_deploy.sh`），但人工推送后应手动触发部署
+- **cron 保险:** 服务器每 5 分钟自动检查更新（仅当 deploy.sh 没跑时兜底）
 
 ### GitHub
 - **仓库:** `https://github.com/zaxchou/calligraphy-recognition.git`
