@@ -1,15 +1,5 @@
 ﻿<template>
   <div class="tubi-analysis tubi-page">
-    <!-- 页面标题 -->
-    <div class="tubi-header" v-if="!currentImage">
-      <h1>中国画题跋空间分析</h1>
-      <p class="sub">上传国画图片，AI 自动识别画作中的题跋、绘画、留白区域</p>
-      <div class="header-ornament">
-        <span class="ornament-line"></span>
-        <span class="ornament-dot">◇</span>
-        <span class="ornament-line"></span>
-      </div>
-    </div>
 
     <!-- 初始加载状态：防止直接访问详情页时闪现首页框架 -->
     <div v-if="initialLoading" class="initial-loading-overlay">
