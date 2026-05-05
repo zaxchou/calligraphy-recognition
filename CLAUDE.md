@@ -57,3 +57,28 @@
 ***
 
 **生效的标志：** 增量的不必要改动减少，因过度复杂导致的重写减少，澄清问题出现在实现之前而非犯错之后。
+
+## 项目记忆（不要忘记）
+
+### 服务器部署
+- **服务器 IP:** `124.223.17.29`（域名 xcx.zhouhouhan.com 解析到的不是此 IP，部署时必须用 IP）
+- **SSH 用户:** `ubuntu`，端口 `22`
+- **SSH 密钥:** `cali_cloud_20260503.pem`（在项目根目录，已复制到 `~/.ssh/`）
+- **SSH 别名:** `xcx`（配置在 `~/.ssh/config`）
+- **部署流程:** git push 后 → `ssh xcx "cd /opt/calligraphy-recognition && sudo bash deploy/auto_deploy.sh"`
+- **服务器路径:** `/opt/calligraphy-recognition`
+- **cron 保险:** 服务器每 5 分钟自动检查更新（`auto_deploy.sh`），但人工推送后应手动触发部署
+
+### GitHub
+- **仓库:** `https://github.com/zaxchou/calligraphy-recognition.git`
+- **默认分支:** `master`
+- **GitHub Token:** 已配到 GitHub MCP server 的 env，不写文件里
+- **推送方式:** `git push origin master`（--force 只在明确要求时用）
+
+### MCP 服务器
+- **Memory MCP:** `@modelcontextprotocol/server-memory` — 知识图谱记忆
+- **GitHub MCP:** `@modelcontextprotocol/server-github` — GitHub API 操作（已配 token）
+- **两个 server 均已安装并连接成功**
+
+### Admin 密码
+- 前端管理面板密码: `ilovehouhan`（存在 `useAdminAuth` composable 中，localStorage 缓存 24h）
