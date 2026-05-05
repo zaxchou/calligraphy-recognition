@@ -5,6 +5,7 @@
 
 import os
 import re
+import json
 import shutil
 import uuid
 import asyncio
@@ -605,21 +606,60 @@ async def get_book_chunks(
     db: Session = Depends(get_db)
 ):
     """
-    获取书籍的文本块
+    获取书籍的文本块（含完整配图信息）
     """
     chunks = db.query(TextChunk).filter(
         TextChunk.book_id == book_id
     ).order_by(TextChunk.chunk_index).offset(offset).limit(limit).all()
-    
-    return [{
-        "id": c.id,
-        "chunk_index": c.chunk_index,
-        "chapter_title": c.chapter_title,
-        "page_start": c.page_start,
-        "page_end": c.page_end,
-        "content": c.content[:500] + "..." if len(c.content) > 500 else c.content,
-        "associated_images": c.associated_images,
-    } for c in chunks]
+
+    results = []
+    for c in chunks:
+        # associated_images 可能是 JSON 字符串或列表，统一解析
+        raw_images = c.associated_images
+        image_ids = []
+        if isinstance(raw_images, str):
+            try:
+                image_ids = json.loads(raw_images) if raw_images.strip() else []
+            except (json.JSONDecodeError, ValueError):
+                image_ids = []
+        elif isinstance(raw_images, list):
+            image_ids = raw_images
+        else:
+            image_ids = []
+
+        # 查完整图片信息
+        full_images = []
+        if image_ids:
+            imgs = db.query(ExtractedImage).filter(
+                ExtractedImage.id.in_(image_ids)
+            ).all()
+            img_map = {img.id: img for img in imgs}
+            for img_id in image_ids:
+                img = img_map.get(img_id)
+                if img:
+                    url = img.stored_url or img.url or ""
+                    full_images.append({
+                        "id": img.id,
+                        "file_name": img.file_name,
+                        "url": url,
+                        "stored_url": url,
+                        "page": img.page,
+                        "figure_id": img.figure_id,
+                        "caption": img.caption or "",
+                        "display_label": _parse_caption_for_display(img.caption) or img.figure_id or f"图{img.page}" if img.page else "",
+                    })
+
+        results.append({
+            "id": c.id,
+            "chunk_index": c.chunk_index,
+            "chapter_title": c.chapter_title,
+            "page_start": c.page_start,
+            "page_end": c.page_end,
+            "content": c.content[:500] + "..." if len(c.content) > 500 else c.content,
+            "associated_images": full_images,
+        })
+
+    return results
 
 
 @router.get("/books/{book_id}/images")
