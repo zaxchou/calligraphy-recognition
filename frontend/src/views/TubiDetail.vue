@@ -1154,11 +1154,14 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 4px;
 }
 .navigation-header :deep(.el-button) {
   flex: 0 0 auto;
   padding: 5px 8px;
   font-size: 12px;
+  white-space: nowrap;
 }
 .nav-title {
   flex: 1;
@@ -1172,6 +1175,17 @@ defineExpose({
   white-space: nowrap;
   padding: 0 6px;
   min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .navigation-header :deep(.el-button) {
+    padding: 4px 4px;
+    font-size: 11px;
+  }
+  .nav-title {
+    font-size: 13px;
+    padding: 0 3px;
+  }
 }
 
 /* 面积占比智能示意图标题与按钮同行 */
