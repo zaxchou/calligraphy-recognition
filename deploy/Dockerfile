@@ -5,6 +5,7 @@ RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debia
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1 curl \
+    fonts-wqy-zenhei \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
