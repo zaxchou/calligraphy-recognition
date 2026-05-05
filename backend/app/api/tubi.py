@@ -122,6 +122,14 @@ def _to_local_path(p: str) -> str:
     return os.path.normpath(os.path.join(PROJECT_ROOT, p2))
 
 
+def _basename(p: str) -> str:
+    """跨平台提取文件名，兼容混合 / 和 \\ 分隔符的路径（Windows 存、Linux 读）"""
+    if not p:
+        return ""
+    # 统一为 / 分隔，然后取最后一段
+    return p.replace("\\", "/").rstrip("/").split("/")[-1]
+
+
 # ── 文件存在性缓存（避免重复 stat 调用） ──
 _file_exists_cache = {}
 _FILE_CACHE_TTL = 60  # 秒
@@ -1099,7 +1107,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
 
     # 构建图片URL - 使用跨平台路径处理
     if db_analysis.filepath:
-        actual_filename = os.path.basename(db_analysis.filepath.replace('/', os.sep))
+        actual_filename = _basename(db_analysis.filepath)
         image_url = get_static_url(f"uploads/{actual_filename}")
     elif db_analysis.filename:
         image_url = get_static_url(f"uploads/{db_analysis.filename}")
@@ -1111,7 +1119,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
     if db_analysis.thumbnail_path:
         thumbnail_path_local = _to_local_path(db_analysis.thumbnail_path)
         if _cached_exists(thumbnail_path_local):
-            thumbnail_filename = os.path.basename(db_analysis.thumbnail_path.replace('/', os.sep))
+            thumbnail_filename = _basename(db_analysis.thumbnail_path)
             thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
     elif image_url:
         thumbnail_url = image_url
@@ -1616,7 +1624,7 @@ async def get_all_results(
     for analysis in analyses:
         # 从 filepath 提取文件名
         if analysis.filepath:
-            actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
+            actual_filename = _basename(analysis.filepath)
             file_path_local = _to_local_path(analysis.filepath)
             file_exists = _cached_exists(file_path_local)
         elif analysis.filename:
@@ -1631,7 +1639,7 @@ async def get_all_results(
         if analysis.thumbnail_path:
             thumbnail_path_local = _to_local_path(analysis.thumbnail_path)
             if _cached_exists(thumbnail_path_local):
-                thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
+                thumbnail_filename = _basename(analysis.thumbnail_path)
                 thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
         elif actual_filename and file_exists:
             thumbnail_url = get_static_url(f"uploads/{actual_filename}")
@@ -1764,7 +1772,7 @@ async def search_images(
         for analysis in analyses:
             # 从 filepath 提取文件名
             if analysis.filepath:
-                actual_filename = os.path.basename(analysis.filepath.replace('/', os.sep))
+                actual_filename = _basename(analysis.filepath)
                 file_path_local = _to_local_path(analysis.filepath)
                 file_exists = _cached_exists(file_path_local)
             elif analysis.filename:
@@ -1779,7 +1787,7 @@ async def search_images(
             if analysis.thumbnail_path:
                 thumbnail_path_local = _to_local_path(analysis.thumbnail_path)
                 if _cached_exists(thumbnail_path_local):
-                    thumbnail_filename = os.path.basename(analysis.thumbnail_path.replace('/', os.sep))
+                    thumbnail_filename = _basename(analysis.thumbnail_path)
                     thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
             elif actual_filename and file_exists:
                 thumbnail_url = get_static_url(f"uploads/{actual_filename}")
@@ -1994,7 +2002,7 @@ async def get_dimensions(artist: Optional[str] = None, db: Session = Depends(get
             "album_name": r.album_name,
             "album_index": r.album_index,
             "tags": r.tags,
-            "thumbnail_url": get_static_url(f"thumbnails/{os.path.basename(r.thumbnail_path)}") if r.thumbnail_path else None,
+            "thumbnail_url": get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}") if r.thumbnail_path else None,
         })
 
     # 统计
@@ -2147,7 +2155,7 @@ async def get_albums(
             "name": album_name,
             "count": len(sorted_items),
             "cover_url": (
-                get_static_url(f"thumbnails/{os.path.basename(cover_item.thumbnail_path)}")
+                get_static_url(f"thumbnails/{_basename(cover_item.thumbnail_path)}")
                 if cover_item and cover_item.thumbnail_path
                 else None
             ),
@@ -2181,7 +2189,7 @@ async def get_album(album_name: str, db: Session = Depends(get_db)):
             "artwork_height_cm": r.artwork_height_cm,
             "artwork_width_cm": r.artwork_width_cm,
             "thumbnail_url": (
-                get_static_url(f"thumbnails/{os.path.basename(r.thumbnail_path)}")
+                get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}")
                 if r.thumbnail_path
                 else None
             ),
@@ -2344,7 +2352,7 @@ async def get_album_navigation(record_id: str, db: Session = Depends(get_db)):
             "title": r.title,
             "album_index": r.album_index,
             "thumbnail_url": (
-                get_static_url(f"thumbnails/{os.path.basename(r.thumbnail_path)}")
+                get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}")
                 if r.thumbnail_path
                 else None
             ),
@@ -2428,7 +2436,7 @@ async def get_tag_items(tag_name: str, db: Session = Depends(get_db)):
                     "image_id": r.image_id,
                     "title": r.title,
                     "thumbnail_url": (
-                        get_static_url(f"thumbnails/{os.path.basename(r.thumbnail_path)}")
+                        get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}")
                         if r.thumbnail_path
                         else None
                     ),
@@ -2652,7 +2660,7 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
 
     # 构建图片URL
     if db_analysis.filepath:
-        actual_filename = os.path.basename(db_analysis.filepath.replace('/', os.sep))
+        actual_filename = _basename(db_analysis.filepath)
         image_url = get_static_url(f"uploads/{actual_filename}")
     elif db_analysis.filename:
         image_url = get_static_url(f"uploads/{db_analysis.filename}")
@@ -2663,7 +2671,7 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
     if db_analysis.thumbnail_path:
         thumb_local = _to_local_path(db_analysis.thumbnail_path)
         if _cached_exists(thumb_local):
-            thumb_fn = os.path.basename(db_analysis.thumbnail_path.replace('/', os.sep))
+            thumb_fn = _basename(db_analysis.thumbnail_path)
             thumbnail_url = get_static_url(f"thumbnails/{thumb_fn}")
         else:
             thumbnail_url = image_url
