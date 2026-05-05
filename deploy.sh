@@ -27,10 +27,11 @@ if [ "$HAS_BACKEND" -gt 0 ]; then
   echo "=== 4. 检测到后端变更，同步源码 ==="
   tar cz --exclude='data' --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' -C backend . \
     | ssh xcx "sudo tar xz -C /opt/calligraphy-recognition/backend"
+  # 始终同步 deploy 配置（docker-compose.yml 有代码 volume 挂载，不更新则容器读不到新代码）
+  scp -q deploy/Dockerfile deploy/docker-compose.yml xcx:/opt/calligraphy-recognition/deploy/
 
   if [ "$HAS_DEPLOY" -gt 0 ]; then
     echo "（检测到 Dockerfile/docker-compose 变更 → 完整重构）"
-    scp -q deploy/Dockerfile deploy/docker-compose.yml xcx:/opt/calligraphy-recognition/deploy/
     ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml up -d --build backend"
   else
     echo "（仅源码变更 → 快速 restart）"
