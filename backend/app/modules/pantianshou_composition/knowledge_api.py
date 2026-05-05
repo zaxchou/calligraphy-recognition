@@ -1160,26 +1160,89 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                     continue
                 else:
                     # 孤立向量：Qdrant 重建后 vector_id 与 SQLite 不匹配，
-                    # 直接从 payload 构建结果，不跳过
+                    # 直接从 payload 构建结果（含书名、配图、上下文）
                     raw_content = payload.get("content", "") or payload.get("text_preview", "")
                     truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
+
+                    # 查书名
+                    book_title = _extract_book_title(payload)
+                    if book_id and (not book_title or book_title == "知识库"):
+                        try:
+                            bk = db.query(PdfBook).filter(PdfBook.id == book_id).first()
+                            if bk and bk.title:
+                                book_title = bk.title
+                        except Exception:
+                            pass
+
+                    # 查关联图片（按 book_id + 页面范围）
+                    assoc_images = []
+                    page = payload.get("page_start") or payload.get("page_number") or payload.get("page", 0)
+                    if book_id and page:
+                        try:
+                            page_num = int(page)
+                            imgs = db.query(ExtractedImage).filter(
+                                ExtractedImage.book_id == book_id,
+                                ExtractedImage.page >= page_num - 1,
+                                ExtractedImage.page <= page_num + 1,
+                            ).limit(4).all()
+                            for img in imgs:
+                                url = img.stored_url or img.url or ""
+                                assoc_images.append({
+                                    "id": img.id,
+                                    "file_name": img.file_name,
+                                    "url": url,
+                                    "stored_url": url,
+                                    "page": img.page,
+                                    "figure_id": img.figure_id,
+                                    "caption": img.caption or "",
+                                    "display_label": _parse_caption_for_display(img.caption) or img.figure_id or f"图{img.page}" if img.page else "",
+                                })
+                                # 也收集到 related_images
+                                if url and len(collected_assoc_images) < MAX_RELATED_IMAGES and url not in seen_assoc_urls:
+                                    seen_assoc_urls.add(url)
+                                    collected_assoc_images.append(assoc_images[-1])
+                        except Exception:
+                            pass
+
+                    # 查相邻 chunk 作为上下文
+                    ctx_before = ""
+                    ctx_after = ""
+                    chunk_idx = payload.get("chunk_index")
+                    if book_id and chunk_idx is not None:
+                        try:
+                            ci = int(chunk_idx)
+                            before = db.query(TextChunk).filter(
+                                TextChunk.book_id == book_id,
+                                TextChunk.chunk_index == ci - 1,
+                            ).first()
+                            if before:
+                                ctx_before = before.content or ""
+                            after = db.query(TextChunk).filter(
+                                TextChunk.book_id == book_id,
+                                TextChunk.chunk_index == ci + 1,
+                            ).first()
+                            if after:
+                                ctx_after = after.content or ""
+                        except Exception:
+                            pass
+
                     results.append({
                         "chunk_id": None,
                         "vector_id": vector_id,
                         "book_id": book_id,
-                        "book_title": _extract_book_title(payload),
+                        "book_title": book_title,
                         "content": truncated_content,
                         "content_full": raw_content,
                         "chapter_title": payload.get("chapter_title", "") or payload.get("chapter", ""),
                         "page_start": payload.get("page_start") or payload.get("page_number") or payload.get("page", 0),
                         "page_end": payload.get("page_end") or payload.get("page_number") or payload.get("page", 0),
-                        "chunk_index": payload.get("chunk_index", 0),
+                        "chunk_index": chunk_idx or 0,
                         "score": max(0, min(1.0, r.get("rerank_score", r.get("score", 0)))),
-                        "associated_images": [],
-                        "context_before": "",
-                        "context_after": "",
-                        "has_prev": False,
-                        "has_next": False,
+                        "associated_images": assoc_images,
+                        "context_before": ctx_before,
+                        "context_after": ctx_after,
+                        "has_prev": bool(ctx_before),
+                        "has_next": bool(ctx_after),
                         "bbox": payload.get("bbox"),
                     })
                     continue
