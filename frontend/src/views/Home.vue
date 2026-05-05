@@ -11,20 +11,20 @@
           <div class="gallery-row gallery-row--top">
             <div class="gallery-track gallery-track--left">
               <div v-for="(img, i) in heroImages" :key="`t1-${i}`" class="gallery-frame">
-                <img :src="img" alt="" />
+                <img :src="img" alt="" loading="lazy" />
               </div>
               <div v-for="(img, i) in heroImages" :key="`t2-${i}`" class="gallery-frame">
-                <img :src="img" alt="" />
+                <img :src="img" alt="" loading="lazy" />
               </div>
             </div>
           </div>
           <div class="gallery-row gallery-row--bottom">
             <div class="gallery-track gallery-track--right">
               <div v-for="(img, i) in heroImagesReversed" :key="`b1-${i}`" class="gallery-frame">
-                <img :src="img" alt="" />
+                <img :src="img" alt="" loading="lazy" />
               </div>
               <div v-for="(img, i) in heroImagesReversed" :key="`b2-${i}`" class="gallery-frame">
-                <img :src="img" alt="" />
+                <img :src="img" alt="" loading="lazy" />
               </div>
             </div>
           </div>

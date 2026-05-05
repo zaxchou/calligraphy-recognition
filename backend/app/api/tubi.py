@@ -187,6 +187,35 @@ def _clear_results_cache():
         logger.warning("清除作品列表缓存失败: %s", e)
 
 
+# ── 首页统计数据缓存 ─────────────────────────────
+_STATS_CACHE_FILE = os.path.join(_PROJECT_BASE, "data", "cache", "tubi_stats_extended.json")
+
+def _get_stats_cache():
+    try:
+        if os.path.exists(_STATS_CACHE_FILE):
+            with open(_STATS_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+def _set_stats_cache(data):
+    try:
+        os.makedirs(os.path.dirname(_STATS_CACHE_FILE), exist_ok=True)
+        with open(_STATS_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+    except Exception as e:
+        logger.warning("写入首页统计缓存失败: %s", e)
+
+def _clear_stats_cache():
+    """首页统计缓存 — 上传/删除/编辑作品时清除"""
+    try:
+        if os.path.exists(_STATS_CACHE_FILE):
+            os.remove(_STATS_CACHE_FILE)
+    except Exception as e:
+        logger.warning("清除首页统计缓存失败: %s", e)
+
+
 from app.services.siliconflow_service import (
     analyze_image_regions,
     calculate_area_stats
@@ -743,6 +772,7 @@ async def upload_image(
 
         # 清除作品列表缓存（有新作品即失效）
         _clear_results_cache()
+        _clear_stats_cache()
 
         # 自动追加到图像搜索索引
         try:
@@ -1828,6 +1858,7 @@ async def delete_image(image_id: str, request: Request, db: Session = Depends(ge
     db.delete(db_analysis)
     db.commit()
     _clear_results_cache()  # 删除后使缓存失效
+    _clear_stats_cache()
 
     return {
         "success": True,
@@ -2521,9 +2552,14 @@ async def reset_all_tags(db: Session = Depends(get_db)):
 
 @router.get("/stats/extended")
 async def get_extended_stats(db: Session = Depends(get_db)):
-    """获取扩展统计（含册页和标签统计）"""
+    """获取扩展统计（含册页和标签统计），结果缓存到文件"""
+    # 有缓存直接返回
+    cached = _get_stats_cache()
+    if cached:
+        return cached
+
     from collections import defaultdict
-    
+
     total = db.query(TubiAnalysis).count()
     
     album_records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name.isnot(None)).all()
@@ -2576,8 +2612,8 @@ async def get_extended_stats(db: Session = Depends(get_db)):
         if cat == "小幅" and r.album_name:
             small_album_names.add(r.album_name)
     small_size_album_count = len(small_album_names)
-    
-    return {
+
+    result = {
         "success": True,
         "data": {
             "total": total,
@@ -2599,6 +2635,8 @@ async def get_extended_stats(db: Session = Depends(get_db)):
             },
         }
     }
+    _set_stats_cache(result)
+    return result
 
 
 @router.get("/{id}")
@@ -2770,6 +2808,7 @@ async def update_regions_manual(
     db_analysis.status = "analyzed"  # 标记为已分析
     db_analysis.is_manual_annotated = 1  # 标记为手动标注
     _clear_results_cache()  # 分析完成后使缓存失效
+    _clear_stats_cache()
 
     # 自动标签持久化：将 compute_tags 结果追加写入 tags 字段
     try:
