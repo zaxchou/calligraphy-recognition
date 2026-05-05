@@ -66,9 +66,11 @@
 - **SSH 密钥:** `cali_cloud_20260503.pem`（在项目根目录，已复制到 `~/.ssh/`）
 - **SSH 别名:** `xcx`（配置在 `~/.ssh/config`）
 - **部署流程:**
-  - `bash deploy.sh` — 完整部署（前端 + 后端 Docker 重构）
-  - `bash deploy.sh fast` — 仅前端（跳过后端重构，小改动专用，约 15s 完成）
-- `.dockerignore` 已配置，Docker 上下文从 2GB 降至约 50MB，后端构建快很多
+  - `bash deploy.sh` — 完整部署（前端 build + SCP + 后端 restart，**不需** Docker rebuild）
+  - `bash deploy.sh fast` — 仅前端（约 15s）
+  - `bash deploy.sh --rebuild` — 完整部署 + Docker 重构（改 pip 包时用）
+- 后端代码通过 volume 热挂载进容器，改源码只需 `restart`，极快
+- 首次部署或改 Dockerfile 需要用 `--rebuild`
 - **服务器路径:** `/opt/calligraphy-recognition`
 - **cron 保险:** 服务器每 5 分钟自动检查更新（仅当 deploy.sh 没跑时兜底）
 

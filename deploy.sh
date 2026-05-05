@@ -1,14 +1,16 @@
 #!/bin/bash
 # 用法:
-#   bash deploy.sh         完整部署（前端+后端）
-#   bash deploy.sh fast    仅前端（跳过后端构建，小改动专用）
+#   bash deploy.sh            完整部署（前端+后端，代码热挂载仅 restart）
+#   bash deploy.sh --rebuild  完整部署 + Docker 重构（改 pip 包时用）
+#   bash deploy.sh fast       仅前端（跳过后端）
 #
-# SCP 直传，不依赖服务器 git pull（腾讯云连 GitHub 经常 TLS 超时）
+# 后端代码通过 SCP 传到服务器后 mount 进容器，只需 restart 不需 rebuild
+# 只有改 Python 依赖（requirements/Dockerfile）时才需要 --rebuild
 
 set -o pipefail
 cd "$(dirname "$0")" || exit 1
 
-MODE="${1:-full}"  # fast | full
+MODE="${1:-full}"  # fast | full | --rebuild
 
 echo "=== 1. 推送到 GitHub ==="
 git push origin master || echo "⚠️ 推送失败"
@@ -24,23 +26,25 @@ scp -qr frontend/dist/* xcx:/opt/calligraphy-recognition/frontend/dist/ || { ech
 
 if [ "$MODE" = "fast" ]; then
   echo ""
-  echo "=== 🚀 fast 模式：仅更新前端，跳过后端 ==="
+  echo "=== 🚀 fast 模式：仅前端 ==="
   ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart nginx"
-  echo "✅ 前端部署完成"
+  echo "✅ 完成"
   exit 0
 fi
 
 echo ""
 echo "=== 4. 同步后端源码 → 服务器 ==="
-# 排除 data/（Docker volume 挂载）和缓存文件
-tar cz --exclude='data' --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' -C backend . | ssh xcx "sudo tar xz -C /opt/calligraphy-recognition/backend"
-scp -q deploy/Dockerfile deploy/docker-compose.yml .dockerignore xcx:/opt/calligraphy-recognition/deploy/
-# .dockerignore 放在项目根（Docker context 根）才生效
-ssh xcx "sudo cp /opt/calligraphy-recognition/deploy/.dockerignore /opt/calligraphy-recognition/.dockerignore"
+tar cz --exclude='data' --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' -C backend . \
+  | ssh xcx "sudo tar xz -C /opt/calligraphy-recognition/backend"
 
 echo ""
-echo "=== 5. 重构并重启后端 ==="
-ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml up -d --build backend" || { echo "后端构建失败"; exit 1; }
+echo "=== 5. 重启后端 ==="
+if [ "$MODE" = "--rebuild" ]; then
+  echo "（--rebuild 模式，完整 Docker 重构）"
+  ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml up -d --build backend" || exit 1
+else
+  ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart backend"
+fi
 
 echo ""
 echo "=== 6. 重启 nginx ==="
