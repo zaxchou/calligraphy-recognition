@@ -1159,7 +1159,29 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                     })
                     continue
                 else:
-                    logger.warning("跳过孤立向量: vector_id=%s, book_id=%s", vector_id, book_id)
+                    # 孤立向量：Qdrant 重建后 vector_id 与 SQLite 不匹配，
+                    # 直接从 payload 构建结果，不跳过
+                    raw_content = payload.get("content", "") or payload.get("text_preview", "")
+                    truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
+                    results.append({
+                        "chunk_id": None,
+                        "vector_id": vector_id,
+                        "book_id": book_id,
+                        "book_title": _extract_book_title(payload),
+                        "content": truncated_content,
+                        "content_full": raw_content,
+                        "chapter_title": payload.get("chapter_title", "") or payload.get("chapter", ""),
+                        "page_start": payload.get("page_start") or payload.get("page_number") or payload.get("page", 0),
+                        "page_end": payload.get("page_end") or payload.get("page_number") or payload.get("page", 0),
+                        "chunk_index": payload.get("chunk_index", 0),
+                        "score": max(0, min(1.0, r.get("rerank_score", r.get("score", 0)))),
+                        "associated_images": [],
+                        "context_before": "",
+                        "context_after": "",
+                        "has_prev": False,
+                        "has_next": False,
+                        "bbox": payload.get("bbox"),
+                    })
                     continue
             
             # 获取关联图片
