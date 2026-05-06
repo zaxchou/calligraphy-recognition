@@ -478,12 +478,12 @@ function handleMore() {
   border-color: #e2dcd4;
 }
 
-@keyframes rankingSlideIn {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
+@keyframes rankingFadeIn {
+  from { opacity: 0; margin-left: -6px; }
+  to { opacity: 1; margin-left: 0; }
 }
 .ranking-body .ranking-row {
-  animation: rankingSlideIn 0.35s ease both;
+  animation: rankingFadeIn 0.3s ease forwards;
 }
 .ranking-body .ranking-row:nth-child(1) { animation-delay: 0s; }
 .ranking-body .ranking-row:nth-child(2) { animation-delay: 0.04s; }
