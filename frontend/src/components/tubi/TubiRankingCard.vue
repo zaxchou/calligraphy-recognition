@@ -196,17 +196,9 @@ function handleMore() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 22px 20px;
+  padding: 18px 20px;
 }
 
-.ranking-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-/* 前三名样式 */
 /* ─── 骨架屏 ─── */
 .skeleton-wrap {
   flex: 1;
@@ -227,6 +219,10 @@ function handleMore() {
   align-items: center;
   gap: 8px;
   padding: 4px 10px;
+  height: 50px;
+}
+.skeleton-top {
+  height: 58px;
 }
 
 .skeleton-medal {
@@ -285,6 +281,7 @@ function handleMore() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  justify-content: flex-start;
 }
 
 .ranking-row {
@@ -296,6 +293,10 @@ function handleMore() {
   border: 1px solid transparent;
   cursor: pointer;
   transition: all var(--transition-fast);
+  height: 49px;
+}
+.ranking-row.top-row {
+  height: 57px;
 }
 
 .ranking-row:hover {
@@ -365,6 +366,11 @@ function handleMore() {
 .ranking-row-thumb {
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
+}
+.top-row .ranking-row-thumb {
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--parchment);

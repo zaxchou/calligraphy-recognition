@@ -147,13 +147,19 @@ const periodStats = computed(() => {
   return map
 })
 
+const ALL_THEMES = ['咏物寄兴', '身世自况', '交游赠答', '吉语祥瑞', '画理自叙', '时事讽喻']
+
 const topThemes = computed(() => {
-  return [...themeDistribution.value]
-    .sort((a, b) => b.count - a.count)
-    .map(item => ({
-      ...item,
-      percent: totalCount.value > 0 ? Math.round((item.count / totalCount.value) * 100) : 0
-    }))
+  // 用6个固定主题构建，API返回的数据填充count，未命中=0
+  const themeMap = {}
+  for (const item of themeDistribution.value) {
+    themeMap[item.theme_name || item.name] = item.count || 0
+  }
+  return ALL_THEMES.map(name => ({
+    name,
+    count: themeMap[name] || 0,
+    percent: totalCount.value > 0 ? Math.round(((themeMap[name] || 0) / totalCount.value) * 100) : 0
+  })).sort((a, b) => b.count - a.count)
 })
 
 const charStatsOverall = computed(() => {
