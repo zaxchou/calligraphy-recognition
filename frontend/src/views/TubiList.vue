@@ -1,16 +1,5 @@
 <template>
   <div class="tubi-list tubi-page">
-    <!-- 页面标题 -->
-    <div class="tubi-header">
-      <h1>作品浏览</h1>
-      <p class="sub">全库作品检索与浏览</p>
-      <div class="header-ornament">
-        <span class="ornament-line"></span>
-        <span class="ornament-dot">◇</span>
-        <span class="ornament-line"></span>
-      </div>
-    </div>
-
     <!-- 顶部栏：翻页居左 + 工具居右（卡片外） -->
     <div class="top-bar" v-if="total > pageSize || pagedRankings.length > 0">
       <div class="top-bar-left">
@@ -19,6 +8,7 @@
           v-model:page-size="pageSize"
           layout="total, sizes, prev, pager, next"
           :page-sizes="[10, 20, 50, 100]"
+          :pager-count="5"
           prev-text="← 上一页"
           next-text="下一页 →"
           :total="total"
@@ -187,6 +177,7 @@
         v-model:page-size="pageSize"
         layout="total, sizes, prev, pager, next"
           :page-sizes="[10, 20, 50, 100]"
+          :pager-count="5"
         prev-text="← 上一页"
         next-text="下一页 →"
         :total="total"
@@ -1087,15 +1078,16 @@ onMounted(() => {
 .top-bar-right :deep(.el-select__wrapper),
 .top-bar-right :deep(.el-input__wrapper) {
   box-shadow: none !important;
-  border: 1px solid var(--border-warm);
+  border: 1px solid var(--border-warm) !important;
   border-radius: var(--radius-md) !important;
-  padding: 0 6px !important;
-  min-height: 30px !important;
-  height: 30px !important;
+  min-height: 28px !important;
 }
 .top-bar-right :deep(.el-select__wrapper:hover),
 .top-bar-right :deep(.el-input__wrapper:hover) {
-  border-color: var(--ring-deep);
+  border-color: var(--ring-deep) !important;
+}
+.top-bar-right :deep(.el-input__inner) {
+  font-size: 12px !important;
 }
 
 /* 底部翻页 */
@@ -1302,6 +1294,13 @@ onMounted(() => {
   .top-bar-right {
     flex-wrap: wrap;
     gap: 6px;
+  }
+  .top-bar-left :deep(.el-pagination__sizes),
+  .top-bar-left :deep(.el-pager) {
+    display: none !important;
+  }
+  .top-bar-left :deep(.el-pagination) {
+    flex-wrap: nowrap;
   }
 
   .works-table-container {

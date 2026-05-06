@@ -59,7 +59,7 @@ const routes = [
     path: '/tubi/list',
     name: 'TubiList',
     component: TubiList,
-    meta: { title: '数据排行' }
+    meta: { title: '作品库' }
   },
   {
     path: '/tubi/dimensions',
