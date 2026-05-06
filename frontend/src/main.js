@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-600.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-700.css'
@@ -19,6 +20,6 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(createPinia())
-app.use(ElementPlus)
+app.use(ElementPlus, { locale: zhCn })
 app.use(router)
 app.mount('#app')

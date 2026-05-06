@@ -17,7 +17,7 @@
         />
       </div>
       <div class="top-bar-right">
-        <el-select v-model="selectedArtist" size="small" placeholder="筛选画家" style="width: 110px" @change="onArtistChange" clearable>
+        <el-select v-model="selectedArtist" size="small" placeholder="筛选画家" @change="onArtistChange" clearable>
           <el-option label="全部画家" value="all" />
           <el-option v-for="name in artistOptions" :key="name" :label="name" :value="name" />
         </el-select>
@@ -733,10 +733,25 @@ onMounted(() => {
   flex-wrap: nowrap;
 }
 .top-bar :deep(.el-pagination__sizes) {
-  margin-right: 4px;
+  margin-right: 0;
 }
-.top-bar :deep(.el-pagination__sizes .el-select .el-input) {
-  width: 90px !important;
+.top-bar :deep(.el-pagination__sizes) {
+  margin-right: 0;
+}
+.top-bar :deep(.el-pagination__sizes .el-select) {
+  width: 80px !important;
+}
+.top-bar :deep(.el-pagination__sizes .el-select__wrapper) {
+  padding: 0 6px !important;
+}
+.list-footer :deep(.el-pagination__sizes) {
+  margin-right: 0;
+}
+.list-footer :deep(.el-pagination__sizes .el-select) {
+  width: 85px !important;
+}
+.list-footer :deep(.el-pagination__sizes .el-select__wrapper) {
+  padding: 0 6px !important;
 }
 .top-bar .el-pagination .el-pagination__total {
   font-size: 12px;
@@ -754,6 +769,10 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   background: transparent !important;
   line-height: 32px !important;
+}
+.top-bar :deep(.el-pagination .el-pager) {
+  display: flex;
+  gap: 3px;
 }
 .top-bar :deep(.el-pagination .el-pager li) {
   height: 32px !important;
@@ -1080,7 +1099,20 @@ onMounted(() => {
   box-shadow: none !important;
   border: 1px solid var(--border-warm) !important;
   border-radius: var(--radius-md) !important;
-  min-height: 28px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+}
+.top-bar-right :deep(.el-select__wrapper .el-select__input),
+.top-bar-right :deep(.el-input__wrapper .el-input__inner) {
+  height: 22px !important;
+  line-height: 22px !important;
+}
+.top-bar-right :deep(.el-select__placeholder) {
+  font-size: 12px !important;
+  line-height: 22px !important;
+}
+.top-bar-right .el-select {
+  width: 90px;
 }
 .top-bar-right :deep(.el-select__wrapper:hover),
 .top-bar-right :deep(.el-input__wrapper:hover) {
@@ -1124,6 +1156,10 @@ onMounted(() => {
 .list-footer :deep(.el-pagination .btn-prev:hover),
 .list-footer :deep(.el-pagination .btn-next:hover) {
   color: var(--cinnabar);
+}
+.list-footer :deep(.el-pagination .el-pager) {
+  display: flex;
+  gap: 4px;
 }
 .list-footer :deep(.el-pagination .el-pager li) {
   border-radius: var(--radius-md);
