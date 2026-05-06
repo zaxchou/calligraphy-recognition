@@ -154,9 +154,9 @@ function highlightDetail(r){
   return c
 }
 
-async function performSearch(){if(!searchInput.value.trim())return;centered.value=false;hasSearched.value=true;highlightedIndex.value=-1;closePanel();activeMode.value='search';await store.search(searchInput.value,{bookIds:selectedBooks.value,limit:20})}
+async function performSearch(){if(!searchInput.value.trim())return;centered.value=false;hasSearched.value=true;highlightedIndex.value=-1;closePanel();activeMode.value='search';await store.search(searchInput.value,{bookIds:selectedBooks.value,limit:20});window.history.replaceState(null,'','?q='+encodeURIComponent(searchInput.value.trim()))}
 function searchByTag(t){searchInput.value=t;performSearch()}
-function clearSearch(){searchInput.value='';hasSearched.value=false;centered.value=true;store.clearSearchResults();closePanel();nextTick(()=>searchInputRef.value?.focus())}
+function clearSearch(){searchInput.value='';hasSearched.value=false;centered.value=true;store.clearSearchResults();closePanel();nextTick(()=>searchInputRef.value?.focus());window.history.replaceState(null,'','/knowledge')}
 function onCitationClick(e){const c=e.target.closest('.ks-cite');if(!c)return;const m=c.textContent.match(/\d+/);if(!m)return;const s=(store.aiSummary?.sources||[])[parseInt(m[0])-1];if(s)scrollToResult(s)}
 function scrollToResult(src){var bk=(src.book||'').replace(/[《》]/g,'').trim(),pg=parseInt(src.page)||0;var i=store.searchResults.findIndex(function(r){var rbk=(r.book_title||'').replace(/[《》]/g,'').trim();var rpg=parseInt(r.page_start)||0;return rbk.includes(bk)||bk.includes(rbk)||(rbk&&bk&&rbk.toLowerCase()===bk.toLowerCase())});if(i<0&&pg>0)i=store.searchResults.findIndex(function(r){var rpg=parseInt(r.page_start)||0;return Math.abs(rpg-pg)<=2});if(i>=0)openDetail(store.searchResults[i],i)}
 function closePanel(){rightPanelOpen.value=false;activeResult.value=null;pdfUrl.value='';documentOutline.value=[];markdownContent.value='';relatedChunks.value=[];outlineFilter.value=''}
@@ -176,7 +176,7 @@ function openImagePreview(img,list,n){previewList.value=list&&list.length>1?list
 function nextPreview(){if(previewIndex.value<previewList.value.length-1){previewIndex.value++;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function onPreviewKey(e){if(e.key==='ArrowRight')nextPreview();else if(e.key==='ArrowLeft')prevPreview();else if(e.key==='Escape')previewVisible.value=false}
-onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);nextTick(()=>searchInputRef.value?.focus());document.addEventListener('keydown',onPreviewKey)})
+onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);const urlQ=new URLSearchParams(window.location.search).get('q');if(urlQ){searchInput.value=urlQ;await performSearch()}else{nextTick(()=>searchInputRef.value?.focus())};document.addEventListener('keydown',onPreviewKey)})
 onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 </script>
 
@@ -194,8 +194,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-search-icon{color:#b8b4aa;margin-left:14px;width:18px;height:18px;flex-shrink:0}
 .ks-center-input{flex:1;border:none;outline:none;padding:12px 10px;font-size:15px;color:#141413;background:transparent}
 .ks-center-input::placeholder{color:#c0bdb3}
-.ks-search-btn{border:none;background:#c96442;color:#fff;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap;border-radius:0 12px 12px 0}
-.ks-search-btn:hover{background:#a8513a}
+.ks-search-btn{border:none;background:#c96442;color:#fff;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s ease;white-space:nowrap;border-radius:0 12px 12px 0}
+.ks-search-btn:hover{background:#a8513a;transform:scale(1.03);box-shadow:0 2px 8px rgba(201,100,66,0.25)}
 .ks-search-btn:disabled{opacity:0.6;cursor:not-allowed}
 .ks-mode-row{display:flex;justify-content:center;gap:8px;margin-bottom:16px}
 .ks-mode-pill{border:1.5px solid #e0ddd3;background:#fff;padding:7px 18px;border-radius:22px;font-size:13px;font-weight:600;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.25s cubic-bezier(0.25,0.1,0.25,1)}
@@ -231,7 +231,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-progress-fill{height:100%;background:linear-gradient(90deg,#c96442,#e8a060,#c96442);background-size:200% 100%;border-radius:2px;transition:width 0.3s;animation:ks-shimmer 1.5s ease-in-out infinite}
 @keyframes ks-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-.ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px;animation:ks-card-in 0.5s 0.05s cubic-bezier(0.25,0.1,0.25,1) both}
+.ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px;animation:ks-banner-in 0.5s 0.05s cubic-bezier(0.25,0.1,0.25,1) both}
+@keyframes ks-banner-in{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 .ks-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;font-weight:600;color:#141413}
 .ks-summary-spark{color:#c96442;width:18px;height:18px}
 .ks-summary-conf{font-size:11px;padding:2px 8px;border-radius:10px;margin-left:auto}
@@ -254,7 +255,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-empty{text-align:center;padding:40px 0;color:#c0bdb3}
 .ks-empty-icon{width:36px;height:36px;margin-bottom:10px}
 .ks-rlist{display:flex;flex-direction:column;gap:8px}
-.ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.2s ease;display:flex;animation:ks-card-in 0.45s cubic-bezier(0.25,0.1,0.25,1) both}
+.ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.2s ease;display:flex;opacity:0;animation:ks-result-in 0.45s cubic-bezier(0.25,0.1,0.25,1) forwards}
+@keyframes ks-result-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes ks-card-in{from{opacity:0;transform:translateY(16px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .ks-rcard:hover{border-color:#c96442;box-shadow:0 2px 8px rgba(201,100,66,0.08)}
 .ks-rcard.active{border-color:#c96442;background:#fdf8f5}
@@ -303,10 +305,13 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-chat-send:disabled{opacity:0.5;cursor:not-allowed}
 
 .ks-panel{position:fixed;top:64px;right:0;width:60vw;max-width:960px;min-width:480px;height:calc(100vh - 64px);background:#fff;border-left:1px solid #e8e6dc;display:flex;flex-direction:column;z-index:10000002;box-shadow:-4px 0 20px rgba(0,0,0,0.06)}
-.ks-phdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f0eee6;flex-shrink:0}
+.ks-phdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f0eee6;flex-shrink:0;animation:ks-panel-in 0.3s 0.05s ease both}
 .ks-ptitle{font-size:14px;font-weight:600;color:#141413;overflow:hidden
 ;text-overflow:ellipsis;white-space:nowrap}
 .ks-phdr-acts{display:flex;align-items:center;gap:6px}
+.ks-panel .ks-pbody{animation:ks-panel-in 0.35s 0.18s ease both}
+.ks-panel .ks-ptabs{animation:ks-panel-in 0.35s 0.30s ease both}
+@keyframes ks-panel-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .ks-pdf-btn{border:none;background:#f5f2eb;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#5e5d59;display:flex;align-items:center;gap:4px}
 .ks-pdf-btn:hover{background:#c96442;color:#fff}
 .ks-pclose{border:none;background:none;padding:6px;border-radius:6px;cursor:pointer;color:#b8b4aa;display:flex}

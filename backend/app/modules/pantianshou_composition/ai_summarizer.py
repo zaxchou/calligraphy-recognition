@@ -30,8 +30,14 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# 模型配置
-MODEL = "qwen-turbo"
+# 模型配置（从 settings 读取，默认 qwen3.5-plus）
+MODEL = None  # 运行时从 settings.QWEN_MODEL 获取
+
+
+def _get_model() -> str:
+    """获取当前配置的摘要模型，无 thinking 模式"""
+    settings = get_settings()
+    return settings.QWEN_MODEL or "qwen3.5-plus"
 
 # 摘要 prompt
 SYSTEM_PROMPT = """你是一位精通中国画的专业知识助手。你的任务是基于知识库的搜索结果，为用户的问题生成深入、结构化的知识卡片。
@@ -197,14 +203,15 @@ async def generate_summary(
 
         # 使用 requests（同步）+ asyncio.to_thread，避免 httpx 在 asyncio 事件循环中的 read 超时问题
         t0 = time.time()
-        logger.info("[摘要] 开始请求: url=%s, model=%s", url, MODEL)
+        model = _get_model()
+        logger.info("[摘要] 开始请求: url=%s, model=%s", url, model)
 
         def _do_request():
             return requests.post(
                 url,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
-                    "model": MODEL,
+                    "model": model,
                     "messages": messages,
                     "temperature": 0.3,
                     "max_tokens": 4096,

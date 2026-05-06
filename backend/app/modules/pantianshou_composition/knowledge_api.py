@@ -6,6 +6,7 @@
 import os
 import re
 import json
+import time
 import shutil
 import uuid
 import asyncio
@@ -920,12 +921,23 @@ def _extract_book_title(payload: dict) -> str:
     return doc_type or "知识库"
 
 
+# 搜索内存缓存（query_key -> {t, data}）
+_search_mem_cache = {}
+
+
 @router.post("/search")
 async def search(request: SearchRequest, db: Session = Depends(get_db)):
     """
     语义搜索 - 基于 Qdrant 向量搜索
     集成 Query 改写 + 混合搜索 + AI 摘要回答
     """
+    # 内存缓存（TTL 5 分钟）：相同搜索秒回，完全不走 Qdrant 和 AI
+    query_key = f"{re.sub(r'\\s+', '', request.query).lower()}|{','.join(sorted(request.book_ids)) if request.book_ids else 'all'}"
+    mem_hit = _search_mem_cache.get(query_key)
+    if mem_hit and time.time() - mem_hit["t"] < 300:
+        logger.info("搜索内存缓存命中: query='%s'", request.query)
+        return mem_hit["data"]
+
     from .embedding_service import EmbeddingService
     from . import qdrant_client
     from .hybrid_search import hybrid_search as do_hybrid_search
@@ -1540,7 +1552,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 db.commit()
                 logger.info("AI 摘要+配图已缓存: query='%s', images=%d", request.query, len(related_images))
 
-        return {
+        _resp_data = {
             "query": request.query,
             "results": results,
             "total": len(results),
@@ -1557,6 +1569,9 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
                 "intent": query_intent,
             },
         }
+        # 写入内存缓存（TTL 300s），下次同查询秒回
+        _search_mem_cache[query_key] = {"t": time.time(), "data": _resp_data}
+        return _resp_data
     except Exception as e:
         error_detail = f"{str(e)}\n{traceback.format_exc()}"
         print(f"[Search Error] {error_detail}")
