@@ -220,6 +220,7 @@ function handleMore() {
   gap: 8px;
   padding: 4px 10px;
   height: 50px;
+  animation: none !important;
 }
 .skeleton-top {
   height: 58px;
@@ -292,8 +293,8 @@ function handleMore() {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all var(--transition-fast);
   height: 49px;
+  transition: background var(--transition-normal), border-color var(--transition-normal), transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 .ranking-row.top-row {
   height: 57px;
@@ -301,6 +302,9 @@ function handleMore() {
 
 .ranking-row:hover {
   background: var(--parchment);
+  transform: translateX(6px);
+  box-shadow: var(--shadow-whisper);
+  border-color: var(--ring-warm);
 }
 
 /* 前三名特殊边框 */
@@ -473,6 +477,22 @@ function handleMore() {
 .ranking-row.rank-3 {
   border-color: #e2dcd4;
 }
+
+@keyframes rankingSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.ranking-body .ranking-row {
+  animation: rankingSlideIn 0.35s ease both;
+}
+.ranking-body .ranking-row:nth-child(1) { animation-delay: 0s; }
+.ranking-body .ranking-row:nth-child(2) { animation-delay: 0.04s; }
+.ranking-body .ranking-row:nth-child(3) { animation-delay: 0.08s; }
+.ranking-body .ranking-row:nth-child(4) { animation-delay: 0.12s; }
+.ranking-body .ranking-row:nth-child(5) { animation-delay: 0.16s; }
+.ranking-body .ranking-row:nth-child(6) { animation-delay: 0.20s; }
+.ranking-body .ranking-row:nth-child(7) { animation-delay: 0.24s; }
+.ranking-body .ranking-row:nth-child(8) { animation-delay: 0.28s; }
 
 .ranking-row.rank-4 {
   border-color: #e7e2dc;
