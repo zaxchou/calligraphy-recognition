@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <div v-else-if="activeMode==='search'" key="search" class="ks-search-view">
+  <div v-else-if="activeMode==='search'" key="search" class="ks-search-view" :class="{'with-panel':rightPanelOpen}">
     <header class="ks-bar"><h1 class="ks-bar-title">写意知识库</h1>
       <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" />
         <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button><button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
@@ -194,7 +194,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-search-icon{color:#b8b4aa;margin-left:14px;width:18px;height:18px;flex-shrink:0}
 .ks-center-input{flex:1;border:none;outline:none;padding:12px 10px;font-size:15px;color:#141413;background:transparent}
 .ks-center-input::placeholder{color:#c0bdb3}
-.ks-search-btn{border:none;background:#c96442;color:#fff;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap}
+.ks-search-btn{border:none;background:#c96442;color:#fff;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap;border-radius:0 12px 12px 0}
 .ks-search-btn:hover{background:#a8513a}
 .ks-search-btn:disabled{opacity:0.6;cursor:not-allowed}
 .ks-mode-row{display:flex;justify-content:center;gap:8px;margin-bottom:16px}
@@ -209,9 +209,10 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-tag:hover{background:#fdf8f5;color:#c96442}
 
 .ks-search-view{padding:16px 24px 32px}
-.ks-bar{display:flex;align-items:center;gap:12px;margin-bottom:0;position:sticky;top:64px;z-index:1000;background:var(--parchment,#fafaf8);padding:8px 0}
+.ks-bar{display:flex;align-items:center;gap:12px;margin-bottom:0}
+.ks-search-view.with-panel .ks-bar{padding-right:60vw}
 .ks-bar-title{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;color:#141413;margin:0;white-space:nowrap}
-.ks-bar-search{flex:1;max-width:520px;display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;overflow:hidden;transition:all 0.3s ease;position:relative}
+.ks-bar-search{flex:1;max-width:520px;display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;transition:all 0.3s ease;position:relative}
 .ks-bar-search::before{content:'';position:absolute;inset:-3px;border-radius:15px;background:transparent;transition:all 0.5s cubic-bezier(0.25,0.1,0.25,1);pointer-events:none;z-index:-1}
 .ks-bar-search:focus-within{border-color:#c96442;box-shadow:0 0 0 3px rgba(201,100,66,0.06)}
 .ks-bar-search:focus-within::before{box-shadow:0 0 18px 4px rgba(201,100,66,0.08);animation:ks-glow-pulse 2s ease-in-out infinite}
