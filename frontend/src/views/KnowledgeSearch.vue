@@ -363,7 +363,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-lib-act{border:none;background:none;padding:3px;border-radius:4px;cursor:pointer;color:#b8b4aa;display:flex}
 .ks-lib-act:hover{color:#6b6b66;background:#f0ede4}.ks-lib-act.del:hover{color:#c96442}
 .ks-lib-empty{font-size:13px;color:#c0bdb3;text-align:center;padding:12px 0}
-.ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center}
+.ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000003;display:flex;align-items:center;justify-content:center}
 .ks-preview-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px}
 .ks-preview-close{position:absolute;top:20px;right:20px;border:none;background:rgba(255,255,255,0.15);color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ks-preview-close:hover{background:rgba(255,255,255,0.3)}
