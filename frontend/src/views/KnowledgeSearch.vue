@@ -88,7 +88,7 @@
 
   <transition name="drop"><div v-if="libOpen" class="ks-lib-pop">
     <div class="ks-lib-inner"><div class="ks-lib-row"><button class="ks-upload-btn" @click="showUploadModal=true"><span class="ks-upload-icon">+</span>上传PDF</button><div class="ks-lib-stats" v-if="store.stats"><span>{{ store.stats.books?.total||0 }}书</span><span>{{ store.stats.contents?.chunks||0 }}块</span><span>{{ store.stats.contents?.images||0 }}图</span></div></div>
-      <div class="ks-lib-books" v-if="store.books.length"><div v-for="b in store.books" :key="b.id" class="ks-lib-book"><label class="ks-lib-bl"><input type="checkbox" v-model="selectedBooks" :value="b.id" :disabled="b.status==='processing'" /><span class="ks-lib-bn">{{ b.title||b.file_name }}</span><span :class="['ks-lib-bs',b.status]">{{ statusLabel(b.status) }}</span></label><div class="ks-lib-bacts"><button class="ks-lib-act" @click="reingest(b.id)" :disabled="reingestingId===b.id"><RefreshCw v-if="reingestingId!==b.id" class="icon-xs" /><Loader2 v-else class="icon-xs spin" /></button><button class="ks-lib-act del" @click="delBook(b.id)"><Trash2 class="icon-xs" /></button></div></div></div>
+      <div class="ks-lib-books" v-if="store.books.length"><div v-for="b in store.books" :key="b.id" class="ks-lib-book"><label class="ks-lib-bl"><input type="checkbox" v-model="selectedBooks" :value="b.id" :disabled="b.status==='processing'" /><span class="ks-lib-bn">{{ b.title||b.file_name }}</span><span :class="['ks-lib-bs',b.status]">{{ statusLabel(b.status) }}</span></label><div class="ks-lib-bacts"><button v-if="isAdmin" class="ks-lib-act" @click="reingest(b.id)" :disabled="reingestingId===b.id"><RefreshCw v-if="reingestingId!==b.id" class="icon-xs" /><Loader2 v-else class="icon-xs spin" /></button><button v-if="isAdmin" class="ks-lib-act del" @click="delBook(b.id)"><Trash2 class="icon-xs" /></button></div></div></div>
       <p v-else class="ks-lib-empty">暂无已入库的书籍</p>
     </div>
   </div></transition>
@@ -100,11 +100,16 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
 import TableResultCard from '@/components/TableResultCard.vue'
+import { useAdminAuth } from '../composables/useAdminAuth'
+
+const { isAuthenticated: isAdmin } = useAdminAuth()
+const router = useRouter()
 import DocumentOutline from '@/components/DocumentOutline.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import ImageRelatedChunks from '@/components/ImageRelatedChunks.vue'
@@ -139,7 +144,7 @@ function switchMode(m){
 }
 function toggleLib(){libOpen.value=!libOpen.value}
 
-function goCentered(){centered.value=true;activeMode.value='search';closePanel();searchInput.value='';hasSearched.value=false;store.clearSearchResults();nextTick(()=>searchInputRef.value?.focus())}
+function goCentered(){centered.value=true;activeMode.value='search';closePanel();searchInput.value='';hasSearched.value=false;store.clearSearchResults();nextTick(()=>searchInputRef.value?.focus());router.replace({name:'KnowledgeSearch'})}
 
 function highlightSnippet(r){
   const b=r.context_before?`<span class="ks-snip-pre">...${escapeHtml(cleanLatex(r.context_before.slice(-30)))}</span>`:'', a=r.context_after?`<span class="ks-snip-post">${escapeHtml(cleanLatex(r.context_after.slice(0,30)))}...</span>`:''
@@ -154,9 +159,9 @@ function highlightDetail(r){
   return c
 }
 
-async function performSearch(){if(!searchInput.value.trim())return;centered.value=false;hasSearched.value=true;highlightedIndex.value=-1;closePanel();activeMode.value='search';await store.search(searchInput.value,{bookIds:selectedBooks.value,limit:20});window.history.replaceState(null,'','?q='+encodeURIComponent(searchInput.value.trim()))}
+async function performSearch(){if(!searchInput.value.trim())return;centered.value=false;hasSearched.value=true;highlightedIndex.value=-1;closePanel();activeMode.value='search';await store.search(searchInput.value,{bookIds:selectedBooks.value,limit:20});router.replace({name:'KnowledgeSearch',query:{q:searchInput.value.trim()}})}
 function searchByTag(t){searchInput.value=t;performSearch()}
-function clearSearch(){searchInput.value='';hasSearched.value=false;centered.value=true;store.clearSearchResults();closePanel();nextTick(()=>searchInputRef.value?.focus());window.history.replaceState(null,'','/knowledge')}
+function clearSearch(){searchInput.value='';hasSearched.value=false;centered.value=true;store.clearSearchResults();closePanel();nextTick(()=>searchInputRef.value?.focus());router.replace({name:'KnowledgeSearch'})}
 function onCitationClick(e){const c=e.target.closest('.ks-cite');if(!c)return;const m=c.textContent.match(/\d+/);if(!m)return;const s=(store.aiSummary?.sources||[])[parseInt(m[0])-1];if(s)scrollToResult(s)}
 function scrollToResult(src){var bk=(src.book||'').replace(/[《》]/g,'').trim(),pg=parseInt(src.page)||0;var i=store.searchResults.findIndex(function(r){var rbk=(r.book_title||'').replace(/[《》]/g,'').trim();var rpg=parseInt(r.page_start)||0;return rbk.includes(bk)||bk.includes(rbk)||(rbk&&bk&&rbk.toLowerCase()===bk.toLowerCase())});if(i<0&&pg>0)i=store.searchResults.findIndex(function(r){var rpg=parseInt(r.page_start)||0;return Math.abs(rpg-pg)<=2});if(i>=0)openDetail(store.searchResults[i],i)}
 function closePanel(){rightPanelOpen.value=false;activeResult.value=null;pdfUrl.value='';documentOutline.value=[];markdownContent.value='';relatedChunks.value=[];outlineFilter.value=''}
