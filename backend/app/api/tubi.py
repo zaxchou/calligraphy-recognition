@@ -1602,11 +1602,14 @@ async def get_all_results(
     skip: int = 0,
     limit: int = 16,
     artist: Optional[str] = Query(default=None, description="画家名称筛选"),
+    sort_by: Optional[str] = Query(default=None, description="排序字段"),
+    sort_dir: Optional[str] = Query(default="desc", description="排序方向: asc, desc"),
     db: Session = Depends(get_db)
 ):
     """获取所有分析结果列表"""
-    # 全量查询（无筛选且 limit 足够大时）走持久缓存，所有用户共享
-    if not artist and limit >= 500:
+    # 自定义排序时跳过缓存
+    use_cache = not artist and not sort_by and limit >= 500
+    if use_cache:
         cached = _get_results_cache()
         if cached:
             return cached
@@ -1616,9 +1619,25 @@ async def get_all_results(
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
         query = query.filter(TubiAnalysis.artist.in_(aliases))
-    analyses = query.order_by(TubiAnalysis.created_at.desc()).offset(skip).limit(limit).all()
 
-    is_full_list = not artist and limit >= 500  # 全量查询 → 轻量 response + 持久缓存
+    # 排序
+    sort_map = {
+        'inscription_percent': TubiAnalysis.inscription_percent,
+        'painting_percent': TubiAnalysis.painting_percent,
+        'blank_percent': TubiAnalysis.blank_percent,
+        'year': TubiAnalysis.year,
+        'created_at': TubiAnalysis.created_at,
+        'updated_at': TubiAnalysis.updated_at,
+    }
+    if sort_by and sort_by in sort_map:
+        sort_col = sort_map[sort_by]
+        order_fn = sort_col.desc() if sort_dir == 'desc' else sort_col.asc()
+        query = query.order_by(sort_col.is_(None).asc(), order_fn)
+    else:
+        query = query.order_by(TubiAnalysis.created_at.desc())
+    analyses = query.offset(skip).limit(limit).all()
+
+    is_full_list = not artist and not sort_by and limit >= 500  # 全量查询 → 轻量 response + 持久缓存
 
     results = []
     for analysis in analyses:
@@ -1724,6 +1743,8 @@ async def get_all_results(
 @router.get("/search")
 async def search_images(
     keyword: str = None,
+    skip: int = 0,
+    limit: int = 500,
     db: Session = Depends(get_db)
 ):
     """
@@ -1736,7 +1757,8 @@ async def search_images(
             return {
                 "success": False,
                 "message": "请输入搜索关键词",
-                "data": []
+                "data": [],
+                "total": 0
             }
 
         # 构建查询
@@ -1764,8 +1786,11 @@ async def search_images(
             pass
         query = query.filter(or_(*filters))
 
-        # 按创建时间倒序
-        analyses = query.order_by(TubiAnalysis.created_at.desc()).all()
+        # 总匹配数（用于分页）
+        total_matches = query.count()
+
+        # 按创建时间倒序 + 分页
+        analyses = query.order_by(TubiAnalysis.created_at.desc()).offset(skip).limit(limit).all()
 
         # 组装结果
         results = []
@@ -1806,8 +1831,32 @@ async def search_images(
                 except Exception:
                     pos_analysis_data = None
 
+            # 判断匹配字段（用于前端显示匹配来源）
+            matched_fields = []
+            kw_lower = keyword.lower()
+            check_pairs = [
+                ("title", str(analysis.title or '')),
+                ("artist", str(analysis.artist or '')),
+                ("inscription_content", str(analysis.inscription_content or '')),
+                ("inscription_modern", str(analysis.inscription_modern or '')),
+                ("seal_content", str(analysis.seal_content or '')),
+                ("notes", str(analysis.notes or '')),
+                ("analysis_note", str(analysis.analysis_note or '')),
+            ]
+            for field_name, field_val in check_pairs:
+                if kw_lower in field_val.lower():
+                    matched_fields.append(field_name)
+            # 年份精确匹配
+            try:
+                if int(keyword) == (analysis.year or 0):
+                    matched_fields.append("year")
+            except (ValueError, TypeError):
+                pass
+
             results.append({
                 "id": analysis.image_id,
+                "db_id": analysis.id,
+                "image_id": analysis.image_id,
                 "filename": analysis.filename,
                 "title": analysis.title,
                 "artist": analysis.artist,
@@ -1823,6 +1872,7 @@ async def search_images(
                 "position_analysis": pos_analysis_data,
                 "status": analysis.status,
                 "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
+                "updated_at": analysis.updated_at.isoformat() if analysis.updated_at else None,
                 "url": get_static_url(f"uploads/{actual_filename}") if actual_filename and file_exists else None,
                 "thumbnail_url": thumbnail_url,
                 "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
@@ -1830,13 +1880,29 @@ async def search_images(
                 "analysis_note": analysis.analysis_note,
                 "inscription_content": analysis.inscription_content,
                 "inscription_modern": analysis.inscription_modern,
-                "seal_content": analysis.seal_content
+                "seal_content": analysis.seal_content,
+                "album_name": analysis.album_name,
+                "album_index": analysis.album_index,
+                "tags": analysis.tags,
+                "material_tags": analysis.material_tags,
+                "period_phase": analysis.period_phase,
+                "artwork_width_cm": analysis.artwork_width_cm,
+                "artwork_height_cm": analysis.artwork_height_cm,
+                "matched_fields": matched_fields,
+                "computed_tags": compute_tags_cached({
+                    "title": analysis.title,
+                    "period_phase": analysis.period_phase,
+                    "artwork_height_cm": analysis.artwork_height_cm,
+                    "artwork_width_cm": analysis.artwork_width_cm,
+                    "content_analysis": analysis.content_analysis,
+                    "material_tags": analysis.material_tags,
+                })
             })
 
         return {
             "success": True,
             "data": results,
-            "total": len(results)
+            "total": total_matches
         }
 
     except Exception as e:

@@ -106,7 +106,9 @@
   --shadow-ring-hover: 0px 0px 0px 1px var(--ring-deep);
   --shadow-whisper: rgba(0,0,0,0.05) 0px 4px 24px;
   --shadow-elevated: rgba(0,0,0,0.08) 0px 8px 32px;
-  
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+
   /* === 容器 === */
   --container-max: 1200px;
   --container-wide: 1400px;
@@ -964,4 +966,67 @@ p.welcome-subtitle {
   align-items: center !important;
   justify-content: center !important;
   line-height: 1 !important;
+}
+
+/* ============================================
+   背景纹理 — 宣纸质感
+   ============================================ */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.015'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ============================================
+   全局卡片、表格样式微调
+   ============================================ */
+
+/* 所有 el-card 统一阴影 */
+.el-card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-cream) !important;
+  box-shadow: var(--shadow-card) !important;
+  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+.el-card:hover {
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+/* 表格行悬浮效果 */
+.works-table-row,
+.steles-page .el-table__row,
+.ranking-list-card .el-table__row {
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.works-table-row:hover,
+.ranking-list-card .el-table__row:hover {
+  background: var(--ivory) !important;
+}
+
+/* 空状态改善 */
+.no-data {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--stone-gray);
+  background: linear-gradient(180deg, var(--ivory) 0%, var(--parchment) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-warm);
+  margin-top: 20px;
+}
+
+/* 分页居中改善 */
+.pagination-container .el-pagination {
+  --el-pagination-button-width: 32px;
+  --el-pagination-button-height: 32px;
+  font-size: 13px;
+}
+
+/* 标签选中改善 */
+.el-tag {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid transparent !important;
 }

@@ -11,137 +11,105 @@
       </div>
     </div>
 
-    <!-- 作品表格 -->
-    <el-card shadow="hover" class="ranking-list-card">
-      <!-- 标签筛选指示条 -->
-      <div v-if="filterTag" class="filter-indicator">
-        <span>当前筛选: <strong>{{ filterTag }}</strong></span>
-        <span class="filter-count">共 {{ total }} 幅</span>
-        <el-button size="small" text @click="clearTagFilter">
-          <el-icon><Close /></el-icon>
-          清除
-        </el-button>
+    <!-- 顶部栏：翻页居左 + 工具居右（卡片外） -->
+    <div class="top-bar" v-if="total > pageSize || pagedRankings.length > 0">
+      <div class="top-bar-left">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          layout="total, sizes, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          prev-text="← 上一页"
+          next-text="下一页 →"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
       </div>
-      <template #header>
-        <div class="card-header">
-          <div class="header-nav">
-            <el-button 
-              :type="activeSort === 'inscription' ? 'primary' : 'default'" 
-              size="small" 
-              @click="sortBy('inscription')"
-            >
-              题跋比
-              <el-icon v-if="activeSort === 'inscription'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
-            <el-button 
-              :type="activeSort === 'painting' ? 'primary' : 'default'" 
-              size="small" 
-              @click="sortBy('painting')"
-            >
-              绘画比
-              <el-icon v-if="activeSort === 'painting'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
-            <el-button 
-              :type="activeSort === 'blank' ? 'primary' : 'default'" 
-              size="small" 
-              @click="sortBy('blank')"
-            >
-              留白比
-              <el-icon v-if="activeSort === 'blank'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
-            <el-button 
-              :type="activeSort === 'year' ? 'primary' : 'default'" 
-              size="small" 
-              @click="sortBy('year')"
-            >
-              年代
-              <el-icon v-if="activeSort === 'year'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
-            <el-button 
-              :type="activeSort === 'created' ? 'primary' : 'default'" 
-              size="small" 
-              @click="sortBy('created')"
-            >
-              创建时间
-              <el-icon v-if="activeSort === 'created'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
-            <el-button 
-              :type="activeSort === 'updated' ? 'primary' : 'default'" 
-              size="small" 
-              @click="sortBy('updated')"
-            >
-              更新时间
-              <el-icon v-if="activeSort === 'updated'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" />
-                <ArrowUp v-else />
-              </el-icon>
-            </el-button>
-          </div>
-          <div class="header-actions">
-            <div class="search-box">
-              <el-input 
-                v-model="searchKeyword" 
-                placeholder="搜索标题、作者、年代..." 
-                size="small" 
-                style="width: 200px"
-                clearable
-                @keyup.enter="handleSearch"
-              >
-                <template #prefix>
-                  <el-icon><Search /></el-icon>
-                </template>
-              </el-input>
-              <el-button type="primary" size="small" @click="handleSearch" :icon="Search">
-                搜索
-              </el-button>
-            </div>
-            <el-tag type="info" size="small">共 {{ total }} 幅作品</el-tag>
-            <el-button type="primary" size="small" @click="backToTubi" :icon="ArrowLeft">
-              返回题跋分析
-            </el-button>
-            <el-button
-              size="small"
-              :type="isAdmin ? 'warning' : 'default'"
-              @click="toggleAdmin"
-            >
-              {{ isAdmin ? '锁定' : '管理' }}
-            </el-button>
-          </div>
+      <div class="top-bar-right">
+        <el-select v-model="selectedArtist" size="small" placeholder="筛选画家" style="width: 110px" @change="onArtistChange" clearable>
+          <el-option label="全部画家" value="all" />
+          <el-option v-for="name in artistOptions" :key="name" :label="name" :value="name" />
+        </el-select>
+        <div class="search-box">
+          <el-input v-model="searchKeyword" placeholder="搜索标题、题跋、印章..." size="small" style="width: 160px" clearable @keyup.enter="handleSearch">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <el-button type="primary" size="small" @click="handleSearch" :icon="Search">搜索</el-button>
         </div>
-      </template>
+        <el-button size="small" @click="backToTubi" :icon="ArrowLeft" text>返回主页</el-button>
+        <el-button v-if="isAdmin" size="small" type="warning" @click="toggleAdmin">锁定</el-button>
+        <el-button v-else size="small" @click="toggleAdmin" text>管理</el-button>
+      </div>
+    </div>
 
-      <!-- 作品表格 -->
+    <!-- 标签筛选指示条 -->
+    <div v-if="filterTag" class="filter-indicator">
+      <span>当前筛选: <strong>{{ filterTag }}</strong></span>
+      <span class="filter-count">共 {{ total }} 幅</span>
+      <el-button size="small" text @click="clearTagFilter">
+        <el-icon><Close /></el-icon>
+        清除
+      </el-button>
+    </div>
+    <!-- 搜索模式指示条 -->
+    <div v-if="isSearchMode" class="filter-indicator search-indicator">
+      <span>搜索结果: <strong>{{ searchKeyword }}</strong></span>
+      <span class="filter-count">共 {{ total }} 幅</span>
+      <el-button size="small" text @click="clearSearch">
+        <el-icon><Close /></el-icon>
+        清除搜索
+      </el-button>
+    </div>
+
+    <!-- 表格卡片 -->
+    <div class="list-container">
       <div class="works-table-container" v-if="pagedRankings.length > 0">
         <div class="works-table">
           <div class="works-table-header">
             <div class="table-col col-image">图片</div>
             <div class="table-col col-info">作品信息</div>
             <div class="table-col col-author">作者</div>
-            <div class="table-col col-year">年代</div>
-            <div class="table-col col-stats">占比数据</div>
-            <div class="table-col col-action">操作</div>
+            <div class="table-col col-age">年龄</div>
+            <div class="table-col col-year sortable" :class="{ 'is-sorted': activeSort === 'year' }" @click="sortBy('year')">
+              年代
+              <el-icon v-if="activeSort === 'year'" class="sort-icon">
+                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              </el-icon>
+            </div>
+            <div class="table-col col-inscription sortable" :class="{ 'is-sorted': activeSort === 'inscription' }" @click="sortBy('inscription')">
+              题跋%
+              <el-icon v-if="activeSort === 'inscription'" class="sort-icon">
+                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              </el-icon>
+            </div>
+            <div class="table-col col-painting sortable" :class="{ 'is-sorted': activeSort === 'painting' }" @click="sortBy('painting')">
+              绘画%
+              <el-icon v-if="activeSort === 'painting'" class="sort-icon">
+                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              </el-icon>
+            </div>
+            <div class="table-col col-blank sortable" :class="{ 'is-sorted': activeSort === 'blank' }" @click="sortBy('blank')">
+              留白%
+              <el-icon v-if="activeSort === 'blank'" class="sort-icon">
+                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              </el-icon>
+            </div>
+            <div class="table-col col-created sortable" :class="{ 'is-sorted': activeSort === 'created' }" @click="sortBy('created')">
+              创建时间
+              <el-icon v-if="activeSort === 'created'" class="sort-icon">
+                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              </el-icon>
+            </div>
+            <div v-if="isAdmin" class="table-col col-action">操作</div>
           </div>
           <div class="works-table-body">
-            <div 
-              v-for="(item, index) in pagedRankings" 
+            <div
+              v-for="(item, index) in pagedRankings"
               :key="item.id"
               class="works-table-row"
               @click="loadHistoryItem(item)"
+              :data-row-id="item.id"
             >
               <div class="table-col col-image">
                 <div class="work-thumbnail">
@@ -153,51 +121,55 @@
               </div>
               <div class="table-col col-info">
                 <div class="work-title" @click.stop="openDetailInNewWindow(item)">{{ item.title || '未命名' }}</div>
+                <div v-if="isSearchMode && item.matched_fields?.length" class="match-tags">
+                  <el-tag v-for="field in item.matched_fields" :key="field" size="small" :type="matchTagType(field)" class="match-tag">
+                    {{ matchFieldLabel(field) }}
+                  </el-tag>
+                </div>
               </div>
               <div class="table-col col-author">
-                <span v-if="item.artist">{{ item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</span>
-                <span v-else>-</span>
+                <span v-if="item.artist" class="author-name">{{ item.artist }}</span>
+                <span v-else class="author-name">-</span>
+              </div>
+              <div class="table-col col-age">
+                <span v-if="getDisplayAge(item) !== null" class="age-val">{{ getDisplayAge(item) }}岁</span>
+                <span v-else class="age-val">-</span>
               </div>
               <div class="table-col col-year">
                 <span v-if="item.year">{{ item.year }}年</span>
                 <span v-else>-</span>
               </div>
-              <div class="table-col col-stats">
-                <div class="work-stats">
-                  <el-tag size="small" type="primary">题跋 {{ item.inscriptionPercent?.toFixed(1) }}%</el-tag>
-                  <el-tag size="small" type="success">绘画 {{ item.paintingPercent?.toFixed(1) }}%</el-tag>
-                  <el-tag size="small" type="info">留白 {{ item.blankPercent?.toFixed(1) }}%</el-tag>
-                </div>
+              <div class="table-col col-inscription">
+                <span class="stat-val">{{ item.inscriptionPercent?.toFixed(1) }}%</span>
               </div>
-              <div class="table-col col-action">
-                <el-button type="primary" size="small" @click.stop="openDetailInNewWindow(item)">
-                  详情
-                </el-button>
-                <template v-if="isAdmin">
-                  <el-button type="warning" size="small" @click.stop="editItem(item)">
-                    编辑
-                  </el-button>
-                  <el-button type="danger" size="small" @click.stop="deleteItem(item)">
-                    删除
-                  </el-button>
-                </template>
+              <div class="table-col col-painting">
+                <span class="stat-val">{{ item.paintingPercent?.toFixed(1) }}%</span>
+              </div>
+              <div class="table-col col-blank">
+                <span class="stat-val">{{ item.blankPercent?.toFixed(1) }}%</span>
+              </div>
+              <div class="table-col col-created">
+                <span class="date-val">{{ item.created_at ? item.created_at.slice(0, 10) : '-' }}</span>
+              </div>
+              <div v-if="isAdmin" class="table-col col-action">
+                <div class="action-btn-wrap" @mouseenter="openActionMenu($event)" @mouseleave="closeActionMenu">
+                  <button class="action-btn" @click.stop>
+                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </button>
+                  <div class="action-menu" v-show="activeActionItem === item.id">
+                    <div class="action-menu-item" @click.stop="openDetailInNewWindow(item)">详情</div>
+                    <template v-if="isAdmin">
+                      <div class="action-menu-divider"></div>
+                      <div class="action-menu-item" @click.stop="editItem(item)">编辑</div>
+                      <div class="action-menu-divider"></div>
+                      <div class="action-menu-item action-menu-danger" @click.stop="deleteItem(item)">删除</div>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- 分页 -->
-      <div class="pagination-container" v-if="total > pageSize">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
       </div>
 
       <!-- 无数据提示 -->
@@ -206,7 +178,22 @@
         <p>暂无数据，请先上传画作</p>
         <el-button type="primary" @click="backToTubi">返回上传</el-button>
       </div>
-    </el-card>
+    </div>
+
+    <!-- 底部翻页 -->
+    <div class="list-footer" v-if="total > pageSize">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        layout="total, sizes, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+        prev-text="← 上一页"
+        next-text="下一页 →"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
 
     <!-- 编辑画作信息对话框 -->
     <TubiEditDialog
@@ -233,13 +220,48 @@ const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
 
 // 排行榜数据
 const rankings = ref([])
-const allRankings = ref([])
 const currentPage = ref(1)
 const pageSize = ref(20)
-const activeSort = ref('inscription') // inscription, painting, blank, year, created, updated
-const sortDirection = ref('asc') // asc, desc
+const activeSort = ref('inscription')
+const sortDirection = ref('desc')
+
+// 前端排序名 → API 字段名映射
+const SORT_FIELD_MAP = {
+  inscription: 'inscription_percent',
+  painting: 'painting_percent',
+  blank: 'blank_percent',
+  year: 'year',
+  created: 'created_at',
+}
 const searchKeyword = ref('')
 const filterTag = ref(null) // 标签筛选
+const isSearchMode = ref(false)
+const activeActionItem = ref(null)
+
+let actionMenuTimer = null
+function openActionMenu(e) {
+  if (actionMenuTimer) clearTimeout(actionMenuTimer)
+  const row = e.currentTarget.closest('[data-row-id]')
+  if (row) activeActionItem.value = row.dataset.rowId
+}
+function closeActionMenu() {
+  actionMenuTimer = setTimeout(() => {
+    activeActionItem.value = null
+  }, 150)
+}
+const selectedArtist = ref('all')
+
+// 画家列表（从 API 获取，只显示真实存在的画家）
+const artistOptions = ref([])
+async function fetchArtistList() {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE || '/api/v1'}/content-analysis/artists`)
+    const data = await res.json()
+    artistOptions.value = data.artists || []
+  } catch (e) {
+    console.error('获取画家列表失败', e)
+  }
+}
 
 // 编辑对话框 ref
 const editDialogRef = ref(null)
@@ -280,49 +302,69 @@ function getItemAllTags(item) {
 // 清除标签筛选
 function clearTagFilter() {
   filterTag.value = null
-  handleSearch() // 重新应用搜索和排序
+  loadRankings()
 }
 
-// 分页数据（包含标签筛选）
+// 当前页数据（包含标签筛选）
 const pagedRankings = computed(() => {
   let list = rankings.value
-  
-  // 标签筛选
+  // 标签筛选（仅当前页内）
   if (filterTag.value) {
     list = list.filter(item => getItemAllTags(item).includes(filterTag.value))
   }
-  
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return list.slice(start, end)
+  return list
 })
 
-// 总数量（标签筛选后使用筛选结果数，否则使用 API 返回的 total）
+// 总数量
 const total = computed(() => {
+  if (isSearchMode.value) return totalCount.value
   if (filterTag.value) {
     return rankings.value.filter(item => getItemAllTags(item).includes(filterTag.value)).length
   }
   return totalCount.value
 })
 
-// 搜索处理
-function handleSearch() {
+// 搜索处理（服务端搜索）
+async function handleSearch() {
   if (!searchKeyword.value.trim()) {
-    rankings.value = [...allRankings.value]
-  } else {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    rankings.value = allRankings.value.filter(item => {
-      return (
-        (item.title && item.title.toLowerCase().includes(keyword)) ||
-        (item.artist && item.artist.toLowerCase().includes(keyword)) ||
-        (item.year && String(item.year).includes(keyword)) ||
-        (item.notes && item.notes.toLowerCase().includes(keyword)) ||
-        (item.analysisNote && item.analysisNote.toLowerCase().includes(keyword))
-      )
-    })
+    clearSearch()
+    return
   }
+  isSearchMode.value = true
   currentPage.value = 1
-  sortRankings()
+  await loadSearchResults()
+}
+
+async function loadSearchResults() {
+  try {
+    const skip = (currentPage.value - 1) * pageSize.value
+    const response = await tubiApi.searchImages(searchKeyword.value.trim(), skip, pageSize.value)
+    if (response.success) {
+      const works = (response.data || []).map(item => ({
+        ...item,
+        inscriptionPercent: item.inscription_percent,
+        paintingPercent: item.painting_percent,
+        blankPercent: item.blank_percent,
+        thumbnailUrl: item.thumbnail_url,
+        analysisNote: item.analysis_note,
+      }))
+      rankings.value = works
+      totalCount.value = response.total || works.length
+    } else {
+      ElMessage.error(response.message || '搜索失败')
+    }
+  } catch (error) {
+    console.error('搜索失败:', error)
+    ElMessage.error('搜索失败: ' + (error.message || '网络错误'))
+  }
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
+  isSearchMode.value = false
+  currentPage.value = 1
+  loadRankings()
+  syncPageToUrl()
 }
 
 // 在新窗口打开详情
@@ -400,6 +442,13 @@ function onEditDeleted() {
   loadRankings()
 }
 
+// 操作下拉菜单
+function handleAction(cmd, item) {
+  if (cmd === 'detail') openDetailInNewWindow(item)
+  else if (cmd === 'edit') editItem(item)
+  else if (cmd === 'delete') deleteItem(item)
+}
+
 // 删除作品
 async function deleteItem(item) {
   try {
@@ -446,60 +495,81 @@ async function toggleAdmin() {
   } catch { /* 用户取消 */ }
 }
 
+// 同步页码到 URL
+function syncPageToUrl() {
+  const query = { ...route.query }
+  if (currentPage.value > 1) query.page = String(currentPage.value)
+  else delete query.page
+  if (pageSize.value !== 20) query.size = String(pageSize.value)
+  else delete query.size
+  router.replace({ name: 'TubiList', query })
+}
+
 // 分页处理
 function handleSizeChange(size) {
   pageSize.value = size
   currentPage.value = 1
+  if (isSearchMode.value) loadSearchResults()
+  else loadRankings()
+  syncPageToUrl()
 }
 
 function handleCurrentChange(current) {
   currentPage.value = current
+  if (isSearchMode.value) loadSearchResults()
+  else loadRankings()
+  syncPageToUrl()
+}
+
+// 画家筛选
+function onArtistChange() {
+  isSearchMode.value = false
+  searchKeyword.value = ''
+  currentPage.value = 1
+  loadRankings()
+  syncPageToUrl()
 }
 
 // 排序处理
 function sortBy(sortType) {
   if (activeSort.value === sortType) {
-    // 切换排序方向
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
   } else {
-    // 新的排序类型，默认使用倒序
     activeSort.value = sortType
     sortDirection.value = 'desc'
   }
-  sortRankings()
+  currentPage.value = 1
+  loadRankings()
+  syncPageToUrl()
 }
 
-// 排序函数
-function sortRankings() {
-  const direction = sortDirection.value === 'asc' ? 1 : -1
-  
-  if (activeSort.value === 'inscription') {
-    rankings.value.sort((a, b) => ((b.inscriptionPercent || 0) - (a.inscriptionPercent || 0)) * direction)
-  } else if (activeSort.value === 'painting') {
-    rankings.value.sort((a, b) => ((b.paintingPercent || 0) - (a.paintingPercent || 0)) * direction)
-  } else if (activeSort.value === 'blank') {
-    rankings.value.sort((a, b) => ((b.blankPercent || 0) - (a.blankPercent || 0)) * direction)
-  } else if (activeSort.value === 'year') {
-    rankings.value.sort((a, b) => {
-      const yearA = parseInt(a.year) || 0
-      const yearB = parseInt(b.year) || 0
-      return (yearB - yearA) * direction
-    })
-  } else if (activeSort.value === 'created') {
-    rankings.value.sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-      return (dateB - dateA) * direction
-    })
-  } else if (activeSort.value === 'updated') {
-    rankings.value.sort((a, b) => {
-      const dateA = a.updated_at ? new Date(a.updated_at).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0)
-      const dateB = b.updated_at ? new Date(b.updated_at).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0)
-      return (dateB - dateA) * direction
-    })
+// 匹配字段标签显示
+function matchFieldLabel(field) {
+  const labels = {
+    title: '作品名',
+    artist: '作者',
+    inscription_content: '题跋',
+    inscription_modern: '题跋(白话)',
+    seal_content: '印章',
+    notes: '备注',
+    analysis_note: 'AI分析',
+    year: '年代',
   }
-  currentPage.value = 1 // 重置到第一页
+  return labels[field] || field
 }
+function matchTagType(field) {
+  const types = {
+    title: '',
+    inscription_content: 'success',
+    inscription_modern: 'success',
+    seal_content: 'warning',
+    artist: 'info',
+    year: 'info',
+  }
+  return types[field] || 'info'
+}
+
+// 排序已改为服务端排序（`loadRankings()` 传 sort_by/sort_dir 给 API）
 
 // 总作品数（来自 API 的 total 字段）
 const totalCount = ref(0)
@@ -507,7 +577,10 @@ const totalCount = ref(0)
 // 加载列表数据
 async function loadRankings() {
   try {
-    const response = await tubiApi.getAllResults(0, 2000)
+    const skip = (currentPage.value - 1) * pageSize.value
+    const artistParam = selectedArtist.value !== 'all' ? selectedArtist.value : undefined
+    const sortField = SORT_FIELD_MAP[activeSort.value]
+    const response = await tubiApi.getAllResults(skip, pageSize.value, artistParam, sortField, sortDirection.value)
     if (response.success) {
       // 转换字段名
       const works = (response.data || []).map(item => ({
@@ -522,10 +595,8 @@ async function loadRankings() {
         updated_at: item.updated_at
       }))
 
-      allRankings.value = works
       rankings.value = works
       totalCount.value = response.total || works.length
-      sortRankings() // 应用当前排序
     } else {
       ElMessage.error(response.message || '加载列表失败')
     }
@@ -537,11 +608,26 @@ async function loadRankings() {
 
 // 页面挂载时加载数据
 onMounted(() => {
-  // 检查 URL 参数中的 tag
+  // 检查 URL 参数中的 tag、artist、page
   const tagFromQuery = route.query.tag
   if (tagFromQuery) {
     filterTag.value = decodeURIComponent(tagFromQuery)
   }
+  const artistFromQuery = route.query.artist
+  if (artistFromQuery && typeof artistFromQuery === 'string') {
+    selectedArtist.value = artistFromQuery
+  }
+  const pageFromQuery = route.query.page
+  if (pageFromQuery) {
+    const p = parseInt(pageFromQuery, 10)
+    if (p > 1) currentPage.value = p
+  }
+  const sizeFromQuery = route.query.size
+  if (sizeFromQuery) {
+    const s = parseInt(sizeFromQuery, 10)
+    if ([10, 20, 50, 100].includes(s)) pageSize.value = s
+  }
+  fetchArtistList()
   loadRankings()
 })
 </script>
@@ -595,8 +681,11 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.ranking-list-card {
-  margin-bottom: 20px;
+.list-container {
+  border: 1px solid var(--border-cream);
+  border-radius: var(--radius-lg);
+  background: var(--pure-white);
+  overflow: hidden;
 }
 
 /* 标签筛选指示器 */
@@ -621,45 +710,19 @@ onMounted(() => {
   color: var(--stone-gray);
   font-size: 13px;
 }
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.header-nav {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.header-nav .el-button,
-.header-actions .el-button {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  line-height: 1 !important;
+.search-indicator {
+  background: linear-gradient(180deg, #eaf7ea 0%, #e2f0e2 100%) !important;
 }
 
 .sort-icon {
-  margin-left: 4px;
-  font-size: 12px;
+  margin-left: 2px;
+  font-size: 11px;
   transition: transform 0.3s ease;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 
 .search-box {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -670,22 +733,104 @@ onMounted(() => {
 
 .works-table {
   width: 100%;
-  border-collapse: collapse;
   background: var(--pure-white);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-whisper);
-  border: 1px solid var(--border-cream);
+}
+.top-bar .el-pagination {
+  --el-pagination-button-width: 32px;
+  --el-pagination-button-height: 32px;
+  font-size: 13px;
+  flex-wrap: nowrap;
+}
+.top-bar :deep(.el-pagination__sizes) {
+  margin-right: 4px;
+}
+.top-bar :deep(.el-pagination__sizes .el-select .el-input) {
+  width: 90px !important;
+}
+.top-bar .el-pagination .el-pagination__total {
+  font-size: 12px;
+  color: var(--stone-gray);
+  margin-right: 8px;
+  line-height: 32px;
+}
+.top-bar :deep(.el-pagination .btn-prev),
+.top-bar :deep(.el-pagination .btn-next) {
+  height: 32px !important;
+  min-width: 32px;
+  padding: 0 6px !important;
+  font-size: 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent !important;
+  line-height: 32px !important;
+}
+.top-bar :deep(.el-pagination .el-pager li) {
+  height: 32px !important;
+  min-width: 32px;
+  line-height: 32px !important;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+.top-bar :deep(.el-pagination .el-pager li.active) {
+  background: var(--cinnabar);
+  color: #fff;
 }
 
 .works-table-header {
   display: flex;
-  background: var(--ivory);
+  background: var(--pure-white);
   border-bottom: 1px solid var(--border-cream);
-  padding: 12px 16px;
-  font-weight: 500;
+  padding: 0 16px;
+  font-weight: 600;
+  color: var(--olive-gray);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  letter-spacing: 0.03em;
+  user-select: none;
+}
+
+.works-table-header .table-col {
+  padding: 6px 6px 10px;
+}
+
+.table-col.sortable {
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.table-col.sortable:hover {
+  background: rgba(0,0,0,0.03);
+  color: var(--near-black);
+}
+.table-col.sortable.is-sorted {
+  color: var(--cinnabar);
+}
+
+.works-table-row {
+  display: flex;
+  border-bottom: 1px solid var(--border-cream);
+  padding: 10px 16px;
+  transition: background var(--transition-fast);
+  cursor: pointer;
+  align-items: center;
+}
+.works-table-row:last-child {
+  border-bottom: none;
+}
+.works-table-row:hover {
+  background: var(--ivory);
+}
+
+.stat-val {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--charcoal-warm);
-  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.date-val {
+  font-size: 11px;
+  color: var(--stone-gray);
   font-family: var(--font-sans);
 }
 
@@ -716,41 +861,139 @@ onMounted(() => {
 }
 
 .col-image {
-  width: 100px;
+  width: 80px;
   flex-shrink: 0;
 }
 
 .col-info {
   flex: 1;
   min-width: 0;
-  padding: 0 16px;
-  font-size: 14px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .col-author {
-  width: 100px;
+  width: 60px;
   flex-shrink: 0;
-  padding: 0 16px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+.author-name {
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
+  font-weight: 500;
+}
+
+.col-age {
+  width: 50px;
+  flex-shrink: 0;
+  justify-content: center;
+  font-size: 11px;
+}
+.age-val {
+  color: var(--stone-gray);
 }
 
 .col-year {
-  width: 100px;
+  width: 70px;
   flex-shrink: 0;
-  padding: 0 16px;
+  justify-content: center;
 }
 
-.col-stats {
-  width: 320px;
+.col-inscription {
+  width: 70px;
   flex-shrink: 0;
-  padding: 0 16px;
+  justify-content: center;
+}
+
+.col-painting {
+  width: 70px;
+  flex-shrink: 0;
+  justify-content: center;
+}
+
+.col-blank {
+  width: 70px;
+  flex-shrink: 0;
+  justify-content: center;
+}
+
+.col-created {
+  width: 90px;
+  flex-shrink: 0;
+  justify-content: center;
 }
 
 .col-action {
-  width: 240px;
+  width: 100px;
   flex-shrink: 0;
-  justify-content: flex-end;
+  justify-content: center;
+}
+.col-action {
+  position: relative;
+}
+.action-btn-wrap {
+  position: relative;
+  display: inline-flex;
+  padding-bottom: 6px;
+  margin-bottom: -6px;
+}
+.action-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 5px 12px;
+  background: var(--cinnabar);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+}
+.action-btn:hover {
+  background: var(--cinnabar-light);
+}
+.action-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--border-cream);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  z-index: 1000;
+  padding: 4px 0;
+}
+.action-menu-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--charcoal-warm);
+  cursor: pointer;
+  text-align: center;
+  transition: background var(--transition-fast);
+  font-family: var(--font-sans);
+}
+.action-menu-item:hover {
+  background: var(--ivory);
+}
+.action-menu-item:first-child {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.action-menu-item:last-child {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+.action-menu-danger {
+  color: var(--error-crimson) !important;
+}
+.action-menu-divider {
+  height: 1px;
+  background: var(--border-cream);
+  margin: 4px 0;
 }
 
 /* 作品缩略图 */
@@ -796,6 +1039,19 @@ onMounted(() => {
   color: var(--cinnabar);
 }
 
+.match-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.match-tag {
+  font-size: 10px !important;
+  padding: 0 5px !important;
+  height: 18px !important;
+  line-height: 18px !important;
+}
+
 /* 作品统计 */
 .work-stats {
   display: flex;
@@ -804,11 +1060,98 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-/* 分页 */
-.pagination-container {
+/* 底部栏：翻页居左、工具居右 */
+/* 顶部栏：翻页居左 + 工具居右 */
+.top-bar {
   display: flex;
-  justify-content: center;
-  margin-top: 24px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0 12px;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+.top-bar-left {
+  flex-shrink: 0;
+}
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.top-bar-right .el-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.top-bar-right :deep(.el-select__wrapper),
+.top-bar-right :deep(.el-input__wrapper) {
+  box-shadow: none !important;
+  border: 1px solid var(--border-warm);
+  border-radius: var(--radius-md) !important;
+  padding: 0 6px !important;
+  min-height: 30px !important;
+  height: 30px !important;
+}
+.top-bar-right :deep(.el-select__wrapper:hover),
+.top-bar-right :deep(.el-input__wrapper:hover) {
+  border-color: var(--ring-deep);
+}
+
+/* 底部翻页 */
+.list-footer {
+  display: flex;
+  justify-content: flex-start;
+  padding: 12px 0;
+}
+.list-footer .el-pagination {
+  --el-pagination-button-width: 36px;
+  --el-pagination-button-height: 36px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.list-footer .el-pagination .el-pagination__total {
+  font-size: 13px;
+  color: var(--stone-gray);
+  margin-right: 12px;
+  line-height: 36px;
+}
+.list-footer :deep(.el-pagination .btn-prev),
+.list-footer :deep(.el-pagination .btn-next) {
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent !important;
+  min-width: 36px;
+  height: 36px !important;
+  padding: 0 10px !important;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 36px !important;
+}
+.list-footer :deep(.el-pagination .btn-prev:hover),
+.list-footer :deep(.el-pagination .btn-next:hover) {
+  color: var(--cinnabar);
+}
+.list-footer :deep(.el-pagination .el-pager li) {
+  border-radius: var(--radius-md);
+  min-width: 36px;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+.list-footer :deep(.el-pagination .el-pager li:hover) {
+  border-color: var(--border-warm);
+  color: var(--cinnabar);
+  background: var(--ivory);
+}
+.list-footer :deep(.el-pagination .el-pager li.active) {
+  background: var(--cinnabar);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--cinnabar);
 }
 
 /* 无数据提示 */
@@ -940,67 +1283,38 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+@media (max-width: 1024px) {
+  .col-age, .col-inscription, .col-painting, .col-blank {
+    width: 55px;
+    font-size: 10px;
+  }
+  .col-created {
+    width: 75px;
+    font-size: 10px;
+  }
+}
+
 @media (max-width: 768px) {
-  .card-header {
+  .top-bar {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
-  
-  .header-nav {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .works-table-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .table-col {
-    width: 100%;
-    justify-content: flex-start;
-    padding: 0;
-  }
-  
-  .col-image {
-    width: 100%;
-  }
-  
-  .col-info {
-    padding: 0;
-  }
-  
-  .col-author {
-    width: 100%;
-    padding: 0;
-  }
-  
-  .col-year {
-    width: 100%;
-    padding: 0;
-  }
-  
-  .col-stats {
-    width: 100%;
-    padding: 0;
-  }
-  
-  .col-action {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 8px;
-  }
-  
-  .work-stats {
-    flex-direction: row;
+  .top-bar-right {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .works-table-container {
+    overflow-x: auto;
+  }
+  .works-table {
+    min-width: 820px;
+  }
+
+  .col-action .el-button,
+  .col-action .el-dropdown .el-button {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
   }
 }
 </style>

@@ -71,6 +71,9 @@
       </div>
     </transition>
 
+    <!-- 宣纸背景纹理 -->
+    <div class="grain-overlay"></div>
+
     <!-- 主内容区 -->
     <main class="main-content">
       <router-view />

@@ -171,14 +171,18 @@ export const tubiApi = {
       notes: yearData.notes
     })
   },
-  getAllResults(skip = 0, limit = 500, artist = null) {
+  getAllResults(skip = 0, limit = 500, artist = null, sortBy = null, sortDir = 'desc') {
     const params = { skip, limit }
     if (artist && artist !== 'all') params.artist = artist
+    if (sortBy) {
+      params.sort_by = sortBy
+      params.sort_dir = sortDir
+    }
     return api.get('/tubi/results', { params })
   },
-  searchImages(keyword) {
+  searchImages(keyword, skip = 0, limit = 500) {
     return api.get('/tubi/search', {
-      params: { keyword }
+      params: { keyword, skip, limit }
     })
   },
   deleteImage(imageId) {
