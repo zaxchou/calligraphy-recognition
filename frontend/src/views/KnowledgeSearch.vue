@@ -100,7 +100,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -110,6 +110,7 @@ import { useAdminAuth } from '../composables/useAdminAuth'
 
 const { isAuthenticated: isAdmin } = useAdminAuth()
 const router = useRouter()
+const route = useRoute()
 import DocumentOutline from '@/components/DocumentOutline.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import ImageRelatedChunks from '@/components/ImageRelatedChunks.vue'
@@ -181,7 +182,7 @@ function openImagePreview(img,list,n){previewList.value=list&&list.length>1?list
 function nextPreview(){if(previewIndex.value<previewList.value.length-1){previewIndex.value++;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function onPreviewKey(e){if(e.key==='ArrowRight')nextPreview();else if(e.key==='ArrowLeft')prevPreview();else if(e.key==='Escape')previewVisible.value=false}
-onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);const urlQ=new URLSearchParams(window.location.search).get('q');if(urlQ){searchInput.value=urlQ;await performSearch()}else{nextTick(()=>searchInputRef.value?.focus())};document.addEventListener('keydown',onPreviewKey)})
+onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);const urlQ=route.query.q;if(urlQ){searchInput.value=urlQ;await performSearch()}else{nextTick(()=>searchInputRef.value?.focus())};document.addEventListener('keydown',onPreviewKey)})
 onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 </script>
 
