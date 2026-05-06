@@ -62,33 +62,43 @@
             <div class="table-col col-author">作者</div>
             <div class="table-col col-age">年龄</div>
             <div class="table-col col-year sortable" :class="{ 'is-sorted': activeSort === 'year' }" @click="sortBy('year')">
-              年代
-              <el-icon v-if="activeSort === 'year'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              <span class="sort-label">年代</span>
+              <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'year' }">
+                <ArrowDown v-if="activeSort === 'year' && sortDirection === 'desc'" />
+                <ArrowUp v-else-if="activeSort === 'year'" />
+                <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
             <div class="table-col col-inscription sortable" :class="{ 'is-sorted': activeSort === 'inscription' }" @click="sortBy('inscription')">
-              题跋%
-              <el-icon v-if="activeSort === 'inscription'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              <span class="sort-label">题跋%</span>
+              <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'inscription' }">
+                <ArrowDown v-if="activeSort === 'inscription' && sortDirection === 'desc'" />
+                <ArrowUp v-else-if="activeSort === 'inscription'" />
+                <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
             <div class="table-col col-painting sortable" :class="{ 'is-sorted': activeSort === 'painting' }" @click="sortBy('painting')">
-              绘画%
-              <el-icon v-if="activeSort === 'painting'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              <span class="sort-label">绘画%</span>
+              <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'painting' }">
+                <ArrowDown v-if="activeSort === 'painting' && sortDirection === 'desc'" />
+                <ArrowUp v-else-if="activeSort === 'painting'" />
+                <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
             <div class="table-col col-blank sortable" :class="{ 'is-sorted': activeSort === 'blank' }" @click="sortBy('blank')">
-              留白%
-              <el-icon v-if="activeSort === 'blank'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              <span class="sort-label">留白%</span>
+              <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'blank' }">
+                <ArrowDown v-if="activeSort === 'blank' && sortDirection === 'desc'" />
+                <ArrowUp v-else-if="activeSort === 'blank'" />
+                <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
             <div class="table-col col-created sortable" :class="{ 'is-sorted': activeSort === 'created' }" @click="sortBy('created')">
-              创建时间
-              <el-icon v-if="activeSort === 'created'" class="sort-icon">
-                <ArrowDown v-if="sortDirection === 'desc'" /><ArrowUp v-else />
+              <span class="sort-label">创建时间</span>
+              <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'created' }">
+                <ArrowDown v-if="activeSort === 'created' && sortDirection === 'desc'" />
+                <ArrowUp v-else-if="activeSort === 'created'" />
+                <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
             <div v-if="isAdmin" class="table-col col-action">操作</div>
@@ -162,8 +172,22 @@
         </div>
       </div>
 
+      <!-- 加载骨架屏 -->
+      <div v-if="loading && rankings.length === 0" class="loading-skeleton">
+        <div v-for="i in 8" :key="i" class="skeleton-row" :style="{ animationDelay: (i * 0.05) + 's' }">
+          <div class="skeleton-cell skeleton-img"></div>
+          <div class="skeleton-cell skeleton-title"></div>
+          <div class="skeleton-cell skeleton-text"></div>
+          <div class="skeleton-cell skeleton-text"></div>
+          <div class="skeleton-cell skeleton-stat"></div>
+          <div class="skeleton-cell skeleton-stat"></div>
+          <div class="skeleton-cell skeleton-stat"></div>
+          <div class="skeleton-cell skeleton-date"></div>
+          <div class="skeleton-cell skeleton-btn"></div>
+        </div>
+      </div>
       <!-- 无数据提示 -->
-      <div v-if="rankings.length === 0" class="no-data">
+      <div v-if="!loading && rankings.length === 0" class="no-data">
         <el-icon size="48"><Picture /></el-icon>
         <p>暂无数据，请先上传画作</p>
         <el-button type="primary" @click="backToTubi">返回上传</el-button>
@@ -211,6 +235,7 @@ const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
 
 // 排行榜数据
 const rankings = ref([])
+const loading = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const activeSort = ref('inscription')
@@ -569,6 +594,7 @@ const totalCount = ref(0)
 
 // 加载列表数据
 async function loadRankings() {
+  loading.value = true
   try {
     const skip = (currentPage.value - 1) * pageSize.value
     const artistParam = selectedArtist.value !== 'all' ? selectedArtist.value : undefined
@@ -596,6 +622,8 @@ async function loadRankings() {
   } catch (error) {
     console.error('加载列表失败:', error)
     ElMessage.error('加载失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -711,7 +739,16 @@ onMounted(() => {
 .sort-icon {
   margin-left: 2px;
   font-size: 11px;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.2s;
+  opacity: 0.35;
+  display: inline-flex;
+  align-items: center;
+}
+.sortable:hover .sort-icon {
+  opacity: 0.7;
+}
+.sort-icon.sort-active {
+  opacity: 1;
 }
 
 .search-box {
@@ -722,7 +759,7 @@ onMounted(() => {
 
 /* 作品表格 */
 .works-table-container {
-  margin: 20px 0;
+  margin: 0;
 }
 
 .works-table {
@@ -804,7 +841,7 @@ onMounted(() => {
 }
 
 .works-table-header .table-col {
-  padding: 6px 6px 10px;
+  padding: 16px 6px;
 }
 
 .table-col.sortable {
@@ -819,32 +856,49 @@ onMounted(() => {
   color: var(--cinnabar);
 }
 
+@keyframes rowFadeIn {
+  from { opacity: 0; margin-left: -4px; }
+  to { opacity: 1; margin-left: 0; }
+}
 .works-table-row {
   display: flex;
   border-bottom: 1px solid var(--border-cream);
-  padding: 10px 16px;
-  transition: background var(--transition-fast);
+  padding: 6px 16px;
+  transition: background var(--transition-fast), transform var(--transition-normal), box-shadow var(--transition-normal);
   cursor: pointer;
   align-items: center;
+  animation: rowFadeIn 0.3s ease forwards;
 }
+.works-table-row:nth-child(1) { animation-delay: 0s; }
+.works-table-row:nth-child(2) { animation-delay: 0.03s; }
+.works-table-row:nth-child(3) { animation-delay: 0.06s; }
+.works-table-row:nth-child(4) { animation-delay: 0.09s; }
+.works-table-row:nth-child(5) { animation-delay: 0.12s; }
+.works-table-row:nth-child(6) { animation-delay: 0.15s; }
+.works-table-row:nth-child(7) { animation-delay: 0.18s; }
+.works-table-row:nth-child(8) { animation-delay: 0.21s; }
+.works-table-row:nth-child(9) { animation-delay: 0.24s; }
+.works-table-row:nth-child(10) { animation-delay: 0.27s; }
+.works-table-row:nth-child(11) { animation-delay: 0.30s; }
+.works-table-row:nth-child(12) { animation-delay: 0.33s; }
 .works-table-row:last-child {
   border-bottom: none;
 }
 .works-table-row:hover {
   background: var(--ivory);
+  transform: translateX(3px);
+  box-shadow: var(--shadow-whisper);
 }
 
 .stat-val {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--charcoal-warm);
-  font-family: var(--font-sans);
 }
 
 .date-val {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--stone-gray);
-  font-family: var(--font-sans);
 }
 
 .works-table-body {
@@ -852,13 +906,6 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.works-table-row {
-  display: flex;
-  border-bottom: 1px solid var(--border-cream);
-  padding: 16px;
-  transition: all var(--transition-normal);
-  cursor: pointer;
-}
 
 .works-table-row:hover {
   background: var(--parchment);
@@ -873,72 +920,49 @@ onMounted(() => {
   font-family: var(--font-sans);
 }
 
-.col-image {
-  width: 80px;
-  flex-shrink: 0;
-}
-
-.col-info {
+.table-col {
   flex: 1;
   min-width: 0;
-  padding: 0 12px;
-  font-size: 13px;
 }
-
+.col-image {
+  flex: 0 0 70px;
+}
+.col-info {
+  flex: 1.8;
+  padding: 0 12px;
+  min-width: 80px;
+}
 .col-author {
-  width: 60px;
-  flex-shrink: 0;
-  padding: 0 6px;
-  font-size: 12px;
+  flex: 0.7;
 }
 .author-name {
-  font-family: 'Noto Serif SC', 'KaiTi', serif;
   font-weight: 500;
 }
-
 .col-age {
-  width: 50px;
-  flex-shrink: 0;
+  flex: 0.5;
   justify-content: center;
-  font-size: 11px;
 }
 .age-val {
   color: var(--stone-gray);
 }
-
 .col-year {
-  width: 70px;
-  flex-shrink: 0;
   justify-content: center;
 }
-
 .col-inscription {
-  width: 70px;
-  flex-shrink: 0;
   justify-content: center;
 }
-
 .col-painting {
-  width: 70px;
-  flex-shrink: 0;
   justify-content: center;
 }
-
 .col-blank {
-  width: 70px;
-  flex-shrink: 0;
   justify-content: center;
 }
-
 .col-created {
-  width: 90px;
-  flex-shrink: 0;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-right: 8px;
 }
-
 .col-action {
-  width: 100px;
-  flex-shrink: 0;
+  flex: 0 0 90px;
   justify-content: center;
 }
 .col-action {
@@ -1011,8 +1035,8 @@ onMounted(() => {
 
 /* 作品缩略图 */
 .work-thumbnail {
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--parchment);
@@ -1037,8 +1061,8 @@ onMounted(() => {
 
 /* 作品信息 */
 .work-title {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--near-black);
   font-family: 'Noto Serif SC', 'KaiTi', serif;
   margin-bottom: 4px;
@@ -1208,6 +1232,35 @@ onMounted(() => {
   color: var(--charcoal-warm);
   font-family: var(--font-sans);
 }
+
+/* 加载骨架屏 */
+.loading-skeleton {
+  padding: 0 16px;
+}
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-cream);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+.skeleton-cell {
+  background: var(--border-cream);
+  border-radius: var(--radius-sm);
+  height: 16px;
+  flex-shrink: 0;
+}
+.skeleton-img { width: 50px; height: 50px; border-radius: var(--radius-md); }
+.skeleton-title { flex: 1; min-width: 80px; height: 16px; }
+.skeleton-text { width: 50px; }
+.skeleton-stat { width: 40px; }
+.skeleton-date { width: 70px; }
+.skeleton-btn { width: 50px; height: 24px; border-radius: var(--radius-md); }
 
 /* 按钮垂直居中 */
 .col-action .el-button {
