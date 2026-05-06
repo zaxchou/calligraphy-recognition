@@ -115,7 +115,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 def _to_local_path(p: str) -> str:
     if not p:
         return ""
-    p2 = p.replace("/", os.sep)
+    # 统一正反斜杠到当前系统分隔符（Windows 存、Linux 读）
+    p2 = p.replace("\\", "/").replace("/", os.sep)
     if os.path.isabs(p2) or (len(p2) >= 2 and p2[1] == ":"):
         return os.path.normpath(p2)
     p2 = p2.lstrip("\\/")
