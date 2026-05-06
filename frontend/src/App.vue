@@ -219,6 +219,7 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 100;
   backdrop-filter: blur(18px);
   background: rgba(250, 249, 245, 0.85);
+  z-index: 10000001;
 }
 
 .header-content {
