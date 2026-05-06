@@ -489,6 +489,8 @@ async function toggleAdmin() {
 // 同步页码到 URL
 function syncPageToUrl() {
   const query = { ...route.query }
+  if (selectedArtist.value !== 'all') query.artist = selectedArtist.value
+  else delete query.artist
   if (currentPage.value > 1) query.page = String(currentPage.value)
   else delete query.page
   if (pageSize.value !== 20) query.size = String(pageSize.value)
@@ -620,6 +622,7 @@ onMounted(() => {
   }
   fetchArtistList()
   loadRankings()
+  syncPageToUrl()
 })
 </script>
 
