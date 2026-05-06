@@ -137,3 +137,14 @@ def get_full_file_path(stored_path: str, base_dir: str) -> str:
     
     # 使用 os.path.join 拼接路径
     return os.path.join(base_dir, *relative.split('/'))
+
+
+def basename(p: str) -> str:
+    """跨平台提取文件名，兼容混合 / 和 \\ 分隔符的路径。
+
+    Windows 存 data/uploads\\xxx.jpg -> xxx.jpg
+    Linux 存 data/uploads/xxx.jpg  -> xxx.jpg
+    """
+    if not p:
+        return ""
+    return p.replace("\\", "/").rstrip("/").split("/")[-1]

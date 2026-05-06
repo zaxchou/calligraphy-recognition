@@ -16,7 +16,8 @@ from starlette.concurrency import run_in_threadpool
 import redis
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.path_utils import get_static_url, get_full_file_path, normalize_path
+from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
+from app.core.auth import require_admin
 from app.models.tubi_analysis import TubiAnalysis
 from app.services.auto_tags import compute_tags_cached
 from app.services.inscription_content_analyzer import get_period_phase
@@ -95,16 +96,6 @@ os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 os.makedirs(ANNOTATED_DIR, exist_ok=True)
 os.makedirs(DEBUG_DIR, exist_ok=True)
 
-# --- API Key 认证 ---
-
-
-def _require_admin_api_key(request: Request) -> None:
-    """验证管理员 API Key，用于危险操作（删除/清空）"""
-    expected = getattr(settings, "COMPOSITION_API_KEY", "")
-    key = request.headers.get("X-API-Key")
-    if expected and key != expected:
-        raise HTTPException(status_code=403, detail="invalid_api_key")
-
 
 from app.models.tubi_job import TubiJob
 
@@ -113,22 +104,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 
 
 def _to_local_path(p: str) -> str:
-    if not p:
-        return ""
-    # 统一正反斜杠到当前系统分隔符（Windows 存、Linux 读）
-    p2 = p.replace("\\", "/").replace("/", os.sep)
-    if os.path.isabs(p2) or (len(p2) >= 2 and p2[1] == ":"):
-        return os.path.normpath(p2)
-    p2 = p2.lstrip("\\/")
-    return os.path.normpath(os.path.join(PROJECT_ROOT, p2))
-
-
-def _basename(p: str) -> str:
-    """跨平台提取文件名，兼容混合 / 和 \\ 分隔符的路径（Windows 存、Linux 读）"""
-    if not p:
-        return ""
-    # 统一为 / 分隔，然后取最后一段
-    return p.replace("\\", "/").rstrip("/").split("/")[-1]
+    """转为本地文件系统路径，委托给 path_utils.get_full_file_path。"""
+    return get_full_file_path(p, PROJECT_ROOT)
 
 
 # ── 文件存在性缓存（避免重复 stat 调用） ──
@@ -1108,7 +1085,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
 
     # 构建图片URL - 使用跨平台路径处理
     if db_analysis.filepath:
-        actual_filename = _basename(db_analysis.filepath)
+        actual_filename = basename(db_analysis.filepath)
         image_url = get_static_url(f"uploads/{actual_filename}")
     elif db_analysis.filename:
         image_url = get_static_url(f"uploads/{db_analysis.filename}")
@@ -1120,7 +1097,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
     if db_analysis.thumbnail_path:
         thumbnail_path_local = _to_local_path(db_analysis.thumbnail_path)
         if _cached_exists(thumbnail_path_local):
-            thumbnail_filename = _basename(db_analysis.thumbnail_path)
+            thumbnail_filename = basename(db_analysis.thumbnail_path)
             thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
     elif image_url:
         thumbnail_url = image_url
@@ -1644,7 +1621,7 @@ async def get_all_results(
     for analysis in analyses:
         # 从 filepath 提取文件名
         if analysis.filepath:
-            actual_filename = _basename(analysis.filepath)
+            actual_filename = basename(analysis.filepath)
             file_path_local = _to_local_path(analysis.filepath)
             file_exists = _cached_exists(file_path_local)
         elif analysis.filename:
@@ -1659,7 +1636,7 @@ async def get_all_results(
         if analysis.thumbnail_path:
             thumbnail_path_local = _to_local_path(analysis.thumbnail_path)
             if _cached_exists(thumbnail_path_local):
-                thumbnail_filename = _basename(analysis.thumbnail_path)
+                thumbnail_filename = basename(analysis.thumbnail_path)
                 thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
         elif actual_filename and file_exists:
             thumbnail_url = get_static_url(f"uploads/{actual_filename}")
@@ -1798,7 +1775,7 @@ async def search_images(
         for analysis in analyses:
             # 从 filepath 提取文件名
             if analysis.filepath:
-                actual_filename = _basename(analysis.filepath)
+                actual_filename = basename(analysis.filepath)
                 file_path_local = _to_local_path(analysis.filepath)
                 file_exists = _cached_exists(file_path_local)
             elif analysis.filename:
@@ -1813,7 +1790,7 @@ async def search_images(
             if analysis.thumbnail_path:
                 thumbnail_path_local = _to_local_path(analysis.thumbnail_path)
                 if _cached_exists(thumbnail_path_local):
-                    thumbnail_filename = _basename(analysis.thumbnail_path)
+                    thumbnail_filename = basename(analysis.thumbnail_path)
                     thumbnail_url = get_static_url(f"thumbnails/{thumbnail_filename}")
             elif actual_filename and file_exists:
                 thumbnail_url = get_static_url(f"uploads/{actual_filename}")
@@ -1913,8 +1890,7 @@ async def search_images(
 
 
 @router.delete("/image/{image_id}")
-async def delete_image(image_id: str, request: Request, db: Session = Depends(get_db)):
-    _require_admin_api_key(request)
+async def delete_image(image_id: str, request: Request, db: Session = Depends(get_db), admin=Depends(require_admin)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
@@ -1942,9 +1918,8 @@ async def delete_image(image_id: str, request: Request, db: Session = Depends(ge
 
 
 @router.delete("/clear-all")
-async def clear_all_analyses(request: Request, db: Session = Depends(get_db)):
+async def clear_all_analyses(request: Request, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """清空所有分析数据"""
-    _require_admin_api_key(request)
     try:
         # 获取所有记录
         all_analyses = db.query(TubiAnalysis).all()
@@ -2069,7 +2044,7 @@ async def get_dimensions(artist: Optional[str] = None, db: Session = Depends(get
             "album_name": r.album_name,
             "album_index": r.album_index,
             "tags": r.tags,
-            "thumbnail_url": get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}") if r.thumbnail_path else None,
+            "thumbnail_url": get_static_url(f"thumbnails/{basename(r.thumbnail_path)}") if r.thumbnail_path else None,
         })
 
     # 统计
@@ -2222,7 +2197,7 @@ async def get_albums(
             "name": album_name,
             "count": len(sorted_items),
             "cover_url": (
-                get_static_url(f"thumbnails/{_basename(cover_item.thumbnail_path)}")
+                get_static_url(f"thumbnails/{basename(cover_item.thumbnail_path)}")
                 if cover_item and cover_item.thumbnail_path
                 else None
             ),
@@ -2256,7 +2231,7 @@ async def get_album(album_name: str, db: Session = Depends(get_db)):
             "artwork_height_cm": r.artwork_height_cm,
             "artwork_width_cm": r.artwork_width_cm,
             "thumbnail_url": (
-                get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}")
+                get_static_url(f"thumbnails/{basename(r.thumbnail_path)}")
                 if r.thumbnail_path
                 else None
             ),
@@ -2304,7 +2279,7 @@ async def rename_album(album_name: str, request: AlbumRenameRequest, db: Session
 
 
 @router.delete("/albums/{album_name}")
-async def delete_album(album_name: str, db: Session = Depends(get_db)):
+async def delete_album(album_name: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """删除册页（作品恢复自由态，不删除作品）"""
     records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).all()
     
@@ -2348,7 +2323,7 @@ async def add_items_to_album(album_name: str, request: AlbumAddItemsRequest, db:
 
 
 @router.delete("/albums/{album_name}/items/{record_id}")
-async def remove_item_from_album(album_name: str, record_id: str, db: Session = Depends(get_db)):
+async def remove_item_from_album(album_name: str, record_id: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """从册页移除作品（作品恢复自由态）"""
     r = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_id).first()
     if not r:
@@ -2419,7 +2394,7 @@ async def get_album_navigation(record_id: str, db: Session = Depends(get_db)):
             "title": r.title,
             "album_index": r.album_index,
             "thumbnail_url": (
-                get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}")
+                get_static_url(f"thumbnails/{basename(r.thumbnail_path)}")
                 if r.thumbnail_path
                 else None
             ),
@@ -2503,7 +2478,7 @@ async def get_tag_items(tag_name: str, db: Session = Depends(get_db)):
                     "image_id": r.image_id,
                     "title": r.title,
                     "thumbnail_url": (
-                        get_static_url(f"thumbnails/{_basename(r.thumbnail_path)}")
+                        get_static_url(f"thumbnails/{basename(r.thumbnail_path)}")
                         if r.thumbnail_path
                         else None
                     ),
@@ -2546,7 +2521,7 @@ async def rename_tag(request: TagUpdateRequest, db: Session = Depends(get_db)):
 
 
 @router.delete("/tags/{tag_name}")
-async def delete_tag(tag_name: str, db: Session = Depends(get_db)):
+async def delete_tag(tag_name: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """删除标签（从所有作品中移除该标签）"""
     records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
     
@@ -2590,7 +2565,7 @@ async def add_items_to_tag(request: TagItemRequest, db: Session = Depends(get_db
 
 
 @router.delete("/tags/{tag_name}/items/{record_id}")
-async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depends(get_db)):
+async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """从作品移除标签"""
     r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
     if not r:
@@ -2611,7 +2586,7 @@ async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depe
 
 
 @router.delete("/tags/all")
-async def reset_all_tags(db: Session = Depends(get_db)):
+async def reset_all_tags(db: Session = Depends(get_db), admin=Depends(require_admin)):
     """清空所有作品的 tags 字段（用于重置自动标签）"""
     updated_count = 0
     records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
@@ -2727,7 +2702,7 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
 
     # 构建图片URL
     if db_analysis.filepath:
-        actual_filename = _basename(db_analysis.filepath)
+        actual_filename = basename(db_analysis.filepath)
         image_url = get_static_url(f"uploads/{actual_filename}")
     elif db_analysis.filename:
         image_url = get_static_url(f"uploads/{db_analysis.filename}")
@@ -2738,7 +2713,7 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
     if db_analysis.thumbnail_path:
         thumb_local = _to_local_path(db_analysis.thumbnail_path)
         if _cached_exists(thumb_local):
-            thumb_fn = _basename(db_analysis.thumbnail_path)
+            thumb_fn = basename(db_analysis.thumbnail_path)
             thumbnail_url = get_static_url(f"thumbnails/{thumb_fn}")
         else:
             thumbnail_url = image_url

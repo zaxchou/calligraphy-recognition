@@ -22,6 +22,8 @@ from .models import PdfBook, KnowledgeTask, TextChunk, ExtractedImage, SearchHis
 from .task_manager import TaskManager
 from .knowledge_ingest_v2 import process_pdf_file_sync
 
+from app.core.auth import require_admin
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -335,7 +337,7 @@ async def get_book(book_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/books/{book_id}")
-async def delete_book(book_id: str, db: Session = Depends(get_db)):
+async def delete_book(book_id: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """
     删除书籍及其所有相关数据（级联删除）
     
@@ -1967,7 +1969,7 @@ def update_rule(rule_id: str, request: RuleUpdateRequest, db: Session = Depends(
 
 
 @router.delete("/rules/{rule_id}")
-def delete_rule(rule_id: str, db: Session = Depends(get_db)):
+def delete_rule(rule_id: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
     """删除构图规则"""
     rule = db.query(CompositionRule).filter_by(rule_id=rule_id).first()
     if not rule:

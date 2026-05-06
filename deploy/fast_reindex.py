@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import sys, os, json
 sys.path.insert(0, "/app")
-os.environ["DASHSCOPE_API_KEY"] = "sk-3d0926b0a37542608c06630742c3401b"
+from dotenv import load_dotenv
+load_dotenv("/app/.env")
 import sqlite3
 from app.modules.pantianshou_composition.embedding_service import EmbeddingService
 from app.modules.pantianshou_composition import qdrant_client as qc

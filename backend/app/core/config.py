@@ -152,6 +152,9 @@ class Settings(BaseSettings):
     MINERU_API_TOKEN: str = os.getenv("MINERU_API_TOKEN", "")
     MINERU_API_BASE: str = os.getenv("MINERU_API_BASE", "https://mineru.net")
     MINERU_MODEL_VERSION: str = os.getenv("MINERU_MODEL_VERSION", "vlm")
+
+    # 管理员 API Key（为空则不开启鉴权，向后兼容）
+    ADMIN_API_KEY: str = os.getenv("ADMIN_API_KEY", "")
     
     class Config:
         env_file = ".env"

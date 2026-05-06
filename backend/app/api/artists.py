@@ -10,10 +10,11 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
+from app.core.auth import require_admin
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 
@@ -131,7 +132,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate):
 
 
 @router.delete("/{artist_id}")
-async def delete_artist(artist_id: int):
+async def delete_artist(artist_id: int, admin=Depends(require_admin)):
     """删除画家"""
     conn = get_db_connection()
     try:

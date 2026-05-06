@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -177,6 +177,7 @@ function nextPreview(){if(previewIndex.value<previewList.value.length-1){preview
 function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function onPreviewKey(e){if(e.key==='ArrowRight')nextPreview();else if(e.key==='ArrowLeft')prevPreview();else if(e.key==='Escape')previewVisible.value=false}
 onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);nextTick(()=>searchInputRef.value?.focus());document.addEventListener('keydown',onPreviewKey)})
+onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 </script>
 
 <style scoped>

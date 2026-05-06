@@ -57,6 +57,11 @@ def extract_zip_if_needed(batch_dir: str) -> str:
     extracted = os.path.join(batch_dir, "extracted")
     os.makedirs(extracted, exist_ok=True)
     with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(extracted)
+        for member in zf.infolist():
+            # 防御 Zip Slip：拒绝绝对路径或包含 .. 的路径
+            safe_name = member.filename.replace("\\", "/")
+            if safe_name.startswith("/") or ".." in safe_name.split("/"):
+                raise ValueError(f"压缩包包含不安全的文件名: {member.filename}")
+            zf.extract(member, extracted)
     return extracted
 
