@@ -172,7 +172,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
                     result["themes"] = normalized
                     result["special_rules"].append(f"[LLM采纳] 主题分歧: {llm_detail}")
                     result["sentiment"]["reasoning_steps"].append({
-                        "label": "LLM复核",
+                        "label": "人工智能复核",
                         "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，LLM判[{llm_primary['name']}]",
                         "offset": 0, "icon": "🤖",
                     })
@@ -187,7 +187,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
                     elif llm_pol == "negative": result["sentiment"]["emotion_score"] = -llm_intensity * 5
                     result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}->{llm_pol}")
                     result["sentiment"]["reasoning_steps"].append({
-                        "label": "LLM复核",
+                        "label": "人工智能复核",
                         "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
                         "offset": 0, "icon": "🤖",
                     })
