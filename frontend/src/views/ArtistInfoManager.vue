@@ -66,6 +66,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, MagicStick } from '@element-plus/icons-vue'
+import api from '@/api'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
@@ -94,8 +95,7 @@ const sortedArtists = computed(() => {
 async function loadArtists() {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE}/artists`)
-    const data = await res.json()
+    const data = await api.get('/artists')
     artists.value = data.artists || data || []
   } catch (e) {
     ElMessage.error('加载画家列表失败: ' + e.message)
@@ -143,20 +143,14 @@ async function handleSave() {
       ? `${API_BASE}/artists/${editingArtist.value.id}`
       : `${API_BASE}/artists`
     const method = editingArtist.value ? 'PUT' : 'POST'
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm.value)
-    })
-    const data = await res.json()
+    const res = editingArtist.value
+      ? await api.put(`/artists/${editingArtist.value.id}`, editForm.value)
+      : await api.post('/artists', editForm.value)
+    const data = res
     if (data.success) {
       if (editingArtist.value && editForm.value.name !== editingArtist.value.name) {
         try {
-          await fetch(`${API_BASE}/artists/${editingArtist.value.id}/sync-name`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ old_name: editingArtist.value.name, new_name: editForm.value.name })
-          })
+          await api.post(`/artists/${editingArtist.value.id}/sync-name`, { old_name: editingArtist.value.name, new_name: editForm.value.name })
         } catch (e) { console.error('同步画家姓名失败', e) }
       }
       ElMessage.success(editingArtist.value ? '画家信息已更新' : '画家创建成功')
@@ -175,8 +169,7 @@ async function handleSave() {
 async function handleDelete(artist) {
   try {
     await ElMessageBox.confirm(`确定删除画家「${artist.name}」？`, '确认删除', { type: 'warning' })
-    const res = await fetch(`${API_BASE}/artists/${artist.id}`, { method: 'DELETE' })
-    const data = await res.json()
+    const data = await api.delete(`/artists/${artist.id}`)
     if (data.success) {
       ElMessage.success('画家已删除')
       await loadArtists()
@@ -190,12 +183,7 @@ async function handleDelete(artist) {
 
 async function toggleEnabled(artist) {
   try {
-    const res = await fetch(`${API_BASE}/artists/${artist.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: artist.enabled ? 0 : 1 })
-    })
-    const data = await res.json()
+    const data = await api.put(`/artists/${artist.id}`, { enabled: artist.enabled ? 0 : 1 })
     if (data.success) {
       ElMessage.success(artist.enabled ? '画家已禁用' : '画家已启用')
       await loadArtists()
@@ -208,8 +196,7 @@ async function toggleEnabled(artist) {
 async function handleAiFill(artist) {
   aiFillLoading[artist.id] = true
   try {
-    const res = await fetch(`${API_BASE}/artists/${artist.id}/ai-fill`, { method: 'POST' })
-    const data = await res.json()
+    const data = await api.post(`/artists/${artist.id}/ai-fill`)
     if (data.success) {
       ElMessage.success(data.message || 'AI查询完成')
       await loadArtists()

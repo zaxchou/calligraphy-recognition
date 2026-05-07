@@ -765,7 +765,7 @@ async function clearAll() {
 
     for (const img of uploadedImages.value) {
       try {
-        await fetch(`/api/v1/tubi/image/${img.id}`, { method: 'DELETE' })
+        await tubiApi.deleteImage(img.id)
       } catch (e) {
         console.error('删除图片失败:', e)
       }

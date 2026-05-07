@@ -12,10 +12,24 @@ const api = axios.create({
 const MAX_RETRY = 1
 const RETRY_DELAY = 5000
 
+// ── 管理员鉴权：已登录时自动注入 X-Admin-Key ──────────────────────
+const ADMIN_STORAGE_KEY = 'admin_auth'
+const ADMIN_KEY = 'ilovehouhan'
+
+function isAdminAuthenticated() {
+  const expiry = localStorage.getItem(ADMIN_STORAGE_KEY)
+  if (!expiry) return false
+  return Date.now() <= parseInt(expiry, 10)
+}
+
 api.interceptors.request.use(
   config => {
     // 初始化重试计数
     if (!config._retryCount) config._retryCount = 0
+    // 管理员登录后自动派发 X-Admin-Key header
+    if (isAdminAuthenticated()) {
+      config.headers['X-Admin-Key'] = ADMIN_KEY
+    }
     return config
   },
   error => {
