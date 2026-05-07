@@ -14,7 +14,7 @@
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/tubi" class="nav-item" :class="{ active: $route.path.startsWith('/tubi') }"><span class="nav-text">题跋分析</span></router-link>
-          <router-link to="/recognize" class="nav-item" active-class="active"><span class="nav-text">字体识别</span></router-link>
+          <!-- 字体识别模块暂不开放 -->
           <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
           <router-link to="/content-analysis" class="nav-item" active-class="active"><span class="nav-text">大数据分析</span></router-link>
@@ -55,9 +55,7 @@
           <router-link to="/tubi" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tubi') }" @click="closeMobileMenu">
             <span class="nav-text">题跋分析</span>
           </router-link>
-          <router-link to="/recognize" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
-            <span class="nav-text">字体识别</span>
-          </router-link>
+          <!-- 字体识别模块暂不开放 -->
           <router-link to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="closeMobileMenu">
             <span class="nav-text">潘天寿教你构图</span>
           </router-link>
