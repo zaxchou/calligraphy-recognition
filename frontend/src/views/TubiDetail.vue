@@ -277,7 +277,7 @@
                               >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
                               <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
                             </div>
-                            <div class="step-detail">{{ step.detail }}</div>
+                            <div class="step-detail">{{ mapPolarityText(step.detail) }}</div>
                           </div>
                         </div>
                       </div>
@@ -657,6 +657,12 @@ function getSentimentIntensity(sentiment) {
   if (sentiment.intensity != null) return sentiment.intensity
   // 旧数据兜底：用 emotion_score 绝对值估算（假设最大范围是2）
   return Math.min(Math.abs(sentiment.emotion_score || 0) / 2, 1)
+}
+
+// ── 情感文本映射（将英文极性映射为中文显示）──
+function mapPolarityText(text) {
+  if (!text) return ''
+  return text.replace(/\bpositive\b/g, '积极').replace(/\bnegative\b/g, '消极').replace(/\bneutral\b/g, '中性')
 }
 
 function getInscriptionAreaClass() {
