@@ -221,7 +221,10 @@
                           class="sentiment-dot"
                           :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"
                         ></span>
-                        <span class="sentiment-polarity-text">{{
+                        <span class="sentiment-polarity-text" :style="{
+                          color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' :
+                                 currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399'
+                        }">{{
                           currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' :
                           currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性'
                         }}</span>

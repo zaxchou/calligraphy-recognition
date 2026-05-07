@@ -105,7 +105,7 @@ def persist_analysis_result(cur, record_id, result, year=None, artist=None, extr
 
 async def analyze_single_record(record_id: int, cur) -> dict:
     """
-    单条记录的统一分析管道（规则引擎 → 低可信度 → LLM修正 → 保存DB）。
+    单条记录的统一分析管道（规则引擎 → 低可信度 → 人工智能修正 → 保存DB）。
     供 reanalyze_single 和 batch_reanalyze 复用，确保两条路径行为一致。
 
     Args:
@@ -170,10 +170,10 @@ async def analyze_single_record(record_id: int, cur) -> dict:
                         norm_name = THEME_NAME_MIGRATION.get(name, name)
                         normalized.append({"code": t.get("code", 0), "name": norm_name, "confidence": float(t.get("confidence", 0.0))})
                     result["themes"] = normalized
-                    result["special_rules"].append(f"[LLM采纳] 主题分歧: {llm_detail}")
+                    result["special_rules"].append(f"[人工智能采纳] 主题分歧: {llm_detail}")
                     result["sentiment"]["reasoning_steps"].append({
                         "label": "人工智能复核",
-                        "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，LLM判[{llm_primary['name']}]",
+                        "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，原规则判[{v4_primary['name']}]，人工智能判[{llm_primary['name']}]",
                         "offset": 0, "icon": "🤖",
                     })
 
@@ -185,10 +185,11 @@ async def analyze_single_record(record_id: int, cur) -> dict:
                     llm_intensity = llm_raw["sentiment"].get("intensity", 0.5)
                     if llm_pol == "positive": result["sentiment"]["emotion_score"] = llm_intensity * 5
                     elif llm_pol == "negative": result["sentiment"]["emotion_score"] = -llm_intensity * 5
-                    result["special_rules"].append(f"[LLM采纳] 情感分歧: {v4_pol}->{llm_pol}")
+                    _pol_cn = {"positive": "积极", "negative": "消极", "neutral": "中性"}
+                    result["special_rules"].append(f"[人工智能采纳] 情感分歧: {_pol_cn.get(v4_pol, v4_pol)}→{_pol_cn.get(llm_pol, llm_pol)}")
                     result["sentiment"]["reasoning_steps"].append({
                         "label": "人工智能复核",
-                        "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{v4_pol}→{llm_pol}",
+                        "detail": f"低可信度({conf:.2f})触发DeepSeek二次判断，情感极性{_pol_cn.get(v4_pol, v4_pol)}→{_pol_cn.get(llm_pol, llm_pol)}",
                         "offset": 0, "icon": "🤖",
                     })
                 # LLM无分歧时也同步emotion_score
@@ -2311,7 +2312,7 @@ async def batch_reanalyze(
     theme_changes = Counter()        # (旧主题→新主题) 变化统计
     confidences = []                 # v2.1: 可信度分布
     low_conf_records = []            # v2.2: 低可信度记录（record_id 列表）
-    llm_corrected = 0    # 混合模式下LLM修正的数量
+    llm_corrected = 0    # 混合模式下人工智能修正的数量
     llm_errors = 0       # LLM调用失败数
 
     updated = 0
@@ -2568,7 +2569,7 @@ async def batch_reanalyze(
         "total": total,
         "updated": updated,
         "errors": errors,
-        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误" + (f"，LLM修正 {llm_corrected} 幅" if llm_corrected > 0 else "") + (f"，LLM调用失败 {llm_errors} 次" if llm_errors > 0 else ""),
+        "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误" + (f"，人工智能修正 {llm_corrected} 幅" if llm_corrected > 0 else "") + (f"，LLM调用失败 {llm_errors} 次" if llm_errors > 0 else ""),
         # 详细对比报告数据
         "report": {
             "theme_coverage": theme_coverage,
@@ -2846,7 +2847,7 @@ async def batch_reanalyze_stream(
             "total": total,
             "updated": updated,
             "errors": errors,
-            "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误" + (f"，LLM修正 {llm_corrected} 幅" if llm_corrected > 0 else "") + (f"，LLM调用失败 {llm_errors} 次" if llm_errors > 0 else ""),
+            "message": f"批量重跑完成：{updated} 幅更新，{errors} 幅错误" + (f"，人工智能修正 {llm_corrected} 幅" if llm_corrected > 0 else "") + (f"，LLM调用失败 {llm_errors} 次" if llm_errors > 0 else ""),
             "report": report,
         })
 
