@@ -277,7 +277,7 @@
                               >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
                               <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
                             </div>
-                            <div class="step-detail">{{ mapPolarityText(step.detail) }}</div>
+                            <div class="step-detail" v-html="mapPolarityText(step.detail)"></div>
                           </div>
                         </div>
                       </div>
@@ -659,10 +659,13 @@ function getSentimentIntensity(sentiment) {
   return Math.min(Math.abs(sentiment.emotion_score || 0) / 2, 1)
 }
 
-// ── 情感文本映射（将英文极性映射为中文显示）──
+// ── 情感文本映射（将英文极性映射为带样式的中文标签）──
 function mapPolarityText(text) {
   if (!text) return ''
-  return text.replace(/\bpositive\b/g, '积极').replace(/\bnegative\b/g, '消极').replace(/\bneutral\b/g, '中性')
+  return text
+    .replace(/\bpositive\b/g, '<span class="pol-label pol-positive">积极</span>')
+    .replace(/\bnegative\b/g, '<span class="pol-label pol-negative">消极</span>')
+    .replace(/\bneutral\b/g, '<span class="pol-label pol-neutral">中性</span>')
 }
 
 function getInscriptionAreaClass() {
@@ -1503,5 +1506,19 @@ defineExpose({
   color: #c96442;
   margin-left: 6px;
   font-weight: 500;
+}
+
+/* ── 情感标签样式 ── */
+:deep(.pol-label) {
+  font-weight: 700;
+}
+:deep(.pol-positive) {
+  color: #67c23a;
+}
+:deep(.pol-negative) {
+  color: #f56c6c;
+}
+:deep(.pol-neutral) {
+  color: #909399;
 }
 </style>
