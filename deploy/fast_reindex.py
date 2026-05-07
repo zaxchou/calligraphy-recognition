@@ -18,6 +18,12 @@ conn.close()
 print(f"Total: {len(rows)} chunks")
 
 batch = []
+last_bid = None
+
+def _flush(batch, bid):
+    if batch:
+        qc.upsert_text_chunks(batch, bid)
+
 for i, (cid, bid, ps, text, md, ch, ci) in enumerate(rows):
     if not text or len(text.strip()) < 5:
         continue
@@ -26,6 +32,11 @@ for i, (cid, bid, ps, text, md, ch, ci) in enumerate(rows):
         r = emb.embed_text_sync(text[:2000])
         if not r or not r.embedding:
             continue
+        # 如果换了 book_id，先刷掉上一批（按 book_id 分组，避免跨书归属）
+        if last_bid is not None and bid != last_bid:
+            _flush(batch, last_bid)
+            batch = []
+        last_bid = bid
         batch.append({"id": str(cid), "vector": r.embedding, "content": text,
             "chapter": ch or "", "page_start": ps or 0, "page_end": ps or 0,
             "chunk_index": ci or 0, "metadata": meta})
@@ -33,10 +44,8 @@ for i, (cid, bid, ps, text, md, ch, ci) in enumerate(rows):
         print(f"  [{i}] error: {e}")
         continue
     if len(batch) >= 50:
-        qc.upsert_text_chunks(batch, bid)
-        print(f"  [{i+1}/{len(rows)}] OK")
+        _flush(batch, bid)
         batch = []
-if batch:
-    qc.upsert_text_chunks(batch, bid)
+_flush(batch, last_bid)
 cnt = qc.count_collection(qc.KNOWLEDGE_TEXTS_COLLECTION)
 print(f"DONE: {cnt} points")

@@ -75,8 +75,9 @@ app = FastAPI(
     description="书法碑帖字体认证系统 API"
 )
 
-# CORS配置
-origins = ["http://localhost:3000"]
+# CORS配置（从环境变量读取，逗号分隔；默认 * 允许所有）
+_cors = settings.CORS_ALLOW_ORIGINS
+origins = [o.strip() for o in _cors.split(",") if o.strip()] if _cors != "*" else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
