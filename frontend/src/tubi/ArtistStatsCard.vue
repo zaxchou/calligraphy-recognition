@@ -133,8 +133,8 @@ const periodDistribution = ref([])
 let totalCountRafId = null
 
 const themeColors = ['#c96442', '#a65d3f', '#547a8c', '#8b6f8e', '#4a4a5a', '#b8a47e']
-const sentimentColors = { positive: '#c96442', neutral: '#9090A0', negative: '#3A3A3A' }
-const sentimentLabels = { positive: '积极', neutral: '中性', negative: '消极' }
+const sentimentColors = { positive: '#c96442', neutral: '#9090A0', negative: '#3A3A3A', '积极': '#c96442', '中性': '#9090A0', '消极': '#3A3A3A' }
+const sentimentLabels = { positive: '积极', neutral: '中性', negative: '消极', '积极': '积极', '中性': '中性', '消极': '消极' }
 
 const periodStats = computed(() => {
   const map = { early: 0, mid: 0, late: 0, unknown: 0 }

@@ -219,11 +219,11 @@
                       <div class="sentiment-header">
                         <span
                           class="sentiment-dot"
-                          :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#ff6b35' : '#b8a47e' }"
+                          :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive' || currentImage.contentAnalysis.sentiment.polarity === '积极' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' || currentImage.contentAnalysis.sentiment.polarity === '消极' ? '#ff6b35' : '#b8a47e' }"
                         ></span>
                         <span class="sentiment-polarity-text">{{
-                          currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' :
-                          currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性'
+                          currentImage.contentAnalysis.sentiment.polarity === 'positive' || currentImage.contentAnalysis.sentiment.polarity === '积极' ? '积极' :
+                          currentImage.contentAnalysis.sentiment.polarity === 'negative' || currentImage.contentAnalysis.sentiment.polarity === '消极' ? '消极' : '中性'
                         }}</span>
                         <span class="sentiment-sep">·</span>
                         <span class="sentiment-score-text">强度 {{
@@ -248,7 +248,7 @@
                           class="sentiment-bar-fill"
                           :style="{
                             width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
-                            background: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#ff6b35' : '#b8a47e'
+                            background: currentImage.contentAnalysis.sentiment.polarity === 'positive' || currentImage.contentAnalysis.sentiment.polarity === '积极' ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative' || currentImage.contentAnalysis.sentiment.polarity === '消极' ? '#ff6b35' : '#b8a47e'
                           }"
                         ></div>
                       </div>
