@@ -731,8 +731,10 @@
   flex-direction: column;
   gap: 12px;
   position: sticky;
-  top: 20px;
-  align-self: flex-start;
+  top: 84px; /* header 高度 + 顶部间距 */
+  align-self: start;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
 
 /* 右侧面板 */
@@ -3594,6 +3596,8 @@ gallery-album-tag {
   .left-panel {
     position: static;
     align-self: auto;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .right-panel {
