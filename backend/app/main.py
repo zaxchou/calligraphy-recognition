@@ -90,7 +90,7 @@ app.add_middleware(
 # 挂载静态文件目录
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.STATIC_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory="data"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "data")), name="static")
 
 # 注册路由
 app.include_router(
