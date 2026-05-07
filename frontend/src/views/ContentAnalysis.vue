@@ -683,8 +683,7 @@ function renderSentimentPieChart() {
 
   const sentimentTotals = {}
   sentDist.forEach(item => {
-    const p = item.polarity
-    const label = p === '积极' || p === 'positive' ? '积极' : p === '消极' || p === 'negative' ? '消极' : '中性'
+    const label = item.polarity === 'positive' ? '积极' : item.polarity === 'negative' ? '消极' : '中性'
     sentimentTotals[label] = (sentimentTotals[label] || 0) + item.count
   })
   
@@ -789,7 +788,7 @@ function renderSentimentChart() {
   const series = polarities.map(p => ({
     name: p.label, type: 'bar', itemStyle: { color: p.color },
     data: periods.map(per => {
-      const item = sentDist.find(s => s.period === per && (s.polarity === p.key || s.polarity === p.label))
+      const item = sentDist.find(s => s.period === per && s.polarity === p.key)
       return item ? parseFloat(item.percentage.toFixed(1)) : 0
     }),
   }))
@@ -1127,10 +1126,10 @@ const THEMES = [
 ]
 
 function sentimentLabel(p) {
-  return { positive: '积极', negative: '消极', neutral: '中性', '积极': '积极', '消极': '消极', '中性': '中性' }[p] || p
+  return { positive: '积极', negative: '消极', neutral: '中性' }[p] || p
 }
 function sentimentTagType(p) {
-  return { positive: 'success', negative: 'danger', neutral: 'info', '积极': 'success', '消极': 'danger', '中性': 'info' }[p] || 'info'
+  return { positive: 'success', negative: 'danger', neutral: 'info' }[p] || 'info'
 }
 
 async function openThemeDialog(themeName) {
