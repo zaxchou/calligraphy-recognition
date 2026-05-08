@@ -1,0 +1,99 @@
+<view class="page">
+
+  <!-- Loading -->
+  <view class="empty-state" wx:if="{{loading}}">
+    <view class="empty-icon">⌛</view>
+    <view class="empty-text">加载数据...</view>
+  </view>
+
+  <block wx:if="{{!loading}}">
+    <!-- Stats -->
+    <view class="data-stats">
+      <view class="stat-card">
+        <view class="stat-num">{{totalWorks}}</view>
+        <view class="stat-label">作品总数</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-num">{{totalThemes}}</view>
+        <view class="stat-label">主题分类</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-num">{{totalArtists}}</view>
+        <view class="stat-label">画家</view>
+      </view>
+    </view>
+
+    <!-- Sentiment Stats -->
+    <view class="stat-row" wx:if="{{negPct > 0 || posPct > 0}}">
+      <view class="stat-card" style="border-left: 6rpx solid #c04030;">
+        <view class="stat-num" style="color: #c04030;">{{negPctStr}}</view>
+        <view class="stat-label">消极</view>
+      </view>
+      <view class="stat-card" style="border-left: 6rpx solid #67c23a;">
+        <view class="stat-num" style="color: #67c23a;">{{posPctStr}}</view>
+        <view class="stat-label">积极</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-num">{{neuPctStr}}</view>
+        <view class="stat-label">中性</view>
+      </view>
+    </view>
+
+    <!-- Theme Distribution Chart -->
+    <view class="data-section" wx:if="{{themes.length > 0}}">
+      <view class="data-section-title">主题分布</view>
+      <canvas type="2d" id="themeChart" class="chart-container"></canvas>
+    </view>
+
+    <!-- Period Distribution -->
+    <view class="data-section" wx:if="{{periodStats.length > 0}}">
+      <view class="data-section-title">各时期作品数</view>
+      <view class="stat-row">
+        <view class="stat-card" wx:for="{{periodStats}}" wx:key="phase">
+          <view class="stat-num">{{item.count}}</view>
+          <view class="stat-label">{{item.phase}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Defense QA -->
+    <view class="data-section" wx:if="{{defenseQA.length > 0}}">
+      <view class="data-section-title">答辩预设回应</view>
+      <view
+        class="qa-item {{item.open ? 'open' : ''}}"
+        wx:for="{{defenseQA}}"
+        wx:key="index"
+        data-index="{{index}}"
+        bindtap="onToggleQA"
+      >
+        <view class="qa-question">
+          <text>{{item.q}}</text>
+          <text class="qa-arrow">▾</text>
+        </view>
+        <view class="qa-answer">
+          <text>{{item.a}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Conclusion -->
+    <view class="data-section" wx:if="{{conclusionPoints.length > 0}}">
+      <view class="data-section-title">结论要点</view>
+      <view style="padding: 16rpx 0;">
+        <view
+          wx:for="{{conclusionPoints}}"
+          wx:key="index"
+          style="font-size: 26rpx; color: #555; padding: 10rpx 0; line-height: 1.7;"
+        >
+          {{index + 1}}. {{item}}
+        </view>
+      </view>
+    </view>
+
+    <!-- Footer -->
+    <view style="text-align: center; padding: 40rpx 0 60rpx; font-size: 22rpx; color: #8b7d6b;">
+      数据来源：系统数据库实时统计
+    </view>
+  </block>
+
+</view>

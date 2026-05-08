@@ -1,0 +1,31 @@
+/* Knowledge page-specific overrides */
+page {
+  padding-bottom: 20rpx;
+}
+
+.search-wrap {
+  padding-top: 16rpx;
+}
+
+/* Enhance book card hover */
+.book-card:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* Result item tap */
+.result-item:active {
+  background: #f5f0e8;
+}
+
+/* AI summary markdown */
+.ai-summary-card rich-text {
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: #2c2416;
+}
+
+/* Detail tabs scrollable if needed */
+.detail-tabs {
+  white-space: nowrap;
+}

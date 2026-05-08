@@ -1,12 +1,47 @@
 {
   "pages": [
-    "pages/analyze/analyze"
+    "pages/knowledge/knowledge",
+    "pages/tubi/tubi",
+    "pages/analyze/analyze",
+    "pages/data/data"
   ],
   "window": {
-    "navigationBarTitleText": "潘天寿教你构图",
-    "navigationBarBackgroundColor": "#faf8f3",
+    "navigationBarTitleText": "写意知识库",
+    "navigationBarBackgroundColor": "#f8f5f0",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#faf8f3"
+    "backgroundColor": "#f8f5f0"
+  },
+  "tabBar": {
+    "color": "#8b7d6b",
+    "selectedColor": "#c9a96e",
+    "backgroundColor": "#f8f5f0",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/knowledge/knowledge",
+        "text": "知识库",
+        "iconPath": "icons/knowledge.png",
+        "selectedIconPath": "icons/knowledge_active.png"
+      },
+      {
+        "pagePath": "pages/tubi/tubi",
+        "text": "题跋分析",
+        "iconPath": "icons/scroll.png",
+        "selectedIconPath": "icons/scroll_active.png"
+      },
+      {
+        "pagePath": "pages/analyze/analyze",
+        "text": "教你构图",
+        "iconPath": "icons/grid.png",
+        "selectedIconPath": "icons/grid_active.png"
+      },
+      {
+        "pagePath": "pages/data/data",
+        "text": "大数据",
+        "iconPath": "icons/pie.png",
+        "selectedIconPath": "icons/pie_active.png"
+      }
+    ]
   },
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents"

@@ -1,6 +1,47 @@
 function cleanText(text) {
   var s = String(text == null ? '' : text)
-  return s.replace(/NaN|nan|Nan/gi, '—').replace(/Infinity/gi, '—')
+  s = s.replace(/NaN|nan|Nan/gi, '—').replace(/Infinity/gi, '—')
+
+  // LaTeX math: $...$ and $$...$$ (same as backend _STRIP_LATEX_RE)
+  s = s.replace(/\$\$[^$]*\$\$/g, '')
+  s = s.replace(/\$[^$]*\$/g, '')
+
+  // LaTeX environments
+  s = s.replace(/\\begin\{[^}]*\}/g, '')
+  s = s.replace(/\\end\{[^}]*\}/g, '')
+
+  // LaTeX text commands → Unicode equivalents
+  var latexMap = {
+    '\\textcircled': '○', '\\circledR': '®', '\\textregistered': '®',
+    '\\texttrademark': '™', '\\textcopyright': '©', '\\textbullet': '•',
+    '\\textdagger': '†', '\\textdaggerdbl': '‡', '\\textellipsis': '…',
+    '\\textendash': '–', '\\textemdash': '—',
+    '\\textasciitilde': '~', '\\textasciicircum': '^', '\\textbackslash': '\\',
+    '\\textbar': '|', '\\textless': '<', '\\textgreater': '>',
+    '\\textquoteleft': "'", '\\textquoteright': "'",
+    '\\textquotedblleft': '"', '\\textquotedblright': '"',
+    '\\textopenbullet': '◦', '\\textperiodcentered': '·',
+    '\\textmu': 'µ', '\\texttimes': '×',
+    '\\textdegree': '°', '\\textpm': '±'
+  }
+  for (var key in latexMap) {
+    // Match \textcircled{2} → ○2, \textcircled → ○
+    var re = new RegExp(key.replace(/\\/g, '\\\\') + '(\\{[^}]*\\})?', 'gi')
+    s = s.replace(re, function (match, arg) {
+      if (arg) {
+        // Extract content inside braces
+        var inner = arg.replace(/[{}]/g, '')
+        return latexMap[key] + inner
+      }
+      return latexMap[key]
+    })
+  }
+
+  // Strip remaining unrecognized LaTeX commands: \foo or \foo{bar} → just bar
+  s = s.replace(/\\[a-zA-Z]+\{([^}]*)\}/g, '$1')
+  s = s.replace(/\\[a-zA-Z]+/g, '')
+
+  return s
 }
 
 function spanHtml(s) {
@@ -71,7 +112,16 @@ function blocksToHtml(mdText) {
 }
 
 function inlineHtml(text) {
-  return cleanText(text).replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:700;color:#1c1917">$1</strong>')
+  var s = cleanText(text)
+  // Bold
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:700;color:#1c1917">$1</strong>')
+  // Images: ![alt](url)
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, url) {
+    return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;height:auto;border-radius:8px;margin:8px 0" />'
+  })
+  // Links: [text](url) — render as styled text (mini program rich-text doesn't support <a> navigation well)
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<span style="color:#5b7a8c;text-decoration:underline">$1</span>')
+  return s
 }
 
 module.exports = {

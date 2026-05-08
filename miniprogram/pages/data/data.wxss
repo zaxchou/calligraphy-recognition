@@ -1,0 +1,10 @@
+/* Data page */
+.chart-container {
+  width: 100%;
+  height: auto;
+  min-height: 300rpx;
+}
+
+.qa-item:active {
+  background: #f5f0e8;
+}
