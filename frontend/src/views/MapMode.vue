@@ -25,6 +25,25 @@
           <div v-if="!activePanel && !hasInteracted" class="map-hint">
             点击城市标记查看李鱓在该地的经历与画作
           </div>
+
+          <!-- City Quick List (top-left overlay) -->
+          <div class="city-quick-list">
+            <div class="city-quick-title">行 旅</div>
+            <div
+              v-for="city in cityQuickList"
+              :key="city.locId"
+              class="city-quick-item"
+              :class="{ active: selectedLocation?.id === city.locId }"
+              @click="selectCityFromList(city.locId)"
+            >
+              <span class="city-quick-num" :style="{ color: city.color }">
+                {{ CHINESE_NUMS[city.order - 1] }}
+              </span>
+              <span class="city-quick-name">{{ city.name }}</span>
+              <span class="city-quick-province">{{ city.province }}</span>
+              <span class="city-quick-count">{{ city.paintingCount }}幅</span>
+            </div>
+          </div>
         </div>
 
         <!-- Info Panel -->
@@ -220,6 +239,35 @@ const cachedMarkerMeta = computed<Map<string, MarkerMeta>>(() => {
 // reveals exactly one segment. Same city may appear multiple times
 // (return visits) but each step advances the path by one segment.
 const tourEntries = computed(() => cachedTimeline.value)
+
+// ── City quick list (top-left overlay) ──
+
+const cityQuickList = computed(() => {
+  const result: { locId: string; order: number; color: string; name: string; province: string; paintingCount: number }[] = []
+  for (const entry of cachedTimeline.value) {
+    if (result.find((c) => c.locId === entry.locId)) continue
+    const loc = locationsWithPaintings.value.find((l) => l.id === entry.locId)
+    result.push({
+      locId: entry.locId,
+      order: result.length + 1,
+      color: entry.periodColor,
+      name: entry.name,
+      province: loc?.province || '',
+      paintingCount: loc?.paintingCount || 0,
+    })
+  }
+  return result
+})
+
+function selectCityFromList(locId: string) {
+  markInteraction()
+  if (tourState.value !== 'idle') stopTour()
+  const loc = locationsWithPaintings.value.find((l) => l.id === locId)
+  if (!loc) return
+  selectedLocation.value = loc
+  activePanel.value = 'city'
+  updateChartEffectScatter([loc.lng, loc.lat])
+}
 
 // ── Period overview data ──
 
@@ -847,6 +895,68 @@ onUnmounted(() => {
   50% { opacity: 1; }
 }
 
+/* ── City Quick List ── */
+.city-quick-list {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  background: rgba(250, 249, 245, 0.92);
+  backdrop-filter: blur(6px);
+  border: 1px solid #e8e4d8;
+  border-radius: 10px;
+  padding: 8px 0;
+  min-width: 120px;
+  max-width: 150px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  box-shadow: 0 2px 12px rgba(44, 36, 22, 0.06);
+}
+.city-quick-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.7rem;
+  color: #b8a990;
+  letter-spacing: 0.12em;
+  padding: 4px 14px 8px;
+  user-select: none;
+}
+.city-quick-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+.city-quick-item:hover {
+  background: rgba(201, 169, 110, 0.1);
+}
+.city-quick-item.active {
+  background: rgba(201, 169, 110, 0.15);
+}
+.city-quick-num {
+  font-size: 0.72rem;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+.city-quick-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #2c2416;
+  flex: 1;
+}
+.city-quick-province {
+  font-size: 0.65rem;
+  color: #b8a990;
+  flex-shrink: 0;
+}
+.city-quick-count {
+  display: none;
+}
+
 /* ── Info Panel ── */
 .info-panel {
   width: 400px;
@@ -1018,6 +1128,14 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .map-main { flex-direction: column; }
   .map-wrapper { min-height: 340px; }
+  .city-quick-list {
+    top: 8px;
+    left: 8px;
+    padding: 4px 0;
+    border-radius: 8px;
+  }
+  .city-quick-item { padding: 4px 8px; }
+  .city-quick-name { font-size: 0.76rem; }
   .info-panel {
     width: 100%;
     min-width: 0;
