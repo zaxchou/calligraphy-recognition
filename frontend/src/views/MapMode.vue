@@ -216,15 +216,10 @@ const cachedMarkerMeta = computed<Map<string, MarkerMeta>>(() => {
   return seen
 })
 
-// Tour entries: unique cities in chronological order
-const tourEntries = computed(() => {
-  const seen = new Set<string>()
-  return cachedTimeline.value.filter((e) => {
-    if (seen.has(e.locId)) return false
-    seen.add(e.locId)
-    return true
-  })
-})
+// Tour entries: follow the timeline step-by-step so each step
+// reveals exactly one segment. Same city may appear multiple times
+// (return visits) but each step advances the path by one segment.
+const tourEntries = computed(() => cachedTimeline.value)
 
 // ── Period overview data ──
 
@@ -238,8 +233,14 @@ interface PeriodCityEntry {
 
 const periodCities = computed<PeriodCityEntry[]>(() => {
   if (!selectedPeriod.value) return []
+  const seen = new Set<string>()
   return cachedTimeline.value
     .filter((e) => e.periodId === selectedPeriod.value)
+    .filter((e) => {
+      if (seen.has(e.locId)) return false
+      seen.add(e.locId)
+      return true
+    })
     .map((e) => {
       const loc = LI_SHAN_LOCATIONS.find((l) => l.id === e.locId)
       const brief = loc?.description?.split('\n')[0]?.replace(/^[^。]+。/, '').slice(0, 40) || ''
