@@ -161,26 +161,42 @@ interface TimelineEntry {
 }
 
 const cachedTimeline = computed<TimelineEntry[]>(() => {
-  const entries: TimelineEntry[] = []
-  for (const loc of LI_SHAN_LOCATIONS) {
-    for (let i = 0; i < loc.yearRanges.length; i++) {
-      const pid = loc.periods[i]
-      const cfg = PERIOD_CONFIG.find((p) => p.id === pid)
-      entries.push({
-        locId: loc.id,
-        name: loc.name,
-        lat: loc.lat,
-        lng: loc.lng,
-        startYear: loc.yearRanges[i][0],
-        endYear: loc.yearRanges[i][1],
-        periodId: pid,
-        periodLabel: cfg?.label || pid,
-        periodColor: cfg?.color || '#8b7d6b',
-      })
+  // Detailed travel sequence based on historical anchor points,
+  // forming a realistic continuous path without impossible parallel lines.
+  const seq: [string, number, number, string][] = [
+    // ▸ 早年求学与仕进（1686–1713）
+    ['xinghua', 1686, 1711, 'early'],
+    ['nanjing', 1711, 1711, 'exam-court'],
+    ['xinghua', 1711, 1713, 'early'],
+    ['chengde', 1713, 1713, 'exam-court'],
+    ['beijing', 1713, 1718, 'exam-court'],
+    // ▸ 江湖卖画（1718–1730）
+    ['yangzhou', 1718, 1727, 'wandering'],
+    ['huzhou', 1727, 1727, 'wandering'],
+    ['yangzhou', 1727, 1730, 'wandering'],
+    // ▸ 再度入都（1730–1736）
+    ['beijing', 1730, 1732, 'wandering'],
+    ['yangzhou', 1732, 1736, 'wandering'],
+    ['linyi', 1736, 1736, 'wandering'],
+    // ▸ 山东仕途（1736–1744）
+    ['beijing', 1736, 1737, 'shandong'],
+    ['linzi', 1737, 1738, 'shandong'],
+    ['tengxian', 1738, 1740, 'shandong'],
+    ['jinan', 1740, 1744, 'late'],
+    ['xinghua', 1744, 1745, 'late'],
+    // ▸ 扬州终老（1745–1756）
+    ['yangzhou', 1745, 1756, 'late'],
+    ['nantong', 1756, 1756, 'late'],
+  ]
+  return seq.map(([locId, startYear, endYear, periodId]) => {
+    const loc = LI_SHAN_LOCATIONS.find((l) => l.id === locId)!
+    const cfg = PERIOD_CONFIG.find((p) => p.id === periodId)!
+    return {
+      locId, name: loc.name, lat: loc.lat, lng: loc.lng,
+      startYear, endYear, periodId,
+      periodLabel: cfg.label, periodColor: cfg.color,
     }
-  }
-  entries.sort((a, b) => a.startYear - b.startYear)
-  return entries
+  })
 })
 
 interface MarkerMeta {
@@ -366,6 +382,9 @@ function advanceTour() {
   const prevEntry = tourIndex.value > 0 ? tourEntries.value[tourIndex.value - 1] : null
 
   tourVisitedLocIds.value!.add(entry.locId)
+
+  // Merge mode: existing segments stay, only new segment draws from start.
+  // animationDurationUpdate:0 prevents old segments from morphing.
   updateChartData(undefined, true)
 
   const loc = locationsWithPaintings.value.find((l) => l.id === entry.locId)
@@ -436,7 +455,7 @@ function stopTour() {
 
 // ── ECharts ──
 
-const CHINESE_NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+const CHINESE_NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪']
 const VISITED_PROVINCES = ['北京市', '河北省', '江苏省', '浙江省', '山东省']
 
 // Per-city label position: assign based on longitude to avoid overlaps
@@ -445,13 +464,14 @@ const LABEL_POSITIONS: Record<string, { position: 'left' | 'right'; offset?: [nu
   xinghua:  { position: 'left' },
   nanjing:  { position: 'left' },
   chengde:  { position: 'right' },
-  yangzhou: { position: 'left',  offset: [0, -12] }, // below 兴化, push up
+  yangzhou: { position: 'left',  offset: [0, -8] },
   huzhou:   { position: 'left' },
-  linyi:    { position: 'right', offset: [0, -10] }, // above 滕县
-  linzi:    { position: 'left' },
-  tengxian: { position: 'right', offset: [0, 10] },  // below 临沂
+  linyi:    { position: 'right' },
+  linzi:    { position: 'left',  offset: [0, 6] },
+  tengxian: { position: 'right' },
   beijing:  { position: 'right' },
-  nantong:  { position: 'left',  offset: [0, 12] },  // below others
+  jinan:    { position: 'left' },
+  nantong:  { position: 'left' },
 }
 
 function makeScatterData(locations: LocationWithPaintings[]) {
@@ -461,7 +481,7 @@ function makeScatterData(locations: LocationWithPaintings[]) {
     const color = meta?.color || '#c9a96e'
     const num = CHINESE_NUMS[order - 1] || `${order}`
     const labelCfg = LABEL_POSITIONS[loc.id] || { position: 'right' as const }
-    const baseOffset = labelCfg.position === 'left' ? [-12, 0] : [12, 0]
+    const dx = labelCfg.position === 'left' ? -6 : 6
     const extraOffset = labelCfg.offset || [0, 0]
     return {
       name: `${num} ${loc.name}`,
@@ -471,7 +491,8 @@ function makeScatterData(locations: LocationWithPaintings[]) {
       label: {
         color,
         position: labelCfg.position,
-        offset: [baseOffset[0] + extraOffset[0], baseOffset[1] + extraOffset[1]],
+        offset: [dx + extraOffset[0], extraOffset[1]],
+        distance: 2,
       },
     }
   })
@@ -496,10 +517,15 @@ function computeArc(
   const my = (lat1 + lat2) / 2
   const dx = lng2 - lng1
   const dy = lat2 - lat1
-  const bulge = Math.max(Math.abs(dx) * 0.5 + 0.3, 0.4)
-  const dir = dy >= 0 ? 1 : -1
-  const cx = mx + dir * bulge
-  const cy = my + bulge * 0.6
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  // Subtle bulge proportional to distance, always to the right of travel direction
+  const bulge = Math.min(dist * 0.18, 0.5)
+  // Right perpendicular: (dy, -dx) — gives consistent clockwise arcs
+  const len = dist || 1
+  const px = dy / len
+  const py = -dx / len
+  const cx = mx + px * bulge
+  const cy = my + py * bulge
 
   const pts: [number, number][] = []
   for (let i = 0; i <= numPoints; i++) {
@@ -560,6 +586,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     backgroundColor: '#f8f5f0',
     animation: true,
     animationDuration: 800,
+    animationDurationUpdate: 0,
     animationEasing: 'cubicOut' as const,
     tooltip: {
       trigger: 'item' as const,
@@ -642,7 +669,6 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     label: {
       show: true,
       formatter: '{b}',
-      position: 'right' as const,
       fontSize: 13,
       fontFamily: "'Noto Serif SC', serif",
       fontWeight: 600,
@@ -690,6 +716,8 @@ function updateChartData(locations?: LocationWithPaintings[], smooth = false) {
   if (!chart) return
   const locs = locations || filteredLocations.value
   const option = buildOption(locs, locationsWithPaintings.value, selectedPeriod.value, tourVisitedLocIds.value)
+  // replace mode (notMerge=true): lines clear and redraw from start — used for period switches
+  // merge mode (notMerge=false): new segments animate in, existing stay — used for tour steps
   chart.setOption(option, !smooth)
 }
 
