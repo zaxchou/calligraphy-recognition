@@ -537,7 +537,19 @@ function computeArc(
   return pts
 }
 
-function buildSegments(visibleLocIds: Set<string> | null, tourVisitedLocIds?: Set<string> | null): SegmentData[] {
+/** Segment i (timeline[i]→timeline[i+1]) is revealed at tour step i+1. */
+function segmentOpacity(segmentIndex: number, tourEntryCount: number): number {
+  const stepsAgo = tourEntryCount - 1 - segmentIndex
+  if (stepsAgo <= 0) return 0.7
+  if (stepsAgo === 1) return 0.28
+  if (stepsAgo === 2) return 0.1
+  return 0.04 // 残影
+}
+
+function buildSegments(
+  visibleLocIds: Set<string> | null,
+  tourEntryCount: number,
+): SegmentData[] {
   const timeline = cachedTimeline.value
   const segments: SegmentData[] = []
 
@@ -546,13 +558,18 @@ function buildSegments(visibleLocIds: Set<string> | null, tourVisitedLocIds?: Se
     const b = timeline[i + 1]
     if (a.lat === b.lat && a.lng === b.lng) continue
     if (visibleLocIds && (!visibleLocIds.has(a.locId) || !visibleLocIds.has(b.locId))) continue
-    // During tour: only show segments where BOTH endpoints have been visited
-    if (tourVisitedLocIds && (!tourVisitedLocIds.has(a.locId) || !tourVisitedLocIds.has(b.locId))) continue
+
+    // Tour: only reveal segment i once entry i+1 has been visited.
+    // This prevents multiple segments between the same two cities
+    // from all lighting up at once (e.g. 北京→扬州 appearing twice).
+    if (tourEntryCount > 0 && i + 1 >= tourEntryCount) continue
+
+    const opacity = tourEntryCount > 0 ? segmentOpacity(i, tourEntryCount) : 0.7
 
     const arc = computeArc(a.lng, a.lat, b.lng, b.lat, 48)
     segments.push({
       coords: arc,
-      lineStyle: { color: a.periodColor, width: 3, opacity: 0.7 },
+      lineStyle: { color: a.periodColor, width: 3, opacity },
       periodId: a.periodId,
       fromName: a.name,
       toName: b.name,
@@ -563,7 +580,7 @@ function buildSegments(visibleLocIds: Set<string> | null, tourVisitedLocIds?: Se
   return segments
 }
 
-function buildOption(locations: LocationWithPaintings[], allLocations: LocationWithPaintings[], periodFilter: string | null, tourVisited?: Set<string> | null) {
+function buildOption(locations: LocationWithPaintings[], allLocations: LocationWithPaintings[], periodFilter: string | null, tourEntryCount = 0) {
   const visibleLocIds = periodFilter
     ? new Set(locations.map((l) => l.id))
     : null
@@ -580,7 +597,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     }
   }
 
-  const segments = buildSegments(visibleLocIds, tourVisited)
+  const segments = buildSegments(visibleLocIds, tourEntryCount)
 
   const option: any = {
     backgroundColor: '#f8f5f0',
@@ -715,7 +732,8 @@ function updateChartEffectScatter(lngLat: [number, number] | null) {
 function updateChartData(locations?: LocationWithPaintings[], smooth = false) {
   if (!chart) return
   const locs = locations || filteredLocations.value
-  const option = buildOption(locs, locationsWithPaintings.value, selectedPeriod.value, tourVisitedLocIds.value)
+  const tourEntryCount = tourState.value !== 'idle' ? tourIndex.value + 1 : 0
+  const option = buildOption(locs, locationsWithPaintings.value, selectedPeriod.value, tourEntryCount)
   // replace mode (notMerge=true): lines clear and redraw from start — used for period switches
   // merge mode (notMerge=false): new segments animate in, existing stay — used for tour steps
   chart.setOption(option, !smooth)
