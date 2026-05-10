@@ -1,20 +1,4 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import Home from '../views/Home.vue'
-import Recognize from '../views/Recognize.vue'
-import Steles from '../views/Steles.vue'
-import SteleDetail from '../views/SteleDetail.vue'
-import TubiAnalysis from '../views/TubiAnalysis.vue'
-import TubiList from '../views/TubiList.vue'
-import DimensionInput from '../views/DimensionInput.vue'
-import CompositionAnalyze from '../modules/pantianshou-composition/pages/CompositionAnalyze.vue'
-import CompositionPrint from '../modules/pantianshou-composition/pages/CompositionPrint.vue'
-import ArrowDemo from '../modules/pantianshou-composition/pages/ArrowDemo.vue'
-import KnowledgeSearch from '../views/KnowledgeSearch.vue'
-import ContentAnalysis from '../views/ContentAnalysis.vue'
-import ContentVerify from '../views/ContentVerify.vue'
-import InscriptionAnnotator from '../views/InscriptionAnnotator.vue'
-import AlbumManager from '../views/AlbumManager.vue'
-import TagManager from '../views/TagManager.vue'
 
 const SITE_NAME = '中国画与书法AI综合分析系统'
 
@@ -22,97 +6,97 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: Home,
+    component: () => import('../views/Home.vue'),
     meta: { title: '首页' }
   },
   {
     path: '/recognize',
     name: 'Recognize',
-    component: Recognize,
+    component: () => import('../views/Recognize.vue'),
     meta: { title: '书法识别' }
   },
   {
     path: '/steles',
     name: 'Steles',
-    component: Steles,
+    component: () => import('../views/Steles.vue'),
     meta: { title: '碑帖数据库' }
   },
   {
     path: '/steles/:id',
     name: 'SteleDetail',
-    component: SteleDetail,
+    component: () => import('../views/SteleDetail.vue'),
     meta: { title: '碑帖详情' }
   },
   {
     path: '/tubi',
     name: 'TubiAnalysis',
-    component: TubiAnalysis,
+    component: () => import('../views/TubiAnalysis.vue'),
     meta: { title: '题跋分析' }
   },
   {
     path: '/tubi/:id',
     name: 'TubiDetail',
-    component: TubiAnalysis,
+    component: () => import('../views/TubiAnalysis.vue'),
     meta: { title: '题跋分析' }
   },
   {
     path: '/tubi/list',
     name: 'TubiList',
-    component: TubiList,
+    component: () => import('../views/TubiList.vue'),
     meta: { title: '作品库' }
   },
   {
     path: '/tubi/dimensions',
     name: 'DimensionInput',
-    component: DimensionInput,
+    component: () => import('../views/DimensionInput.vue'),
     meta: { title: '尺寸录入' }
   },
   {
     path: '/composition',
     name: 'CompositionAnalyze',
-    component: CompositionAnalyze,
+    component: () => import('../modules/pantianshou-composition/pages/CompositionAnalyze.vue'),
     meta: { title: '构图分析' }
   },
   {
     path: '/knowledge',
     name: 'KnowledgeSearch',
-    component: KnowledgeSearch,
+    component: () => import('../views/KnowledgeSearch.vue'),
     meta: { title: '知识库搜索' }
   },
   {
     path: '/composition/print/:taskId',
     name: 'CompositionPrint',
-    component: CompositionPrint,
+    component: () => import('../modules/pantianshou-composition/pages/CompositionPrint.vue'),
     meta: { title: '构图报告' }
   },
   {
     path: '/composition/arrow-demo',
     name: 'ArrowDemo',
-    component: ArrowDemo,
+    component: () => import('../modules/pantianshou-composition/pages/ArrowDemo.vue'),
     meta: { title: '箭头演示' }
   },
   {
     path: '/qczh',
     name: 'QczhAnalysis',
-    component: ArrowDemo,
+    component: () => import('../modules/pantianshou-composition/pages/ArrowDemo.vue'),
     meta: { title: '起承转合分析' }
   },
   {
     path: '/content-analysis',
     name: 'ContentAnalysis',
-    component: ContentAnalysis,
+    component: () => import('../views/ContentAnalysis.vue'),
     meta: { title: '题跋大数据分析' }
   },
   {
     path: '/content-verify',
     name: 'ContentVerify',
-    component: ContentVerify,
+    component: () => import('../views/ContentVerify.vue'),
     meta: { title: '管理后台' }
   },
   {
     path: '/annotate/:id',
     name: 'InscriptionAnnotator',
-    component: InscriptionAnnotator,
+    component: () => import('../views/InscriptionAnnotator.vue'),
     meta: { title: '题跋标注' }
   },
   {

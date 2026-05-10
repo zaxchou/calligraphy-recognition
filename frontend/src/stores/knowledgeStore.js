@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-// API 基础路径
-const API_BASE = '/api/v1/knowledge'
+import api from '@/api'
 
 export const useKnowledgeStore = defineStore('knowledge', () => {
   // ============ State ============
@@ -73,9 +70,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     booksError.value = null
     
     try {
-      const response = await axios.get(`${API_BASE}/books`, { params })
-      books.value = response.data
-      return response.data
+      const response = await api.get(`/knowledge/books`, { params })
+      books.value = response
+      return response
     } catch (error) {
       booksError.value = error.message || '获取书籍列表失败'
       throw error
@@ -87,9 +84,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取书籍详情
   async function fetchBookDetail(bookId) {
     try {
-      const response = await axios.get(`${API_BASE}/books/${bookId}`)
-      currentBook.value = response.data
-      return response.data
+      const response = await api.get(`/knowledge/books/${bookId}`)
+      currentBook.value = response
+      return response
     } catch (error) {
       throw error
     }
@@ -143,7 +140,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     formData.append('page_offset', config.pageOffset || 1)
     
     try {
-      const response = await axios.post(`${API_BASE}/books/upload`, formData, {
+      const response = await api.post(`/knowledge/books/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
@@ -161,10 +158,10 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       
       uploadStatus.value = 'processing'
       // 开始轮询任务进度
-      if (response.data.task_id) {
-        startPollingTask(response.data.task_id)
+      if (response.task_id) {
+        startPollingTask(response.task_id)
       }
-      return response.data
+      return response
     } catch (error) {
       uploadStatus.value = 'error'
       uploadError.value = error.response?.data?.detail || '上传失败'
@@ -175,7 +172,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 删除书籍
   async function deleteBook(bookId) {
     try {
-      await axios.delete(`${API_BASE}/books/${bookId}`)
+      await api.delete(`/knowledge/books/${bookId}`)
       // 从列表中移除
       books.value = books.value.filter(b => b.id !== bookId)
       return true
@@ -192,20 +189,20 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       formData.append('chunk_size', config.chunkSize || 500)
       formData.append('parser_backend', config.parserBackend || 'mineru')
       
-      const response = await axios.post(`${API_BASE}/books/${bookId}/reingest`, formData, {
+      const response = await api.post(`/knowledge/books/${bookId}/reingest`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
       
       // 后端立即返回 task_id，开始轮询进度
-      if (response.data.task_id) {
-        startPollingTask(response.data.task_id)
+      if (response.task_id) {
+        startPollingTask(response.task_id)
       }
       
       // 刷新书籍列表
       await fetchBooks()
-      return response.data
+      return response
     } catch (error) {
       throw error
     }
@@ -216,9 +213,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     tasksLoading.value = true
     
     try {
-      const response = await axios.get(`${API_BASE}/tasks`, { params })
-      tasks.value = response.data
-      return response.data
+      const response = await api.get(`/knowledge/tasks`, { params })
+      tasks.value = response
+      return response
     } catch (error) {
       throw error
     } finally {
@@ -229,8 +226,8 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取任务详情
   async function fetchTaskDetail(taskId) {
     try {
-      const response = await axios.get(`${API_BASE}/tasks/${taskId}`)
-      return response.data
+      const response = await api.get(`/knowledge/tasks/${taskId}`)
+      return response
     } catch (error) {
       throw error
     }
@@ -239,8 +236,8 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 重试任务
   async function retryTask(taskId) {
     try {
-      const response = await axios.post(`${API_BASE}/tasks/${taskId}/retry`)
-      return response.data
+      const response = await api.post(`/knowledge/tasks/${taskId}/retry`)
+      return response
     } catch (error) {
       throw error
     }
@@ -249,7 +246,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 取消任务
   async function cancelTask(taskId) {
     try {
-      await axios.post(`${API_BASE}/tasks/${taskId}/cancel`)
+      await api.post(`/knowledge/tasks/${taskId}/cancel`)
       return true
     } catch (error) {
       throw error
@@ -259,9 +256,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取书籍文本块
   async function fetchBookChunks(bookId, params = {}) {
     try {
-      const response = await axios.get(`${API_BASE}/books/${bookId}/chunks`, { params })
-      bookChunks.value = response.data
-      return response.data
+      const response = await api.get(`/knowledge/books/${bookId}/chunks`, { params })
+      bookChunks.value = response
+      return response
     } catch (error) {
       throw error
     }
@@ -270,11 +267,11 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取书籍单个文本块的完整内容（用于翻页）
   async function fetchChunkDetail(bookId, chunkIndex) {
     try {
-      const response = await axios.get(`${API_BASE}/books/${bookId}/chunks`, {
+      const response = await api.get(`/knowledge/books/${bookId}/chunks`, {
         params: { offset: chunkIndex, limit: 1 }
       })
-      if (response.data && response.data.length > 0) {
-        return response.data[0]
+      if (response && response.length > 0) {
+        return response[0]
       }
       return null
     } catch (error) {
@@ -285,9 +282,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取书籍图像
   async function fetchBookImages(bookId, params = {}) {
     try {
-      const response = await axios.get(`${API_BASE}/books/${bookId}/images`, { params })
-      bookImages.value = response.data
-      return response.data
+      const response = await api.get(`/knowledge/books/${bookId}/images`, { params })
+      bookImages.value = response
+      return response
     } catch (error) {
       throw error
     }
@@ -311,7 +308,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }, 200)
     
     try {
-      const response = await axios.post(`${API_BASE}/search`, {
+      const response = await api.post(`/knowledge/search`, {
         query,
         book_ids: options.bookIds || [],
         limit: options.limit || 10
@@ -320,21 +317,21 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       clearInterval(progressInterval)
       searchProgress.value = 100
       
-      searchResults.value = response.data.results || []
+      searchResults.value = response.results || []
       
       // AI 摘要和改写信息（直接从响应获取，后端已并行完成）
-      if (response.data.ai_summary && response.data.ai_summary.answer) {
-        aiSummary.value = response.data.ai_summary
+      if (response.ai_summary && response.ai_summary.answer) {
+        aiSummary.value = response.ai_summary
       }
-      if (response.data.query_rewrite) {
-        queryRewrite.value = response.data.query_rewrite
+      if (response.query_rewrite) {
+        queryRewrite.value = response.query_rewrite
       }
       // 相关配图
-      if (response.data.related_images && response.data.related_images.length > 0) {
-        relatedImages.value = response.data.related_images
+      if (response.related_images && response.related_images.length > 0) {
+        relatedImages.value = response.related_images
       }
       
-      return response.data
+      return response
     } catch (error) {
       clearInterval(progressInterval)
       throw error
@@ -349,11 +346,11 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取搜索历史
   async function fetchSearchHistory(limit = 20) {
     try {
-      const response = await axios.get(`${API_BASE}/search/history`, {
+      const response = await api.get(`/knowledge/search/history`, {
         params: { limit }
       })
-      searchHistory.value = response.data
-      return response.data
+      searchHistory.value = response
+      return response
     } catch (error) {
       throw error
     }
@@ -362,7 +359,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 删除单条搜索历史
   async function deleteSearchHistoryItem(historyId) {
     try {
-      await axios.delete(`${API_BASE}/search/history/${historyId}`)
+      await api.delete(`/knowledge/search/history/${historyId}`)
       // 从本地列表中移除
       searchHistory.value = searchHistory.value.filter(h => h.id !== historyId)
       return true
@@ -374,7 +371,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 清空搜索历史
   async function clearSearchHistory() {
     try {
-      await axios.delete(`${API_BASE}/search/history`)
+      await api.delete(`/knowledge/search/history`)
       searchHistory.value = []
       return true
     } catch (error) {
@@ -385,9 +382,9 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   // 获取统计
   async function fetchStats() {
     try {
-      const response = await axios.get(`${API_BASE}/stats`)
-      stats.value = response.data
-      return response.data
+      const response = await api.get(`/knowledge/stats`)
+      stats.value = response
+      return response
     } catch (error) {
       throw error
     }
