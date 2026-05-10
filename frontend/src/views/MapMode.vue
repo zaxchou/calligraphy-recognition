@@ -165,9 +165,8 @@ const cachedTimeline = computed<TimelineEntry[]>(() => {
   // forming a realistic continuous path without impossible parallel lines.
   const seq: [string, number, number, string][] = [
     // ▸ 早年求学与仕进（1686–1713）
-    ['xinghua', 1686, 1711, 'early'],
+    ['xinghua', 1686, 1713, 'early'],
     ['nanjing', 1711, 1711, 'exam-court'],
-    ['xinghua', 1711, 1713, 'early'],
     ['chengde', 1713, 1713, 'exam-court'],
     ['beijing', 1713, 1718, 'exam-court'],
     // ▸ 江湖卖画（1718–1730）
