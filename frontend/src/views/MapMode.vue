@@ -467,8 +467,8 @@ const LABEL_POSITIONS: Record<string, { position: 'left' | 'right'; offset?: [nu
   yangzhou: { position: 'left',  offset: [0, -8] },
   huzhou:   { position: 'left' },
   linyi:    { position: 'right' },
-  linzi:    { position: 'left',  offset: [0, 6] },
-  tengxian: { position: 'right' },
+  linzi:    { position: 'right' },
+  tengxian: { position: 'left' },
   beijing:  { position: 'right' },
   jinan:    { position: 'left' },
   nantong:  { position: 'left' },
@@ -657,6 +657,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     type: 'lines',
     coordinateSystem: 'geo',
     polyline: true,
+    animationDuration: tourEntryCount > 0 ? 0 : 800,
     data: segments.map((seg) => ({
       coords: seg.coords,
       lineStyle: seg.lineStyle,
@@ -665,7 +666,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
       fromYear: seg.fromYear,
       toYear: seg.toYear,
     })),
-    lineStyle: { width: 3, opacity: 0.55 },
+    lineStyle: { width: 3 },
     effect: {
       show: true,
       period: 6,
