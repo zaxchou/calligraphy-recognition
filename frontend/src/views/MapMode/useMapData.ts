@@ -1,9 +1,6 @@
 import { ref, computed, type Ref } from 'vue'
 import { tubiApi } from '@/api'
-import {
-  getMergedLocations,
-  type MergedLocation,
-} from './locations'
+import { LI_SHAN_LOCATIONS, type LiShanLocation } from './locations'
 
 export interface Painting {
   id: number | string
@@ -13,9 +10,10 @@ export interface Painting {
   period?: string
   period_phase?: string
   artist: string
+  thumbnail_url?: string
 }
 
-export interface LocationWithPaintings extends MergedLocation {
+export interface LocationWithPaintings extends LiShanLocation {
   paintingCount: number
   paintings: Painting[]
   markerRadius: number
@@ -67,23 +65,21 @@ export function useMapData() {
         period: item.period,
         period_phase: item.period_phase,
         artist: item.artist,
+        thumbnail_url: item.thumbnail_url || item.url || undefined,
       }))
 
       allPaintings.value = paintings
 
-      // Group paintings by location
-      const merged = getMergedLocations()
-      const result: LocationWithPaintings[] = merged.map((loc) => {
+      const result: LocationWithPaintings[] = LI_SHAN_LOCATIONS.map((loc) => {
         const matched = paintings.filter((p) => yearInRanges(p.year, loc.yearRanges))
         return {
           ...loc,
           paintingCount: matched.length,
           paintings: matched,
-          markerRadius: 0, // computed after we know maxCount
+          markerRadius: 0,
         }
       })
 
-      // Compute marker radii
       const max = Math.max(...result.map((l) => l.paintingCount), 1)
       for (const loc of result) {
         loc.markerRadius = computeRadius(loc.paintingCount, max)

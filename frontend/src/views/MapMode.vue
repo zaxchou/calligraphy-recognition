@@ -21,23 +21,9 @@
         <div class="map-wrapper">
           <div ref="chartContainer" class="chart-container"></div>
 
-          <!-- Hint -->
-          <div v-if="!activePanel" class="map-hint">
+          <!-- Smart Hint: hides after first interaction -->
+          <div v-if="!activePanel && !hasInteracted" class="map-hint">
             点击城市标记查看李鱓在该地的经历与画作
-          </div>
-
-          <!-- Legend -->
-          <div class="map-legend">
-            <div
-              v-for="p in PERIOD_CONFIG"
-              :key="p.id"
-              class="legend-item"
-              :class="{ dimmed: selectedPeriod && selectedPeriod !== p.id }"
-              @click="selectPeriod(p.id)"
-            >
-              <span class="legend-line" :style="{ background: p.color }"></span>
-              <span class="legend-label">{{ p.yearRange[0] === p.yearRange[1] ? p.yearRange[0] : `${p.yearRange[0]}-${p.yearRange[1]}` }}</span>
-            </div>
           </div>
         </div>
 
@@ -48,96 +34,57 @@
             <div v-if="activePanel === 'period'" class="panel-header">
               <h2 class="panel-location">{{ currentPeriodLabel }}</h2>
               <span class="panel-year-range">{{ currentPeriodYearRange }}</span>
-              <button class="panel-close" @click="closePeriodPanel">&times;</button>
+              <div class="panel-header-actions">
+                <button
+                  v-if="isTourActive"
+                  class="panel-close tour-stop-btn"
+                  title="停止播放"
+                  @click="stopTour"
+                >&#9632;</button>
+                <button class="panel-close" @click="closePeriodPanel">&times;</button>
+              </div>
             </div>
 
             <!-- City Detail Header -->
             <div v-else class="panel-header">
               <button v-if="selectedPeriod" class="panel-back" @click="backToPeriod">&larr; 返回</button>
               <h2 class="panel-location">{{ selectedLocation?.name }}</h2>
-              <button class="panel-close" @click="closePanel">&times;</button>
+              <div class="panel-header-actions">
+                <button
+                  v-if="isTourActive"
+                  class="panel-close tour-stop-btn"
+                  title="停止播放"
+                  @click="stopTour"
+                >&#9632;</button>
+                <button class="panel-close" @click="closePanel">&times;</button>
+              </div>
             </div>
 
             <!-- Panel Body -->
-            <div v-if="activePanel === 'period'" key="period" class="panel-body">
-              <div class="panel-description period-desc">
-                李鱓{{ currentPeriodLabel }}期间，足迹涉及 {{ periodCities.length }} 座城市：
-              </div>
-
-              <div class="period-timeline">
-                <div
-                  v-for="(city, idx) in periodCities"
-                  :key="city.locId"
-                  class="timeline-step"
-                  :class="{ last: idx === periodCities.length - 1 }"
-                  @click="selectCityFromPeriod(city.locId)"
-                >
-                  <div class="timeline-dot" :style="{ background: city.color }"></div>
-                  <div v-if="idx < periodCities.length - 1" class="timeline-line"></div>
-                  <div class="timeline-card">
-                    <span class="timeline-year">{{ city.year }}年</span>
-                    <span class="timeline-name">{{ city.name }}</span>
-                    <span class="timeline-desc">{{ city.briefDesc }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- City Detail Body -->
-            <div v-else key="city" class="panel-body">
-              <div class="panel-periods">
-                <el-tag
-                  v-for="pid in selectedLocation!.periods"
-                  :key="pid"
-                  size="small"
-                  :color="getPeriodColor(pid)"
-                  effect="dark"
-                  class="period-tag"
-                >
-                  {{ getPeriodLabel(pid) }}
-                </el-tag>
-              </div>
-
-              <p class="panel-description">{{ selectedLocation!.description }}</p>
-
-              <div class="panel-count">
-                <span class="count-num">{{ selectedLocation!.paintingCount }}</span>
-                <span class="count-label">幅作品</span>
-              </div>
-
-              <div class="panel-paintings">
-                <h3 class="paintings-title">画作列表</h3>
-                <div class="paintings-list">
-                  <template v-for="phase in paintingPhases" :key="phase.label">
-                    <div class="phase-header">{{ phase.label }}</div>
-                    <div
-                      v-for="p in phase.paintings"
-                      :key="p.id"
-                      class="painting-item"
-                      @click="goToPainting(p)"
-                    >
-                      <span class="painting-title">{{ p.title }}</span>
-                      <span class="painting-year">{{ p.year || '年代不详' }}</span>
-                    </div>
-                  </template>
-                  <div v-if="selectedLocation!.paintingCount === 0" class="no-paintings">
-                    暂无该地点对应年份的存世作品记录
-                  </div>
-                </div>
-              </div>
-            </div>
+            <PeriodPanel
+              v-if="activePanel === 'period'"
+              :period-label="currentPeriodLabel"
+              :cities="periodCities"
+              @select-city="selectCityFromPeriod"
+            />
+            <CityPanel
+              v-else
+              :location="selectedLocation!"
+              @go-to-painting="goToPainting"
+            />
           </div>
         </transition>
       </div>
 
-      <!-- Period Selector -->
+      <!-- Period Bar (merged legend + filter + tour) -->
       <div class="period-bar">
         <button
           class="period-btn reset-btn"
           :class="{ active: selectedPeriod === null }"
-          @click="selectPeriod(null)"
+          @click="onFilterAll"
         >
-          全 程
+          <span class="period-btn-label">全 程</span>
+          <span class="period-btn-year">1686-1756</span>
         </button>
         <button
           v-for="period in PERIOD_CONFIG"
@@ -146,7 +93,18 @@
           :class="{ active: selectedPeriod === period.id }"
           @click="selectPeriod(period.id)"
         >
-          {{ period.label }}
+          <span class="period-btn-dot" :style="{ background: period.color }"></span>
+          <span class="period-btn-label">{{ period.label }}</span>
+          <span class="period-btn-year">{{ formatYearRange(period.yearRange) }}</span>
+        </button>
+        <button
+          class="period-btn tour-btn"
+          :class="{ playing: tourState === 'playing', paused: tourState === 'paused' }"
+          @click="toggleTour"
+        >
+          <span v-if="tourState === 'playing'">&#9646;&#9646; 暂停</span>
+          <span v-else-if="tourState === 'paused'">&#9654; 继续</span>
+          <span v-else>&#9654; 播放行旅</span>
         </button>
       </div>
     </template>
@@ -160,12 +118,15 @@ import * as echarts from 'echarts'
 import { useMapData } from './MapMode/useMapData'
 import { PERIOD_CONFIG, LI_SHAN_LOCATIONS } from './MapMode/locations'
 import type { LocationWithPaintings, Painting } from './MapMode/useMapData'
+import PeriodPanel from './MapMode/PeriodPanel.vue'
+import CityPanel from './MapMode/CityPanel.vue'
 import chinaGeoJSON from '@/assets/china-geojson.json'
 
 const router = useRouter()
 const chartContainer = ref<HTMLElement | null>(null)
 const selectedLocation = ref<LocationWithPaintings | null>(null)
 const activePanel = ref<'period' | 'city' | null>(null)
+const hasInteracted = ref(false)
 
 const {
   loading,
@@ -178,6 +139,76 @@ const {
 } = useMapData()
 
 let chart: echarts.ECharts | null = null
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+let tourTimer: ReturnType<typeof setTimeout> | null = null
+const tourState = ref<'idle' | 'playing' | 'paused'>('idle')
+const tourIndex = ref(0)
+const isTourActive = computed(() => tourState.value !== 'idle')
+
+// ── Memoized timeline ──
+
+interface TimelineEntry {
+  locId: string
+  name: string
+  lat: number
+  lng: number
+  startYear: number
+  endYear: number
+  periodId: string
+  periodLabel: string
+  periodColor: string
+}
+
+const cachedTimeline = computed<TimelineEntry[]>(() => {
+  const entries: TimelineEntry[] = []
+  for (const loc of LI_SHAN_LOCATIONS) {
+    for (let i = 0; i < loc.yearRanges.length; i++) {
+      const pid = loc.periods[i]
+      const cfg = PERIOD_CONFIG.find((p) => p.id === pid)
+      entries.push({
+        locId: loc.id,
+        name: loc.name,
+        lat: loc.lat,
+        lng: loc.lng,
+        startYear: loc.yearRanges[i][0],
+        endYear: loc.yearRanges[i][1],
+        periodId: pid,
+        periodLabel: cfg?.label || pid,
+        periodColor: cfg?.color || '#8b7d6b',
+      })
+    }
+  }
+  entries.sort((a, b) => a.startYear - b.startYear)
+  return entries
+})
+
+interface MarkerMeta {
+  order: number
+  color: string
+  name: string
+}
+
+const cachedMarkerMeta = computed<Map<string, MarkerMeta>>(() => {
+  const seen = new Map<string, MarkerMeta>()
+  let order = 0
+  for (const entry of cachedTimeline.value) {
+    if (!seen.has(entry.locId)) {
+      order++
+      seen.set(entry.locId, { order, color: entry.periodColor, name: entry.name })
+    }
+  }
+  return seen
+})
+
+// Tour entries: unique cities in chronological order
+const tourEntries = computed(() => {
+  const seen = new Set<string>()
+  return cachedTimeline.value.filter((e) => {
+    if (seen.has(e.locId)) return false
+    seen.add(e.locId)
+    return true
+  })
+})
 
 // ── Period overview data ──
 
@@ -191,8 +222,7 @@ interface PeriodCityEntry {
 
 const periodCities = computed<PeriodCityEntry[]>(() => {
   if (!selectedPeriod.value) return []
-  const timeline = buildTimeline()
-  return timeline
+  return cachedTimeline.value
     .filter((e) => e.periodId === selectedPeriod.value)
     .map((e) => {
       const loc = LI_SHAN_LOCATIONS.find((l) => l.id === e.locId)
@@ -220,17 +250,7 @@ const currentPeriodYearRange = computed(() => {
   return s === e ? `${s}年` : `${s} — ${e}年`
 })
 
-const paintingPhases = computed(() => {
-  if (!selectedLocation.value) return []
-  const paintings = selectedLocation.value.paintings
-  const phaseMap: Record<string, Painting[]> = {}
-  for (const p of paintings) {
-    const phase = p.period_phase || p.period || '未分期'
-    if (!phaseMap[phase]) phaseMap[phase] = []
-    phaseMap[phase].push(p)
-  }
-  return Object.entries(phaseMap).map(([label, list]) => ({ label, paintings: list }))
-})
+// ── Helpers ──
 
 function getPeriodLabel(periodId: string): string {
   return PERIOD_CONFIG.find((p) => p.id === periodId)?.label || periodId
@@ -240,8 +260,22 @@ function getPeriodColor(periodId: string): string {
   return PERIOD_CONFIG.find((p) => p.id === periodId)?.color || '#8b7d6b'
 }
 
+function formatYearRange(range: [number, number]): string {
+  const [s, e] = range
+  return s === e ? `${s}` : `${s}-${e}`
+}
+
+function markInteraction() {
+  hasInteracted.value = true
+}
+
+// ── Period / City selection ──
+
 function selectPeriod(periodId: string | null) {
   _selectPeriod(periodId)
+  markInteraction()
+  // If tour is playing and user manually clicks a period, stop tour
+  if (tourState.value !== 'idle') stopTour()
   if (periodId) {
     activePanel.value = 'period'
     selectedLocation.value = null
@@ -251,6 +285,10 @@ function selectPeriod(periodId: string | null) {
     selectedLocation.value = null
     updateChartEffectScatter(null)
   }
+}
+
+function onFilterAll() {
+  selectPeriod(null)
 }
 
 function selectCityFromPeriod(locId: string) {
@@ -276,10 +314,8 @@ function backToPeriod() {
 
 function closePanel() {
   if (selectedPeriod.value) {
-    // Coming from period overview → go back to it
     backToPeriod()
   } else {
-    // Coming from map marker → close everything
     activePanel.value = null
     selectedLocation.value = null
     updateChartEffectScatter(null)
@@ -296,64 +332,77 @@ async function retry() {
   updateChartData()
 }
 
-// ── Timeline & trajectory ──
+// ── Tour mode ──
 
-interface TimelineEntry {
-  locId: string
-  name: string
-  lat: number
-  lng: number
-  startYear: number
-  endYear: number
-  periodId: string
-  periodLabel: string
-  periodColor: string
-}
-
-function buildTimeline(): TimelineEntry[] {
-  const entries: TimelineEntry[] = []
-  for (const loc of LI_SHAN_LOCATIONS) {
-    for (let i = 0; i < loc.yearRanges.length; i++) {
-      const pid = loc.periods[i]
-      const cfg = PERIOD_CONFIG.find((p) => p.id === pid)
-      entries.push({
-        locId: loc.id,
-        name: loc.name,
-        lat: loc.lat,
-        lng: loc.lng,
-        startYear: loc.yearRanges[i][0],
-        endYear: loc.yearRanges[i][1],
-        periodId: pid,
-        periodLabel: cfg?.label || pid,
-        periodColor: cfg?.color || '#8b7d6b',
-      })
-    }
+function toggleTour() {
+  if (tourState.value === 'playing') {
+    pauseTour()
+  } else if (tourState.value === 'paused') {
+    resumeTour()
+  } else {
+    startTour()
   }
-  entries.sort((a, b) => a.startYear - b.startYear)
-  return entries
 }
 
-// Build marker map: merged-location-id → { order, primaryColor }
-function buildMarkerMeta() {
-  const timeline = buildTimeline()
-  const seen = new Map<string, { order: number; color: string; name: string }>()
-  let order = 0
-  for (const entry of timeline) {
-    if (!seen.has(entry.locId)) {
-      order++
-      seen.set(entry.locId, { order, color: entry.periodColor, name: entry.name })
-    }
-  }
-  return seen
+function startTour() {
+  tourState.value = 'playing'
+  tourIndex.value = 0
+  markInteraction()
+  // Reset filter to "全 程"
+  if (selectedPeriod.value) _selectPeriod(null)
+  advanceTour()
 }
+
+function advanceTour() {
+  if (tourState.value !== 'playing') return
+  const entry = tourEntries.value[tourIndex.value]
+  if (!entry) {
+    stopTour()
+    return
+  }
+  const loc = locationsWithPaintings.value.find((l) => l.id === entry.locId)
+  if (loc) {
+    selectedLocation.value = loc
+    activePanel.value = 'city'
+    updateChartEffectScatter([loc.lng, loc.lat])
+  }
+  tourIndex.value++
+  tourTimer = setTimeout(advanceTour, 2800)
+}
+
+function pauseTour() {
+  tourState.value = 'paused'
+  if (tourTimer) {
+    clearTimeout(tourTimer)
+    tourTimer = null
+  }
+}
+
+function resumeTour() {
+  tourState.value = 'playing'
+  advanceTour()
+}
+
+function stopTour() {
+  tourState.value = 'idle'
+  tourIndex.value = 0
+  if (tourTimer) {
+    clearTimeout(tourTimer)
+    tourTimer = null
+  }
+  selectedLocation.value = null
+  activePanel.value = null
+  updateChartEffectScatter(null)
+}
+
+// ── ECharts ──
 
 const CHINESE_NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
-
 const VISITED_PROVINCES = ['北京市', '河北省', '江苏省', '浙江省', '山东省']
 
-function makeScatterData(locations: LocationWithPaintings[], markerMeta: Map<string, any>) {
+function makeScatterData(locations: LocationWithPaintings[]) {
   return locations.map((loc) => {
-    const meta = markerMeta.get(loc.id)
+    const meta = cachedMarkerMeta.value.get(loc.id)
     const order = meta?.order || 0
     const color = meta?.color || '#c9a96e'
     const num = CHINESE_NUMS[order - 1] || `${order}`
@@ -377,7 +426,6 @@ interface SegmentData {
   toYear: number
 }
 
-/** Quadratic bezier arc — bulges east when going north, west when going south, avoiding crossing */
 function computeArc(
   lng1: number, lat1: number,
   lng2: number, lat2: number,
@@ -387,10 +435,7 @@ function computeArc(
   const my = (lat1 + lat2) / 2
   const dx = lng2 - lng1
   const dy = lat2 - lat1
-  const dist = Math.sqrt(dx * dx + dy * dy)
-  // Bulge proportional to east-west span (great-circle style) + base
   const bulge = Math.max(Math.abs(dx) * 0.5 + 0.3, 0.4)
-  // North-going routes bulge east, south-going bulge west
   const dir = dy >= 0 ? 1 : -1
   const cx = mx + dir * bulge
   const cy = my + bulge * 0.6
@@ -406,7 +451,7 @@ function computeArc(
 }
 
 function buildSegments(visibleLocIds: Set<string> | null): SegmentData[] {
-  const timeline = buildTimeline()
+  const timeline = cachedTimeline.value
   const segments: SegmentData[] = []
 
   for (let i = 0; i < timeline.length - 1; i++) {
@@ -416,14 +461,9 @@ function buildSegments(visibleLocIds: Set<string> | null): SegmentData[] {
     if (visibleLocIds && (!visibleLocIds.has(a.locId) || !visibleLocIds.has(b.locId))) continue
 
     const arc = computeArc(a.lng, a.lat, b.lng, b.lat, 48)
-
     segments.push({
       coords: arc,
-      lineStyle: {
-        color: a.periodColor,
-        width: 3,
-        opacity: 0.7,
-      },
+      lineStyle: { color: a.periodColor, width: 3, opacity: 0.7 },
       periodId: a.periodId,
       fromName: a.name,
       toName: b.name,
@@ -431,22 +471,17 @@ function buildSegments(visibleLocIds: Set<string> | null): SegmentData[] {
       toYear: b.startYear,
     })
   }
-
   return segments
 }
 
 function buildOption(locations: LocationWithPaintings[], allLocations: LocationWithPaintings[], periodFilter: string | null) {
-  const markerMeta = buildMarkerMeta()
-
-  // Always show all markers, but dim non-matching ones when a period is selected
   const visibleLocIds = periodFilter
-    ? new Set(locations.flatMap((l) => [l.id, ...l.sourceIds]))
+    ? new Set(locations.map((l) => l.id))
     : null
   const scatterData = makeScatterData(
     periodFilter ? allLocations : locations,
-    markerMeta,
   )
-  // Apply per-marker dimming when a period is filtered
+
   if (periodFilter) {
     for (const d of scatterData) {
       if (!visibleLocIds!.has(d.locId)) {
@@ -470,8 +505,8 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
           const count = params.value?.[2] ?? 0
           const locId = params.data?.locId
           if (locId) {
-            const meta = markerMeta.get(locId)
-            const loc = allLocations.find((l) => l.sourceIds?.includes(locId) || l.id === locId)
+            const meta = cachedMarkerMeta.value.get(locId)
+            const loc = allLocations.find((l) => l.id === locId)
             const periods = loc?.periods || []
             const labels = periods.map((p: string) => getPeriodLabel(p)).join('、')
             const yrs = loc?.yearRanges
@@ -511,7 +546,6 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     series: [] as any[],
   }
 
-  // One lines series with per-segment arc paths
   option.series.push({
     type: 'lines',
     coordinateSystem: 'geo',
@@ -521,6 +555,8 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
       lineStyle: seg.lineStyle,
       fromName: seg.fromName,
       toName: seg.toName,
+      fromYear: seg.fromYear,
+      toYear: seg.toYear,
     })),
     lineStyle: { width: 3, opacity: 0.55 },
     effect: {
@@ -534,7 +570,6 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     zlevel: 1,
   })
 
-  // Scatter markers
   option.series.push({
     type: 'scatter',
     coordinateSystem: 'geo',
@@ -563,7 +598,6 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     animationDelay: (_idx: number) => 200,
   })
 
-  // Effect scatter (selected point ripple)
   option.series.push({
     type: 'effectScatter',
     coordinateSystem: 'geo',
@@ -608,6 +642,8 @@ function initChart() {
       if (!locId) return
       const loc = locationsWithPaintings.value.find((l) => l.id === locId)
       if (!loc) return
+      markInteraction()
+      if (tourState.value !== 'idle') stopTour()
       selectedLocation.value = loc
       activePanel.value = 'city'
       updateChartEffectScatter([loc.lng, loc.lat])
@@ -623,6 +659,13 @@ watch(selectedPeriod, () => {
   updateChartData(filteredLocations.value)
 })
 
+function handleResize() {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    chart?.resize()
+  }, 150)
+}
+
 onMounted(async () => {
   await fetchData()
   await nextTick()
@@ -630,12 +673,10 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 })
 
-function handleResize() {
-  chart?.resize()
-}
-
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (resizeTimer) clearTimeout(resizeTimer)
+  if (tourTimer) clearTimeout(tourTimer)
   chart?.dispose()
   chart = null
 })
@@ -675,7 +716,7 @@ onUnmounted(() => {
   inset: 0;
 }
 
-/* ── Hint ── */
+/* ── Smart Hint ── */
 .map-hint {
   position: absolute;
   top: 50%;
@@ -688,45 +729,11 @@ onUnmounted(() => {
   z-index: 3;
   text-align: center;
   letter-spacing: 0.04em;
-  transition: opacity 0.4s;
+  animation: hint-pulse 3s ease-in-out infinite;
 }
-
-/* ── Legend ── */
-.map-legend {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(250, 249, 245, 0.85);
-  border: 1px solid #e8e4d8;
-  border-radius: 8px;
-  padding: 10px 14px;
-  z-index: 5;
-  backdrop-filter: blur(4px);
-}
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  user-select: none;
-}
-.legend-item.dimmed {
-  opacity: 0.3;
-}
-.legend-line {
-  width: 18px;
-  height: 3px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-.legend-label {
-  font-size: 0.78rem;
-  color: #5e5d59;
-  white-space: nowrap;
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* ── Info Panel ── */
@@ -745,8 +752,8 @@ onUnmounted(() => {
 .panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 24px 24px 0;
+  gap: 8px;
 }
 
 .panel-location {
@@ -756,6 +763,19 @@ onUnmounted(() => {
   color: #2c2416;
   margin: 0;
   letter-spacing: 0.06em;
+}
+
+.panel-year-range {
+  font-size: 0.78rem;
+  color: #8b7d6b;
+  flex: 1;
+}
+
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .panel-close {
@@ -774,12 +794,15 @@ onUnmounted(() => {
 }
 .panel-close:hover { color: #c96442; }
 
-.panel-year-range {
-  font-size: 0.78rem;
-  color: #8b7d6b;
-  margin-left: 8px;
-  flex: 1;
+.tour-stop-btn {
+  font-size: 0.8rem;
+  color: #c96442;
+  border: 1px solid #e8d0c0;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
 }
+.tour-stop-btn:hover { background: rgba(201, 100, 66, 0.08); }
 
 .panel-back {
   border: 1px solid #d8d0c0;
@@ -791,166 +814,9 @@ onUnmounted(() => {
   border-radius: 14px;
   transition: all 0.2s;
   font-family: inherit;
-  margin-right: 8px;
   white-space: nowrap;
 }
 .panel-back:hover { border-color: #c9a96e; color: #c9a96e; }
-
-.panel-periods {
-  padding: 8px 24px 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.period-tag { border: none !important; }
-
-.panel-description {
-  padding: 16px 24px 0;
-  font-size: 0.88rem;
-  line-height: 1.75;
-  color: #5e5d59;
-  margin: 0;
-}
-.period-desc {
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e8e4d8;
-}
-
-/* ── Period Timeline ── */
-.period-timeline {
-  padding: 16px 24px 24px;
-  overflow-y: auto;
-  flex: 1;
-}
-.timeline-step {
-  position: relative;
-  display: flex;
-  padding-left: 32px;
-  padding-bottom: 4px;
-  cursor: pointer;
-}
-.timeline-step:not(.last) { padding-bottom: 20px; }
-.timeline-dot {
-  position: absolute;
-  left: 0;
-  top: 6px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 2px currentColor;
-  z-index: 1;
-  flex-shrink: 0;
-}
-.timeline-line {
-  position: absolute;
-  left: 5px;
-  top: 20px;
-  bottom: 4px;
-  width: 2px;
-  background: #e8e4d8;
-}
-.timeline-card {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 14px;
-  background: #fff;
-  border: 1px solid #e8e4d8;
-  border-radius: 8px;
-  transition: all 0.2s;
-  flex: 1;
-}
-.timeline-step:hover .timeline-card {
-  border-color: #c9a96e;
-  box-shadow: 0 2px 8px rgba(201, 169, 110, 0.12);
-}
-.timeline-year {
-  font-size: 0.75rem;
-  color: #c9a96e;
-  font-weight: 500;
-}
-.timeline-name {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #2c2416;
-}
-.timeline-desc {
-  font-size: 0.76rem;
-  color: #8b7d6b;
-  line-height: 1.5;
-  margin-top: 2px;
-}
-
-.panel-count {
-  padding: 16px 24px;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.count-num {
-  font-family: 'Noto Serif SC', serif;
-  font-size: 2rem;
-  font-weight: 600;
-  color: #c9a96e;
-}
-.count-label { font-size: 0.88rem; color: #8b7d6b; }
-
-.panel-paintings {
-  flex: 1;
-  padding: 0 24px 24px;
-  overflow-y: auto;
-}
-.paintings-title {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #8b7d6b;
-  margin: 0 0 12px;
-  letter-spacing: 0.04em;
-}
-.paintings-list {
-  max-height: 360px;
-  overflow-y: auto;
-}
-.phase-header {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: #c9a96e;
-  padding: 10px 0 4px;
-  border-bottom: 1px solid #e8e4d8;
-  margin-bottom: 6px;
-  letter-spacing: 0.04em;
-}
-.painting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 4px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-.painting-item:hover { background: rgba(201, 169, 110, 0.08); }
-.painting-title {
-  font-size: 0.84rem;
-  color: #2c2416;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.painting-year {
-  font-size: 0.78rem;
-  color: #8b7d6b;
-  margin-left: 12px;
-  flex-shrink: 0;
-}
-.no-paintings {
-  color: #8b7d6b;
-  font-size: 0.84rem;
-  text-align: center;
-  padding: 24px 0;
-}
 
 /* Slide transition */
 .panel-slide-enter-active,
@@ -960,46 +826,83 @@ onUnmounted(() => {
 .panel-slide-enter-from { transform: translateX(100%); opacity: 0; }
 .panel-slide-leave-to { transform: translateX(100%); opacity: 0; }
 
-/* Panel content crossfade */
-.panel-fade-enter-active,
-.panel-fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.panel-fade-enter-from,
-.panel-fade-leave-to { opacity: 0; }
-
-/* Period Bar */
+/* ── Period Bar (merged legend + filter + tour) ── */
 .period-bar {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  padding: 16px 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
   background: #f8f5f0;
   border-top: 1px solid #e8e4d8;
   flex-wrap: wrap;
 }
 .period-btn {
-  padding: 6px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 18px;
   border: 1px solid #d8d0c0;
-  border-radius: 20px;
+  border-radius: 12px;
   background: #fff;
-  color: #5e5d59;
-  font-size: 0.82rem;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
+  min-width: 80px;
 }
-.period-btn:hover { border-color: #c9a96e; color: #c9a96e; }
+.period-btn:hover { border-color: #c9a96e; }
 .period-btn.active {
-  background: #c9a96e;
+  background: #f6f0e2;
   border-color: #c9a96e;
-  color: #fff;
 }
-.reset-btn { font-weight: 500; }
+.period-btn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-bottom: 2px;
+}
+.period-btn-label {
+  font-size: 0.82rem;
+  color: #5e5d59;
+  font-weight: 500;
+}
+.period-btn.active .period-btn-label { color: #2c2416; }
+.period-btn-year {
+  font-size: 0.68rem;
+  color: #b8a990;
+}
+.period-btn.active .period-btn-year { color: #8b7d6b; }
+
+.reset-btn .period-btn-label {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* Tour button */
+.tour-btn {
+  border-color: #c9a96e;
+  background: #faf6ee;
+  min-width: auto;
+  padding: 8px 20px;
+}
+.tour-btn:hover { background: #f6f0e2; }
+.tour-btn.playing {
+  background: #c96442;
+  border-color: #c96442;
+}
+.tour-btn.playing .period-btn-label,
+.tour-btn.playing span { color: #fff; }
+.tour-btn.paused {
+  background: #faf6ee;
+  border-color: #c9a96e;
+}
 
 /* Responsive */
 @media (max-width: 1024px) {
   .info-panel { width: 340px; min-width: 340px; }
+  .period-btn { padding: 6px 12px; min-width: 60px; }
+  .period-btn-label { font-size: 0.76rem; }
 }
 @media (max-width: 768px) {
   .map-main { flex-direction: column; }
@@ -1012,12 +915,9 @@ onUnmounted(() => {
     border-top: 1px solid #e8e4d8;
     box-shadow: 0 -2px 16px rgba(44, 36, 22, 0.06);
   }
-  .map-legend {
-    top: 8px;
-    left: 8px;
-    padding: 6px 10px;
-    gap: 3px;
-  }
-  .legend-label { font-size: 0.7rem; }
+  .period-bar { gap: 6px; padding: 10px 12px; }
+  .period-btn { padding: 6px 10px; min-width: 50px; border-radius: 8px; }
+  .period-btn-label { font-size: 0.7rem; }
+  .period-btn-year { font-size: 0.62rem; }
 }
 </style>
