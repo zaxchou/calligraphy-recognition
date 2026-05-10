@@ -587,7 +587,7 @@ function computeArc(
 
 /** Segment i (timeline[i]→timeline[i+1]) is revealed at tour step i+1. */
 function segmentOpacity(segmentIndex: number, tourEntryCount: number): number {
-  const stepsAgo = tourEntryCount - 1 - segmentIndex
+  const stepsAgo = tourEntryCount - 2 - segmentIndex
   if (stepsAgo <= 0) return 0.7
   if (stepsAgo === 1) return 0.28
   if (stepsAgo === 2) return 0.1
@@ -906,8 +906,8 @@ onUnmounted(() => {
   border: 1px solid #e8e4d8;
   border-radius: 10px;
   padding: 8px 0;
-  min-width: 120px;
-  max-width: 150px;
+  min-width: 140px;
+  max-width: 180px;
   max-height: calc(100% - 24px);
   overflow-y: auto;
   box-shadow: 0 2px 12px rgba(44, 36, 22, 0.06);
@@ -929,6 +929,7 @@ onUnmounted(() => {
   transition: background 0.15s;
   border-radius: 4px;
   margin: 0 4px;
+  white-space: nowrap;
 }
 .city-quick-item:hover {
   background: rgba(201, 169, 110, 0.1);
@@ -947,6 +948,7 @@ onUnmounted(() => {
   font-weight: 500;
   color: #2c2416;
   flex: 1;
+  white-space: nowrap;
 }
 .city-quick-province {
   font-size: 0.65rem;
