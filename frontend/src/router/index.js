@@ -115,6 +115,12 @@ const routes = [
     component: InscriptionAnnotator,
     meta: { title: '题跋标注' }
   },
+  {
+    path: '/map',
+    name: 'MapMode',
+    component: () => import('../views/MapMode.vue'),
+    meta: { title: '翰墨行旅' }
+  },
 ]
 
 const router = createRouter({
