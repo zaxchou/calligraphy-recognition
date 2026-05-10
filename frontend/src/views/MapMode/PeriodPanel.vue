@@ -46,7 +46,6 @@ defineEmits<{
 }
 .period-desc {
   padding-bottom: 12px;
-  border-bottom: 1px solid #e8e4d8;
   font-size: 0.88rem;
   line-height: 1.75;
   color: #5e5d59;

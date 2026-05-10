@@ -125,7 +125,9 @@ const paintingPhases = computed(() => {
 .panel-paintings {
   flex: 1;
   padding: 0 24px 24px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .paintings-title {
   font-size: 0.82rem;
@@ -133,10 +135,12 @@ const paintingPhases = computed(() => {
   color: #8b7d6b;
   margin: 0 0 12px;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 .paintings-list {
-  max-height: 360px;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 .phase-header {
   font-size: 0.78rem;

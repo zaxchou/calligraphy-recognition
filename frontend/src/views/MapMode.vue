@@ -143,6 +143,7 @@ let resizeTimer: ReturnType<typeof setTimeout> | null = null
 let tourTimer: ReturnType<typeof setTimeout> | null = null
 const tourState = ref<'idle' | 'playing' | 'paused'>('idle')
 const tourIndex = ref(0)
+const tourVisitedLocIds = ref<Set<string> | null>(null)
 const isTourActive = computed(() => tourState.value !== 'idle')
 
 // ── Memoized timeline ──
@@ -347,6 +348,7 @@ function toggleTour() {
 function startTour() {
   tourState.value = 'playing'
   tourIndex.value = 0
+  tourVisitedLocIds.value = new Set()
   markInteraction()
   // Reset filter to "全 程"
   if (selectedPeriod.value) _selectPeriod(null)
@@ -360,14 +362,49 @@ function advanceTour() {
     stopTour()
     return
   }
+
+  const prevEntry = tourIndex.value > 0 ? tourEntries.value[tourIndex.value - 1] : null
+
+  tourVisitedLocIds.value!.add(entry.locId)
+  updateChartData(undefined, true)
+
   const loc = locationsWithPaintings.value.find((l) => l.id === entry.locId)
   if (loc) {
     selectedLocation.value = loc
     activePanel.value = 'city'
-    updateChartEffectScatter([loc.lng, loc.lat])
+
+    // Animate traveler dot along arc from previous city → current city
+    if (prevEntry && prevEntry.locId !== entry.locId) {
+      const prevLoc = locationsWithPaintings.value.find((l) => l.id === prevEntry.locId)
+      if (prevLoc) {
+        animateTravel([prevLoc.lng, prevLoc.lat], [loc.lng, loc.lat])
+      } else {
+        updateChartEffectScatter([loc.lng, loc.lat])
+      }
+    } else {
+      updateChartEffectScatter([loc.lng, loc.lat])
+    }
   }
   tourIndex.value++
   tourTimer = setTimeout(advanceTour, 2800)
+}
+
+function animateTravel(from: [number, number], to: [number, number]) {
+  const arc = computeArc(from[0], from[1], to[0], to[1], 40)
+  let startTime: number | null = null
+  const duration = 900
+
+  function frame(now: number) {
+    if (!startTime) startTime = now
+    const raw = Math.min((now - startTime) / duration, 1)
+    const t = raw < 0.5 ? 4 * raw ** 3 : 1 - (-2 * raw + 2) ** 3 / 2 // easeInOutCubic
+    const idx = Math.min(Math.floor(t * (arc.length - 1)), arc.length - 1)
+    updateChartEffectScatter(arc[idx])
+    if (raw < 1) {
+      requestAnimationFrame(frame)
+    }
+  }
+  requestAnimationFrame(frame)
 }
 
 function pauseTour() {
@@ -386,6 +423,7 @@ function resumeTour() {
 function stopTour() {
   tourState.value = 'idle'
   tourIndex.value = 0
+  tourVisitedLocIds.value = null
   if (tourTimer) {
     clearTimeout(tourTimer)
     tourTimer = null
@@ -393,6 +431,7 @@ function stopTour() {
   selectedLocation.value = null
   activePanel.value = null
   updateChartEffectScatter(null)
+  updateChartData()
 }
 
 // ── ECharts ──
@@ -400,18 +439,40 @@ function stopTour() {
 const CHINESE_NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
 const VISITED_PROVINCES = ['北京市', '河北省', '江苏省', '浙江省', '山东省']
 
+// Per-city label position: assign based on longitude to avoid overlaps
+// Eastern cities (>118.3°E) get 'left', western get 'right'
+const LABEL_POSITIONS: Record<string, { position: 'left' | 'right'; offset?: [number, number] }> = {
+  xinghua:  { position: 'left' },
+  nanjing:  { position: 'left' },
+  chengde:  { position: 'right' },
+  yangzhou: { position: 'left',  offset: [0, -12] }, // below 兴化, push up
+  huzhou:   { position: 'left' },
+  linyi:    { position: 'right', offset: [0, -10] }, // above 滕县
+  linzi:    { position: 'left' },
+  tengxian: { position: 'right', offset: [0, 10] },  // below 临沂
+  beijing:  { position: 'right' },
+  nantong:  { position: 'left',  offset: [0, 12] },  // below others
+}
+
 function makeScatterData(locations: LocationWithPaintings[]) {
   return locations.map((loc) => {
     const meta = cachedMarkerMeta.value.get(loc.id)
     const order = meta?.order || 0
     const color = meta?.color || '#c9a96e'
     const num = CHINESE_NUMS[order - 1] || `${order}`
+    const labelCfg = LABEL_POSITIONS[loc.id] || { position: 'right' as const }
+    const baseOffset = labelCfg.position === 'left' ? [-12, 0] : [12, 0]
+    const extraOffset = labelCfg.offset || [0, 0]
     return {
       name: `${num} ${loc.name}`,
       value: [loc.lng, loc.lat, loc.paintingCount],
       locId: loc.id,
       itemStyle: { color, borderColor: '#fff', borderWidth: 2 },
-      label: { color },
+      label: {
+        color,
+        position: labelCfg.position,
+        offset: [baseOffset[0] + extraOffset[0], baseOffset[1] + extraOffset[1]],
+      },
     }
   })
 }
@@ -450,7 +511,7 @@ function computeArc(
   return pts
 }
 
-function buildSegments(visibleLocIds: Set<string> | null): SegmentData[] {
+function buildSegments(visibleLocIds: Set<string> | null, tourVisitedLocIds?: Set<string> | null): SegmentData[] {
   const timeline = cachedTimeline.value
   const segments: SegmentData[] = []
 
@@ -459,6 +520,8 @@ function buildSegments(visibleLocIds: Set<string> | null): SegmentData[] {
     const b = timeline[i + 1]
     if (a.lat === b.lat && a.lng === b.lng) continue
     if (visibleLocIds && (!visibleLocIds.has(a.locId) || !visibleLocIds.has(b.locId))) continue
+    // During tour: only show segments where BOTH endpoints have been visited
+    if (tourVisitedLocIds && (!tourVisitedLocIds.has(a.locId) || !tourVisitedLocIds.has(b.locId))) continue
 
     const arc = computeArc(a.lng, a.lat, b.lng, b.lat, 48)
     segments.push({
@@ -474,7 +537,7 @@ function buildSegments(visibleLocIds: Set<string> | null): SegmentData[] {
   return segments
 }
 
-function buildOption(locations: LocationWithPaintings[], allLocations: LocationWithPaintings[], periodFilter: string | null) {
+function buildOption(locations: LocationWithPaintings[], allLocations: LocationWithPaintings[], periodFilter: string | null, tourVisited?: Set<string> | null) {
   const visibleLocIds = periodFilter
     ? new Set(locations.map((l) => l.id))
     : null
@@ -491,7 +554,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     }
   }
 
-  const segments = buildSegments(visibleLocIds)
+  const segments = buildSegments(visibleLocIds, tourVisited)
 
   const option: any = {
     backgroundColor: '#f8f5f0',
@@ -529,7 +592,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
       map: 'china',
       roam: true,
       zoom: 5,
-      center: [118, 35],
+      center: [118, 36],
       scaleLimit: { min: 1.5, max: 8 },
       itemStyle: {
         areaColor: '#f6f3ed',
@@ -623,11 +686,11 @@ function updateChartEffectScatter(lngLat: [number, number] | null) {
   chart.setOption({ series: [{}, {}, { data: effectData }] } as any)
 }
 
-function updateChartData(locations?: LocationWithPaintings[]) {
+function updateChartData(locations?: LocationWithPaintings[], smooth = false) {
   if (!chart) return
   const locs = locations || filteredLocations.value
-  const option = buildOption(locs, locationsWithPaintings.value, selectedPeriod.value)
-  chart.setOption(option, true)
+  const option = buildOption(locs, locationsWithPaintings.value, selectedPeriod.value, tourVisitedLocIds.value)
+  chart.setOption(option, !smooth)
 }
 
 function initChart() {
@@ -684,11 +747,12 @@ onUnmounted(() => {
 
 <style scoped>
 .map-mode-page {
-  min-height: calc(100vh - 64px);
+  height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
   background: #f8f5f0;
   position: relative;
+  overflow: hidden;
 }
 
 .map-loading,
@@ -745,7 +809,7 @@ onUnmounted(() => {
   box-shadow: -2px 0 16px rgba(44, 36, 22, 0.06);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   z-index: 10;
 }
 
