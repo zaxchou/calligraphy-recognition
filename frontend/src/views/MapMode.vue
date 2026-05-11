@@ -404,7 +404,8 @@ function closePanel() {
 
 function goToPainting(painting: Painting) {
   const imageId = painting.image_id || painting.id
-  router.push(`/tubi/${imageId}`)
+  const route = router.resolve(`/tubi/${imageId}`)
+  window.open(route.href, '_blank')
 }
 
 async function retry() {
