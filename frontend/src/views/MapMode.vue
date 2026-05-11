@@ -431,9 +431,9 @@ function advanceTour() {
 
   tourVisitedLocIds.value!.add(entry.locId)
 
-  // Merge mode: existing segments stay, only new segment draws from start.
-  // animationDurationUpdate:0 prevents old segments from morphing.
-  updateChartData(undefined, true)
+  // Replace mode (notMerge=true): redraw all segments at correct opacity each step.
+  // Safe because lines series has animationDuration:0 during tour — no visible flash.
+  updateChartData(undefined, false)
 
   const loc = locationsWithPaintings.value.find((l) => l.id === entry.locId)
   if (loc) {
