@@ -32,10 +32,11 @@
             @click="$emit('goToPainting', p)"
           >
             <img
-              v-if="p.thumbnail_url"
+              v-if="p.thumbnail_url && !failedThumbs.includes(p.id)"
               :src="p.thumbnail_url"
               class="painting-thumb"
               loading="lazy"
+              @error="onThumbError(p.id)"
             />
             <div v-else class="painting-thumb-placeholder">
               <span>无图</span>
@@ -53,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { PERIOD_CONFIG } from './locations'
 import type { LocationWithPaintings, Painting } from './useMapData'
 
@@ -64,6 +65,14 @@ const props = defineProps<{
 defineEmits<{
   goToPainting: [painting: Painting]
 }>()
+
+const failedThumbs = ref<(number | string)[]>([])
+
+function onThumbError(id: number | string) {
+  if (!failedThumbs.value.includes(id)) {
+    failedThumbs.value.push(id)
+  }
+}
 
 function getPeriodLabel(periodId: string): string {
   return PERIOD_CONFIG.find((p) => p.id === periodId)?.label || periodId

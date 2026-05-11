@@ -2,6 +2,7 @@
   <div class="map-mode-page">
     <!-- Loading -->
     <div v-if="loading" class="map-loading">
+      <p class="loading-text">正在绘制翰墨行旅…</p>
       <el-skeleton :rows="6" animated />
     </div>
 
@@ -22,7 +23,7 @@
           <div ref="chartContainer" class="chart-container"></div>
 
           <!-- Smart Hint: hides after first interaction -->
-          <div v-if="!activePanel && !hasInteracted" class="map-hint">
+          <div v-if="!activePanel" class="map-hint">
             点击城市标记查看李鱓在该地的经历与画作
           </div>
 
@@ -110,6 +111,7 @@
           :key="period.id"
           class="period-btn"
           :class="{ active: selectedPeriod === period.id }"
+          :title="periodTooltips[period.id]"
           @click="selectPeriod(period.id)"
         >
           <span class="period-btn-dot" :style="{ background: period.color }"></span>
@@ -121,8 +123,8 @@
           :class="{ playing: tourState === 'playing', paused: tourState === 'paused' }"
           @click="toggleTour"
         >
-          <span v-if="tourState === 'playing'">&#9646;&#9646; 暂停</span>
-          <span v-else-if="tourState === 'paused'">&#9654; 继续</span>
+          <span v-if="tourState === 'playing'">&#9646;&#9646; 暂停 <em class="tour-progress">{{ tourIndex }}/{{ tourEntries.length }}</em></span>
+          <span v-else-if="tourState === 'paused'">&#9654; 继续 <em class="tour-progress">{{ tourIndex }}/{{ tourEntries.length }}</em></span>
           <span v-else>&#9654; 播放行旅</span>
         </button>
       </div>
@@ -313,6 +315,19 @@ const currentPeriodYearRange = computed(() => {
   if (!cfg) return ''
   const [s, e] = cfg.yearRange
   return s === e ? `${s}年` : `${s} — ${e}年`
+})
+
+const periodTooltips = computed(() => {
+  const map: Record<string, string> = {}
+  const locs = locationsWithPaintings.value
+  if (!locs.length) return map
+  for (const period of PERIOD_CONFIG) {
+    const cities = locs.filter((l) => l.periods.includes(period.id))
+    const names = cities.map((c) => c.name).join('、')
+    const total = cities.reduce((sum, c) => sum + c.paintingCount, 0)
+    map[period.id] = `${names} · 共 ${total} 幅`
+  }
+  return map
 })
 
 // ── Helpers ──
@@ -523,7 +538,7 @@ const LABEL_POSITIONS: Record<string, { position: 'left' | 'right'; offset?: [nu
 }
 
 function makeScatterData(locations: LocationWithPaintings[]) {
-  return locations.map((loc) => {
+  const result = locations.map((loc) => {
     const meta = cachedMarkerMeta.value.get(loc.id)
     const order = meta?.order || 0
     const color = meta?.color || '#c9a96e'
@@ -544,6 +559,13 @@ function makeScatterData(locations: LocationWithPaintings[]) {
       },
     }
   })
+  // Sort by travel order so markers fade in sequentially (① → ② → ③ ...)
+  result.sort((a, b) => {
+    const orderA = cachedMarkerMeta.value.get(a.locId)?.order ?? 99
+    const orderB = cachedMarkerMeta.value.get(b.locId)?.order ?? 99
+    return orderA - orderB
+  })
+  return result
 }
 
 interface SegmentData {
@@ -650,7 +672,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
   const option: any = {
     backgroundColor: '#f8f5f0',
     animation: true,
-    animationDuration: 800,
+    animationDuration: tourEntryCount > 0 ? 0 : 800,
     animationDurationUpdate: 0,
     animationEasing: 'cubicOut' as const,
     tooltip: {
@@ -750,14 +772,15 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
       scale: 1.4,
     },
     zlevel: 2,
-    animationDelay: (_idx: number) => 200,
+    animationDelay: (idx: number) => idx * 180,
   })
 
   option.series.push({
     type: 'effectScatter',
     coordinateSystem: 'geo',
     data: [],
-    symbolSize: 20,
+    symbol: 'diamond',
+    symbolSize: 18,
     showEffectOn: 'render' as const,
     rippleEffect: {
       brushType: 'stroke' as const,
@@ -783,8 +806,9 @@ function updateChartData(locations?: LocationWithPaintings[], smooth = false) {
   const locs = locations || filteredLocations.value
   const tourEntryCount = tourState.value !== 'idle' ? tourIndex.value + 1 : 0
   const option = buildOption(locs, locationsWithPaintings.value, selectedPeriod.value, tourEntryCount)
-  // replace mode (notMerge=true): lines clear and redraw from start — used for period switches
-  // merge mode (notMerge=false): new segments animate in, existing stay — used for tour steps
+  // replace mode (notMerge=true): full redraw — used for period switches and tour steps.
+  // Tour steps also use replace because merge mode doesn't reliably update nested
+  // lineStyle.opacity on existing data items, causing inconsistent fade levels.
   chart.setOption(option, !smooth)
 }
 
@@ -824,15 +848,29 @@ function handleResize() {
   }, 150)
 }
 
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && activePanel.value) {
+    e.preventDefault()
+    if (activePanel.value === 'period') closePeriodPanel()
+    else closePanel()
+  }
+  if (e.key === ' ' && e.target === document.body) {
+    e.preventDefault()
+    toggleTour()
+  }
+}
+
 onMounted(async () => {
   await fetchData()
   await nextTick()
   initChart()
   window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleKeydown)
   if (resizeTimer) clearTimeout(resizeTimer)
   if (tourTimer) clearTimeout(tourTimer)
   chart?.dispose()
@@ -856,6 +894,14 @@ onUnmounted(() => {
   max-width: 640px;
   margin: 0 auto;
 }
+.loading-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.95rem;
+  color: #b8a990;
+  text-align: center;
+  margin: 0 0 24px;
+  letter-spacing: 0.06em;
+}
 
 .map-main {
   flex: 1;
@@ -873,6 +919,11 @@ onUnmounted(() => {
 .chart-container {
   position: absolute;
   inset: 0;
+  animation: map-fade-in 0.8s ease-out;
+}
+@keyframes map-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ── Smart Hint ── */
@@ -1119,6 +1170,13 @@ onUnmounted(() => {
 .tour-btn.paused {
   background: #faf6ee;
   border-color: #c9a96e;
+}
+.tour-progress {
+  font-style: normal;
+  font-size: 0.68rem;
+  color: inherit;
+  opacity: 0.65;
+  margin-left: 2px;
 }
 
 /* Responsive */
