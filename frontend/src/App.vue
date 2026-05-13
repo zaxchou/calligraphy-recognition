@@ -20,6 +20,15 @@
           <router-link to="/content-analysis" class="nav-item" active-class="active"><span class="nav-text">大数据分析</span></router-link>
           <router-link to="/map" class="nav-item" active-class="active"><span class="nav-text">翰墨行旅</span></router-link>
         </nav>
+        <div class="user-area">
+          <template v-if="authStore.isLoggedIn">
+            <span class="user-nickname">{{ authStore.nickname }}</span>
+            <button class="user-logout-btn" @click="handleLogout">退出</button>
+          </template>
+          <router-link v-else to="/login" class="user-login-link">
+            <span class="nav-text">登录</span>
+          </router-link>
+        </div>
         <!-- 移动端汉堡菜单按钮 -->
         <button class="mobile-menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
           <el-icon :size="22"><Menu /></el-icon>
@@ -98,8 +107,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Menu, Close } from '@element-plus/icons-vue'
+import { useAuthStore } from './stores/authStore'
 
+const router = useRouter()
+const authStore = useAuthStore()
 const mobileMenuOpen = ref(false)
 
 function toggleMobileMenu() {
@@ -108,6 +121,11 @@ function toggleMobileMenu() {
 
 function closeMobileMenu() {
   mobileMenuOpen.value = false
+}
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/')
 }
 </script>
 
@@ -385,6 +403,41 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.08em;
 }
 
+/* === 用户区域 === */
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-nickname {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--olive-gray);
+  font-weight: 500;
+}
+
+.user-logout-btn {
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  color: var(--stone-gray);
+  background: none;
+  border: 1px solid var(--border-warm);
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.user-logout-btn:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.user-login-link {
+  text-decoration: none;
+}
+
 /* === 响应式 === */
 @media (max-width: 768px) {
   .header-content {
@@ -639,5 +692,27 @@ h1, h2, h3, h4, h5, h6 {
 
 .home-header .nav-item::after {
   background: var(--gold);
+}
+
+.home-header .user-nickname {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.home-header .user-logout-btn {
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.home-header .user-logout-btn:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.home-header .user-login-link .nav-text {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.home-header .user-login-link:hover .nav-text {
+  color: var(--pure-white);
 }
 </style>

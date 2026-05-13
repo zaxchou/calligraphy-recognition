@@ -30,6 +30,11 @@ api.interceptors.request.use(
     if (isAdminAuthenticated()) {
       config.headers['X-Admin-Key'] = ADMIN_KEY
     }
+    // Phase 1: 自动附加 JWT Token
+    const authToken = localStorage.getItem('auth_token')
+    if (authToken) {
+      config.headers['Authorization'] = `Bearer ${authToken}`
+    }
     return config
   },
   error => {
@@ -57,6 +62,12 @@ api.interceptors.response.use(
       console.warn(`[API] 请求失败，${RETRY_DELAY / 1000}秒后重试 (${config._retryCount}/${MAX_RETRY}):`, config.url)
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
       return api(config)
+    }
+
+    // Phase 1: 401 自动清除 token（由页面组件决定是否跳转登录页）
+    if (error.response?.status === 401) {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_user')
     }
 
     console.error('API Error:', error)

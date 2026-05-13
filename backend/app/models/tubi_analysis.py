@@ -88,3 +88,19 @@ class TubiAnalysis(Base):
     
     # ── 标签 ───────────────────────────────────────────
     tags = Column(Text, nullable=True, default=None, comment="标签，JSON数组格式，如[\"花鸟\",\"册页\"]")
+
+    # ── Phase 1 多用户底座 ───────────────────────────────────────────
+    owner_id = Column(Integer, nullable=True, default=None, comment="所属用户ID")
+    library_id = Column(Integer, nullable=True, default=None, comment="所属画库ID")
+    visibility = Column(String(20), nullable=True, default="public", comment="可见性：public/private/shared")
+    created_by = Column(String(100), nullable=True, default=None, comment="创建者名称")
+    material = Column(String(200), nullable=True, default=None, comment="画材（纸本/绢本等）")
+    mounting_format = Column(String(200), nullable=True, default=None, comment="装裱形式（立轴/手卷/册页/扇面等）")
+    current_location = Column(String(200), nullable=True, default=None, comment="现藏地")
+    provenance = Column(Text, nullable=True, default=None, comment="流传经过")
+    style_tags = Column(Text, nullable=True, default=None, comment="风格标签（逗号分隔）")
+    subject_tags = Column(Text, nullable=True, default=None, comment="题材标签（逗号分隔）")
+    technique_tags = Column(Text, nullable=True, default=None, comment="技法标签（逗号分隔）")
+    free_tags = Column(Text, nullable=True, default=None, comment="自由标签（逗号分隔）")
+    inscription_author = Column(String(200), nullable=True, default=None, comment="款识作者")
+    inscription_date = Column(String(100), nullable=True, default=None, comment="款识日期")

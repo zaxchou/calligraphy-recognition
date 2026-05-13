@@ -85,6 +85,34 @@ def _auto_migrate(engine):
                 conn.execute(text("ALTER TABLE text_chunks ADD COLUMN bbox JSON"))
                 conn.commit()
 
+    # Phase 1 用户底座：text_chunks 添加 owner_id, visibility
+    if "text_chunks" in inspector.get_table_names():
+        existing_columns = {c["name"] for c in inspector.get_columns("text_chunks")}
+        if "owner_id" not in existing_columns:
+            logger.info("[Knowledge DB] 迁移 Phase 1: 为 text_chunks 添加 owner_id 列")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE text_chunks ADD COLUMN owner_id INTEGER DEFAULT NULL"))
+                conn.commit()
+        if "visibility" not in existing_columns:
+            logger.info("[Knowledge DB] 迁移 Phase 1: 为 text_chunks 添加 visibility 列")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE text_chunks ADD COLUMN visibility TEXT DEFAULT 'public'"))
+                conn.commit()
+
+    # Phase 1 用户底座：pdf_books 添加 owner_id, visibility
+    if "pdf_books" in inspector.get_table_names():
+        existing_columns = {c["name"] for c in inspector.get_columns("pdf_books")}
+        if "owner_id" not in existing_columns:
+            logger.info("[Knowledge DB] 迁移 Phase 1: 为 pdf_books 添加 owner_id 列")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE pdf_books ADD COLUMN owner_id INTEGER DEFAULT NULL"))
+                conn.commit()
+        if "visibility" not in existing_columns:
+            logger.info("[Knowledge DB] 迁移 Phase 1: 为 pdf_books 添加 visibility 列")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE pdf_books ADD COLUMN visibility TEXT DEFAULT 'public'"))
+                conn.commit()
+
 
 # 启动时自动初始化
 init_database()

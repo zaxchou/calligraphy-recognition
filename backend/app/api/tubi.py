@@ -17,8 +17,9 @@ import redis
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
-from app.core.auth import require_admin
+from app.core.auth import require_admin, get_optional_user
 from app.models.tubi_analysis import TubiAnalysis
+from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
 from app.services.inscription_content_analyzer import get_period_phase
 
@@ -1078,7 +1079,7 @@ async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db
 
 
 @router.get("/result/{image_id}")
-async def get_result(image_id: str, db: Session = Depends(get_db)):
+async def get_result(image_id: str, db: Session = Depends(get_db), user: Optional[User] = Depends(get_optional_user)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
@@ -1110,7 +1111,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
         except Exception:
             position_analysis_data = None
 
-    return {
+    response = {
         "success": True,
         "data": {
             "id": db_analysis.image_id,
@@ -1161,6 +1162,13 @@ async def get_result(image_id: str, db: Session = Depends(get_db)):
             })
         }
     }
+    # Phase 1: 已登录用户附加私有数据
+    if user:
+        response["user_data"] = {
+            "user_id": user.id,
+            "is_owner": db_analysis.owner_id == user.id if db_analysis.owner_id else False,
+        }
+    return response
 
 
 @router.post("/batch-auto-analyze")
@@ -1582,7 +1590,8 @@ async def get_all_results(
     artist: Optional[str] = Query(default=None, description="画家名称筛选"),
     sort_by: Optional[str] = Query(default=None, description="排序字段"),
     sort_dir: Optional[str] = Query(default="desc", description="排序方向: asc, desc"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_optional_user),
 ):
     """获取所有分析结果列表"""
     # 自定义排序时跳过缓存
@@ -1712,6 +1721,14 @@ async def get_all_results(
         "data": results,
         "total": db.query(TubiAnalysis).count()
     }
+    # Phase 1: 已登录用户附加私有数据
+    if user:
+        response["user_data"] = {
+            "user_id": user.id,
+            "my_library_count": db.query(TubiAnalysis).filter(
+                TubiAnalysis.owner_id == user.id
+            ).count(),
+        }
     # 全量查询写入持久缓存（轻量版本）
     if is_full_list:
         _set_results_cache(response)
@@ -1723,7 +1740,8 @@ async def search_images(
     keyword: str = None,
     skip: int = 0,
     limit: int = 500,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_optional_user),
 ):
     """
     搜索画作
@@ -1877,11 +1895,20 @@ async def search_images(
                 })
             })
 
-        return {
+        response = {
             "success": True,
             "data": results,
             "total": total_matches
         }
+        # Phase 1: 已登录用户附加私有数据
+        if user:
+            response["user_data"] = {
+                "user_id": user.id,
+                "my_library_count": db.query(TubiAnalysis).filter(
+                    TubiAnalysis.owner_id == user.id
+                ).count(),
+            }
+        return response
 
     except Exception as e:
         import traceback

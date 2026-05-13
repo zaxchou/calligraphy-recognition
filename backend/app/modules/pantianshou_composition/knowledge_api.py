@@ -23,7 +23,8 @@ from .models import PdfBook, KnowledgeTask, TextChunk, ExtractedImage, SearchHis
 from .task_manager import TaskManager
 from .knowledge_ingest_v2 import process_pdf_file_sync
 
-from app.core.auth import require_admin
+from app.core.auth import require_admin, get_optional_user
+from app.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -926,7 +927,7 @@ _search_mem_cache = {}
 
 
 @router.post("/search")
-async def search(request: SearchRequest, db: Session = Depends(get_db)):
+async def search(request: SearchRequest, db: Session = Depends(get_db), user: Optional[User] = Depends(get_optional_user)):
     """
     语义搜索 - 基于 Qdrant 向量搜索
     集成 Query 改写 + 混合搜索 + AI 摘要回答
@@ -1571,6 +1572,12 @@ async def search(request: SearchRequest, db: Session = Depends(get_db)):
         }
         # 写入内存缓存（TTL 300s），下次同查询秒回
         _search_mem_cache[query_key] = {"t": time.time(), "data": _resp_data}
+        # Phase 1: 已登录用户附加私有数据（不写入缓存）
+        if user:
+            _resp_data["user_data"] = {
+                "user_id": user.id,
+                "role": user.role,
+            }
         return _resp_data
     except Exception as e:
         error_detail = f"{str(e)}\n{traceback.format_exc()}"

@@ -1,16 +1,52 @@
 var BASE_URL = 'https://124.223.17.29'
 
+// Phase 1: Token 管理
+var AUTH_TOKEN_KEY = 'auth_token'
+
+function getToken() {
+  try {
+    return wx.getStorageSync(AUTH_TOKEN_KEY) || null
+  } catch (e) {
+    return null
+  }
+}
+
+function setToken(token) {
+  try {
+    wx.setStorageSync(AUTH_TOKEN_KEY, token)
+  } catch (e) {
+    console.error('存储 token 失败', e)
+  }
+}
+
+function clearToken() {
+  try {
+    wx.removeStorageSync(AUTH_TOKEN_KEY)
+  } catch (e) {
+    console.error('清除 token 失败', e)
+  }
+}
+
 function request(url, method, data) {
   method = method || 'GET'
+  var header = { 'Content-Type': 'application/json' }
+  var token = getToken()
+  if (token) {
+    header['Authorization'] = 'Bearer ' + token
+  }
   return new Promise(function (resolve, reject) {
     wx.request({
       url: BASE_URL + url,
       method: method,
       data: data,
-      header: { 'Content-Type': 'application/json' },
+      header: header,
       success: function (res) {
         if (res.statusCode === 200) {
           resolve(res.data)
+        } else if (res.statusCode === 401) {
+          // Token 过期，清除
+          clearToken()
+          reject({ code: 401, msg: '登录已过期，请重新进入小程序' })
         } else {
           reject({ code: res.statusCode, msg: res.data })
         }
@@ -24,10 +60,16 @@ function request(url, method, data) {
 
 function uploadFile(filePath) {
   return new Promise(function (resolve, reject) {
+    var header = {}
+    var token = getToken()
+    if (token) {
+      header['Authorization'] = 'Bearer ' + token
+    }
     wx.uploadFile({
       url: BASE_URL + '/api/v1/composition/upload',
       filePath: filePath,
       name: 'file',
+      header: header,
       timeout: 120000,
       success: function (res) {
         if (res.statusCode === 200) {
@@ -43,10 +85,16 @@ function uploadFile(filePath) {
 
 function uploadQczh(filePath) {
   return new Promise(function (resolve, reject) {
+    var header = {}
+    var token = getToken()
+    if (token) {
+      header['Authorization'] = 'Bearer ' + token
+    }
     wx.uploadFile({
       url: BASE_URL + '/api/v1/composition/qichengzhuanhe-analyze',
       filePath: filePath,
       name: 'file',
+      header: header,
       timeout: 120000,
       success: function (res) {
         if (res.statusCode === 200) {
@@ -67,9 +115,7 @@ function getImageUrl(path) {
   if (!s) return ''
   if (s.indexOf('http') === 0) return s
   if (s.indexOf('/') === 0) return BASE_URL + s
-  // Bare filename: prepend BASE_URL with path separator
   if (s.indexOf('.') > 0) return BASE_URL + '/' + s
-  // Unknown format: return empty to prevent 500 errors
   return ''
 }
 
@@ -138,9 +184,24 @@ function getCorrelation() {
   return request('/api/v1/content-analysis/correlation')
 }
 
+function getSizeStats() {
+  return request('/api/v1/content-analysis/size-stats')
+}
+
+// Phase 1: 微信登录
+function wechatLogin(code) {
+  return request('/api/v1/auth/wechat-login', 'POST', { code: code })
+}
+
 module.exports = {
   BASE_URL: BASE_URL,
   getImageUrl: getImageUrl,
+
+  // Auth
+  getToken: getToken,
+  setToken: setToken,
+  clearToken: clearToken,
+  wechatLogin: wechatLogin,
 
   // Composition (existing)
   getTask: function (taskId) { return request('/api/v1/composition/task/' + taskId) },
@@ -167,5 +228,6 @@ module.exports = {
   // Big Data
   getContentReport: getContentReport,
   getContentStats: getContentStats,
-  getCorrelation: getCorrelation
+  getCorrelation: getCorrelation,
+  getSizeStats: getSizeStats
 }

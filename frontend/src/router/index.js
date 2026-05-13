@@ -10,6 +10,12 @@ const routes = [
     meta: { title: '首页' }
   },
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { title: '登录' }
+  },
+  {
     path: '/recognize',
     name: 'Recognize',
     component: () => import('../views/Recognize.vue'),

@@ -16,7 +16,7 @@ logging.basicConfig(
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules
+from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth
 
 try:
     from app.api import composition
@@ -127,6 +127,12 @@ app.include_router(
     artist_rules.router,
     prefix=settings.API_V1_STR,
     tags=["画家规则"]
+)
+
+app.include_router(
+    auth.router,
+    prefix=settings.API_V1_STR + "/auth",
+    tags=["认证"]
 )
 
 if composition is not None:

@@ -155,6 +155,17 @@ class Settings(BaseSettings):
 
     # 管理员 API Key（为空则不开启鉴权，向后兼容）
     ADMIN_API_KEY: str = os.getenv("ADMIN_API_KEY", "")
+
+    # ── Phase 1 多用户底座 ───────────────────────────────────────────
+    # JWT 配置
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "calligraphy-jwt-secret-change-in-production")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRATION_HOURS: int = int(os.getenv("JWT_EXPIRATION_HOURS", "168"))  # 7天
+
+    # 微信小程序配置
+    WECHAT_APP_ID: str = os.getenv("WECHAT_APP_ID", "")
+    WECHAT_APP_SECRET: str = os.getenv("WECHAT_APP_SECRET", "")
+    WECHAT_MOCK_MODE: bool = os.getenv("WECHAT_MOCK_MODE", "true").lower() in ("1", "true", "yes", "y")
     
     class Config:
         env_file = ".env"
