@@ -2,203 +2,166 @@ var api = require('../../utils/api')
 
 Page({
   data: {
+    // Phase 4c: Tab
+    activeTab: 'public',
+    hasToken: false,
+    myStats: null,
+    myLoading: false,
+    myError: false,
+    myPublicTotal: 0,
+
     loading: true,
-    // Stats
-    totalWorks: 0,
-    totalThemes: 0,
-    totalArtists: 0,
-    negPct: 0,
-    posPct: 0,
-    neuPct: 0,
-    negPctStr: '',
-    posPctStr: '',
-    neuPctStr: '',
-    // Theme distribution
-    themes: [],
-    // Defense QA (hardcoded from verified academic report data)
-    defenseQA: [],
-    // Conclusion
-    conclusionPoints: [],
+
+    // Sentiment
+    negPct: 0, posPct: 0, neuPct: 0,
+    negPctStr: '', posPctStr: '', neuPctStr: '',
+
     // Period distribution
-    periodStats: [],
-    // Chart
-    chartReady: false
+    periodItems: [],
+
+    // Size stats
+    sizeItems: [],
+    periodSizeItems: [],
+
+    // Invasive rate
+    invasiveItems: [],
+
+    // Area distribution
+    areaDistItems: [],
+
+    // Totals
+    totalWorks: 0
   },
 
   onLoad: function () {
-    this._loadData()
+    this.setData({ hasToken: !!api.getToken() })
+    this._loadAll()
+  },
+  onPullDownRefresh: function () { this._loadAll(); wx.stopPullDownRefresh() },
+
+  // Phase 4c: Tab switching
+  onSwitchTab: function (e) {
+    var tab = e.currentTarget.dataset.tab
+    this.setData({ activeTab: tab })
+    if (tab === 'my' && this.data.hasToken && !this.data.myStats) {
+      this._loadMyStats()
+    }
   },
 
-  onPullDownRefresh: function () {
-    this._loadData()
-  },
-
-  _loadData: function () {
+  // Phase 4c: Load my stats
+  _loadMyStats: function () {
     var that = this
-    this.setData({ loading: true })
-
-    // Use /stats (structured JSON) as primary data source
-    api.getContentStats().then(function (stats) {
-      // stats: StatsResponse { total_count, theme_distribution, sentiment_distribution, period_stats, ... }
-      var totalWorks = stats.total_count || 0
-
-      // Theme distribution
-      var themes = (stats.theme_distribution || []).map(function (t) {
-        return {
-          name: t.theme || t.name || t.label || '',
-          pct: parseFloat(t.percentage || t.percent || t.pct || 0),
-          count: t.count || t.cnt || 0
-        }
-      }).sort(function (a, b) { return b.pct - a.pct })
-
-      // Sentiment
-      var sentiment = stats.sentiment_distribution || []
-      var negPct = 0, posPct = 0, neuPct = 0
-      sentiment.forEach(function (s) {
-        var label = (s.sentiment || s.polarity || '').toLowerCase()
-        var pct = parseFloat(s.percentage || s.percent || s.pct || 0)
-        if (label.indexOf('neg') >= 0) negPct = pct
-        else if (label.indexOf('pos') >= 0) posPct = pct
-        else if (label.indexOf('neu') >= 0) neuPct = pct
-        else neuPct = pct  // fallback
-      })
-
-      // Period stats
-      var periodStats = (stats.period_stats || []).map(function (p) {
-        return {
-          phase: p.period_phase || p.phase || '未知',
-          count: p.cnt || p.count || 0,
-          avgChars: Math.round(p.avg_chars || p.avgChars || 0)
-        }
-      })
-
-      // Verified academic report data (defense QA + conclusion)
-      // These are the real numbers from the database, verified via SQL
-      var defenseQA = [
-        {
-          q: '「消极 55% 是不是分类器把正常情感也判成消极了？」',
-          a: '整体消极来自 226/410 件作品的独立判定，非单一阈值过滤。积极作品仍有 132 件，证明并非「一律打为消极」。每条结论保留推理步骤，可逐条审验。'
-        },
-        {
-          q: '「咏物寄兴 78%，分类太宽泛了吧？」',
-          a: '咏物寄兴是文人画题跋本体功能。故宫《全集》前言称李鱓「每有所作必题诗其上，借物抒怀」——该比例正是其创作特征的量化体现。'
-        },
-        {
-          q: '「AI 分析的可信度怎么保证？」',
-          a: '双通道验证机制：规则引擎主判 + 低置信自动触发大模型复核。每条结论保留完整推理步骤，可供逐条审验。AI 不是「黑箱」——它留下的推理步骤就是给自己最好的辩护。'
-        }
-      ]
-
-      var conclusionPoints = [
-        '咏物寄兴是题跋最主要功能，占 77.6%，体现了文人画「诗画一体」的创作传统',
-        '身世自况主题占 67.8%，题跋是画家表达个人身世感怀的重要载体',
-        '交游赠答占 29.5%，反映了画家群体的社交网络与文人雅集文化',
-        '消极情感占 55.1%，积极 32.2%，中性 12.7%，题跋总体偏沉郁',
-        '与绘画视觉语言相比，题跋文本更倾向于表达负面情绪和个人感慨'
-      ]
-
-      that.setData({
-        loading: false,
-        totalWorks: totalWorks,
-        totalThemes: themes.length,
-        totalArtists: stats.total_artists || 0,
-        negPct: negPct,
-        posPct: posPct,
-        neuPct: neuPct,
-        negPctStr: negPct.toFixed(1) + '%',
-        posPctStr: posPct.toFixed(1) + '%',
-        neuPctStr: neuPct.toFixed(1) + '%',
-        themes: themes,
-        periodStats: periodStats,
-        defenseQA: defenseQA,
-        conclusionPoints: conclusionPoints
-      })
-
-      // Draw chart after data is set
-      if (themes.length > 0) {
-        setTimeout(function () { that._drawChart() }, 500)
+    if (!this.data.hasToken) return
+    this.setData({ myLoading: true, myError: false })
+    api.getMyStats().then(function (data) {
+      if (data.success) {
+        that.setData({
+          myStats: data.my_stats,
+          myPublicTotal: data.public_total,
+          myLoading: false
+        })
+      } else {
+        that.setData({ myError: true, myLoading: false })
       }
     }).catch(function () {
-      that.setData({ loading: false })
-      // Still show the hardcoded defense data even if API fails
-      wx.showToast({ title: '数据加载失败，显示缓存内容', icon: 'none' })
+      that.setData({ myError: true, myLoading: false })
     })
   },
 
-  onToggleQA: function (e) {
-    var idx = e.currentTarget.dataset.index
-    var qa = this.data.defenseQA.slice()  // copy to trigger change detection
-    qa[idx].open = !qa[idx].open
-    this.setData({ defenseQA: qa })
-  },
-
-  _drawChart: function () {
+  _loadAll: function () {
     var that = this
-    var themes = this.data.themes
-    if (!themes.length) return
+    this.setData({ loading: true })
 
-    var query = wx.createSelectorQuery()
-    query.select('#themeChart').fields({ node: true, size: true }).exec(function (res) {
-      if (!res || !res[0] || !res[0].node) return
-      var canvas = res[0].node
-      var ctx = canvas.getContext('2d')
-      var dpr = wx.getWindowInfo().pixelRatio
-      var W = res[0].width
-      var barH = 56
-      var H = themes.length * barH + 40
-      canvas.width = W * dpr
-      canvas.height = H * dpr
-      ctx.scale(dpr, dpr)
+    Promise.all([
+      api.getContentStats().catch(function () { return null }),
+      api.getCorrelation().catch(function () { return null }),
+      api.getSizeStats().catch(function () { return null }),
+      api.getResults(0, 500).catch(function () { return null })
+    ]).then(function (res) {
+      var stats = res[0] || {};
+      var corr = res[1] || {};
+      var sizeStats = res[2] || {};
+      var results = res[3] || {};
 
-      ctx.clearRect(0, 0, W, H)
+      // === 1. Sentiment (aggregated by count) ===
+      var negCount = 0, posCount = 0, neuCount = 0, sentTotal = 0;
+      (stats.sentiment_distribution || []).forEach(function (s) {
+        var p = (s.polarity || '').toLowerCase()
+        var c = s.count || 0
+        sentTotal += c
+        if (p === 'negative') negCount += c
+        else if (p === 'positive') posCount += c
+        else if (p === 'neutral') neuCount += c
+      })
+      var negPct = sentTotal > 0 ? (negCount / sentTotal * 100) : 0
+      var posPct = sentTotal > 0 ? (posCount / sentTotal * 100) : 0
+      var neuPct = sentTotal > 0 ? (neuCount / sentTotal * 100) : 0
 
-      var barMaxW = W - 200
-      var maxPct = Math.max.apply(null, themes.map(function (t) { return t.pct }))
-      if (maxPct === 0) maxPct = 100
+      // === 2. Period distribution ===
+      var periodItems = (stats.period_stats || [])
+        .filter(function (p) { return p.period && p.period !== '未分期' })
+        .map(function (p) { return { label: p.period, count: p.count, pct: (p.count / (stats.total_count || 1) * 100).toFixed(1) } })
 
-      themes.forEach(function (t, i) {
-        var y = 24 + i * barH
-        var barW = (t.pct / maxPct) * barMaxW
-        if (barW < 4) barW = 4
+      // === 3. Size stats ===
+      var sizeItems = (sizeStats.size_distribution || []).map(function (s) {
+        return { category: s.category, count: s.count, pct: (s.percentage || 0).toFixed(1) }
+      })
+      var periodSizeItems = (sizeStats.period_size_distribution || [])
+        .filter(function (p) { return p.period && p.period !== '未分期' })
+        .map(function (p) {
+          return { period: p.period, avgH: Math.round(p.avg_height || 0), avgW: Math.round(p.avg_width || 0), count: p.count }
+        })
 
-        // Label
-        ctx.fillStyle = '#2c2416'
-        ctx.font = '13px sans-serif'
-        ctx.textAlign = 'right'
-        ctx.fillText(t.name, 110, y + 17)
+      // === 4. Invasive rate ===
+      var invasiveItems = (corr.invasive_analysis && corr.invasive_analysis.invasive_items || [])
+        .sort(function (a, b) { return b.invasive_rate - a.invasive_rate })
+        .map(function (item) {
+          return {
+            theme: item.theme,
+            rate: (item.invasive_rate * 100).toFixed(1),
+            invasive: item.invasive_count,
+            nonInvasive: item.non_invasive_count
+          }
+        })
 
-        // Bar background
-        ctx.fillStyle = '#f0ebe0'
-        var barX = 120
-        ctx.fillRect(barX, y, barMaxW, 24)
-
-        // Bar fill with gradient
-        var gradient = ctx.createLinearGradient(barX, 0, barX + barMaxW, 0)
-        gradient.addColorStop(0, '#c9a96e')
-        gradient.addColorStop(1, '#c9a96ebb')
-        ctx.fillStyle = gradient
-        ctx.fillRect(barX, y, barW, 24)
-
-        // Percentage
-        ctx.fillStyle = '#2c2416'
-        ctx.font = 'bold 12px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText(t.pct.toFixed(1) + '%', barX + barW + 8, y + 17)
-
-        // Count
-        ctx.fillStyle = '#8b7d6b'
-        ctx.font = '10px sans-serif'
-        ctx.fillText('(' + t.count + '件)', barX + barW + 8, y + 35)
+      // === 5. Inscription area distribution ===
+      var areaBuckets = { '0-10%': 0, '10-20%': 0, '20-30%': 0, '30-40%': 0, '40-50%': 0, '>50%': 0 }
+      var resultItems = results.data || (Array.isArray(results) ? results : [])
+      resultItems.forEach(function (item) {
+        var pct = parseFloat(item.inscription_percent) || 0
+        if (pct <= 10) areaBuckets['0-10%']++
+        else if (pct <= 20) areaBuckets['10-20%']++
+        else if (pct <= 30) areaBuckets['20-30%']++
+        else if (pct <= 40) areaBuckets['30-40%']++
+        else if (pct <= 50) areaBuckets['40-50%']++
+        else areaBuckets['>50%']++
+      })
+      var totalForArea = resultItems.length || 1
+      var areaDistItems = Object.keys(areaBuckets).map(function (k) {
+        return { range: k, count: areaBuckets[k], pct: (areaBuckets[k] / totalForArea * 100).toFixed(1) }
       })
 
-      that.setData({ chartReady: true })
+      that.setData({
+        loading: false,
+        totalWorks: stats.total_count || 0,
+        negPct: negPct, posPct: posPct, neuPct: neuPct,
+        negPctStr: negPct.toFixed(1) + '%',
+        posPctStr: posPct.toFixed(1) + '%',
+        neuPctStr: neuPct.toFixed(1) + '%',
+        periodItems: periodItems,
+        sizeItems: sizeItems,
+        periodSizeItems: periodSizeItems,
+        invasiveItems: invasiveItems,
+        areaDistItems: areaDistItems
+      });
+    }).catch(function (err) {
+      that.setData({ loading: false })
+      console.error('Data load error:', err)
+      wx.showToast({ title: '加载失败: ' + (err && err.msg || '未知'), icon: 'none' })
     })
   },
 
   onShareAppMessage: function () {
-    return {
-      title: '题跋大数据分析 — 410件作品的量化洞察',
-      path: '/pages/data/data'
-    }
+    return { title: '题跋大数据分析 — 量化洞察', path: '/pages/data/data' }
   }
 })

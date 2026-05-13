@@ -1,6 +1,12 @@
 ﻿﻿﻿﻿﻿﻿<template>
 <div class="ks-root">
 
+  <!-- Phase 4a: 公共/我的 Tab 切换 -->
+  <div class="ks-view-tabs" v-if="centered || activeMode==='mydocs'">
+    <button :class="['ks-view-tab',{active:centered||activeMode==='search'}]" @click="switchToPublic"><span class="ks-tab-icon">📚</span> 公共知识库</button>
+    <button :class="['ks-view-tab',{active:activeMode==='mydocs'}]" @click="switchToMyDocs"><span class="ks-tab-icon">📁</span> 我的知识库</button>
+  </div>
+
   <transition name="view-switch" mode="out-in">
   <div v-if="centered" key="center" class="ks-center-wrap">
     <div class="ks-center-body">
@@ -88,6 +94,58 @@
   </div>
   </transition>
 
+  <!-- Phase 4a: 我的知识库视图 -->
+  <div v-if="activeMode=='mydocs'" key="mydocs" class="ks-mydocs-view">
+    <header class="ks-bar" style="margin-bottom:16px">
+      <h1 class="ks-bar-title">📁 我的知识库</h1>
+      <div style="flex:1"></div>
+    </header>
+
+    <!-- 未登录提示 -->
+    <div v-if="!isLoggedIn" class="ks-mydocs-login">
+      <div class="ks-mydocs-login-icon">🔐</div>
+      <h3>登录后查看私人文档</h3>
+      <p>上传和管理您的私人知识库文档</p>
+      <a href="/login" class="ks-mydocs-login-btn">去登录</a>
+    </div>
+
+    <!-- 已登录：我的文档列表 -->
+    <div v-else class="ks-mydocs-body">
+      <div class="ks-mydocs-toolbar">
+        <input ref="privateFileInput" type="file" accept=".pdf" style="display:none" @change="onPrivateFileSelected" />
+        <button class="ks-upload-btn" @click="$refs.privateFileInput.click()" :disabled="privateUploading">
+          <span v-if="!privateUploading">+ 上传PDF</span>
+          <span v-else>上传中 {{ privateUploadProgress }}%</span>
+        </button>
+        <button class="ks-mydocs-refresh" @click="store.fetchMyDocuments()" :disabled="store.myDocsLoading">
+          <RefreshCw :class="['icon-xs',{:store.myDocsLoading}]" /> 刷新
+        </button>
+      </div>
+
+      <div v-if="store.myDocsLoading" class="ks-lib-empty">加载中...</div>
+
+      <div v-else-if="store.myDocuments.length" class="ks-mydocs-list">
+        <div v-for="doc in store.myDocuments" :key="doc.id" class="ks-mydocs-card">
+          <div class="ks-mydocs-card-icon">📄</div>
+          <div class="ks-mydocs-card-body">
+            <div class="ks-mydocs-card-title">{{ doc.title||doc.file_name }}</div>
+            <div class="ks-mydocs-card-meta">
+              <span :class="['ks-lib-bs',doc.status]">{{ statusLabel(doc.status) }}</span>
+              <span v-if="doc.total_chunks" class="ks-lib-chunks">{{ doc.total_chunks }}块</span>
+              <span class="ks-mydocs-date" v-if="doc.created_at">{{ doc.created_at.slice(0,10) }}</span>
+            </div>
+          </div>
+          <button class="ks-lib-act del" @click="deletePrivateDoc(doc.id)"><Trash2 class="icon-xs" /></button>
+        </div>
+      </div>
+
+      <div v-else class="ks-lib-empty">暂无私人文档，上传您的第一个PDF吧</div>
+    </div>
+  </div>
+
+  <!-- Phase 4a: Show public view when centered or search -->
+  <div v-if="!centered && activeMode!='mydocs' && activeMode!='chat'" style="display:none"></div>
+
   <transition name="drop"><div v-if="libOpen" class="ks-lib-pop">
     <div class="ks-lib-inner"><div class="ks-lib-row"><button class="ks-upload-btn" @click="showUploadModal=true"><span class="ks-upload-icon">+</span>上传PDF</button><div class="ks-lib-stats" v-if="store.stats"><span>{{ store.stats.books?.total||0 }}书</span><span>{{ store.stats.contents?.chunks||0 }}块</span><span>{{ store.stats.contents?.images||0 }}图</span></div></div>
       <div class="ks-lib-books" v-if="store.books.length"><div v-for="b in store.books" :key="b.id" class="ks-lib-book"><label class="ks-lib-bl"><input type="checkbox" v-model="selectedBooks" :value="b.id" :disabled="b.status==='processing'" /><span class="ks-lib-bn">{{ b.title||b.file_name }}</span><span :class="['ks-lib-bs',b.status]">{{ statusLabel(b.status) }}</span></label><div class="ks-lib-bacts"><button v-if="isAdmin" class="ks-lib-act" @click="reingest(b.id)" :disabled="reingestingId===b.id"><RefreshCw v-if="reingestingId!==b.id" class="icon-xs" /><Loader2 v-else class="icon-xs spin" /></button><button v-if="isAdmin" class="ks-lib-act del" @click="delBook(b.id)"><Trash2 class="icon-xs" /></button></div></div></div>
@@ -171,6 +229,10 @@ function switchMode(m){
   libOpen.value=false
 }
 function toggleLib(){libOpen.value=!libOpen.value}
+
+// Phase 4a: Tab switching
+function switchToPublic(){centered.value=true;activeMode.value='search';libOpen.value=false;closePanel();if(isLoggedIn.value){store.includePrivateInSearch=false};router.replace({name:'KnowledgeSearch'})}
+function switchToMyDocs(){centered.value=false;activeMode.value='mydocs';libOpen.value=false;closePanel();if(isLoggedIn.value){store.fetchMyDocuments().catch(()=>{})};searchInput.value='';hasSearched.value=false;store.clearSearchResults();router.replace({name:'KnowledgeSearch'})}
 
 function goCentered(){centered.value=true;activeMode.value='search';closePanel();searchInput.value='';hasSearched.value=false;store.clearSearchResults();nextTick(()=>searchInputRef.value?.focus());router.replace({name:'KnowledgeSearch'})}
 
@@ -464,4 +526,33 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 
 @media(max-width:1024px){.ks-panel{width:100vw;min-width:auto;top:64px;height:calc(100vh - 64px);z-index:10000002}.ks-body-wrap.with-panel .ks-main{margin-right:0}.ks-lib-pop{right:12px;width:calc(100vw-24px)}}
+
+/* Phase 4a: 公共/我的 Tab 样式 */
+.ks-view-tabs{display:flex;justify-content:center;gap:4px;padding:12px 24px 0;background:#fafaf8}
+.ks-view-tab{border:1.5px solid #e0ddd3;background:#fff;padding:10px 24px;border-radius:10px 10px 0 0;font-size:14px;font-weight:600;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.2s ease;border-bottom:none;margin-bottom:-1px;position:relative}
+.ks-view-tab:hover{border-color:#c96442;color:#c96442}
+.ks-view-tab.active{background:#c96442;color:#fff;border-color:#c96442;box-shadow:0 -2px 8px rgba(201,100,66,0.15)}
+.ks-tab-icon{font-size:16px;line-height:1}
+
+/* Phase 4a: 我的知识库视图 */
+.ks-mydocs-view{min-height:100vh;padding:16px 24px 32px;max-width:900px;margin:0 auto}
+.ks-mydocs-login{text-align:center;padding:60px 20px}
+.ks-mydocs-login-icon{font-size:48px;margin-bottom:16px}
+.ks-mydocs-login h3{font-size:18px;color:#141413;margin:0 0 8px;font-family:'Noto Serif SC',serif}
+.ks-mydocs-login p{font-size:14px;color:#999;margin:0 0 20px}
+.ks-mydocs-login-btn{display:inline-block;padding:10px 28px;background:#c96442;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;transition:all 0.2s}
+.ks-mydocs-login-btn:hover{background:#a8513a}
+.ks-mydocs-body{background:#fff;border:1px solid #e8e6dc;border-radius:12px;padding:20px}
+.ks-mydocs-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f0eee6}
+.ks-mydocs-refresh{border:1px solid #e0ddd3;background:#fff;padding:6px 14px;border-radius:8px;font-size:12px;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s}
+.ks-mydocs-refresh:hover{border-color:#c96442;color:#c96442}
+.ks-mydocs-refresh:disabled{opacity:0.5;cursor:not-allowed}
+.ks-mydocs-list{display:flex;flex-direction:column;gap:8px}
+.ks-mydocs-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #f0eee6;border-radius:10px;transition:all 0.15s}
+.ks-mydocs-card:hover{background:#fdfcf9;border-color:#e8e6dc}
+.ks-mydocs-card-icon{font-size:28px;flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#faf9f5;border-radius:8px}
+.ks-mydocs-card-body{flex:1;min-width:0}
+.ks-mydocs-card-title{font-size:14px;font-weight:600;color:#141413;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-mydocs-card-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px}
+.ks-mydocs-date{color:#b8b4aa;font-size:11px}
 </style>

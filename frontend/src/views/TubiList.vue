@@ -1,5 +1,11 @@
 <template>
   <div class="tubi-list tubi-page">
+    <!-- Phase 4b: 公共/我的 Tab 切换 -->
+    <div class="tubi-view-tabs">
+      <button class="tubi-view-tab active" @click="() => {}"><span>🏛</span> 公共作品库</button>
+      <button class="tubi-view-tab" @click="$router.push('/libraries')"><span>📂</span> 我的作品库</button>
+    </div>
+
     <!-- 顶部栏：翻页居左 + 工具居右（卡片外） -->
     <div class="top-bar" v-if="total > pageSize || pagedRankings.length > 0">
       <div class="top-bar-left">
@@ -659,6 +665,42 @@ onMounted(() => {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Phase 4b: 公共/我的 Tab 样式 */
+.tubi-view-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+.tubi-view-tab {
+  border: 1.5px solid #e8e6dc;
+  background: #fff;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5e5d59;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  font-family: 'Noto Serif SC', serif;
+}
+.tubi-view-tab:hover {
+  border-color: #c96442;
+  color: #c96442;
+}
+.tubi-view-tab.active {
+  background: #c96442;
+  color: #fff;
+  border-color: #c96442;
+}
+.tubi-view-tab span {
+  font-size: 16px;
+  line-height: 1;
 }
 
 /* 页面头部 */

@@ -1,5 +1,48 @@
 <view class="page">
 
+  <!-- Phase 4a: 公共/我的 Tab 切换 -->
+  <view class="view-tabs">
+    <view class="view-tab {{activeTab==='public'?'active':''}}" data-tab="public" bindtap="onSwitchTab">📚 公共知识库</view>
+    <view class="view-tab {{activeTab==='my'?'active':''}}" data-tab="my" bindtap="onSwitchTab">📁 我的知识库</view>
+  </view>
+
+  <!-- ===== 我的知识库视图 ===== -->
+  <block wx:if="{{activeTab==='my'}}">
+    <view class="empty-state" wx:if="{{!hasToken}}">
+      <view class="empty-icon">🔐</view>
+      <view class="empty-text">登录后查看私人文档</view>
+    </view>
+    <block wx:else>
+      <view class="empty-state" wx:if="{{myDocsLoading}}">
+        <view class="empty-icon">⌛</view>
+        <view class="empty-text">加载中...</view>
+      </view>
+      <block wx:elif="{{myDocs.length > 0}}">
+        <view class="section-title" style="margin-top: 16rpx;">我的文档</view>
+        <view class="my-docs-list">
+          <view class="my-doc-card" wx:for="{{myDocs}}" wx:key="id">
+            <view class="my-doc-icon">📄</view>
+            <view class="my-doc-body">
+              <view class="my-doc-title">{{item.title || item.file_name}}</view>
+              <view class="my-doc-meta">
+                <text class="doc-status doc-status-{{item.status}}">{{item.status==='completed'?'✓':item.status==='processing'?'处理中':'失败'}}</text>
+                <text wx:if="{{item.total_chunks}}" class="doc-chunks">{{item.total_chunks}}块</text>
+              </view>
+            </view>
+            <view class="my-doc-del" data-id="{{item.id}}" bindtap="onDeleteMyDoc">✕</view>
+          </view>
+        </view>
+      </block>
+      <view class="empty-state" wx:else>
+        <view class="empty-icon">📁</view>
+        <view class="empty-text">暂无私人文档</view>
+      </view>
+    </block>
+  </block>
+
+  <!-- ===== 公共知识库视图 ===== -->
+  <block wx:if="{{activeTab==='public'}}">
+
   <!-- ===== Search Bar (always visible) ===== -->
   <view class="search-wrap">
     <view class="search-box">
@@ -194,5 +237,7 @@
       </view>
     </view>
   </block>
+
+  </block><!-- End public tab wrapper -->
 
 </view>

@@ -3,6 +3,12 @@ var md = require('../../utils/md')
 
 Page({
   data: {
+    // Phase 4a: Tab
+    activeTab: 'public',
+    hasToken: false,
+    // My documents
+    myDocs: [],
+    myDocsLoading: false,
     // State: browse | searching | results | detail
     state: 'browse',
     // Search
@@ -30,6 +36,7 @@ Page({
   },
 
   onLoad: function () {
+    this.setData({ hasToken: !!api.getToken() })
     this._loadBrowse()
   },
 
@@ -44,6 +51,52 @@ Page({
     if (this.data.state === 'browse' && this.data.books.length === 0) {
       this._loadBrowse()
     }
+    // Refresh token state
+    this.setData({ hasToken: !!api.getToken() })
+  },
+
+  // Phase 4a: Tab switching
+  onSwitchTab: function (e) {
+    var tab = e.currentTarget.dataset.tab
+    this.setData({ activeTab: tab })
+    if (tab === 'my' && this.data.hasToken && this.data.myDocs.length === 0) {
+      this._loadMyDocs()
+    }
+  },
+
+  // Phase 4a: Load my documents
+  _loadMyDocs: function () {
+    var that = this
+    if (!this.data.hasToken) return
+    this.setData({ myDocsLoading: true })
+    api.getMyDocuments().then(function (data) {
+      var docs = Array.isArray(data) ? data : (data.documents || [])
+      that.setData({ myDocs: docs, myDocsLoading: false })
+    }).catch(function () {
+      that.setData({ myDocsLoading: false })
+      wx.showToast({ title: '加载失败', icon: 'none' })
+    })
+  },
+
+  // Phase 4a: Delete my document
+  onDeleteMyDoc: function (e) {
+    var id = e.currentTarget.dataset.id
+    if (!id) return
+    var that = this
+    wx.showModal({
+      title: '确认删除',
+      content: '确定删除此文档及其数据？',
+      success: function (res) {
+        if (res.confirm) {
+          api.deleteMyDocument(id).then(function () {
+            wx.showToast({ title: '已删除', icon: 'success' })
+            that._loadMyDocs()
+          }).catch(function () {
+            wx.showToast({ title: '删除失败', icon: 'none' })
+          })
+        }
+      }
+    })
   },
 
   // ===== Browse =====

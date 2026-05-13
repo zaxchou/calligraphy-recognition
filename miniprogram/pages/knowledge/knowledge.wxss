@@ -29,3 +29,97 @@ page {
 .detail-tabs {
   white-space: nowrap;
 }
+
+/* Phase 4a: 公共/我的 Tab 样式 */
+.view-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 16rpx 24rpx 0;
+}
+.view-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #8a877e;
+  border-bottom: 3rpx solid transparent;
+  transition: all 0.2s;
+}
+.view-tab.active {
+  color: #c96442;
+  border-bottom-color: #c96442;
+}
+
+/* My documents list */
+.my-docs-list {
+  padding: 0 24rpx;
+}
+.my-doc-card {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 16rpx;
+  margin-bottom: 12rpx;
+  background: #fff;
+  border: 1rpx solid #efe9dc;
+  border-radius: 12rpx;
+}
+.my-doc-icon {
+  font-size: 40rpx;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #faf9f5;
+  border-radius: 12rpx;
+}
+.my-doc-body {
+  flex: 1;
+  min-width: 0;
+}
+.my-doc-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #141413;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.my-doc-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+}
+.doc-status {
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  font-size: 20rpx;
+}
+.doc-status-completed {
+  background: #eaf7ea;
+  color: #5a7d5a;
+}
+.doc-status-processing {
+  background: #fef7e8;
+  color: #b8860b;
+}
+.doc-status-failed {
+  background: #fef0ed;
+  color: #c96442;
+}
+.doc-chunks {
+  color: #b0aca2;
+}
+.my-doc-del {
+  font-size: 32rpx;
+  color: #c0bdb3;
+  padding: 8rpx 12rpx;
+}
+.my-doc-del:active {
+  color: #c96442;
+}

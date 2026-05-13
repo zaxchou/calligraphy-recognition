@@ -17,7 +17,7 @@ import redis
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
-from app.core.auth import require_admin, get_optional_user
+from app.core.auth import require_admin, get_optional_user, get_current_user
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
@@ -2955,4 +2955,114 @@ async def update_regions_manual(
             "annotated_image_url": get_static_url(f"annotated/annotated_{db_analysis.image_id}.jpg") if db_analysis.annotated_image_path else None,
             "is_manual_annotated": True
         }
+    }
+
+
+# ============ 4c: 我的统计数据 API ============
+
+@router.get("/stats/my")
+async def get_my_stats(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    获取当前用户的个人题跋统计数据（Phase 4c）
+
+    包含：我的作品总数、情感分布、时期分布、尺寸分布
+    与公共数据对比
+    """
+    import json
+
+    # 我的作品
+    my_query = db.query(TubiAnalysis).filter(TubiAnalysis.owner_id == user.id)
+
+    my_total = my_query.count()
+    if my_total == 0:
+        return {
+            "success": True,
+            "my_stats": {
+                "total_count": 0,
+                "sentiment_distribution": [],
+                "period_stats": [],
+                "size_distribution": [],
+            },
+            "public_total": db.query(TubiAnalysis).count(),
+        }
+
+    # 我的情感分布 - 从 content_analysis JSON 中提取
+    sentiment_counts = {}  # polarity -> count
+    period_counts = {}     # period -> count
+    period_char_sum = {}   # period -> total char count
+
+    my_records = my_query.all()
+    for r in my_records:
+        period = r.period_phase or r.period or "未分期"
+        period_counts[period] = period_counts.get(period, 0) + 1
+        if r.char_count:
+            period_char_sum[period] = period_char_sum.get(period, 0) + r.char_count
+
+        if r.content_analysis:
+            try:
+                ca = json.loads(r.content_analysis) if isinstance(r.content_analysis, str) else r.content_analysis
+                sentiment = ca.get("sentiment", {})
+                polarity = sentiment.get("polarity", "neutral")
+                sentiment_counts[polarity] = sentiment_counts.get(polarity, 0) + 1
+            except Exception:
+                pass
+
+    # 构建情感分布
+    sentiment_distribution = []
+    for polarity, count in sentiment_counts.items():
+        sentiment_distribution.append({
+            "polarity": polarity,
+            "count": count,
+            "percentage": round(count / my_total * 100, 1) if my_total > 0 else 0,
+        })
+
+    # 构建时期分布
+    period_stats = []
+    for period, count in sorted(period_counts.items()):
+        period_stats.append({
+            "period": period,
+            "count": count,
+            "avg_char_count": round(period_char_sum.get(period, 0) / count, 1) if count > 0 else 0,
+        })
+
+    # 我的尺寸分布
+    size_cats = {"小幅": 0, "中幅": 0, "大幅": 0, "未知": 0}
+    for r in my_records:
+        h = r.artwork_height_cm
+        if h is None:
+            size_cats["未知"] += 1
+        elif h < 70:
+            size_cats["小幅"] += 1
+        elif h <= 150:
+            size_cats["中幅"] += 1
+        else:
+            size_cats["大幅"] += 1
+
+    size_distribution = []
+    for cat, count in size_cats.items():
+        if count > 0:
+            size_distribution.append({
+                "category": cat,
+                "count": count,
+                "percentage": round(count / my_total * 100, 1) if my_total > 0 else 0,
+            })
+
+    # 公共数据总量（用于对比）
+    public_total = db.query(TubiAnalysis).count()
+
+    return {
+        "success": True,
+        "my_stats": {
+            "total_count": my_total,
+            "sentiment_distribution": sentiment_distribution,
+            "period_stats": period_stats,
+            "size_distribution": size_distribution,
+        },
+        "public_total": public_total,
+        "comparison": {
+            "my_percentage": round(my_total / public_total * 100, 1) if public_total > 0 else 0,
+        },
     }

@@ -253,5 +253,18 @@ module.exports = {
   },
   getArtworkDetailV2: function (artworkId) {
     return request('/api/v1/artworks/' + artworkId)
+  },
+
+  // Phase 4a: 我的知识库文档
+  getMyDocuments: function () {
+    return request('/api/v1/knowledge/documents')
+  },
+  deleteMyDocument: function (docId) {
+    return request('/api/v1/knowledge/documents/' + docId, 'DELETE')
+  },
+
+  // Phase 4c: 我的统计数据
+  getMyStats: function () {
+    return request('/api/v1/tubi/stats/my')
   }
 }

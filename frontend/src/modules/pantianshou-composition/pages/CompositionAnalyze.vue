@@ -60,7 +60,7 @@
             </div>
             <div class="action-row secondary-row">
               <el-button v-if="taskId" class="btn-danger" :disabled="deleting" @click="deleteTask">删除数据</el-button>
-              <el-button class="btn-ghost" @click="openHistory">历史记录</el-button>
+              <el-button class="btn-ghost" @click="openHistory">{{ isLoggedIn ? '我的分析历史' : '历史记录' }}</el-button>
             </div>
           </div>
         </div>
@@ -342,6 +342,7 @@ const viewportWidth = ref(1200)
 const historyVisible = ref(false)
 const historyLoading = ref(false)
 const historyItems = ref([])
+const isLoggedIn = ref(!!localStorage.getItem('auth_token'))
 
 const bookCoverUrl = '/static/assets/goutu.jpg'
 const bookUrl = 'https://book.douban.com/subject/26647513/'
@@ -970,6 +971,11 @@ async function loadHistory() {
 }
 
 async function openHistory() {
+  // Phase 4d: Check login state
+  if (!isLoggedIn.value) {
+    ElMessage.warning('登录后可查看和保存分析历史')
+    return
+  }
   historyVisible.value = true
   if (historyItems.value.length === 0) {
     await loadHistory()
