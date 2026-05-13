@@ -540,5 +540,42 @@ page {
   line-height: 1.9;
 }
 
+/* ===== 数据表格 ===== */
+.d-table {
+  width: 100%;
+  border: 1rpx solid #e0d8c8;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+.d-tr {
+  display: flex;
+  border-bottom: 1rpx solid #f0ebe0;
+}
+.d-tr:last-child { border-bottom: none; }
+.d-tr.d-th {
+  background: #faf8f5;
+}
+.d-tr.d-th .d-td {
+  font-weight: 600;
+  color: #5b7a8c;
+  font-size: 24rpx;
+}
+.d-td {
+  flex: 1;
+  padding: 18rpx 16rpx;
+  font-size: 26rpx;
+  color: #2c2416;
+  text-align: center;
+}
+.d-td:first-child { text-align: left; }
+.d-dot {
+  display: inline-block;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 4rpx;
+  margin-right: 8rpx;
+  vertical-align: middle;
+}
+
 /* ===== 隐藏滚动条 ===== */
 ::-webkit-scrollbar { display: none; }
