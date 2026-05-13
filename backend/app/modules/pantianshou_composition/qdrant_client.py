@@ -297,6 +297,7 @@ def delete_points(collection: str, point_ids: List[str]) -> bool:
 KNOWLEDGE_TEXTS_COLLECTION = "knowledge_texts"
 KNOWLEDGE_IMAGES_COLLECTION = "knowledge_images"
 KNOWLEDGE_TABLES_COLLECTION = "knowledge_tables"  # 新增表格集合
+KNOWLEDGE_PRIVATE_COLLECTION = "knowledge_private"  # Phase 3: 用户私人文档向量
 
 # multimodal-embedding-v1 输出 1024 维向量
 KNOWLEDGE_VECTOR_SIZE = 1024
@@ -307,7 +308,8 @@ def ensure_knowledge_collections() -> bool:
     texts_ok = ensure_collection(KNOWLEDGE_TEXTS_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)
     images_ok = ensure_collection(KNOWLEDGE_IMAGES_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)
     tables_ok = ensure_collection(KNOWLEDGE_TABLES_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)  # 新增表格集合
-    return texts_ok and images_ok and tables_ok
+    private_ok = ensure_collection(KNOWLEDGE_PRIVATE_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)  # Phase 3: 私人文档
+    return texts_ok and images_ok and tables_ok and private_ok
 
 
 def upsert_text_chunks(chunks: List[Dict[str, Any]], book_id: str) -> bool:
@@ -580,3 +582,95 @@ def get_book_vector_count(book_id: str) -> Dict[str, int]:
     except Exception as e:
         logger.error("Qdrant 获取书籍向量统计失败 [book_id=%s]: %s", book_id, e)
         return {"texts": 0, "images": 0, "tables": 0}
+
+
+# ═══════════════════════════════════════════════════════════════
+# Phase 3: 私人知识库操作
+# ═══════════════════════════════════════════════════════════════
+
+def upsert_private_chunks(chunks: List[Dict[str, Any]], document_id: str, user_id: int) -> bool:
+    """批量插入/更新私人文档向量到 knowledge_private 集合.
+
+    Args:
+        chunks: 文本块列表，每项包含 id, vector, content, chunk_index 等
+        document_id: 文档ID (PdfBook.id)
+        user_id: 用户ID，用于 payload 过滤隔离
+    """
+    if not chunks:
+        return True
+
+    points = []
+    for chunk in chunks:
+        point = {
+            "id": chunk["id"],
+            "vector": chunk["vector"],
+            "payload": {
+                "user_id": user_id,
+                "document_id": document_id,
+                "content": chunk["content"],
+                "chapter": chunk.get("chapter", ""),
+                "page_start": chunk.get("page_start", 0),
+                "page_end": chunk.get("page_end", 0),
+                "chunk_index": chunk.get("chunk_index", 0),
+                "book_title": chunk.get("book_title", ""),
+                "metadata": chunk.get("metadata", {}),
+            },
+        }
+        points.append(point)
+
+    return upsert_points(KNOWLEDGE_PRIVATE_COLLECTION, points)
+
+
+def search_private(
+    vector: List[float],
+    user_id: int,
+    limit: int = 10,
+    score_threshold: float = 0.6,
+) -> List[Dict[str, Any]]:
+    """搜索私人知识库（仅搜索指定用户的文档）.
+
+    Args:
+        vector: 查询向量
+        user_id: 用户ID（payload 过滤）
+        limit: 返回结果数量
+        score_threshold: 最低相似度阈值
+    """
+    query_filter = {
+        "must": [
+            {"key": "user_id", "match": {"value": user_id}}
+        ]
+    }
+    return search_collection(
+        KNOWLEDGE_PRIVATE_COLLECTION,
+        vector,
+        limit=limit,
+        query_filter=query_filter,
+        score_threshold=score_threshold,
+    )
+
+
+def delete_private_document_vectors(document_id: str) -> bool:
+    """删除私人文档在 Qdrant 中的所有向量."""
+    base = _base_url()
+    if not base:
+        return False
+
+    filter_payload = {
+        "must": [
+            {"key": "document_id", "match": {"value": document_id}}
+        ]
+    }
+
+    try:
+        client = _get_client(10.0)
+        r = client.post(
+            f"{base}/collections/{KNOWLEDGE_PRIVATE_COLLECTION}/points/delete",
+            json={"filter": filter_payload},
+            headers=_headers(),
+        )
+        r.raise_for_status()
+        logger.info("私人文档向量已删除: document_id=%s", document_id)
+        return True
+    except Exception as e:
+        logger.error("删除私人文档向量失败 [document_id=%s]: %s", document_id, e)
+        return False

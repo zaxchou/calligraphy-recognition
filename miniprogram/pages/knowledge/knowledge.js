@@ -134,7 +134,9 @@ Page({
           page_end: r.page_end || null,
           score: r.score || 0,
           scorePct: ((r.score || 0) * 100).toFixed(0),
-          locText: (r.chapter_title || '') + (r.page_start ? ' · p.' + r.page_start : '')
+          locText: (r.chapter_title || '') + (r.page_start ? ' · p.' + r.page_start : ''),
+          source: r.source || 'public',
+          sourceLabel: r.source === 'private' ? '[我的]' : ''
         }
       })
 

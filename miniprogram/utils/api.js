@@ -145,11 +145,16 @@ function getKnowledgeStats() {
 }
 
 function searchKnowledge(query, limit, bookIds) {
-  return request('/api/v1/knowledge/search', 'POST', {
+  var data = {
     query: query,
     limit: limit || 20,
     book_ids: bookIds || null
-  })
+  }
+  // Phase 3d: 登录用户自动搜索私人文档
+  if (getToken()) {
+    data.include_private = true
+  }
+  return request('/api/v1/knowledge/search', 'POST', data)
 }
 
 // ===== 题跋分析 API =====

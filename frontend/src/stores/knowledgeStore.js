@@ -299,26 +299,27 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     aiSummaryLoading.value = false
     queryRewrite.value = null
     relatedImages.value = []
-    
+
     // 模拟进度条
     const progressInterval = setInterval(() => {
       if (searchProgress.value < 80) {
         searchProgress.value += Math.random() * 15
       }
     }, 200)
-    
+
     try {
       const response = await api.post(`/knowledge/search`, {
         query,
         book_ids: options.bookIds || [],
-        limit: options.limit || 10
+        limit: options.limit || 10,
+        include_private: options.includePrivate || false,  // Phase 3b
       })
-      
+
       clearInterval(progressInterval)
       searchProgress.value = 100
-      
+
       searchResults.value = response.results || []
-      
+
       // AI 摘要和改写信息（直接从响应获取，后端已并行完成）
       if (response.ai_summary && response.ai_summary.answer) {
         aiSummary.value = response.ai_summary
@@ -330,7 +331,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       if (response.related_images && response.related_images.length > 0) {
         relatedImages.value = response.related_images
       }
-      
+
       return response
     } catch (error) {
       clearInterval(progressInterval)
@@ -342,6 +343,70 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       }, 300)
     }
   }
+
+  // ═══ Phase 3a: 私人文档管理 ═══
+
+  // 我的文档列表
+  const myDocuments = ref([])
+  const myDocsLoading = ref(false)
+
+  async function fetchMyDocuments() {
+    myDocsLoading.value = true
+    try {
+      const response = await api.get(`/knowledge/documents`)
+      myDocuments.value = response
+      return response
+    } catch (error) {
+      throw error
+    } finally {
+      myDocsLoading.value = false
+    }
+  }
+
+  // 上传私人文档
+  async function uploadPrivateDocument(file, title, onProgress) {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (title) formData.append('title', title)
+
+    try {
+      const response = await api.post(`/knowledge/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            onProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total))
+          }
+        },
+      })
+      await fetchMyDocuments()
+      return response
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // 删除私人文档
+  async function deleteMyDocument(documentId) {
+    try {
+      await api.delete(`/knowledge/documents/${documentId}`)
+      myDocuments.value = myDocuments.value.filter(d => d.id !== documentId)
+      return true
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // 获取私人文档分块
+  async function fetchDocumentChunks(documentId, params = {}) {
+    try {
+      return await api.get(`/knowledge/documents/${documentId}/chunks`, { params })
+    } catch (error) {
+      throw error
+    }
+  }
+
+  // 搜索是否包含私人文档
+  const includePrivateInSearch = ref(false)
   
   // 获取搜索历史
   async function fetchSearchHistory(limit = 20) {
@@ -439,13 +504,18 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     processingStage,
     currentTaskId,
     stats,
-    
+
+    // Phase 3a: 私人文档
+    myDocuments,
+    myDocsLoading,
+    includePrivateInSearch,
+
     // Getters
     completedBooks,
     processingBooks,
     activeTasks,
     failedTasks,
-    
+
     // Actions
     fetchBooks,
     fetchBookDetail,
@@ -466,5 +536,11 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     fetchStats,
     resetUploadStatus,
     clearSearchResults,
+
+    // Phase 3a: 私人文档 actions
+    fetchMyDocuments,
+    uploadPrivateDocument,
+    deleteMyDocument,
+    fetchDocumentChunks,
   }
 })

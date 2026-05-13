@@ -23,7 +23,7 @@ from .models import PdfBook, KnowledgeTask, TextChunk, ExtractedImage, SearchHis
 from .task_manager import TaskManager
 from .knowledge_ingest_v2 import process_pdf_file_sync
 
-from app.core.auth import require_admin, get_optional_user
+from app.core.auth import require_admin, get_optional_user, get_current_user
 from app.models.user import User
 
 router = APIRouter()
@@ -156,6 +156,7 @@ class SearchRequest(BaseModel):
     query: str
     book_ids: Optional[List[str]] = None
     limit: int = 10
+    include_private: bool = False  # Phase 3b: 是否包含私人文档搜索结果
 
 
 class SearchResult(BaseModel):
@@ -933,11 +934,13 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
     集成 Query 改写 + 混合搜索 + AI 摘要回答
     """
     # 内存缓存（TTL 5 分钟）：相同搜索秒回，完全不走 Qdrant 和 AI
-    query_key = f"{re.sub(r'\\s+', '', request.query).lower()}|{','.join(sorted(request.book_ids)) if request.book_ids else 'all'}"
-    mem_hit = _search_mem_cache.get(query_key)
-    if mem_hit and time.time() - mem_hit["t"] < 300:
-        logger.info("搜索内存缓存命中: query='%s'", request.query)
-        return mem_hit["data"]
+    # Phase 3b: include_private 不缓存（私人结果随用户变化）
+    if not request.include_private:
+        query_key = f"{re.sub(r'\\s+', '', request.query).lower()}|{','.join(sorted(request.book_ids)) if request.book_ids else 'all'}"
+        mem_hit = _search_mem_cache.get(query_key)
+        if mem_hit and time.time() - mem_hit["t"] < 300:
+            logger.info("搜索内存缓存命中: query='%s'", request.query)
+            return mem_hit["data"]
 
     from .embedding_service import EmbeddingService
     from . import qdrant_client
@@ -1035,7 +1038,32 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
             except ImportError:
                 logger.warning("dashscope SDK 未安装，跳过跨模态图像搜索")
 
-        # 构建 book_ids 过滤
+        # ---- ②.6 Phase 3b: 私人知识库搜索 ----
+        if request.include_private and user is not None:
+            try:
+                for q in all_queries[:2]:  # 最多2个查询，控制 API 调用
+                    embed_result = await embedding_service.embed_text(q)
+                    q_embedding = embed_result.embedding if embed_result else None
+                    if not q_embedding:
+                        continue
+                    private_results = qdrant_client.search_private(
+                        vector=q_embedding,
+                        user_id=user.id,
+                        limit=request.limit,
+                        score_threshold=0.6,
+                    )
+                    for r in private_results:
+                        vid = r.get("id")
+                        if vid and vid not in seen_ids:
+                            seen_ids.add(vid)
+                            # 标记为私人来源
+                            payload = r.get("payload", {})
+                            payload["_source"] = "private"
+                            payload["_user_id"] = user.id
+                            merged_results.append(r)
+                logger.info("私人搜索完成: %d 结果", sum(1 for r in merged_results if r.get("payload", {}).get("_source") == "private"))
+            except Exception as e:
+                logger.warning("私人知识库搜索失败: %s", e)
         search_results = []
         if request.book_ids:
             for r in merged_results:
@@ -1112,8 +1140,10 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
         MAX_RELATED_IMAGES = 6
         for r in search_results:
             payload = r.get("payload", {})
+            source_type = payload.pop("_source", "public")  # Phase 3b: "public" / "private"
             # 支持多种 book_id 字段名（PDF上传用 book_id，花鸟教程用 book）
-            book_id = payload.get("book_id") or payload.get("book")
+            # 私人文档用 document_id
+            book_id = payload.get("book_id") or payload.get("book") or payload.get("document_id")
             vector_id = r.get("id")
             
             # 从数据库获取更完整的信息（仅当 book_id 存在时）
@@ -1150,6 +1180,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                         "has_prev": False,
                         "has_next": False,
                         "bbox": payload.get("bbox"),  # 添加 bbox 字段
+                        "source": source_type,  # Phase 3b: public / private
                     })
                     continue
                 # 检查是否是图像类型的数据（跨模态搜索结果）
@@ -1200,6 +1231,7 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                         "has_next": False,
                         "result_type": "image",  # 标记为图像结果，前端可区分展示
                         "bbox": payload.get("bbox"),  # 添加 bbox 字段
+                        "source": source_type,  # Phase 3b: public / private
                         # 图像专属字段
                         "image": {
                             "url": image_url,
@@ -1299,9 +1331,10 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                         "has_prev": bool(ctx_before),
                         "has_next": bool(ctx_after),
                         "bbox": payload.get("bbox"),
+                        "source": source_type,  # Phase 3b: public / private
                     })
                     continue
-            
+
             # 获取关联图片
             associated_images = []
             if chunk and chunk.associated_images:
@@ -1412,8 +1445,9 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                 "has_prev": bool(context_before),
                 "has_next": bool(context_after),
                 "bbox": payload.get("bbox"),  # 添加 bbox 字段
+                "source": source_type,  # Phase 3b: public / private
             })
-        
+
         # ---- 内容级去重：同一段文字可能被不同 query/collection 命中，按 (book_id, content_fingerprint) 去重 ----
         seen_content = set()
         deduped_results = []
@@ -1571,7 +1605,9 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
             },
         }
         # 写入内存缓存（TTL 300s），下次同查询秒回
-        _search_mem_cache[query_key] = {"t": time.time(), "data": _resp_data}
+        # Phase 3b: 含私人文档时不写入共享缓存
+        if not request.include_private:
+            _search_mem_cache[query_key] = {"t": time.time(), "data": _resp_data}
         # Phase 1: 已登录用户附加私有数据（不写入缓存）
         if user:
             _resp_data["user_data"] = {
@@ -1818,6 +1854,261 @@ async def get_stats(db: Session = Depends(get_db)):
             "images": image_count,
         },
     }
+
+
+# ======================================================================
+# Phase 3a: 私人文档上传与管理 API
+# ======================================================================
+
+# 私人文档存储目录
+_PRIVATE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "user_documents")
+os.makedirs(_PRIVATE_UPLOAD_DIR, exist_ok=True)
+
+
+class PrivateDocumentResponse(BaseModel):
+    """私人文档响应模型"""
+    id: str
+    title: Optional[str]
+    file_name: str
+    status: str  # processing / completed / failed
+    total_chunks: int = 0
+    created_at: str
+    visibility: str = "private"
+
+
+@router.post("/documents")
+async def upload_private_document(
+    file: UploadFile = File(...),
+    title: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    上传私人 PDF 文档（Phase 3a）
+
+    鉴权：必须登录。免费用户返回 403。
+    文件保存到 data/user_documents/{user_id}/ 目录。
+    异步处理：PyMuPDF 提取→分块→embedding→Qdrant knowledge_private。
+    """
+    # 免费用户禁止上传
+    if user.subscription_tier == "free":
+        raise HTTPException(403, "升级Pro后可上传文档")
+
+    # 验证文件类型
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(400, "只支持 PDF 文件")
+
+    # 创建用户目录
+    user_dir = os.path.join(_PRIVATE_UPLOAD_DIR, str(user.id))
+    os.makedirs(user_dir, exist_ok=True)
+
+    # 生成唯一文件名
+    file_id = str(uuid.uuid4())
+    safe_name = file_id + "_" + file.filename
+    file_path = os.path.join(user_dir, safe_name)
+
+    # 保存文件
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # 创建书籍记录
+    doc_title = title or os.path.splitext(file.filename)[0]
+    book = PdfBook(
+        id=file_id,
+        file_name=safe_name,
+        stored_path=file_path,
+        stored_url=f"/api/v1/knowledge/documents/{file_id}/pdf",
+        title=doc_title,
+        status="processing",
+        owner_id=user.id,
+        visibility="private",
+    )
+    db.add(book)
+    db.commit()
+    db.refresh(book)
+
+    # 启动后台线程处理
+    import threading
+
+    def _run_process():
+        try:
+            from .private_ingest import process_private_pdf_sync
+            result = process_private_pdf_sync(
+                pdf_path=file_path,
+                book_id=file_id,
+                user_id=user.id,
+                db=None,  # 在线程内自行创建 session
+                title=doc_title,
+            )
+            if result.get("status") == "failed":
+                logger.error("私人文档处理失败: %s", result.get("error"))
+        except Exception as e:
+            import traceback
+            logger.error("私人文档后台线程异常: %s\n%s", e, traceback.format_exc())
+            # 更新状态为 failed
+            from .database import SessionLocal
+            try:
+                with SessionLocal() as s:
+                    bk = s.query(PdfBook).filter(PdfBook.id == file_id).first()
+                    if bk:
+                        bk.status = "failed"
+                        s.commit()
+            except Exception:
+                pass
+
+    thread = threading.Thread(target=_run_process, daemon=True)
+    thread.start()
+
+    return {
+        "document_id": file_id,
+        "status": "processing",
+        "message": "PDF 上传成功，正在处理中",
+    }
+
+
+@router.get("/documents")
+async def list_private_documents(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    获取当前用户的私人文档列表（Phase 3a）
+    """
+    books = (
+        db.query(PdfBook)
+        .filter(PdfBook.owner_id == user.id, PdfBook.visibility == "private")
+        .order_by(PdfBook.created_at.desc())
+        .all()
+    )
+
+    results = []
+    for b in books:
+        chunk_count = db.query(TextChunk).filter(
+            TextChunk.book_id == b.id, TextChunk.owner_id == user.id
+        ).count()
+        results.append({
+            "id": b.id,
+            "title": b.title or b.file_name,
+            "file_name": b.file_name,
+            "status": b.status,
+            "total_chunks": chunk_count,
+            "created_at": b.created_at.isoformat() if b.created_at else None,
+            "visibility": b.visibility or "private",
+        })
+
+    return results
+
+
+@router.get("/documents/{document_id}/chunks")
+async def get_private_document_chunks(
+    document_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    获取私人文档的文本块预览（Phase 3a）
+    """
+    # 验证所有权
+    book = db.query(PdfBook).filter(
+        PdfBook.id == document_id, PdfBook.owner_id == user.id
+    ).first()
+    if not book:
+        raise HTTPException(404, "文档不存在")
+
+    chunks = (
+        db.query(TextChunk)
+        .filter(TextChunk.book_id == document_id)
+        .order_by(TextChunk.chunk_index)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return [{
+        "id": c.id,
+        "chunk_index": c.chunk_index,
+        "page_start": c.page_start,
+        "page_end": c.page_end,
+        "content": c.content[:500] + "..." if len(c.content) > 500 else c.content,
+        "content_full": c.content,
+    } for c in chunks]
+
+
+@router.delete("/documents/{document_id}")
+async def delete_private_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    删除私人文档（Phase 3a）
+    级联删除：Qdrant 向量 + text_chunks 行 + 原始文件 + pdf_books 行
+    """
+    from .qdrant_client import delete_private_document_vectors
+
+    book = db.query(PdfBook).filter(
+        PdfBook.id == document_id, PdfBook.owner_id == user.id
+    ).first()
+    if not book:
+        raise HTTPException(404, "文档不存在")
+
+    doc_title = book.title or book.file_name
+    logger.info("删除私人文档: %s (id=%s, user=%d)", doc_title, document_id, user.id)
+
+    # 1. 删除 Qdrant 向量
+    try:
+        delete_private_document_vectors(document_id)
+    except Exception as e:
+        logger.error("删除私人文档向量失败: %s", e)
+
+    # 2. 删除 SQLite text_chunks 行
+    db.query(TextChunk).filter(
+        TextChunk.book_id == document_id
+    ).delete()
+
+    # 3. 删除磁盘文件
+    if book.stored_path and os.path.exists(book.stored_path):
+        try:
+            os.remove(book.stored_path)
+        except Exception as e:
+            logger.error("删除私人文档文件失败: %s", e)
+
+    # 4. 删除 pdf_books 行
+    db.delete(book)
+    db.commit()
+
+    return {"message": f"文档 '{doc_title}' 已删除"}
+
+
+@router.get("/documents/{document_id}/pdf")
+async def get_private_document_pdf(
+    document_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """获取私人文档的 PDF 文件"""
+    book = db.query(PdfBook).filter(
+        PdfBook.id == document_id, PdfBook.owner_id == user.id
+    ).first()
+    if not book:
+        raise HTTPException(404, "文档不存在")
+
+    file_path = book.stored_path
+    if not os.path.exists(file_path):
+        abs_path = os.path.abspath(file_path)
+        if not os.path.exists(abs_path):
+            raise HTTPException(404, "PDF 文件不存在")
+        file_path = abs_path
+
+    import urllib.parse
+    ascii_name = urllib.parse.quote(os.path.basename(book.file_name or file_path), safe='_.-')
+    return FileResponse(
+        file_path,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=\"{ascii_name}\""}
+    )
 
 
 # ============ 百炼智能体聊天端点 ============

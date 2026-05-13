@@ -120,7 +120,9 @@
         bindtap="onResultTap"
       >
         <view class="result-header">
-          <text class="result-book">{{item.book_title}}</text>
+          <text class="result-book">
+            <text wx:if="{{item.source === 'private'}}" style="color: #c96442;">[我的] </text>{{item.book_title}}
+          </text>
           <text class="result-score" wx:if="{{item.score}}">{{item.scorePct}}%</text>
         </view>
         <view class="result-text">{{item.content}}</view>

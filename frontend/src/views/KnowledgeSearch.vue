@@ -23,7 +23,9 @@
   <div v-else-if="activeMode==='search'" key="search" class="ks-search-view" :class="{'with-panel':rightPanelOpen}">
     <header class="ks-bar"><h1 class="ks-bar-title">写意知识库</h1>
       <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" />
-        <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button><button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
+        <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button>
+        <label class="ks-private-toggle" title="包含我的私人文档"><input type="checkbox" v-model="store.includePrivateInSearch" @change="onPrivateToggle" /><span class="ks-private-label">📁</span></label>
+        <button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
       </div>
       <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
     </header>
@@ -44,7 +46,7 @@
             <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" :style="{animationDelay:`${i*0.06}s`}" @click="openDetail(r,i)">
               <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div></div></template>
               <template v-else-if="r.result_type==='table'"><TableResultCard :result="r" @click="openDetail(r,i)" /></template>
-              <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
+              <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span v-if="r.source==='private'" class="ks-source-badge private" title="私人文档">📁</span><span v-else class="ks-source-badge public" title="公共知识库">📚</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
             </div></div>
           </div>
         </div>
@@ -90,6 +92,31 @@
     <div class="ks-lib-inner"><div class="ks-lib-row"><button class="ks-upload-btn" @click="showUploadModal=true"><span class="ks-upload-icon">+</span>上传PDF</button><div class="ks-lib-stats" v-if="store.stats"><span>{{ store.stats.books?.total||0 }}书</span><span>{{ store.stats.contents?.chunks||0 }}块</span><span>{{ store.stats.contents?.images||0 }}图</span></div></div>
       <div class="ks-lib-books" v-if="store.books.length"><div v-for="b in store.books" :key="b.id" class="ks-lib-book"><label class="ks-lib-bl"><input type="checkbox" v-model="selectedBooks" :value="b.id" :disabled="b.status==='processing'" /><span class="ks-lib-bn">{{ b.title||b.file_name }}</span><span :class="['ks-lib-bs',b.status]">{{ statusLabel(b.status) }}</span></label><div class="ks-lib-bacts"><button v-if="isAdmin" class="ks-lib-act" @click="reingest(b.id)" :disabled="reingestingId===b.id"><RefreshCw v-if="reingestingId!==b.id" class="icon-xs" /><Loader2 v-else class="icon-xs spin" /></button><button v-if="isAdmin" class="ks-lib-act del" @click="delBook(b.id)"><Trash2 class="icon-xs" /></button></div></div></div>
       <p v-else class="ks-lib-empty">暂无已入库的书籍</p>
+      <!-- Phase 3a: 我的私人文档 -->
+      <div class="ks-lib-sep"></div>
+      <div class="ks-lib-section-title">📁 我的文档</div>
+      <div class="ks-private-upload" v-if="isLoggedIn">
+        <input ref="privateFileInput" type="file" accept=".pdf" style="display:none" @change="onPrivateFileSelected" />
+        <button class="ks-upload-btn ks-upload-btn-sm" @click="$refs.privateFileInput.click()" :disabled="privateUploading">
+          <span v-if="!privateUploading">+ 上传PDF</span>
+          <span v-else>上传中 {{ privateUploadProgress }}%</span>
+        </button>
+      </div>
+      <p v-else class="ks-lib-empty">登录后上传私人文档</p>
+      <div v-if="store.myDocuments.length" class="ks-lib-books">
+        <div v-for="doc in store.myDocuments" :key="doc.id" class="ks-lib-book">
+          <label class="ks-lib-bl">
+            <span class="ks-lib-bn">{{ doc.title||doc.file_name }}</span>
+            <span :class="['ks-lib-bs',doc.status]">{{ statusLabel(doc.status) }}</span>
+            <span class="ks-lib-chunks" v-if="doc.total_chunks">{{ doc.total_chunks }}块</span>
+          </label>
+          <div class="ks-lib-bacts">
+            <button class="ks-lib-act del" @click="deletePrivateDoc(doc.id)"><Trash2 class="icon-xs" /></button>
+          </div>
+        </div>
+      </div>
+      <p v-else-if="isLoggedIn && store.myDocsLoading" class="ks-lib-empty">加载中...</p>
+      <p v-else-if="isLoggedIn && !store.myDocsLoading && !store.myDocuments.length" class="ks-lib-empty">暂无私人文档</p>
     </div>
   </div></transition>
 
@@ -160,7 +187,7 @@ function highlightDetail(r){
   return c
 }
 
-async function performSearch(){if(!searchInput.value.trim())return;centered.value=false;hasSearched.value=true;highlightedIndex.value=-1;closePanel();activeMode.value='search';await store.search(searchInput.value,{bookIds:selectedBooks.value,limit:20});router.replace({name:'KnowledgeSearch',query:{q:searchInput.value.trim()}})}
+async function performSearch(){if(!searchInput.value.trim())return;centered.value=false;hasSearched.value=true;highlightedIndex.value=-1;closePanel();activeMode.value='search';await store.search(searchInput.value,{bookIds:selectedBooks.value,limit:20,includePrivate:store.includePrivateInSearch});router.replace({name:'KnowledgeSearch',query:{q:searchInput.value.trim()}})}
 function searchByTag(t){searchInput.value=t;performSearch()}
 function clearSearch(){searchInput.value='';hasSearched.value=false;centered.value=true;store.clearSearchResults();closePanel();nextTick(()=>searchInputRef.value?.focus());router.replace({name:'KnowledgeSearch'})}
 function onCitationClick(e){const c=e.target.closest('.ks-cite');if(!c)return;const m=c.textContent.match(/\d+/);if(!m)return;const s=(store.aiSummary?.sources||[])[parseInt(m[0])-1];if(s)scrollToResult(s)}
@@ -176,13 +203,54 @@ function onOutlineClick(item){var isCross=item.target_book_id&&item.page&&item.t
 async function sendChat(msg){const t=(msg||chatInput.value).trim();if(!t||chatLoading.value)return;if(!msg)chatInput.value='';chatMessages.value.push({role:'user',content:t});chatMessages.value.push({role:'assistant',content:'',thinking:true});chatLoading.value=true;try{var ctx=chatMessages.value.filter(m=>m.role==='user').slice(-4).map(m=>m.content).join('\n');var query=ctx||t;const r=await fetch('/api/v1/knowledge/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:t,limit:5})});const d=await r.json();chatMessages.value.pop();chatMessages.value.push({role:'assistant',content:d.ai_summary?.answer||'未找到相关信息',thinking:false})}catch{chatMessages.value.pop();chatMessages.value.push({role:'assistant',content:'查询失败，请重试',thinking:false})}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
 function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='auto';chatInputRef.value.style.height=Math.min(chatInputRef.value.scrollHeight,120)+'px'}}
 function onUploaded(){store.fetchBooks();store.fetchStats()}
+function onPrivateToggle(){if(store.includePrivateInSearch&&searchInput.value.trim()){performSearch()}}
+
+// Phase 3a: 私人文档上传
+const isLoggedIn = ref(!!localStorage.getItem('auth_token'))
+const privateFileInput = ref(null)
+const privateUploading = ref(false)
+const privateUploadProgress = ref(0)
+
+function onPrivateFileSelected(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (!file.name.endsWith('.pdf')) {
+    ElMessage.warning('只支持 PDF 文件')
+    return
+  }
+  privateUploading.value = true
+  privateUploadProgress.value = 0
+  store.uploadPrivateDocument(file, null, (pct) => {
+    privateUploadProgress.value = pct
+  }).then(() => {
+    ElMessage.success('文档上传成功，正在后台处理...')
+    // 轮询状态，直到完成
+    setTimeout(async () => { await store.fetchMyDocuments() }, 3000)
+    setTimeout(async () => { await store.fetchMyDocuments() }, 8000)
+    setTimeout(async () => { await store.fetchMyDocuments() }, 15000)
+  }).catch((err) => {
+    ElMessage.error(err?.response?.data?.detail || '上传失败')
+  }).finally(() => {
+    privateUploading.value = false
+    privateUploadProgress.value = 0
+    if (e.target) e.target.value = ''
+  })
+}
+
+async function deletePrivateDoc(id) {
+  try {
+    await ElMessageBox.confirm('确定删除此文档及其所有关联数据？', '确认删除', { type: 'warning' })
+    await store.deleteMyDocument(id)
+    ElMessage.success('已删除')
+  } catch {}
+}
 async function reingest(id){reingestingId.value=id;try{await store.reingestBook(id)}catch{}finally{reingestingId.value=null}}
 async function delBook(id){try{await ElMessageBox.confirm('确定删除此书及其所有关联数据？','确认删除',{type:'warning'});await store.deleteBook(id)}catch{}}
 function openImagePreview(img,list,n){previewList.value=list&&list.length>1?list:[];previewIndex.value=n>=0?n:0;previewImageUrl.value=getImageUrl(img.stored_url||img.url||img.id||img);previewVisible.value=true}
 function nextPreview(){if(previewIndex.value<previewList.value.length-1){previewIndex.value++;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function onPreviewKey(e){if(e.key==='ArrowRight')nextPreview();else if(e.key==='ArrowLeft')prevPreview();else if(e.key==='Escape')previewVisible.value=false}
-onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);const urlQ=route.query.q;if(urlQ){searchInput.value=urlQ;await performSearch()}else{nextTick(()=>searchInputRef.value?.focus())};document.addEventListener('keydown',onPreviewKey)})
+onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);if(isLoggedIn.value){store.fetchMyDocuments().catch(()=>{})};const urlQ=route.query.q;if(urlQ){searchInput.value=urlQ;await performSearch()}else{nextTick(()=>searchInputRef.value?.focus())};document.addEventListener('keydown',onPreviewKey)})
 onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 </script>
 
@@ -364,6 +432,17 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-lib-act{border:none;background:none;padding:3px;border-radius:4px;cursor:pointer;color:#b8b4aa;display:flex}
 .ks-lib-act:hover{color:#6b6b66;background:#f0ede4}.ks-lib-act.del:hover{color:#c96442}
 .ks-lib-empty{font-size:13px;color:#c0bdb3;text-align:center;padding:12px 0}
+.ks-lib-sep{height:1px;background:#e8e6dc;margin:10px 0}
+.ks-lib-section-title{font-size:12px;font-weight:600;color:#8a877e;margin-bottom:6px}
+.ks-lib-chunks{font-size:10px;color:#999;flex-shrink:0}
+.ks-upload-btn-sm{padding:4px 10px;font-size:12px}
+.ks-upload-btn:disabled{opacity:0.5;cursor:not-allowed}
+.ks-private-toggle{cursor:pointer;display:flex;align-items:center;padding:0 6px;border-left:1px solid #e0ddd3;margin:0 4px}
+.ks-private-toggle input[type=checkbox]{width:14px;height:14px;accent-color:#c96442;cursor:pointer}
+.ks-private-label{font-size:14px;line-height:1;user-select:none}
+.ks-source-badge{font-size:12px;line-height:1;flex-shrink:0}
+.ks-source-badge.private{color:#c96442}
+.ks-source-badge.public{color:#b8a47e}
 .ks-preview-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000003;display:flex;align-items:center;justify-content:center}
 .ks-preview-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:4px}
 .ks-preview-close{position:absolute;top:20px;right:20px;border:none;background:rgba(255,255,255,0.15);color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}

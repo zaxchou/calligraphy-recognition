@@ -33,18 +33,22 @@ class PdfBook(Base):
     outline = Column(JSON, nullable=True)  # 文档大纲（JSON 格式）
     series_id = Column(String(36), nullable=True, index=True)  # 系列ID：同一套书的多卷共享此ID
     page_offset = Column(Integer, default=0, nullable=True)  # 系列内起始页码偏移（从1开始）
+    # Phase 3: 用户私人文档
+    owner_id = Column(Integer, nullable=True, index=True)  # NULL = 公共文档
+    visibility = Column(String(20), default="public")  # public / private
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # 关联关系
     tasks = relationship("KnowledgeTask", back_populates="book", cascade="all, delete-orphan")
     chunks = relationship("TextChunk", back_populates="book", cascade="all, delete-orphan")
     images = relationship("ExtractedImage", back_populates="book", cascade="all, delete-orphan")
-    
+
     __table_args__ = (
         Index("idx_pdf_books_status", "status"),
         Index("idx_pdf_books_created", "created_at"),
         Index("idx_pdf_books_series", "series_id"),
+        Index("idx_pdf_books_owner", "owner_id"),
     )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -58,6 +62,8 @@ class PdfBook(Base):
             "author": self.author,
             "total_pages": self.total_pages,
             "status": self.status,
+            "owner_id": self.owner_id,
+            "visibility": self.visibility or "public",
             "series_id": self.series_id,
             "page_offset": self.page_offset or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -112,7 +118,7 @@ class KnowledgeTask(Base):
 class TextChunk(Base):
     """文本块表"""
     __tablename__ = "text_chunks"
-    
+
     id = Column(String(36), primary_key=True, default=generate_uuid)
     book_id = Column(String(36), ForeignKey("pdf_books.id"), nullable=False)
     chunk_index = Column(Integer, nullable=False)  # 块序号
@@ -125,15 +131,18 @@ class TextChunk(Base):
     associated_images = Column(JSON, default=list)  # 关联图像ID列表 ["image_id1", ...]
     bbox = Column(JSON, nullable=True)  # 合并后的边界框 {x0, y0, x1, y1}
     meta_data = Column(JSON, nullable=True)  # 额外元数据
+    owner_id = Column(Integer, nullable=True, index=True)  # Phase 3: 拥有者用户ID
+    visibility = Column(String(20), default="public")  # Phase 3: public / private
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # 关联关系
     book = relationship("PdfBook", back_populates="chunks")
-    
+
     __table_args__ = (
         Index("idx_text_chunks_book", "book_id"),
         Index("idx_text_chunks_hash", "content_hash"),
         Index("idx_text_chunks_vector", "vector_id"),
+        Index("idx_text_chunks_owner", "owner_id"),
     )
     
     def to_dict(self) -> Dict[str, Any]:
