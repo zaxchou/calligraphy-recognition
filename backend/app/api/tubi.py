@@ -1083,6 +1083,12 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
+    # 私有作品仅 owner/admin 可见
+    if db_analysis.visibility == "private":
+        if not user:
+            raise HTTPException(status_code=404, detail="图像不存在")
+        if user.role not in ("admin", "super_admin") and db_analysis.owner_id != user.id:
+            raise HTTPException(status_code=404, detail="图像不存在")
 
     # 构建图片URL - 使用跨平台路径处理
     if db_analysis.filepath:
@@ -1607,6 +1613,16 @@ async def get_all_results(
         aliases = get_artist_aliases(artist)
         query = query.filter(TubiAnalysis.artist.in_(aliases))
 
+    # 可见性过滤：私有作品仅 owner/admin 可见
+    if user and user.role in ("admin", "super_admin"):
+        pass  # admin 可看全部
+    elif user:
+        query = query.filter(
+            (TubiAnalysis.visibility != "private") | (TubiAnalysis.owner_id == user.id)
+        )
+    else:
+        query = query.filter(TubiAnalysis.visibility != "private")
+
     # 排序
     sort_map = {
         'inscription_percent': TubiAnalysis.inscription_percent,
@@ -1781,6 +1797,16 @@ async def search_images(
         except (ValueError, TypeError):
             pass
         query = query.filter(or_(*filters))
+
+        # 可见性过滤：私有作品仅 owner/admin 可见
+        if user and user.role in ("admin", "super_admin"):
+            pass
+        elif user:
+            query = query.filter(
+                (TubiAnalysis.visibility != "private") | (TubiAnalysis.owner_id == user.id)
+            )
+        else:
+            query = query.filter(TubiAnalysis.visibility != "private")
 
         # 总匹配数（用于分页）
         total_matches = query.count()

@@ -1913,6 +1913,13 @@ async def upload_private_document(
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    file_size = os.path.getsize(file_path)
+
+    # 更新用户存储配额
+    db_user = db.query(User).filter(User.id == user.id).first()
+    if db_user:
+        db_user.storage_used_bytes = (db_user.storage_used_bytes or 0) + file_size
+
     # 创建书籍记录
     doc_title = title or os.path.splitext(file.filename)[0]
     book = PdfBook(

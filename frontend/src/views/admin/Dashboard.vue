@@ -27,9 +27,9 @@
           </template>
           <el-descriptions :column="1" border>
             <el-descriptions-item label="注册用户数">{{ detailStats.total_users ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="管理员数量">{{ detailStats.admin_users ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="今日新增">{{ detailStats.new_users_today ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="本月AI调用">{{ detailStats.ai_calls_this_month ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="作品总数">{{ detailStats.total_artworks ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="画库总数">{{ detailStats.total_libraries ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="本月AI调用">{{ detailStats.ai_calls_today ?? '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-card>
       </el-col>
@@ -40,9 +40,6 @@
           </template>
           <el-descriptions :column="1" border>
             <el-descriptions-item label="总存储用量">{{ formatBytes(detailStats.total_storage_bytes ?? 0) }}</el-descriptions-item>
-            <el-descriptions-item label="作品总数">{{ detailStats.total_artworks ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="知识库条目">{{ detailStats.total_knowledge_entries ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="题跋记录数">{{ detailStats.total_tubi_records ?? '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-card>
       </el-col>

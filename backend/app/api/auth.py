@@ -31,6 +31,7 @@ class WechatLoginResponse(BaseModel):
     nickname: Optional[str] = None
     avatar_url: Optional[str] = None
     is_new_user: bool = False
+    role: str
 
 
 class TokenVerifyResponse(BaseModel):
@@ -152,4 +153,5 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
         nickname=user.nickname,
         avatar_url=user.avatar_url,
         is_new_user=is_new_user,
+        role=user.role,
     )
