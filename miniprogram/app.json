@@ -2,6 +2,8 @@
   "pages": [
     "pages/knowledge/knowledge",
     "pages/tubi/tubi",
+    "pages/libraries/libraries",
+    "pages/libraries/detail",
     "pages/analyze/analyze",
     "pages/data/data"
   ],

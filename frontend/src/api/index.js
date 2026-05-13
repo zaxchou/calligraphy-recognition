@@ -363,4 +363,122 @@ export const artistRulesApi = {
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// Phase 2: 作品库产品线 API
+// ════════════════════════════════════════════════════════════════
+
+export const libraryApi = {
+  create(data) {
+    return api.post('/libraries', data)
+  },
+  getMine() {
+    return api.get('/libraries')
+  },
+  getPublic(page = 1, pageSize = 20) {
+    return api.get('/libraries/public', { params: { page, page_size: pageSize } })
+  },
+  getDetail(libraryId) {
+    return api.get(`/libraries/${libraryId}`)
+  },
+  update(libraryId, data) {
+    return api.put(`/libraries/${libraryId}`, data)
+  },
+  delete(libraryId, cascade = false) {
+    return api.delete(`/libraries/${libraryId}`, { params: { cascade } })
+  },
+  // 协作者管理
+  getCollaborators(libraryId) {
+    return api.get(`/libraries/${libraryId}/collaborators`)
+  },
+  addCollaborator(libraryId, data) {
+    return api.post(`/libraries/${libraryId}/collaborators`, data)
+  },
+  removeCollaborator(libraryId, userId) {
+    return api.delete(`/libraries/${libraryId}/collaborators/${userId}`)
+  },
+  // 变更请求
+  getChangeRequests(libraryId, status = 'pending') {
+    return api.get(`/libraries/${libraryId}/requests`, { params: { status } })
+  },
+  submitChangeRequest(libraryId, data) {
+    return api.post(`/libraries/${libraryId}/requests`, data)
+  },
+  reviewChangeRequest(requestId, data) {
+    return api.post(`/libraries/requests/${requestId}/review`, data)
+  },
+}
+
+export const artworkApi = {
+  upload(libraryId, file, fields = {}, onProgress) {
+    const formData = new FormData()
+    formData.append('file', file)
+    Object.entries(fields || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === '') return
+      formData.append(k, String(v))
+    })
+    return api.post(`/libraries/${libraryId}/artworks`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
+      onUploadProgress: evt => {
+        if (!onProgress) return
+        const total = evt.total || 0
+        const loaded = evt.loaded || 0
+        const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null
+        onProgress({ loaded, total, percent })
+      },
+    })
+  },
+  list(libraryId, params = {}) {
+    return api.get(`/libraries/${libraryId}/artworks`, { params })
+  },
+  getDetail(artworkId) {
+    return api.get(`/artworks/${artworkId}`)
+  },
+  update(artworkId, data) {
+    return api.put(`/artworks/${artworkId}`, data)
+  },
+  delete(artworkId) {
+    return api.delete(`/artworks/${artworkId}`)
+  },
+  // AI 分析
+  triggerAnalysis(artworkId) {
+    return api.post(`/artworks/${artworkId}/analyze`, {}, { timeout: 60000 })
+  },
+  getAnalysis(artworkId) {
+    return api.get(`/artworks/${artworkId}/analysis`)
+  },
+  // 著录引用
+  addLiterature(artworkId, data) {
+    return api.post(`/artworks/${artworkId}/literature`, data)
+  },
+  deleteLiterature(artworkId, refId) {
+    return api.delete(`/artworks/${artworkId}/literature/${refId}`)
+  },
+  // 拍卖记录
+  addAuction(artworkId, data) {
+    return api.post(`/artworks/${artworkId}/auctions`, data)
+  },
+  deleteAuction(artworkId, recId) {
+    return api.delete(`/artworks/${artworkId}/auctions/${recId}`)
+  },
+}
+
+export const notesApi = {
+  create(artworkId, data) {
+    return api.post(`/artworks/${artworkId}/notes`, data)
+  },
+  list(artworkId) {
+    return api.get(`/artworks/${artworkId}/notes`)
+  },
+  get(noteId) {
+    return api.get(`/notes/${noteId}`)
+  },
+  update(noteId, data) {
+    return api.put(`/notes/${noteId}`, data)
+  },
+  delete(noteId) {
+    return api.delete(`/notes/${noteId}`)
+  },
+}
+
 export default api

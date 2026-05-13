@@ -1,0 +1,56 @@
+<view class="container">
+  <!-- 库信息 -->
+  <view class="lib-header" wx:if="{{library}}">
+    <text class="lib-name">{{library.name}}</text>
+    <text class="lib-artist" wx:if="{{library.artist_name}}">{{library.artist_name}}</text>
+    <text class="lib-desc" wx:if="{{library.description}}">{{library.description}}</text>
+    <view class="lib-meta">
+      <text class="lib-vis {{library.visibility === 'public' ? 'vis-public' : 'vis-private'}}">
+        {{library.visibility === 'public' ? '公开' : '私有'}}
+      </text>
+      <text class="lib-count">共 {{library.artwork_count || 0}} 件作品</text>
+    </view>
+  </view>
+
+  <!-- 作品列表 -->
+  <view class="section-title">作品列表</view>
+
+  <view wx:if="{{loading && artworks.length === 0}}" class="loading-wrap">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <view wx:elif="{{artworks.length === 0}}" class="empty-wrap">
+    <text class="empty-text">暂无作品</text>
+  </view>
+
+  <view wx:else class="artwork-grid">
+    <view
+      wx:for="{{artworks}}"
+      wx:key="id"
+      class="artwork-card"
+      data-image-id="{{item.image_id}}"
+      bindtap="goToArtwork"
+    >
+      <image
+        wx:if="{{item.thumbnail_url}}"
+        src="{{item.thumbnail_url}}"
+        mode="aspectFill"
+        class="artwork-thumb"
+      />
+      <view wx:else class="artwork-thumb-placeholder">
+        <text class="placeholder-text">画</text>
+      </view>
+      <view class="artwork-info">
+        <text class="artwork-title">{{item.title || item.filename || '未命名'}}</text>
+        <text class="artwork-meta">
+          <text wx:if="{{item.artist}}">{{item.artist}}</text>
+          <text wx:if="{{item.year}}"> ({{item.year}})</text>
+        </text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading && artworks.length > 0}}" class="loading-more">
+    <text>加载更多...</text>
+  </view>
+</view>

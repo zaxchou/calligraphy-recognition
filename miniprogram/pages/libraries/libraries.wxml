@@ -1,0 +1,45 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">我的作品库</text>
+    <navigator url="/pages/libraries/detail" class="header-link" wx:if="{{libraries.length === 0}}">浏览公开库</navigator>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <view wx:elif="{{!loggedIn}}" class="empty-wrap">
+    <text class="empty-text">请先登录</text>
+    <button class="login-btn" bindtap="checkLogin">登录</button>
+  </view>
+
+  <view wx:elif="{{libraries.length === 0}}" class="empty-wrap">
+    <text class="empty-text">还没有作品库</text>
+    <text class="empty-sub">请在 Web 端创建作品库</text>
+  </view>
+
+  <view wx:else class="library-list">
+    <view
+      wx:for="{{libraries}}"
+      wx:key="id"
+      class="library-card"
+      data-id="{{item.id}}"
+      bindtap="goToLibrary"
+    >
+      <view class="card-icon">
+        <text class="card-icon-text">画</text>
+      </view>
+      <view class="card-body">
+        <text class="card-name">{{item.name}}</text>
+        <text class="card-artist" wx:if="{{item.artist_name}}">{{item.artist_name}}</text>
+        <view class="card-meta">
+          <text class="meta-tag {{item.visibility === 'public' ? 'tag-public' : 'tag-private'}}">
+            {{item.visibility === 'public' ? '公开' : '私有'}}
+          </text>
+          <text class="meta-count">{{item.artwork_count || 0}} 件作品</text>
+        </view>
+      </view>
+      <text class="card-arrow">></text>
+    </view>
+  </view>
+</view>

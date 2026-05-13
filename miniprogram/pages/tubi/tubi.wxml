@@ -52,6 +52,7 @@
         <view class="picker-text">{{artistList[artistIndex]}} ▾</view>
       </picker>
       <view class="filter-count" wx:if="{{total > 0}}">共 {{total}} 件</view>
+      <navigator url="/pages/libraries/libraries" class="filter-lib-link">我的作品库</navigator>
     </view>
 
     <view class="empty-state" wx:if="{{loading && artworks.length === 0}}">

@@ -229,5 +229,24 @@ module.exports = {
   getContentReport: getContentReport,
   getContentStats: getContentStats,
   getCorrelation: getCorrelation,
-  getSizeStats: getSizeStats
+  getSizeStats: getSizeStats,
+
+  // Phase 2: 作品库
+  getMyLibraries: function () {
+    return request('/api/v1/libraries')
+  },
+  getPublicLibraries: function (page, pageSize) {
+    var params = 'page=' + (page || 1) + '&page_size=' + (pageSize || 20)
+    return request('/api/v1/libraries/public?' + params)
+  },
+  getLibraryDetail: function (libraryId) {
+    return request('/api/v1/libraries/' + libraryId)
+  },
+  getLibraryArtworks: function (libraryId, page, pageSize) {
+    var params = 'page=' + (page || 1) + '&page_size=' + (pageSize || 20)
+    return request('/api/v1/libraries/' + libraryId + '/artworks?' + params)
+  },
+  getArtworkDetailV2: function (artworkId) {
+    return request('/api/v1/artworks/' + artworkId)
+  }
 }

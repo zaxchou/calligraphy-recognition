@@ -16,7 +16,7 @@ logging.basicConfig(
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth
+from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, libraries, artworks
 
 try:
     from app.api import composition
@@ -49,6 +49,15 @@ CREATE INDEX IF NOT EXISTS ix_tubi_analyses_created_at ON tubi_analyses(created_
 CREATE INDEX IF NOT EXISTS ix_tubi_analyses_artist ON tubi_analyses(artist);
 CREATE INDEX IF NOT EXISTS ix_tubi_analyses_status ON tubi_analyses(status);
 CREATE INDEX IF NOT EXISTS ix_tubi_analyses_album_name ON tubi_analyses(album_name);
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_library_id ON tubi_analyses(library_id);
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_owner_id ON tubi_analyses(owner_id);
+CREATE INDEX IF NOT EXISTS ix_tubi_analyses_visibility ON tubi_analyses(visibility);
+CREATE INDEX IF NOT EXISTS ix_artwork_libraries_owner_id ON artwork_libraries(owner_id);
+CREATE INDEX IF NOT EXISTS ix_library_collaborators_library_id ON library_collaborators(library_id);
+CREATE INDEX IF NOT EXISTS ix_library_collaborators_user_id ON library_collaborators(user_id);
+CREATE INDEX IF NOT EXISTS ix_change_requests_artwork_id ON change_requests(artwork_id);
+CREATE INDEX IF NOT EXISTS ix_change_requests_submitter_id ON change_requests(submitter_id);
+CREATE INDEX IF NOT EXISTS ix_change_requests_library_id ON change_requests(library_id);
 """
 try:
     with engine.connect() as conn:
@@ -60,6 +69,30 @@ try:
     logging.getLogger(__name__).info("数据库索引已确保")
 except Exception as e:
     logging.getLogger(__name__).warning(f"创建索引失败（非致命）: {e}")
+
+# Phase 2: 补充 Phase 1 表中缺失的列（artwork_libraries + research_notes）
+_PHASE2_ALTER_SQL = """
+ALTER TABLE artwork_libraries ADD COLUMN artist_name TEXT;
+ALTER TABLE artwork_libraries ADD COLUMN artwork_count INTEGER DEFAULT 0;
+ALTER TABLE research_notes ADD COLUMN title TEXT;
+"""
+try:
+    with engine.connect() as conn:
+        for stmt in _PHASE2_ALTER_SQL.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                try:
+                    conn.execute(text(stmt))
+                except Exception as col_err:
+                    # 列已存在则忽略（SQLite 不支持 IF NOT EXISTS for ADD COLUMN）
+                    if "duplicate column" in str(col_err).lower() or "already exists" in str(col_err).lower():
+                        pass
+                    else:
+                        raise
+        conn.commit()
+    logging.getLogger(__name__).info("Phase 2 数据库列已确保")
+except Exception as e:
+    logging.getLogger(__name__).warning(f"Phase 2 数据库迁移失败（非致命）: {e}")
 
 # 初始化知识库 Qdrant 集合
 try:
@@ -133,6 +166,19 @@ app.include_router(
     auth.router,
     prefix=settings.API_V1_STR + "/auth",
     tags=["认证"]
+)
+
+# Phase 2: 作品库产品线路由
+app.include_router(
+    libraries.router,
+    prefix=settings.API_V1_STR,
+    tags=["作品库"]
+)
+
+app.include_router(
+    artworks.router,
+    prefix=settings.API_V1_STR,
+    tags=["作品管理"]
 )
 
 if composition is not None:

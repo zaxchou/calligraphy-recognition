@@ -4,5 +4,16 @@ from app.models.recognition_log import RecognitionLog
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.tubi_job import TubiJob
 from app.models.user import User
+from app.models.artwork_library import ArtworkLibrary
+from app.models.library_collaborator import LibraryCollaborator
+from app.models.collaborator_request import CollaboratorRequest
+from app.models.change_request import ChangeRequest
+from app.models.research_note import ResearchNote
+from app.models.literature_reference import LiteratureReference
+from app.models.auction_record import AuctionRecord
 
-__all__ = ["Stele", "Character", "RecognitionLog", "TubiAnalysis", "TubiJob", "User"]
+__all__ = [
+    "Stele", "Character", "RecognitionLog", "TubiAnalysis", "TubiJob", "User",
+    "ArtworkLibrary", "LibraryCollaborator", "CollaboratorRequest",
+    "ChangeRequest", "ResearchNote", "LiteratureReference", "AuctionRecord",
+]

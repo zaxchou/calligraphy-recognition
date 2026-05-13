@@ -111,6 +111,25 @@ const routes = [
     component: () => import('../views/MapMode.vue'),
     meta: { title: '翰墨行旅' }
   },
+  // Phase 2: 作品库产品线
+  {
+    path: '/libraries',
+    name: 'Libraries',
+    component: () => import('../views/Libraries.vue'),
+    meta: { title: '我的作品库' }
+  },
+  {
+    path: '/libraries/public',
+    name: 'PublicLibraries',
+    component: () => import('../views/PublicLibraries.vue'),
+    meta: { title: '公开作品库' }
+  },
+  {
+    path: '/libraries/:id',
+    name: 'LibraryDetail',
+    component: () => import('../views/LibraryDetail.vue'),
+    meta: { title: '作品库详情' }
+  },
 ]
 
 const router = createRouter({

@@ -423,3 +423,10 @@
   font-size: 24rpx;
   color: #8b7d6b;
 }
+.filter-lib-link {
+  font-size: 24rpx;
+  color: #c9a96e;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid #d4c8b0;
+  border-radius: 8rpx;
+}
