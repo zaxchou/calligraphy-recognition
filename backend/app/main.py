@@ -181,6 +181,18 @@ app.include_router(
     tags=["作品管理"]
 )
 
+# Phase 5: 管理后台
+try:
+    from app.api import admin as admin_api  # noqa: F811
+    app.include_router(
+        admin_api.router,
+        prefix=settings.API_V1_STR,
+        tags=["管理后台"],
+    )
+except Exception:
+    import logging
+    logging.getLogger(__name__).exception("Failed to import admin module")
+
 if composition is not None:
     app.include_router(
         composition.router,

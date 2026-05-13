@@ -37,6 +37,10 @@ if [ "$HAS_BACKEND" -gt 0 ]; then
     echo "（仅源码变更 → 快速 restart）"
     ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml restart backend"
   fi
+  # Phase 5: 等待后端启动后执行数据库迁移
+  echo "（执行数据库迁移 alembic upgrade head）"
+  sleep 8
+  ssh xcx "sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml exec -T backend alembic upgrade head" || echo "⚠️  数据库迁移失败，请检查容器日志"
 else
   echo ""
   echo "=== 4. 无后端变更，跳过 ==="

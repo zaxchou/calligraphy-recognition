@@ -19,6 +19,7 @@ import redis as redis_lib
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.auth import get_current_user, get_optional_user
+from app.core.quota import check_ai_quota
 from app.core.path_utils import get_static_url, normalize_path
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.tubi_job import TubiJob
@@ -939,6 +940,7 @@ async def trigger_artwork_analysis(
     artwork_id: int,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
+    _q=Depends(check_ai_quota),
 ):
     """
     触发 AI 题跋分析。

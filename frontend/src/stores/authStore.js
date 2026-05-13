@@ -24,6 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
         nickname: resp.nickname || `用户${resp.user_id}`,
         avatar_url: resp.avatar_url || '',
         is_new_user: resp.is_new_user,
+        role: resp.role || 'free_user',
       }
       localStorage.setItem(TOKEN_KEY, resp.token)
       localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))

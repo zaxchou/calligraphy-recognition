@@ -24,6 +24,7 @@ from .task_manager import TaskManager
 from .knowledge_ingest_v2 import process_pdf_file_sync
 
 from app.core.auth import require_admin, get_optional_user, get_current_user
+from app.core.quota import check_ai_quota
 from app.models.user import User
 
 router = APIRouter()
@@ -1882,6 +1883,7 @@ async def upload_private_document(
     title: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
+    _q=Depends(check_ai_quota),
 ):
     """
     上传私人 PDF 文档（Phase 3a）

@@ -23,6 +23,11 @@
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
+            <router-link
+              v-if="authStore.userInfo?.role === 'admin'"
+              to="/admin"
+              class="admin-nav-link"
+            >管理后台</router-link>
             <span class="user-nickname">{{ authStore.nickname }}</span>
             <button class="user-logout-btn" @click="handleLogout">退出</button>
           </template>
@@ -81,6 +86,15 @@
           </router-link>
           <router-link to="/map" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">翰墨行旅</span>
+          </router-link>
+          <router-link
+            v-if="authStore.isLoggedIn && authStore.userInfo?.role === 'admin'"
+            to="/admin"
+            class="drawer-nav-item admin-drawer-link"
+            :class="{ active: $route.path.startsWith('/admin') }"
+            @click="closeMobileMenu"
+          >
+            <span class="nav-text">管理后台</span>
           </router-link>
         </nav>
       </div>
@@ -414,6 +428,34 @@ h1, h2, h3, h4, h5, h6 {
   gap: 12px;
 }
 
+.admin-nav-link {
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  color: var(--cinnabar);
+  text-decoration: none;
+  border: 1px solid var(--cinnabar);
+  border-radius: var(--radius-md);
+  padding: 4px 10px;
+  transition: all var(--transition-fast);
+  font-weight: 500;
+}
+
+.admin-nav-link:hover {
+  background: var(--cinnabar);
+  color: var(--pure-white);
+}
+
+/* 首页暗色主题下的管理后台链接 */
+.home-header .admin-nav-link {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.home-header .admin-nav-link:hover {
+  background: var(--gold);
+  color: var(--near-black);
+}
+
 .user-nickname {
   font-family: var(--font-sans);
   font-size: var(--text-caption);
@@ -612,6 +654,20 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 0 3px 3px 0;
 }
 
+/* 管理后台抽屉链接 */
+.admin-drawer-link .nav-text {
+  color: var(--cinnabar) !important;
+  font-weight: 600 !important;
+}
+
+.admin-drawer-link.active .nav-text {
+  color: var(--near-black) !important;
+}
+
+.admin-drawer-link.active::before {
+  background: var(--cinnabar);
+}
+
 /* 首页深色主题适配 */
 .home-header .mobile-menu-toggle {
   color: rgba(255, 255, 255, 0.65);
@@ -647,6 +703,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .home-header .drawer-nav-item.active::before {
+  background: var(--gold);
+}
+
+.home-header .admin-drawer-link .nav-text {
+  color: var(--gold) !important;
+}
+
+.home-header .admin-drawer-link.active .nav-text {
+  color: var(--pure-white) !important;
+}
+
+.home-header .admin-drawer-link.active::before {
   background: var(--gold);
 }
 

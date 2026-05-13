@@ -156,6 +156,13 @@ class Settings(BaseSettings):
     # 管理员 API Key（为空则不开启鉴权，向后兼容）
     ADMIN_API_KEY: str = os.getenv("ADMIN_API_KEY", "")
 
+    # ── Phase 5 配额管理 ────────────────────────────────────────────
+    FREE_AI_CALLS_PER_MONTH: int = int(os.getenv("FREE_AI_CALLS_PER_MONTH", "30"))
+    PAID_AI_CALLS_PER_MONTH: int = int(os.getenv("PAID_AI_CALLS_PER_MONTH", "300"))
+    FREE_STORAGE_BYTES: int = int(os.getenv("FREE_STORAGE_BYTES", str(500 * 1024 * 1024)))       # 500 MB
+    PAID_STORAGE_BYTES: int = int(os.getenv("PAID_STORAGE_BYTES", str(50 * 1024 * 1024 * 1024)))  # 50 GB
+    FREE_LIBRARY_LIMIT: int = int(os.getenv("FREE_LIBRARY_LIMIT", "3"))
+
     # ── Phase 1 多用户底座 ───────────────────────────────────────────
     # JWT 配置
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "calligraphy-jwt-secret-change-in-production")
