@@ -111,13 +111,6 @@ const routes = [
     component: () => import('../views/MapMode.vue'),
     meta: { title: '翰墨行旅' }
   },
-  // Phase 2: 作品库产品线
-  {
-    path: '/libraries',
-    name: 'Libraries',
-    component: () => import('../views/Libraries.vue'),
-    meta: { title: '我的作品库' }
-  },
   // 管理后台
   {
     path: '/admin',
@@ -137,17 +130,12 @@ const routes = [
     component: () => import('../views/admin/Settings.vue'),
     meta: { title: '系统配置', requiresAuth: true, requiresAdmin: true }
   },
+  // Phase 3: 个人中心独立页面 (简化)
   {
-    path: '/libraries/public',
-    name: 'PublicLibraries',
-    component: () => import('../views/PublicLibraries.vue'),
-    meta: { title: '公开作品库' }
-  },
-  {
-    path: '/libraries/:id',
-    name: 'LibraryDetail',
-    component: () => import('../views/LibraryDetail.vue'),
-    meta: { title: '作品库详情' }
+    path: '/my/knowledge',
+    name: 'MyKnowledge',
+    component: () => import('../views/MyKnowledge.vue'),
+    meta: { title: '我的知识库', requiresAuth: true }
   },
 ]
 
@@ -169,6 +157,14 @@ const ADMIN_ROUTES = ['ContentVerify', 'AlbumManager', 'TagManager', 'ArtistInfo
 const NEW_ADMIN_NAMES = ['AdminDashboard', 'AdminUsers', 'AdminSettings']
 
 router.beforeEach((to, _from, next) => {
+  // 需要登录的路由
+  if (to.meta?.requiresAuth) {
+    const token = localStorage.getItem('auth_token')
+    if (!token) {
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
   // 旧版管理路由：密码鉴权
   if (ADMIN_ROUTES.includes(to.name)) {
     const auth = localStorage.getItem('admin_auth')
@@ -188,7 +184,7 @@ router.beforeEach((to, _from, next) => {
     try {
       userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
     } catch (e) { /* ignore */ }
-    if (!userInfo || userInfo.role !== 'admin') {
+    if (!userInfo || (userInfo.role !== 'admin' && userInfo.role !== 'super_admin')) {
       next({ name: 'Home' })
       return
     }

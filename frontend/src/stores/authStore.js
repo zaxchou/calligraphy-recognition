@@ -13,21 +13,73 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const nickname = computed(() => userInfo.value?.nickname || '用户')
   const avatarUrl = computed(() => userInfo.value?.avatar_url || '')
+  const role = computed(() => userInfo.value?.role || 'guest')
 
+  // 角色判断
+  const isAdmin = computed(() => role.value === 'admin' || role.value === 'super_admin')
+  const isSuperAdmin = computed(() => role.value === 'super_admin')
+  const isEditor = computed(() => role.value === 'super_admin' || role.value === 'admin' || role.value === 'editor')
+
+  function _saveSession(data) {
+    token.value = data.token
+    userInfo.value = {
+      user_id: data.user_id,
+      nickname: data.nickname || `用户${data.user_id}`,
+      avatar_url: data.avatar_url || '',
+      phone: data.phone || '',
+      role: data.role || 'reader',
+    }
+    localStorage.setItem(TOKEN_KEY, data.token)
+    localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
+  }
+
+  // ── 验证码登录 ──
+  async function loginByCode(phone, code) {
+    loading.value = true
+    try {
+      const resp = await api.post('/auth/login', { phone, code })
+      _saveSession(resp)
+      return resp
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ── 密码登录 ──
+  async function loginByPassword(phone, password) {
+    loading.value = true
+    try {
+      const resp = await api.post('/auth/login-password', { phone, password })
+      _saveSession(resp)
+      return resp
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ── 发送验证码 ──
+  async function sendCode(phone) {
+    return api.post('/auth/send-code', { phone })
+  }
+
+  // ── 注册 ──
+  async function register(phone, code, nickname, password) {
+    loading.value = true
+    try {
+      const resp = await api.post('/auth/register', { phone, code, nickname, password })
+      _saveSession(resp)
+      return resp
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ── 微信登录（兼容） ──
   async function login(code) {
     loading.value = true
     try {
       const resp = await api.post('/auth/wechat-login', { code })
-      token.value = resp.token
-      userInfo.value = {
-        user_id: resp.user_id,
-        nickname: resp.nickname || `用户${resp.user_id}`,
-        avatar_url: resp.avatar_url || '',
-        is_new_user: resp.is_new_user,
-        role: resp.role || 'free_user',
-      }
-      localStorage.setItem(TOKEN_KEY, resp.token)
-      localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
+      _saveSession(resp)
       return resp
     } finally {
       loading.value = false
@@ -47,7 +99,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     token, userInfo, loading,
-    isLoggedIn, nickname, avatarUrl,
-    login, logout, getAuthHeader,
+    isLoggedIn, nickname, avatarUrl, role,
+    isAdmin, isSuperAdmin, isEditor,
+    loginByCode, loginByPassword, sendCode, register, login,
+    logout, getAuthHeader,
   }
 })

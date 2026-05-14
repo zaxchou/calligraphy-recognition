@@ -17,7 +17,7 @@ import redis
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
-from app.core.auth import require_admin, get_optional_user, get_current_user
+from app.core.auth import require_admin_role, get_optional_user, get_current_user
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
@@ -1943,7 +1943,7 @@ async def search_images(
 
 
 @router.delete("/image/{image_id}")
-async def delete_image(image_id: str, request: Request, db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def delete_image(image_id: str, request: Request, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
@@ -1971,7 +1971,7 @@ async def delete_image(image_id: str, request: Request, db: Session = Depends(ge
 
 
 @router.delete("/clear-all")
-async def clear_all_analyses(request: Request, db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def clear_all_analyses(request: Request, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """清空所有分析数据"""
     try:
         # 获取所有记录
@@ -2332,7 +2332,7 @@ async def rename_album(album_name: str, request: AlbumRenameRequest, db: Session
 
 
 @router.delete("/albums/{album_name}")
-async def delete_album(album_name: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def delete_album(album_name: str, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """删除册页（作品恢复自由态，不删除作品）"""
     records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).all()
     
@@ -2376,7 +2376,7 @@ async def add_items_to_album(album_name: str, request: AlbumAddItemsRequest, db:
 
 
 @router.delete("/albums/{album_name}/items/{record_id}")
-async def remove_item_from_album(album_name: str, record_id: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def remove_item_from_album(album_name: str, record_id: str, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """从册页移除作品（作品恢复自由态）"""
     r = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_id).first()
     if not r:
@@ -2574,7 +2574,7 @@ async def rename_tag(request: TagUpdateRequest, db: Session = Depends(get_db)):
 
 
 @router.delete("/tags/{tag_name}")
-async def delete_tag(tag_name: str, db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def delete_tag(tag_name: str, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """删除标签（从所有作品中移除该标签）"""
     records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
     
@@ -2618,7 +2618,7 @@ async def add_items_to_tag(request: TagItemRequest, db: Session = Depends(get_db
 
 
 @router.delete("/tags/{tag_name}/items/{record_id}")
-async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """从作品移除标签"""
     r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
     if not r:
@@ -2639,7 +2639,7 @@ async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depe
 
 
 @router.delete("/tags/all")
-async def reset_all_tags(db: Session = Depends(get_db), admin=Depends(require_admin)):
+async def reset_all_tags(db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """清空所有作品的 tags 字段（用于重置自动标签）"""
     updated_count = 0
     records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()

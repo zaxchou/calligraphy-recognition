@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
-from app.core.auth import require_admin
+from app.core.auth import require_admin_role
 
 router = APIRouter(prefix="/seals", tags=["seals"])
 
@@ -150,7 +150,7 @@ async def list_seals(
 
 
 @router.post("/batch-delete")
-async def batch_delete_seals(req: BatchDeleteRequest, admin=Depends(require_admin)):
+async def batch_delete_seals(req: BatchDeleteRequest, admin=Depends(require_admin_role)):
     """批量删除印章（同步清理所有作品的 seal_content）"""
     if not req.ids:
         raise HTTPException(status_code=400, detail="未选择任何印章")
@@ -382,7 +382,7 @@ async def update_seal(seal_id: int, seal: SealUpdate):
 
 
 @router.delete("/{seal_id}")
-async def delete_seal(seal_id: int, admin=Depends(require_admin)):
+async def delete_seal(seal_id: int, admin=Depends(require_admin_role)):
     """删除印章（同步清理 seal_content）"""
     conn = get_db_connection()
     try:

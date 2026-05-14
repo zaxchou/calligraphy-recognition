@@ -1,44 +1,105 @@
 """
-认证 API — 微信登录、Token 刷新
+认证 API — 手机验证码登录 + 密码登录 + 微信登录（兼容）
 
-Phase 1 多用户底座的核心入口。
+Phase 3: 废弃纯微信登录，新增手机号真实登录系统。
 """
 import hashlib
 import logging
+import time
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import create_access_token
+from app.core.auth import get_current_user
+from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# ── 开发模式验证码存储（内存）──
+# 生产环境应使用 Redis
+_verify_codes: dict = {}  # {phone: {"code": "123456", "expires_at": timestamp, "sent_at": timestamp}}
+
+
+# ════════════════════════════════════════════════════════════════
+# Pydantic Schemas
+# ════════════════════════════════════════════════════════════════
+
+class SendCodeRequest(BaseModel):
+    phone: str
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) < 11:
+            raise ValueError("手机号格式不正确")
+        return v
+
+
+class RegisterRequest(BaseModel):
+    phone: str
+    code: str
+    nickname: Optional[str] = None
+    password: Optional[str] = None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) < 11:
+            raise ValueError("手机号格式不正确")
+        return v
+
+
+class LoginCodeRequest(BaseModel):
+    phone: str
+    code: str
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) < 11:
+            raise ValueError("手机号格式不正确")
+        return v
+
+
+class LoginPasswordRequest(BaseModel):
+    phone: str
+    password: str
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) < 11:
+            raise ValueError("手机号格式不正确")
+        return v
 
 
 class WechatLoginRequest(BaseModel):
     code: str
 
 
-class WechatLoginResponse(BaseModel):
+class AuthResponse(BaseModel):
     token: str
     user_id: int
     nickname: Optional[str] = None
     avatar_url: Optional[str] = None
-    is_new_user: bool = False
     role: str
+    phone: Optional[str] = None
 
 
-class TokenVerifyResponse(BaseModel):
-    valid: bool
-    user_id: Optional[int] = None
-    role: Optional[str] = None
-
+# ════════════════════════════════════════════════════════════════
+# Helper
+# ════════════════════════════════════════════════════════════════
 
 def _generate_mock_openid(code: str) -> str:
     """Mock 模式下根据 code 生成一致的假 openid"""
@@ -46,10 +107,223 @@ def _generate_mock_openid(code: str) -> str:
     return "mock_openid_" + hashlib.md5(code_clean.encode()).hexdigest()[:16]
 
 
-@router.post("/wechat-login", response_model=WechatLoginResponse)
+def _check_code(phone: str, code: str) -> bool:
+    """验证手机验证码。开发模式：固定 "123456"。"""
+    settings = get_settings()
+    # 开发模式：固定验证码
+    if settings.WECHAT_MOCK_MODE:
+        if code == "123456":
+            return True
+        # 也允许查看内存中的验证码
+        entry = _verify_codes.get(phone)
+        if entry and entry["code"] == code and time.time() < entry["expires_at"]:
+            return True
+        return False
+
+    # 生产模式：查 Redis / 短信服务
+    entry = _verify_codes.get(phone)
+    if not entry:
+        return False
+    if time.time() > entry["expires_at"]:
+        del _verify_codes[phone]
+        return False
+    if entry["code"] != code:
+        return False
+    # 验证成功，清理
+    del _verify_codes[phone]
+    return True
+
+
+def _can_send_code(phone: str) -> tuple[bool, Optional[int]]:
+    """检查能否发送验证码。返回 (可以发送, 剩余等待秒数)。"""
+    entry = _verify_codes.get(phone)
+    if not entry:
+        return True, None
+    elapsed = time.time() - entry["sent_at"]
+    if elapsed < 60:
+        return False, int(60 - elapsed)
+    return True, None
+
+
+def _user_to_auth_response(user: User, token: str) -> dict:
+    return {
+        "token": token,
+        "user_id": user.id,
+        "nickname": user.nickname,
+        "avatar_url": user.avatar_url,
+        "role": user.role,
+        "phone": user.phone,
+    }
+
+
+# ════════════════════════════════════════════════════════════════
+# Phone Auth Endpoints
+# ════════════════════════════════════════════════════════════════
+
+@router.post("/send-code")
+async def send_code(req: SendCodeRequest):
+    """
+    发送手机验证码。
+
+    开发模式（WECHAT_MOCK_MODE=true）：
+    - 接受任意手机号，不真发短信
+    - 验证码固定为 "123456"
+    - 60秒内同一手机号不可重复发送
+
+    生产模式：
+    - 调用短信服务发送验证码
+    """
+    phone = req.phone.strip()
+
+    can_send, wait_secs = _can_send_code(phone)
+    if not can_send:
+        raise HTTPException(
+            status_code=429,
+            detail=f"发送过于频繁，请 {wait_secs} 秒后再试"
+        )
+
+    settings = get_settings()
+    if settings.WECHAT_MOCK_MODE:
+        code = "123456"
+        logger.info(f"[Mock] 验证码已发送到 {phone}，验证码: {code}")
+    else:
+        # 生产模式：生成随机6位验证码 + 调用短信服务
+        import random
+        code = "".join(str(random.randint(0, 9)) for _ in range(6))
+        logger.info(f"[PROD] 验证码: {phone} -> {code}")
+        # TODO: 接入真实短信服务（阿里云/腾讯云）
+
+    # 存储验证码（10分钟有效期）
+    now = time.time()
+    _verify_codes[phone] = {
+        "code": code,
+        "sent_at": now,
+        "expires_at": now + 600,
+    }
+
+    return {"success": True, "message": "验证码已发送"}
+
+
+@router.post("/register")
+async def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    """
+    手机号注册。
+    - 验证码校验 → 创建用户（role=reader）→ 返回JWT
+    - 可选设置密码
+    """
+    phone = req.phone.strip()
+
+    if not _check_code(phone, req.code):
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
+    # 检查手机号是否已注册
+    existing = db.query(User).filter(User.phone == phone).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="该手机号已注册")
+
+    user = User(
+        phone=phone,
+        nickname=req.nickname or f"用户{phone[-4:]}",
+        role="reader",
+        password_hash=hash_password(req.password) if req.password else None,
+    )
+    db.add(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="注册失败，请重试")
+
+    token = create_access_token(user_id=user.id, role=user.role)
+    logger.info(f"新用户注册: id={user.id}, phone={phone}")
+
+    return {
+        **{"token": token, "user_id": user.id, "nickname": user.nickname,
+           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone},
+        "is_new_user": True,
+    }
+
+
+@router.post("/login")
+async def login_by_code(req: LoginCodeRequest, db: Session = Depends(get_db)):
+    """
+    验证码登录。
+    - 用户存在 → 校验验证码 → 返回JWT
+    - 用户不存在 → 校验验证码 → 自动注册为reader → 返回JWT
+    """
+    phone = req.phone.strip()
+
+    if not _check_code(phone, req.code):
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
+    user = db.query(User).filter(User.phone == phone).first()
+    is_new_user = False
+
+    if not user:
+        # 自动注册
+        user = User(
+            phone=phone,
+            nickname=f"用户{phone[-4:]}",
+            role="reader",
+        )
+        db.add(user)
+        try:
+            db.commit()
+            db.refresh(user)
+            is_new_user = True
+            logger.info(f"自动注册新用户: id={user.id}, phone={phone}")
+        except Exception:
+            db.rollback()
+            user = db.query(User).filter(User.phone == phone).first()
+            if not user:
+                raise HTTPException(status_code=500, detail="登录失败，请重试")
+
+    token = create_access_token(user_id=user.id, role=user.role)
+    return {
+        **{"token": token, "user_id": user.id, "nickname": user.nickname,
+           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone},
+        "is_new_user": is_new_user,
+    }
+
+
+@router.post("/login-password")
+async def login_by_password(req: LoginPasswordRequest, db: Session = Depends(get_db)):
+    """
+    密码登录。
+    - 手机号 + 密码校验 → 返回JWT
+    - 未设置密码 → 提示先用验证码登录后设置密码
+    """
+    phone = req.phone.strip()
+
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="手机号未注册，请先注册")
+
+    if not user.password_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="未设置密码，请使用验证码登录后在个人中心设置密码"
+        )
+
+    if not verify_password(req.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="密码错误")
+
+    token = create_access_token(user_id=user.id, role=user.role)
+    return {
+        "token": token, "user_id": user.id, "nickname": user.nickname,
+        "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone,
+    }
+
+
+# ════════════════════════════════════════════════════════════════
+# Wechat Login (兼容保留)
+# ════════════════════════════════════════════════════════════════
+
+@router.post("/wechat-login")
 async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
     """
-    微信小程序登录接口。
+    微信小程序登录接口（兼容保留）。
 
     接收微信 code，调微信 API 换 openid，
     创建新用户或查找已有用户，返回 JWT token。
@@ -63,7 +337,6 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
     settings = get_settings()
 
     if settings.WECHAT_MOCK_MODE:
-        # Mock 模式：接受 mock_ 开头的 code
         if not code.startswith("mock_"):
             raise HTTPException(
                 status_code=400,
@@ -73,7 +346,6 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
         unionid = None
         logger.info(f"[Mock] 微信登录: code={code[:20]}... -> openid={openid}")
     else:
-        # 真实微信 API 调用
         if not settings.WECHAT_APP_ID or not settings.WECHAT_APP_SECRET:
             raise HTTPException(
                 status_code=503,
@@ -118,7 +390,7 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
         user = User(
             wechat_openid=openid,
             wechat_unionid=unionid,
-            role="free_user",
+            role="reader",
             subscription_tier="free",
         )
         db.add(user)
@@ -129,29 +401,105 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
             logger.info(f"新用户创建: id={user.id}, openid={openid[:16]}...")
         except Exception:
             db.rollback()
-            # 竞态条件：另一个请求已经创建了同样的用户
             user = db.query(User).filter(User.wechat_openid == openid).first()
             if not user:
                 raise HTTPException(status_code=500, detail="用户创建失败，请重试")
-            logger.info(f"竞态解决: 使用已存在的用户 id={user.id}")
-        # 更新 unionid（如果之前没有）
         if unionid and not user.wechat_unionid:
             user.wechat_unionid = unionid
             db.commit()
             db.refresh(user)
 
-    # 生成 JWT
-    token = create_access_token(
-        user_id=user.id,
-        role=user.role,
-        tier=user.subscription_tier,
-    )
+    token = create_access_token(user_id=user.id, role=user.role)
 
-    return WechatLoginResponse(
-        token=token,
-        user_id=user.id,
-        nickname=user.nickname,
-        avatar_url=user.avatar_url,
-        is_new_user=is_new_user,
-        role=user.role,
-    )
+    return {
+        "token": token,
+        "user_id": user.id,
+        "nickname": user.nickname,
+        "avatar_url": user.avatar_url,
+        "is_new_user": is_new_user,
+        "role": user.role,
+        "phone": user.phone,
+    }
+
+
+# ════════════════════════════════════════════════════════════════
+# User Profile
+# ════════════════════════════════════════════════════════════════
+
+class SetPasswordRequest(BaseModel):
+    password: str
+    old_password: Optional[str] = None  # 修改密码时需要旧密码
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("密码至少6位")
+        return v
+
+
+class UpdateProfileRequest(BaseModel):
+    nickname: Optional[str] = None
+    avatar_url: Optional[str] = None
+    email: Optional[str] = None
+
+
+@router.get("/profile")
+async def get_profile(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """获取当前用户信息"""
+    from app.models.artist_claim import ArtistClaim
+    claims = db.query(ArtistClaim).filter(
+        ArtistClaim.user_id == user.id,
+        ArtistClaim.status == "approved",
+    ).all()
+    return {
+        "user_id": user.id,
+        "nickname": user.nickname,
+        "avatar_url": user.avatar_url,
+        "email": user.email,
+        "phone": user.phone,
+        "role": user.role,
+        "has_password": bool(user.password_hash),
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "claimed_artists": [c.artist_name for c in claims],
+    }
+
+
+@router.put("/profile")
+async def update_profile(
+    req: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """更新个人信息"""
+    if req.nickname is not None:
+        user.nickname = req.nickname
+    if req.avatar_url is not None:
+        user.avatar_url = req.avatar_url
+    if req.email is not None:
+        user.email = req.email
+    db.commit()
+    db.refresh(user)
+    return {"success": True, "message": "个人信息已更新"}
+
+
+@router.put("/password")
+async def set_password(
+    req: SetPasswordRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """设置或修改密码"""
+    if user.password_hash:
+        # 已有密码，需要验证旧密码
+        if not req.old_password:
+            raise HTTPException(status_code=400, detail="请提供旧密码")
+        if not verify_password(req.old_password, user.password_hash):
+            raise HTTPException(status_code=401, detail="旧密码错误")
+
+    user.password_hash = hash_password(req.password)
+    db.commit()
+    return {"success": True, "message": "密码设置成功"}

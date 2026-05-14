@@ -118,24 +118,11 @@ async def check_library_quota(user: User = Depends(get_current_user)):
     仅限免费用户（付费用户 / admin 不限）。
     超限时抛出 HTTP 403。
     """
-    if user.role in ("admin", "super_admin"):
+    if user.role in ("admin", "super_admin", "editor"):
         return
     if user.subscription_tier != "free":
         return
 
-    db = SessionLocal()
-    try:
-        from app.models.artwork_library import ArtworkLibrary
-
-        count = (
-            db.query(ArtworkLibrary)
-            .filter(ArtworkLibrary.owner_id == user.id)
-            .count()
-        )
-        if count >= settings.FREE_LIBRARY_LIMIT:
-            raise HTTPException(
-                status_code=403,
-                detail=f"免费用户最多创建 {settings.FREE_LIBRARY_LIMIT} 个作品库。升级 Pro 可创建无限库。",
-            )
-    finally:
-        db.close()
+    # Phase 3: artwork_libraries 表已废弃，库配额检查跳过
+    # 未来可能用于其他资源的配额检查
+    pass

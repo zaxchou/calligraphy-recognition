@@ -19,7 +19,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.user import User
 from app.models.tubi_analysis import TubiAnalysis
-from app.models.artwork_library import ArtworkLibrary
+from app.models.artist_claim import ArtistClaim
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -158,9 +158,12 @@ def update_user(
         raise HTTPException(status_code=404, detail="用户不存在")
 
     if body.role is not None:
-        valid_roles = {"free_user", "admin", "super_admin", "banned"}
+        valid_roles = {"super_admin", "admin", "editor", "reader", "guest", "banned"}
         if body.role not in valid_roles:
             raise HTTPException(status_code=400, detail=f"无效角色，可选: {valid_roles}")
+        # 不允许降级站长
+        if user_id == 1 and body.role != "super_admin":
+            raise HTTPException(status_code=400, detail="不能修改站长的角色")
         u.role = body.role
 
     if body.subscription_tier is not None:
@@ -173,7 +176,7 @@ def update_user(
         if body.is_banned:
             u.role = "banned"
         elif u.role == "banned":
-            u.role = "free_user"  # 解封恢复为 free_user
+            u.role = "reader"  # 解封恢复为 reader
 
     db.commit()
     db.refresh(u)
@@ -191,7 +194,7 @@ def get_stats(
     """全局统计：总用户数、总作品数、今日AI调用、总存储用量"""
     total_users = db.query(sqlfunc.count(User.id)).scalar() or 0
     total_artworks = db.query(sqlfunc.count(TubiAnalysis.id)).scalar() or 0
-    total_libraries = db.query(sqlfunc.count(ArtworkLibrary.id)).scalar() or 0
+    total_libraries = 0  # Phase 3: artwork_libraries 表已废弃
     total_storage = db.query(sqlfunc.sum(User.storage_used_bytes)).scalar() or 0
     ai_today = db.query(sqlfunc.sum(User.ai_calls_this_month)).scalar() or 0
 

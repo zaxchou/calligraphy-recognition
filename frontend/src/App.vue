@@ -14,7 +14,6 @@
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/tubi" class="nav-item" :class="{ active: $route.path.startsWith('/tubi') }"><span class="nav-text">题跋分析</span></router-link>
-          <router-link to="/libraries" class="nav-item" :class="{ active: $route.path.startsWith('/libraries') }"><span class="nav-text">作品库</span></router-link>
           <!-- 字体识别模块暂不开放 -->
           <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
@@ -24,12 +23,24 @@
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
             <router-link
-              v-if="authStore.userInfo?.role === 'admin'"
+              v-if="authStore.isAdmin"
               to="/admin"
               class="admin-nav-link"
             >管理后台</router-link>
-            <span class="user-nickname">{{ authStore.nickname }}</span>
-            <button class="user-logout-btn" @click="handleLogout">退出</button>
+            <el-dropdown trigger="click" @command="handleUserCommand">
+              <span class="user-nickname user-dropdown-trigger">
+                {{ authStore.nickname }} <el-icon :size="12"><ArrowDown /></el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="authStore.isEditor" command="content-verify">📂 管理后台</el-dropdown-item>
+                  <el-dropdown-item command="my-knowledge">📁 我的知识库</el-dropdown-item>
+                  <el-dropdown-item command="my-analysis">🎨 我的分析历史</el-dropdown-item>
+                  <el-dropdown-item v-if="authStore.isAdmin" command="admin" divided>⚙️ 系统管理</el-dropdown-item>
+                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
           <router-link v-else to="/login" class="user-login-link">
             <span class="nav-text">登录</span>
@@ -71,9 +82,6 @@
           <router-link to="/tubi" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tubi') }" @click="closeMobileMenu">
             <span class="nav-text">题跋分析</span>
           </router-link>
-          <router-link to="/libraries" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/libraries') }" @click="closeMobileMenu">
-            <span class="nav-text">作品库</span>
-          </router-link>
           <!-- 字体识别模块暂不开放 -->
           <router-link to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="closeMobileMenu">
             <span class="nav-text">潘天寿教你构图</span>
@@ -87,14 +95,32 @@
           <router-link to="/map" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">翰墨行旅</span>
           </router-link>
-          <router-link
-            v-if="authStore.isLoggedIn && authStore.userInfo?.role === 'admin'"
-            to="/admin"
-            class="drawer-nav-item admin-drawer-link"
-            :class="{ active: $route.path.startsWith('/admin') }"
-            @click="closeMobileMenu"
-          >
-            <span class="nav-text">管理后台</span>
+          <template v-if="authStore.isLoggedIn">
+            <div class="drawer-section-label">个人中心</div>
+            <router-link v-if="authStore.isEditor" to="/content-verify" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/content-verify') }" @click="closeMobileMenu">
+              <span class="nav-text">📂 管理后台</span>
+            </router-link>
+            <router-link to="/my/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+              <span class="nav-text">📁 我的知识库</span>
+            </router-link>
+            <router-link to="/content-analysis" class="drawer-nav-item" @click="closeMobileMenu">
+              <span class="nav-text">🎨 我的分析历史</span>
+            </router-link>
+            <router-link
+              v-if="authStore.isAdmin"
+              to="/admin"
+              class="drawer-nav-item admin-drawer-link"
+              :class="{ active: $route.path.startsWith('/admin') }"
+              @click="closeMobileMenu"
+            >
+              <span class="nav-text">⚙️ 系统管理</span>
+            </router-link>
+            <div class="drawer-nav-item drawer-logout-item" @click="handleLogout(); closeMobileMenu()">
+              <span class="nav-text">退出登录</span>
+            </div>
+          </template>
+          <router-link v-else to="/login" class="drawer-nav-item" @click="closeMobileMenu">
+            <span class="nav-text">登录</span>
           </router-link>
         </nav>
       </div>
@@ -126,7 +152,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Menu, Close } from '@element-plus/icons-vue'
+import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
 
 const router = useRouter()
@@ -144,6 +170,16 @@ function closeMobileMenu() {
 function handleLogout() {
   authStore.logout()
   router.push('/')
+}
+
+function handleUserCommand(command) {
+  switch (command) {
+    case 'content-verify': router.push('/content-verify'); break
+    case 'my-knowledge': router.push('/my/knowledge'); break
+    case 'my-analysis': router.push('/content-analysis?my=1'); break
+    case 'admin': router.push('/admin'); break
+    case 'logout': handleLogout(); break
+  }
 }
 </script>
 
@@ -461,6 +497,36 @@ h1, h2, h3, h4, h5, h6 {
   font-size: var(--text-caption);
   color: var(--olive-gray);
   font-weight: 500;
+}
+
+.user-dropdown-trigger {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.user-dropdown-trigger:hover {
+  color: var(--gold);
+  background: rgba(200, 164, 92, 0.06);
+}
+
+.drawer-section-label {
+  font-size: var(--text-label);
+  color: var(--stone-gray);
+  padding: 12px 24px 4px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-warm);
+}
+
+.drawer-logout-item {
+  cursor: pointer;
+  color: var(--cinnabar) !important;
+  border-top: 1px solid var(--border-warm);
+  margin-top: 8px;
 }
 
 .user-logout-btn {

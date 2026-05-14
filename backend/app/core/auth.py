@@ -1,33 +1,42 @@
 """
-管理员鉴权依赖。
+鉴权依赖 — JWT 角色鉴权 + 画家属地检查。
+
+Phase 3: 5级角色系统 — super_admin / admin / editor / reader / guest
 
 用法：
-    from app.core.auth import require_admin
+    from app.core.auth import require_super_admin, require_admin, require_editor
 
     @router.delete("/something")
     async def delete_something(db=Depends(get_db), admin=Depends(require_admin)):
         ...
 
-行为：
-    - ADMIN_API_KEY 未设置（空字串）→ 无条件放行，向后兼容
-    - ADMIN_API_KEY 已设置 → 请求必须带 X-Admin-Key header 匹配才放行
+    # 画家属地访问控制
+    @router.put("/artwork/{id}")
+    async def update_artwork(id: int, db=Depends(get_db),
+                             user=Depends(require_artist_access("李鱓"))):
+        ...
 """
 
 import logging
+from typing import Optional, Callable
+
 from fastapi import Header, HTTPException, Depends
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-async def require_admin(
+# ════════════════════════════════════════════════════════════════
+# Legacy: Admin API Key (过渡兼容)
+# ════════════════════════════════════════════════════════════════
+
+async def require_admin_key(
     x_admin_key: Optional[str] = Header(None),
 ) -> bool:
     """如果配置了 ADMIN_API_KEY，则校验 X-Admin-Key header。
 
     当 ADMIN_API_KEY 为空时（默认），所有请求放行。
+    此依赖保留用于过渡期，未来全部迁移到 JWT 角色鉴权。
     """
-    # 延迟导入避免启动时的循环依赖
     from app.core.config import get_settings
     settings = get_settings()
     admin_key = settings.ADMIN_API_KEY
@@ -45,6 +54,14 @@ async def require_admin(
 
     return True
 
+
+# Backward-compat alias
+require_admin = require_admin_key
+
+
+# ════════════════════════════════════════════════════════════════
+# Core: get_current_user / get_optional_user
+# ════════════════════════════════════════════════════════════════
 
 async def get_current_user(
     authorization: Optional[str] = Header(None),
@@ -69,7 +86,6 @@ async def get_current_user(
     if not authorization:
         raise HTTPException(status_code=401, detail="请先登录")
 
-    # 提取 Bearer token
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(status_code=401, detail="认证格式错误，请使用 Bearer token")
@@ -92,8 +108,6 @@ async def get_current_user(
         user = db.query(UserModel).filter(UserModel.id == user_id).first()
         if not user:
             raise HTTPException(status_code=401, detail="用户不存在")
-        # NOTE: User 对象在 session 关闭后 detached。
-        # Phase 2+ 若 User 加了 relationship 字段，需改用 Depends(get_db) 注入共享 session。
         return user
     finally:
         db.close()
@@ -111,7 +125,7 @@ async def get_optional_user(
         async def items(user: Optional[User] = Depends(get_optional_user)):
             result = public_data
             if user:
-                result["my_library_count"] = ...
+                result["my_data"] = ...
             return result
 
     行为：
@@ -150,19 +164,92 @@ async def get_optional_user(
         db.close()
 
 
-async def require_admin_role(user: "User" = Depends(get_current_user)):
-    """基于 JWT 角色的管理员鉴权依赖。
+# ════════════════════════════════════════════════════════════════
+# Role-based dependencies
+# ════════════════════════════════════════════════════════════════
+
+async def require_super_admin(user: "User" = Depends(get_current_user)):
+    """站长权限 — 仅 super_admin 可通过。
 
     用法：
-        @router.get("/admin/something")
-        async def admin_only(admin: User = Depends(require_admin_role)):
+        @router.delete("/system/purge")
+        async def purge(admin: User = Depends(require_super_admin)):
             ...
-
-    行为：
-        - 用户未登录 → 401（由 get_current_user 抛出）
-        - 用户角色不是 admin 或 super_admin → 403
-        - 通过则返回 User 对象
     """
-    if user.role not in ("admin", "super_admin"):
+    if user.role != "super_admin":
+        raise HTTPException(status_code=403, detail="需要站长权限")
+    return user
+
+
+async def require_admin_role(user: "User" = Depends(get_current_user)):
+    """副站长及以上权限 — super_admin 或 admin 可通过。
+
+    用法：
+        @router.get("/admin/dashboard")
+        async def dashboard(admin: User = Depends(require_admin_role)):
+            ...
+    """
+    if user.role not in ("super_admin", "admin"):
         raise HTTPException(status_code=403, detail="需要管理员权限")
     return user
+
+
+async def require_editor(user: "User" = Depends(get_current_user)):
+    """编者及以上权限 — super_admin / admin / editor 可通过。
+
+    用法：
+        @router.post("/artworks/upload")
+        async def upload(editor: User = Depends(require_editor)):
+            ...
+    """
+    if user.role not in ("super_admin", "admin", "editor"):
+        raise HTTPException(status_code=403, detail="需要编者权限")
+    return user
+
+
+def require_artist_access(artist_name: str) -> Callable:
+    """
+    画家属地访问控制 — 返回一个 FastAPI 依赖。
+
+    规则：
+    - super_admin / admin → 直接通过
+    - editor → 检查 artist_claims 是否有该画家的 approved 认领 → 通过 / 403
+    - reader → 403
+
+    用法：
+        @router.put("/image-info/{image_id}")
+        async def update(image_id: int,
+                         db: Session = Depends(get_db),
+                         user: User = Depends(require_artist_access("李鱓"))):
+            ...
+    """
+    from app.core.database import SessionLocal
+    from app.models.artist_claim import ArtistClaim
+    from app.models.user import User as UserModel
+
+    async def _check(
+        db_user: UserModel = Depends(get_current_user),
+    ) -> UserModel:
+        # super_admin / admin → 全权通过
+        if db_user.role in ("super_admin", "admin"):
+            return db_user
+
+        # editor → 检查认领关系
+        if db_user.role == "editor":
+            db = SessionLocal()
+            try:
+                claim = db.query(ArtistClaim).filter(
+                    ArtistClaim.user_id == db_user.id,
+                    ArtistClaim.artist_name == artist_name,
+                    ArtistClaim.status == "approved",
+                ).first()
+                if claim:
+                    return db_user
+            finally:
+                db.close()
+            raise HTTPException(status_code=403, detail=f"您未认领画家「{artist_name}」，无权操作")
+
+        # reader / guest → 拒绝
+        raise HTTPException(status_code=403, detail="无权操作")
+
+    return _check

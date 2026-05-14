@@ -30,9 +30,10 @@
             style="width: 100%"
           >
             <el-option label="全部角色" value="" />
-            <el-option label="管理员" value="admin" />
-            <el-option label="普通用户" value="free_user" />
-            <el-option label="付费用户" value="premium" />
+            <el-option label="站长" value="super_admin" />
+            <el-option label="副站长" value="admin" />
+            <el-option label="编者" value="editor" />
+            <el-option label="读者" value="reader" />
             <el-option label="已封禁" value="banned" />
           </el-select>
         </el-col>
@@ -147,8 +148,10 @@
         </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="editForm.role" style="width: 100%">
-            <el-option label="普通用户" value="free_user" />
-            <el-option label="管理员" value="admin" />
+            <el-option label="站长" value="super_admin" />
+            <el-option label="副站长" value="admin" />
+            <el-option label="编者" value="editor" />
+            <el-option label="读者" value="reader" />
             <el-option label="已封禁" value="banned" />
           </el-select>
         </el-form-item>
@@ -198,12 +201,12 @@ const editForm = ref({})
 let searchTimer = null
 
 function roleLabel(role) {
-  const map = { admin: '管理员', free_user: '普通用户', premium: '付费用户', banned: '已封禁' }
+  const map = { super_admin: '站长', admin: '副站长', editor: '编者', reader: '读者', guest: '游客', premium: '付费用户', banned: '已封禁' }
   return map[role] || role || '未知'
 }
 
 function roleTagType(role) {
-  const map = { admin: 'danger', free_user: 'info', premium: 'success', banned: 'warning' }
+  const map = { super_admin: 'danger', admin: 'danger', editor: 'warning', reader: 'info', guest: 'info', premium: 'success', banned: 'warning' }
   return map[role] || 'info'
 }
 
@@ -324,8 +327,8 @@ async function handleUnban(row) {
       '确认解封',
       { confirmButtonText: '确定', cancelButtonText: '取消', type: 'info' }
     )
-    await adminApi.updateUser(row.id, { role: 'free_user' })
-    ElMessage.success('用户已解封，恢复为普通用户')
+    await adminApi.updateUser(row.id, { role: 'reader' })
+    ElMessage.success('用户已解封，恢复为读者')
     fetchUsers()
   } catch (e) {
     if (e !== 'cancel') {
