@@ -35,24 +35,33 @@ def upgrade() -> None:
     op.execute("UPDATE users SET role = 'reader' WHERE role = 'free_user'")
     op.execute("UPDATE users SET role = 'editor' WHERE role = 'paid_user'")
 
-    # ── 3. users 表加字段 ──
-    with op.batch_alter_table('users') as batch_op:
-        batch_op.add_column(sa.Column('password_hash', sa.Text(), nullable=True, server_default=None))
+    # ── 3. users 表加字段（幂等：先检查列是否存在）──
+    conn = op.get_bind()
+    result = conn.execute(sa.text("PRAGMA table_info('users')"))
+    existing_cols = {row[1] for row in result}
+    if 'password_hash' not in existing_cols:
+        op.execute(sa.text("ALTER TABLE users ADD COLUMN password_hash TEXT"))
+    if 'phone' not in existing_cols:
+        op.execute(sa.text("ALTER TABLE users ADD COLUMN phone TEXT"))
 
-    # ── 4. 创建 artist_claims 表 ──
-    op.create_table(
-        'artist_claims',
-        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
-        sa.Column('artist_name', sa.Text(), nullable=False),
-        sa.Column('claim_type', sa.Text(), server_default='wiki'),
-        sa.Column('status', sa.Text(), server_default='pending'),
-        sa.Column('apply_reason', sa.Text(), nullable=True),
-        sa.Column('reviewed_by', sa.Integer(), sa.ForeignKey('users.id'), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
-        sa.Column('reviewed_at', sa.DateTime(), nullable=True),
-        sa.UniqueConstraint('user_id', 'artist_name', name='uq_user_artist_claim'),
-    )
+    # ── 4. 创建 artist_claims 表（幂等）──
+    result = conn.execute(sa.text(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='artist_claims'"
+    ))
+    if not result.fetchone():
+        op.create_table(
+            'artist_claims',
+            sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
+            sa.Column('artist_name', sa.Text(), nullable=False),
+            sa.Column('claim_type', sa.Text(), server_default='wiki'),
+            sa.Column('status', sa.Text(), server_default='pending'),
+            sa.Column('apply_reason', sa.Text(), nullable=True),
+            sa.Column('reviewed_by', sa.Integer(), sa.ForeignKey('users.id'), nullable=True),
+            sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
+            sa.Column('reviewed_at', sa.DateTime(), nullable=True),
+            sa.UniqueConstraint('user_id', 'artist_name', name='uq_user_artist_claim'),
+        )
 
     # ── 5. 站长 (id=1) 设为 super_admin ──
     op.execute("UPDATE users SET role = 'super_admin' WHERE id = 1")
@@ -67,9 +76,14 @@ def downgrade() -> None:
     # ── 4. DROP artist_claims ──
     op.drop_table('artist_claims')
 
-    # ── 3. users 删字段 ──
-    with op.batch_alter_table('users') as batch_op:
-        batch_op.drop_column('password_hash')
+    # ── 3. users 删字段（幂等）──
+    conn = op.get_bind()
+    result = conn.execute(sa.text("PRAGMA table_info('users')"))
+    existing_cols = {row[1] for row in result}
+    if 'password_hash' in existing_cols:
+        op.execute(sa.text("ALTER TABLE users DROP COLUMN password_hash"))
+    if 'phone' in existing_cols:
+        op.execute(sa.text("ALTER TABLE users DROP COLUMN phone"))
 
     # ── 2. 恢复 role 值 ──
     op.execute("UPDATE users SET role = 'free_user' WHERE role = 'reader'")

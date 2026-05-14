@@ -23,4 +23,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    artist_claims = relationship("ArtistClaim", back_populates="user", lazy="dynamic")
+    artist_claims = relationship(
+        "ArtistClaim", back_populates="user", lazy="dynamic",
+        foreign_keys="ArtistClaim.user_id",
+    )
