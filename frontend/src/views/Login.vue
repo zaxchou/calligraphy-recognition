@@ -308,10 +308,6 @@ async function handleWechatLogin() {
   width: 100%;
 }
 
-.form-group :deep(.el-input) {
-  width: 100%;
-}
-
 .code-group {
   display: flex;
   gap: 12px;
@@ -361,5 +357,30 @@ async function handleWechatLogin() {
 
 .wechat-btn {
   width: 100%;
+}
+</style>
+
+<style>
+/* 非 scoped：覆盖 Element Plus el-input 默认宽度 */
+.login-card .el-input {
+  width: 100% !important;
+  display: block !important;
+}
+.login-card .code-group .el-input {
+  width: auto !important;
+  flex: 1;
+  display: inline-flex !important;
+}
+
+/* 微信模拟登录 input */
+.login-card .mock-input {
+  width: 100% !important;
+  display: block !important;
+}
+
+/* 登录按钮全宽 */
+.login-card .wechat-btn {
+  width: 100% !important;
+  margin-top: 8px !important;
 }
 </style>

@@ -594,6 +594,10 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
   }
 
+  .user-area {
+    display: none;
+  }
+
   .mobile-menu-toggle {
     display: flex;
     align-items: center;
