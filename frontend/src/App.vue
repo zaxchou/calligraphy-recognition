@@ -150,7 +150,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
@@ -158,6 +158,11 @@ import { useAuthStore } from './stores/authStore'
 const router = useRouter()
 const authStore = useAuthStore()
 const mobileMenuOpen = ref(false)
+
+// 启动时刷新用户信息，确保 role 与数据库同步
+onMounted(() => {
+  if (authStore.isLoggedIn) authStore.refreshProfile()
+})
 
 function toggleMobileMenu() {
   mobileMenuOpen.value = !mobileMenuOpen.value

@@ -97,7 +97,31 @@ export const useAuthStore = defineStore('auth', () => {
     return token.value ? `Bearer ${token.value}` : null
   }
 
+  // 启动时自动刷新用户信息（同步 DB 中最新的 role）
+  async function refreshProfile() {
+    if (!token.value) return
+    try {
+      const resp = await api.get('/auth/profile')
+      userInfo.value = {
+        user_id: resp.user_id,
+        nickname: resp.nickname || `用户${resp.user_id}`,
+        avatar_url: resp.avatar_url || '',
+        phone: resp.phone || '',
+        role: resp.role || 'reader',
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
+    } catch (e) {
+      // token invalid, clear
+      if (e?.response?.status === 401) logout()
+    }
+  }
+
   return {
+    token, userInfo, loading,
+    isLoggedIn, nickname, avatarUrl, role,
+    isAdmin, isSuperAdmin, isEditor,
+    loginByCode, loginByPassword, sendCode, register, login,
+    logout, getAuthHeader, refreshProfile,
     token, userInfo, loading,
     isLoggedIn, nickname, avatarUrl, role,
     isAdmin, isSuperAdmin, isEditor,
