@@ -120,6 +120,7 @@ def _artwork_to_dict(a: TubiAnalysis) -> dict:
         "image_id": a.image_id,
         "filename": a.filename,
         "filepath": a.filepath,
+        "url": _get_image_url(a.filepath),
         "title": a.title,
         "artist": a.artist,
         "year": a.year,
@@ -137,6 +138,7 @@ def _artwork_to_dict(a: TubiAnalysis) -> dict:
         "inscription_modern": a.inscription_modern,
         "annotated_image_path": a.annotated_image_path,
         "thumbnail_path": a.thumbnail_path,
+        "thumbnail_url": _get_thumbnail_url(a.thumbnail_path),
         "status": a.status,
         "period_phase": a.period_phase,
         "char_count": a.char_count,
@@ -171,10 +173,24 @@ def _artwork_to_dict(a: TubiAnalysis) -> dict:
     }
 
 
+def _strip_data_prefix(p: str) -> str:
+    """去掉路径中的 data/ 前缀（StaticFiles 挂载点 = data/）"""
+    p = normalize_path(p)
+    if p.startswith('data/'):
+        p = p[5:]
+    return p
+
+
+def _get_image_url(filepath: Optional[str]) -> Optional[str]:
+    if not filepath:
+        return None
+    return get_static_url(_strip_data_prefix(filepath))
+
+
 def _get_thumbnail_url(thumbnail_path: Optional[str]) -> Optional[str]:
     if not thumbnail_path:
         return None
-    return get_static_url(normalize_path(thumbnail_path))
+    return get_static_url(_strip_data_prefix(thumbnail_path))
 
 
 def _check_library_write_access(lib: ArtworkLibrary, user: User, db: Session) -> None:
