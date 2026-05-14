@@ -22,11 +22,11 @@
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
-            <div class="user-menu-wrap" @mouseenter="userMenuOpen = true" @mouseleave="userMenuOpen = false">
+            <div class="user-menu-wrap" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
               <span class="user-nickname user-dropdown-trigger">
                 {{ authStore.nickname }} <span class="user-arrow" :class="{ open: userMenuOpen }">▾</span>
               </span>
-              <div class="user-dropdown" v-show="userMenuOpen">
+              <div class="user-dropdown" v-show="userMenuOpen" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
                 <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/content-verify')">📂 管理后台</div>
                 <div class="user-dropdown-item" @click="go('/my/knowledge')">📁 我的知识库</div>
                 <div class="user-dropdown-item" @click="go('/content-analysis?my=1')">🎨 我的分析历史</div>
@@ -152,12 +152,13 @@ const router = useRouter()
 const authStore = useAuthStore()
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
+let closeTimer = null
+function showUserMenu() { clearTimeout(closeTimer); userMenuOpen.value = true }
+function hideUserMenu() { closeTimer = setTimeout(() => { userMenuOpen.value = false }, 200) }
 
 // 启动时刷新用户信息，确保 role 与数据库同步
 onMounted(() => {
   if (authStore.isLoggedIn) authStore.refreshProfile()
-  // 点击页面其他地方关闭用户菜单
-  document.addEventListener('click', () => { userMenuOpen.value = false })
 })
 
 function toggleMobileMenu() { mobileMenuOpen.value = !mobileMenuOpen.value }
@@ -517,7 +518,8 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 8px;
+  margin-top: 0;
+  padding-top: 8px;
   background: #fff;
   border: 1px solid #e8e4d8;
   border-radius: 8px;
@@ -525,6 +527,15 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 180px;
   z-index: 10001;
   overflow: hidden;
+}
+/* 透明桥接区防止鼠标移动时菜单消失 */
+.user-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
 }
 
 .user-dropdown-item {
