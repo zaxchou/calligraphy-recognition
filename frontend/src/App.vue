@@ -22,12 +22,7 @@
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
-            <router-link
-              v-if="authStore.isAdmin"
-              to="/admin"
-              class="admin-nav-link"
-            >管理后台</router-link>
-            <el-dropdown trigger="click" @command="handleUserCommand">
+            <el-dropdown trigger="click" @command="handleUserCommand" :teleported="false" popper-class="user-dropdown-popper">
               <span class="user-nickname user-dropdown-trigger">
                 {{ authStore.nickname }} <el-icon :size="12"><ArrowDown /></el-icon>
               </span>
@@ -553,6 +548,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .user-login-link {
   text-decoration: none;
+}
+
+/* 下拉菜单确保在最上层 */
+.user-dropdown-popper {
+  z-index: 9999 !important;
 }
 
 /* === 响应式 === */
