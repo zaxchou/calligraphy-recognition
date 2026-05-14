@@ -22,7 +22,7 @@
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
-            <el-dropdown trigger="click" @command="handleUserCommand" :teleported="false" popper-class="user-dropdown-popper">
+            <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-dropdown-popper">
               <span class="user-nickname user-dropdown-trigger">
                 {{ authStore.nickname }} <el-icon :size="12"><ArrowDown /></el-icon>
               </span>
