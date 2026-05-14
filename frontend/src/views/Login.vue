@@ -306,6 +306,10 @@ async function handleWechatLogin() {
   width: 100%;
 }
 
+.form-group :deep(.el-input) {
+  width: 100%;
+}
+
 .code-group {
   display: flex;
   gap: 12px;
