@@ -22,20 +22,18 @@
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
-            <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-dropdown-popper">
+            <div class="user-menu-wrap" @mouseenter="userMenuOpen = true" @mouseleave="userMenuOpen = false">
               <span class="user-nickname user-dropdown-trigger">
-                {{ authStore.nickname }} <el-icon :size="12"><ArrowDown /></el-icon>
+                {{ authStore.nickname }} <span class="user-arrow" :class="{ open: userMenuOpen }">▾</span>
               </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-if="authStore.isEditor" command="content-verify">📂 管理后台</el-dropdown-item>
-                  <el-dropdown-item command="my-knowledge">📁 我的知识库</el-dropdown-item>
-                  <el-dropdown-item command="my-analysis">🎨 我的分析历史</el-dropdown-item>
-                  <el-dropdown-item v-if="authStore.isAdmin" command="admin" divided>⚙️ 系统管理</el-dropdown-item>
-                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+              <div class="user-dropdown" v-show="userMenuOpen">
+                <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/content-verify')">📂 管理后台</div>
+                <div class="user-dropdown-item" @click="go('/my/knowledge')">📁 我的知识库</div>
+                <div class="user-dropdown-item" @click="go('/content-analysis?my=1')">🎨 我的分析历史</div>
+                <div v-if="authStore.isAdmin" class="user-dropdown-item user-dropdown-divider" @click="go('/admin')">⚙️ 系统管理</div>
+                <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
+              </div>
+            </div>
           </template>
           <router-link v-else to="/login" class="user-login-link">
             <span class="nav-text">登录</span>
@@ -153,34 +151,19 @@ import { useAuthStore } from './stores/authStore'
 const router = useRouter()
 const authStore = useAuthStore()
 const mobileMenuOpen = ref(false)
+const userMenuOpen = ref(false)
 
 // 启动时刷新用户信息，确保 role 与数据库同步
 onMounted(() => {
   if (authStore.isLoggedIn) authStore.refreshProfile()
+  // 点击页面其他地方关闭用户菜单
+  document.addEventListener('click', () => { userMenuOpen.value = false })
 })
 
-function toggleMobileMenu() {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-}
-
-function closeMobileMenu() {
-  mobileMenuOpen.value = false
-}
-
-function handleLogout() {
-  authStore.logout()
-  router.push('/')
-}
-
-function handleUserCommand(command) {
-  switch (command) {
-    case 'content-verify': router.push('/content-verify'); break
-    case 'my-knowledge': router.push('/my/knowledge'); break
-    case 'my-analysis': router.push('/content-analysis?my=1'); break
-    case 'admin': router.push('/admin'); break
-    case 'logout': handleLogout(); break
-  }
-}
+function toggleMobileMenu() { mobileMenuOpen.value = !mobileMenuOpen.value }
+function closeMobileMenu() { mobileMenuOpen.value = false }
+function handleLogout() { authStore.logout(); router.push('/'); userMenuOpen.value = false }
+function go(path) { router.push(path); userMenuOpen.value = false }
 </script>
 
 <style>
@@ -507,11 +490,60 @@ h1, h2, h3, h4, h5, h6 {
   padding: 4px 8px;
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
+  user-select: none;
 }
 
 .user-dropdown-trigger:hover {
   color: var(--gold);
   background: rgba(200, 164, 92, 0.06);
+}
+
+.user-arrow {
+  font-size: 10px;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.user-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* 原生下拉菜单 */
+.user-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #e8e4d8;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  min-width: 180px;
+  z-index: 10001;
+  overflow: hidden;
+}
+
+.user-dropdown-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #2c2416;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.user-dropdown-item:hover {
+  background: #f8f5f0;
+  color: #c8a45c;
+}
+
+.user-dropdown-divider {
+  border-top: 1px solid #f0ebe0;
+  margin-top: 0;
 }
 
 .drawer-section-label {
@@ -550,10 +582,6 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: none;
 }
 
-/* 下拉菜单确保在最上层 */
-.user-dropdown-popper {
-  z-index: 9999 !important;
-}
 
 /* === 响应式 === */
 @media (max-width: 768px) {
