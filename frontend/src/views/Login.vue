@@ -28,6 +28,7 @@
             size="large"
             maxlength="11"
             type="tel"
+            style="width:100%"
           />
         </div>
 
@@ -74,6 +75,7 @@
               size="large"
               type="password"
               show-password
+              style="width:100%"
               @keyup.enter="handlePasswordLogin"
             />
           </div>
