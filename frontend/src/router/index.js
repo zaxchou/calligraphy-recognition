@@ -111,25 +111,6 @@ const routes = [
     component: () => import('../views/MapMode.vue'),
     meta: { title: '翰墨行旅' }
   },
-  // 管理后台
-  {
-    path: '/admin',
-    name: 'AdminDashboard',
-    component: () => import('../views/admin/Dashboard.vue'),
-    meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/users',
-    name: 'AdminUsers',
-    component: () => import('../views/admin/Users.vue'),
-    meta: { title: '用户管理', requiresAuth: true, requiresAdmin: true }
-  },
-  {
-    path: '/admin/settings',
-    name: 'AdminSettings',
-    component: () => import('../views/admin/Settings.vue'),
-    meta: { title: '系统配置', requiresAuth: true, requiresAdmin: true }
-  },
   // Phase 3: 个人中心独立页面 (简化)
   {
     path: '/my/knowledge',
@@ -150,11 +131,8 @@ router.afterEach((to) => {
   document.title = pageTitle ? `${pageTitle} - ${SITE_NAME}` : SITE_NAME
 })
 
-// 管理后台路由保护
-// 旧版（密码鉴权）
+// 管理后台路由保护（旧版密码鉴权，保留兼容）
 const ADMIN_ROUTES = ['ContentVerify', 'AlbumManager', 'TagManager', 'ArtistInfoManager', 'ArtistRulesManager']
-// 新版（JWT + admin 角色）
-const NEW_ADMIN_NAMES = ['AdminDashboard', 'AdminUsers', 'AdminSettings']
 
 router.beforeEach((to, _from, next) => {
   // 需要登录的路由
@@ -169,22 +147,6 @@ router.beforeEach((to, _from, next) => {
   if (ADMIN_ROUTES.includes(to.name)) {
     const auth = localStorage.getItem('admin_auth')
     if (!auth || Date.now() > parseInt(auth, 10)) {
-      next({ name: 'Home' })
-      return
-    }
-  }
-  // 新版管理路由：JWT 登录 + admin 角色
-  if (NEW_ADMIN_NAMES.includes(to.name) || to.path.startsWith('/admin')) {
-    const token = localStorage.getItem('auth_token')
-    if (!token) {
-      next({ name: 'Login', query: { redirect: to.fullPath } })
-      return
-    }
-    let userInfo = null
-    try {
-      userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
-    } catch (e) { /* ignore */ }
-    if (!userInfo || (userInfo.role !== 'admin' && userInfo.role !== 'super_admin')) {
       next({ name: 'Home' })
       return
     }

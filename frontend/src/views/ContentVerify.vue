@@ -430,6 +430,20 @@
           </div>
         </div>
       </el-tab-pane>
+
+      <!-- 系统概览（仅管理员可见） -->
+      <el-tab-pane v-if="isAdmin" label="系统概览" name="dashboard">
+        <div class="tab-content full-tab-content">
+          <AdminDashboard />
+        </div>
+      </el-tab-pane>
+
+      <!-- 用户管理（仅管理员可见） -->
+      <el-tab-pane v-if="isAdmin" label="用户管理" name="users">
+        <div class="tab-content full-tab-content">
+          <AdminUsers />
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 上传弹窗 -->
@@ -442,7 +456,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { Bottom, Refresh, RefreshRight, HomeFilled, Upload, CopyDocument, MagicStick } from '@element-plus/icons-vue'
@@ -460,11 +474,16 @@ import ArtistRulesManager from './ArtistRulesManager.vue'
 import SealManager from './SealManager.vue'
 import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
 import ImageSearchPanel from '../components/tubi/ImageSearchPanel.vue'
+import AdminDashboard from './admin/Dashboard.vue'
+import AdminUsers from './admin/Users.vue'
+import { useAuthStore } from '../stores/authStore'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isAdmin)
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
 const verifyPanelRef = ref(null)
 const uploadDialogRef = ref(null)

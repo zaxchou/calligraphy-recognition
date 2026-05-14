@@ -30,7 +30,6 @@
                 <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/content-verify')">📂 管理后台</div>
                 <div class="user-dropdown-item" @click="go('/my/knowledge')">📁 我的知识库</div>
                 <div class="user-dropdown-item" @click="go('/content-analysis?my=1')">🎨 我的分析历史</div>
-                <div v-if="authStore.isAdmin" class="user-dropdown-item user-dropdown-divider" @click="go('/admin')">⚙️ 系统管理</div>
                 <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
               </div>
             </div>
@@ -98,15 +97,6 @@
             </router-link>
             <router-link to="/content-analysis" class="drawer-nav-item" @click="closeMobileMenu">
               <span class="nav-text">🎨 我的分析历史</span>
-            </router-link>
-            <router-link
-              v-if="authStore.isAdmin"
-              to="/admin"
-              class="drawer-nav-item admin-drawer-link"
-              :class="{ active: $route.path.startsWith('/admin') }"
-              @click="closeMobileMenu"
-            >
-              <span class="nav-text">⚙️ 系统管理</span>
             </router-link>
             <div class="drawer-nav-item drawer-logout-item" @click="handleLogout(); closeMobileMenu()">
               <span class="nav-text">退出登录</span>
