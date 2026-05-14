@@ -581,7 +581,6 @@ function updateSuggestOldValue() {
 }
 
 // Watch field_name changes to update old_value
-import { watch } from 'vue'
 watch(() => suggestForm.field_name, updateSuggestOldValue)
 
 async function handleSubmitChange() {

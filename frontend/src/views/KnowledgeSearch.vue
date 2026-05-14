@@ -118,7 +118,7 @@
           <span v-else>上传中 {{ privateUploadProgress }}%</span>
         </button>
         <button class="ks-mydocs-refresh" @click="store.fetchMyDocuments()" :disabled="store.myDocsLoading">
-          <RefreshCw :class="['icon-xs',{:store.myDocsLoading}]" /> 刷新
+          <RefreshCw :class="['icon-xs', { 'icon-spin': store.myDocsLoading }]" /> 刷新
         </button>
       </div>
 

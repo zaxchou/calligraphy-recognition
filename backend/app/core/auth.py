@@ -46,24 +46,6 @@ async def require_admin(
     return True
 
 
-async def require_admin_role(user: "User" = Depends(get_current_user)):
-    """基于 JWT 角色的管理员鉴权依赖。
-
-    用法：
-        @router.get("/admin/something")
-        async def admin_only(admin: User = Depends(require_admin_role)):
-            ...
-
-    行为：
-        - 用户未登录 → 401（由 get_current_user 抛出）
-        - 用户角色不是 admin 或 super_admin → 403
-        - 通过则返回 User 对象
-    """
-    if user.role not in ("admin", "super_admin"):
-        raise HTTPException(status_code=403, detail="需要管理员权限")
-    return user
-
-
 async def get_current_user(
     authorization: Optional[str] = Header(None),
 ) -> "User":
@@ -166,3 +148,21 @@ async def get_optional_user(
         return db.query(UserModel).filter(UserModel.id == user_id).first()
     finally:
         db.close()
+
+
+async def require_admin_role(user: "User" = Depends(get_current_user)):
+    """基于 JWT 角色的管理员鉴权依赖。
+
+    用法：
+        @router.get("/admin/something")
+        async def admin_only(admin: User = Depends(require_admin_role)):
+            ...
+
+    行为：
+        - 用户未登录 → 401（由 get_current_user 抛出）
+        - 用户角色不是 admin 或 super_admin → 403
+        - 通过则返回 User 对象
+    """
+    if user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    return user
