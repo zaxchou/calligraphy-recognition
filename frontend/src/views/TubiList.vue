@@ -99,7 +99,7 @@
                 <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
-            <div v-if="authStore.isEditor" class="table-col col-action">操作</div>
+            <div class="table-col col-action">操作</div>
           </div>
           <div class="works-table-body">
             <div
@@ -149,14 +149,14 @@
               <div class="table-col col-created">
                 <span class="date-val">{{ item.created_at ? item.created_at.slice(0, 10) : '-' }}</span>
               </div>
-              <div v-if="authStore.isEditor" class="table-col col-action">
+              <div v-if="canEditItem(item)" class="table-col col-action">
                 <div class="action-btn-wrap" @mouseenter="openActionMenu($event)" @mouseleave="closeActionMenu">
                   <button class="action-btn" @click.stop>
                     操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
                   </button>
                   <div class="action-menu" v-show="activeActionItem === item.id">
                     <div class="action-menu-item" @click.stop="openDetailInNewWindow(item)">详情</div>
-                    <template v-if="authStore.isEditor">
+                    <template v-if="canEditItem(item)">
                       <div class="action-menu-divider"></div>
                       <div class="action-menu-item" @click.stop="editItem(item)">编辑</div>
                       <div class="action-menu-divider"></div>
@@ -378,6 +378,10 @@ function clearSearch() {
   currentPage.value = 1
   loadRankings()
   syncPageToUrl()
+}
+
+function canEditItem(item) {
+  return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
 }
 
 // 在新窗口打开详情

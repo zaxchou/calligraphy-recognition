@@ -79,10 +79,10 @@
               <el-button plain size="small" class="btn-edit" @click="viewItem(scope.row)">
                 查看
               </el-button>
-              <el-button v-if="authStore.isEditor" plain size="small" class="btn-edit" @click="editItem(scope.row)">
+              <el-button v-if="authStore.isAdmin || (authStore.isEditor && scope.row.owner_id === authStore.userId)" plain size="small" class="btn-edit" @click="editItem(scope.row)">
                 编辑
               </el-button>
-              <el-button v-if="authStore.isEditor" plain size="small" type="danger" @click="deleteItem(scope.row)">
+              <el-button v-if="authStore.isAdmin || (authStore.isEditor && scope.row.owner_id === authStore.userId)" plain size="small" type="danger" @click="deleteItem(scope.row)">
                 删除
               </el-button>
             </div>

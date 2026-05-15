@@ -77,7 +77,7 @@
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
         </div>
         <div class="info-card-actions">
-          <el-button v-if="authStore.isEditor" plain size="small" class="btn-action" @click="$emit('edit-current')">
+          <el-button v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)" plain size="small" class="btn-action" @click="$emit('edit-current')">
             <el-icon><Edit /></el-icon><span class="btn-label">编辑</span>
           </el-button>
           <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
@@ -98,7 +98,7 @@
                 <h4 class="section-title">
                   <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
                   <el-button
-                    v-if="authStore.isEditor"
+                    v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)"
                     size="small" text
                     class="btn-annotate"
                     @click="$emit('open-annotator')"
@@ -445,6 +445,10 @@ import { useAuthStore } from '../stores/authStore'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const authStore = useAuthStore()
+
+function canEditItem(item) {
+  return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
+}
 
 // 印章显示
 const sealLibraryCache = ref([])

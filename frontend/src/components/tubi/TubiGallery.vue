@@ -69,7 +69,7 @@
             <span>{{ item.status === 'queued' ? '排队中' : item.status === 'analyzing' ? '分析中' : item.status === 'error' ? '失败' : item.status }}</span>
           </div>
 
-          <div v-if="authStore.isEditor" class="gallery-actions">
+          <div v-if="canEditItem(item)" class="gallery-actions">
             <div class="action-tl">
               <el-button plain size="small" class="btn-edit" @click.stop="handleEdit(item)">
                 <el-icon :size="14"><Edit /></el-icon>
@@ -124,6 +124,10 @@ import { Plus, Search, Edit, Delete, Picture, Clock, Loading, Close } from '@ele
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
+
+function canEditItem(item) {
+  return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
+}
 
 // Props
 const props = defineProps({

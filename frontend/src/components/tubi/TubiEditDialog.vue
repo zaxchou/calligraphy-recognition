@@ -166,7 +166,7 @@
     <template #footer>
       <div class="dialog-footer modern-footer">
         <el-button @click="visible = false" class="btn-cancel">取消</el-button>
-        <el-button v-if="isAdmin" type="danger" @click="handleDelete" class="btn-delete">删除</el-button>
+        <el-button v-if="authStore.isAdmin || (authStore.isEditor && form.owner_id === authStore.userId)" type="danger" @click="handleDelete" class="btn-delete">删除</el-button>
         <el-button type="primary" @click="handleSave" class="btn-submit">保存</el-button>
       </div>
     </template>
@@ -185,7 +185,6 @@ import { useAuthStore } from '../../stores/authStore'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.isEditor)
 
 const emit = defineEmits(['saved', 'deleted', 'replaced'])
 
@@ -194,6 +193,7 @@ const replaceImageInput = ref(null)
 
 const form = reactive({
   id: '',
+  owner_id: '',
   title: '',
   artistChoice: '',
   artistCustom: '',
@@ -329,6 +329,7 @@ const artist = computed(() => {
 
 function open(item) {
   form.id = item.id
+  form.owner_id = item.owner_id
   form.title = item.title || ''
   const existingArtist = item.artist || ''
   if (existingArtist === '李鱓' || existingArtist === '郑燮') {

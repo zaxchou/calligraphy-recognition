@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)
+  const userId = computed(() => userInfo.value?.user_id || null)
   const nickname = computed(() => userInfo.value?.nickname || '用户')
   const avatarUrl = computed(() => userInfo.value?.avatar_url || '')
   const role = computed(() => userInfo.value?.role || 'guest')
@@ -120,12 +121,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     token, userInfo, loading,
-    isLoggedIn, nickname, avatarUrl, role,
+    isLoggedIn, userId, nickname, avatarUrl, role,
     isAdmin, isSuperAdmin, isEditor,
     loginByCode, loginByPassword, sendCode, register, login,
     logout, getAuthHeader, refreshProfile,
     token, userInfo, loading,
-    isLoggedIn, nickname, avatarUrl, role,
+    isLoggedIn, userId, nickname, avatarUrl, role,
     isAdmin, isSuperAdmin, isEditor,
     loginByCode, loginByPassword, sendCode, register, login,
     logout, getAuthHeader,
