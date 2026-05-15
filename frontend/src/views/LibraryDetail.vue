@@ -260,6 +260,7 @@
               <el-option label="款识作者" value="inscription_author" />
               <el-option label="款识日期" value="inscription_date" />
               <el-option label="备注" value="notes" />
+              <el-option label="题跋内容" value="inscription_content" />
             </el-select>
           </el-form-item>
           <el-form-item label="原值">
@@ -594,10 +595,11 @@ async function handleSubmitChange() {
   }
   submitting.value = true
   try {
+    const isInscription = suggestForm.field_name === 'inscription_content'
     await libraryApi.submitChangeRequest(libraryId.value, {
       artwork_id: suggestArtwork.value.id,
-      request_type: 'edit_field',
-      field_name: suggestForm.field_name,
+      request_type: isInscription ? 'edit_inscription' : 'edit_field',
+      field_name: isInscription ? null : suggestForm.field_name,
       old_value: suggestForm.old_value,
       new_value: suggestForm.new_value,
       change_summary: suggestForm.change_summary,

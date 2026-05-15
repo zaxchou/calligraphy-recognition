@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
-from app.core.auth import require_admin
+from app.core.auth import require_admin, require_editor
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 
@@ -77,7 +77,7 @@ async def get_artist_by_name(name: str):
 
 
 @router.post("")
-async def create_artist(artist: ArtistCreate):
+async def create_artist(artist: ArtistCreate, editor=Depends(require_editor)):
     """创建画家"""
     conn = get_db_connection()
     try:
@@ -98,7 +98,7 @@ async def create_artist(artist: ArtistCreate):
 
 
 @router.put("/{artist_id}")
-async def update_artist(artist_id: int, artist: ArtistUpdate):
+async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(require_editor)):
     """更新画家"""
     conn = get_db_connection()
     try:
@@ -158,7 +158,7 @@ class SyncNameRequest(BaseModel):
 
 
 @router.post("/{artist_id}/sync-name")
-async def sync_artist_name(artist_id: int, req: SyncNameRequest):
+async def sync_artist_name(artist_id: int, req: SyncNameRequest, editor=Depends(require_editor)):
     """同步画家姓名到所有相关作品"""
     conn = get_db_connection()
     try:
@@ -193,7 +193,7 @@ async def sync_artist_name(artist_id: int, req: SyncNameRequest):
 
 
 @router.post("/{artist_id}/ai-fill")
-async def ai_fill_artist(artist_id: int):
+async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
     """AI一键查询画家信息并填充（元数据→artists表，规则→artist_rules表）"""
     conn = get_db_connection()
     try:

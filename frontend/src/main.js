@@ -13,6 +13,24 @@ import App from './App.vue'
 import router from './router'
 import { siteConfig, loadSiteConfig } from './config'
 
+// ── 全局增强 fetch：自动携带 JWT Authorization header ──
+const _origFetch = window.fetch
+window.fetch = function (input, init) {
+  init = init || {}
+  init.headers = init.headers || {}
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    if (init.headers instanceof Headers) {
+      if (!init.headers.has('Authorization')) {
+        init.headers.set('Authorization', `Bearer ${token}`)
+      }
+    } else if (typeof init.headers === 'object') {
+      init.headers['Authorization'] = `Bearer ${token}`
+    }
+  }
+  return _origFetch.call(window, input, init)
+}
+
 async function init() {
   // 1. 先从 API 拉取站点配置（标题、副标题等可由管理员在线修改）
   await loadSiteConfig()

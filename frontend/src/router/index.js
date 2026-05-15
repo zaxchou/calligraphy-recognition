@@ -1,8 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { siteConfig } from '../config'
 
-const SITE_NAME = siteConfig.fullTitle
-
 const routes = [
   {
     path: '/',
@@ -129,7 +127,7 @@ const routes = [
     path: '/annotate/:id',
     name: 'InscriptionAnnotator',
     component: () => import('../views/InscriptionAnnotator.vue'),
-    meta: { title: '题跋标注' }
+    meta: { title: '题跋标注', requiresAuth: true, requiresEditor: true }
   },
   {
     path: '/map',
@@ -160,7 +158,7 @@ const router = createRouter({
 // 全局路由守卫：自动设置页面标题
 router.afterEach((to) => {
   const pageTitle = to.meta?.title
-  document.title = pageTitle ? `${pageTitle} - ${SITE_NAME}` : SITE_NAME
+  document.title = pageTitle ? `${pageTitle} - ${siteConfig.fullTitle}` : siteConfig.fullTitle
 })
 
 router.beforeEach((to, _from, next) => {
@@ -169,6 +167,15 @@ router.beforeEach((to, _from, next) => {
     const token = localStorage.getItem('auth_token')
     if (!token) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
+  // 需要编者权限的路由
+  if (to.meta?.requiresEditor) {
+    const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
+    const role = userInfo?.role
+    if (role !== 'editor' && role !== 'admin' && role !== 'super_admin') {
+      next({ name: 'Home' })
       return
     }
   }

@@ -219,13 +219,12 @@ async function save() {
 
 <style scoped>
 .ss-page {
-  padding: 24px 32px;
-  max-width: 780px;
+  padding: 20px 24px;
 }
 
 /* 头部 */
 .ss-header {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 .ss-title {
   font-size: 22px;
@@ -246,8 +245,8 @@ async function save() {
   background: #fff;
   border: 1px solid #e8e4d8;
   border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
 }
 
 /* 错误提示 */
@@ -297,9 +296,9 @@ async function save() {
 
 /* 字段网格 */
 .ss-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .ss-field {

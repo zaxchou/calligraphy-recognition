@@ -132,7 +132,7 @@
           <span class="divider-line"></span>
         </div>
         <p class="footer-text">{{ siteConfig.footer }}</p>
-        <p class="footer-sub">作者 周豪 Zax</p>
+        <p class="footer-sub" v-if="siteConfig.author">作者 {{ siteConfig.author }}</p>
       </div>
     </footer>
   </div>

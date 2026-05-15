@@ -17,7 +17,7 @@ import redis
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
-from app.core.auth import require_admin_role, get_optional_user, get_current_user
+from app.core.auth import require_admin_role, require_editor, get_optional_user, get_current_user
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
@@ -607,7 +607,8 @@ async def upload_image(
     year: Optional[int] = Form(None),
     period: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    editor=Depends(require_editor)
 ):
     try:
         logger.info("开始上传文件: %s", file.filename)
@@ -798,7 +799,8 @@ async def upload_image(
 @router.post("/upload-multiple")
 async def upload_images(
     files: List[UploadFile] = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    editor=Depends(require_editor)
 ):
     uploaded = []
     failed = []
@@ -983,7 +985,7 @@ async def upload_images(
 
 
 @router.post("/auto-analyze/{image_id}")
-async def auto_analyze(image_id: str, db: Session = Depends(get_db)):
+async def auto_analyze(image_id: str, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """
     使用 AI 自动分析图像中的题跋、绘画、留白区域
     Redis 不可用时自动降级到 DB 队列（tubi_worker 的 DB 轮询模式会处理）
@@ -1037,7 +1039,7 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/analyze")
-async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db)):
+async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == request.image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
@@ -1178,7 +1180,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
 
 
 @router.post("/batch-auto-analyze")
-async def batch_auto_analyze(request: dict, db: Session = Depends(get_db)):
+async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """
     批量入队分析 — 两阶段上传模式第二步
     接收 image_id 列表，逐个入队（Redis 或 DB fallback）
@@ -1381,7 +1383,7 @@ async def get_queue_info(image_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/year")
-async def save_year_data(request: YearDataRequest, db: Session = Depends(get_db)):
+async def save_year_data(request: YearDataRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == request.image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
@@ -1402,7 +1404,8 @@ async def save_year_data(request: YearDataRequest, db: Session = Depends(get_db)
 async def update_image_info(
     image_id: str,
     request: ImageInfoRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    editor=Depends(require_editor)
 ):
     """更新图片信息（标题、作者等）"""
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
@@ -1463,7 +1466,8 @@ async def update_image_info(
 async def replace_image(
     image_id: str,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    editor=Depends(require_editor)
 ):
     """替换图片（保留元数据和面积数据，只更新文件+缩略图）
     - 保留：title/artist/year/period/notes/analysis_note/inscription_content/seal_content/inscription_percent/painting_percent/blank_percent/regions/position_analysis/content_analysis/theme_tags/material_tags/artwork_width_cm/artwork_height_cm/album_name/album_index
@@ -2131,7 +2135,7 @@ async def get_dimensions(artist: Optional[str] = None, db: Session = Depends(get
 
 
 @router.put("/dimensions/{id}")
-async def update_dimension(id: int, request: DimensionUpdateRequest, db: Session = Depends(get_db)):
+async def update_dimension(id: int, request: DimensionUpdateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """更新单条记录的尺寸和册页信息"""
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.id == id).first()
     if not db_analysis:
@@ -2165,7 +2169,7 @@ async def update_dimension(id: int, request: DimensionUpdateRequest, db: Session
 
 
 @router.put("/dimensions/album/batch")
-async def batch_update_album_dimensions(request: AlbumDimensionRequest, db: Session = Depends(get_db)):
+async def batch_update_album_dimensions(request: AlbumDimensionRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """
     批量更新同册页的所有记录尺寸。
     根据 album_name 匹配，为该册页所有记录设置相同宽高。
@@ -2294,7 +2298,7 @@ async def get_album(album_name: str, db: Session = Depends(get_db)):
 
 
 @router.post("/albums")
-async def create_album(request: AlbumCreateRequest, db: Session = Depends(get_db)):
+async def create_album(request: AlbumCreateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """创建新册页"""
     existing = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == request.name).first()
     if existing:
@@ -2313,7 +2317,7 @@ async def create_album(request: AlbumCreateRequest, db: Session = Depends(get_db
 
 
 @router.put("/albums/{album_name}")
-async def rename_album(album_name: str, request: AlbumRenameRequest, db: Session = Depends(get_db)):
+async def rename_album(album_name: str, request: AlbumRenameRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """重命名册页"""
     existing = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == request.new_name).first()
     if existing:
@@ -2349,7 +2353,7 @@ async def delete_album(album_name: str, db: Session = Depends(get_db), admin=Dep
 
 
 @router.post("/albums/{album_name}/items")
-async def add_items_to_album(album_name: str, request: AlbumAddItemsRequest, db: Session = Depends(get_db)):
+async def add_items_to_album(album_name: str, request: AlbumAddItemsRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """添加作品到册页"""
     existing = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).first()
     if not existing:
@@ -2393,7 +2397,7 @@ async def remove_item_from_album(album_name: str, record_id: str, db: Session = 
 
 
 @router.put("/albums/{album_name}/reorder")
-async def reorder_album_items(album_name: str, request: AlbumReorderRequest, db: Session = Depends(get_db)):
+async def reorder_album_items(album_name: str, request: AlbumReorderRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """重新排序册页内作品"""
     records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).all()
     if not records:
@@ -2543,7 +2547,7 @@ async def get_tag_items(tag_name: str, db: Session = Depends(get_db)):
 
 
 @router.post("/tags")
-async def create_tag(request: TagCreateRequest, db: Session = Depends(get_db)):
+async def create_tag(request: TagCreateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """创建新标签（实际上标签是动态的，这个接口主要用于验证标签名）"""
     existing = db.query(TubiAnalysis).filter(TubiAnalysis.tags.like(f'%{request.name}%')).first()
     if existing:
@@ -2553,7 +2557,7 @@ async def create_tag(request: TagCreateRequest, db: Session = Depends(get_db)):
 
 
 @router.put("/tags")
-async def rename_tag(request: TagUpdateRequest, db: Session = Depends(get_db)):
+async def rename_tag(request: TagUpdateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """重命名标签"""
     records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
     
@@ -2595,7 +2599,7 @@ async def delete_tag(tag_name: str, db: Session = Depends(get_db), admin=Depends
 
 
 @router.post("/tags/items")
-async def add_items_to_tag(request: TagItemRequest, db: Session = Depends(get_db)):
+async def add_items_to_tag(request: TagItemRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """给作品添加标签"""
     added_count = 0
     for record_id in request.record_ids:
@@ -2815,7 +2819,8 @@ class ManualRegionsRequest(BaseModel):
 async def update_regions_manual(
     id: str,
     request: ManualRegionsRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    editor=Depends(require_editor)
 ):
     """
     手动标注区域接口。

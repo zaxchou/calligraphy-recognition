@@ -11,10 +11,11 @@ from datetime import datetime
 import os
 import json
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.core.auth import require_editor
 from app.core.database import get_db_connection
 from app.services.inscription_content_analyzer import (
     analyze_tiba_content,
@@ -768,6 +769,7 @@ async def get_correlation(
 
 @router.post("/batch")
 async def batch_analyze(
+    editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称"),
     force_reanalyze: bool = Query(default=False, description="强制重新分析已校验记录"),
     use_llm: bool = Query(default=True, description="启用LLM双通道情感分析"),
@@ -866,6 +868,7 @@ async def batch_analyze(
 async def verify_inscription(
     record_id: int,
     request: VerifyRequest,
+    editor=Depends(require_editor),
 ):
     """
     用户校对确认题跋文本。
@@ -1702,6 +1705,7 @@ class AnalyzeResponse(BaseModel):
 async def translate_single(
     record_id: int,
     request: TranslateRequest,
+    editor=Depends(require_editor),
 ):
     """
     单条记录翻译：将古文题跋翻译为现代文
@@ -1755,6 +1759,7 @@ async def translate_single(
 async def analyze_single(
     record_id: int,
     request: AnalyzeRequest = AnalyzeRequest(),
+    editor=Depends(require_editor),
 ):
     """
     单条记录重新分析：调用统一管道 analyze_single_record
@@ -1784,7 +1789,7 @@ async def analyze_single(
 
 
 @router.post("/reanalyze-one/{record_id}")
-async def reanalyze_single(record_id: int):
+async def reanalyze_single(record_id: int, editor=Depends(require_editor)):
     """
     单条混合引擎分析：调用统一管道 analyze_single_record
     """
@@ -1807,6 +1812,7 @@ async def reanalyze_single(record_id: int):
 
 @router.post("/translate/batch")
 async def translate_batch(
+    editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称"),
     force_retranslate: bool = Query(default=False, description="强制重新翻译已翻译记录"),
 ):
@@ -1876,6 +1882,7 @@ async def translate_batch(
 
 @router.post("/translate/batch/stream")
 async def translate_batch_stream(
+    editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称"),
     force_retranslate: bool = Query(default=False, description="强制重新翻译已翻译记录"),
 ):
@@ -2055,6 +2062,7 @@ def call_llm_json(prompt: str, model: str, api_key: str, base_url: str) -> dict:
 
 @router.post("/reclassify/stream")
 async def reclassify_themes_sentiment(
+    editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称"),
     force_reanalyze: bool = Query(default=False, description="强制重新分类所有记录"),
 ):
@@ -2243,6 +2251,7 @@ async def reclassify_themes_sentiment(
 
 @router.post("/batch-reanalyze")
 async def batch_reanalyze(
+    editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式：跳过已处理的记录（已有 v4_confidence + rules_version ≥ 5.5）"),
 ):
@@ -2588,6 +2597,7 @@ async def batch_reanalyze(
 
 @router.post("/batch-reanalyze/stream")
 async def batch_reanalyze_stream(
+    editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式"),
 ):
@@ -2875,6 +2885,7 @@ class SummaryResponse(BaseModel):
 @router.post("/summary", response_model=SummaryResponse)
 async def generate_summary(
     request: SummaryRequest,
+    editor=Depends(require_editor),
 ):
     """
     基于当前统计数据，生成结构化学术分析报告（v5.3 确定性规则引擎）
@@ -2984,6 +2995,7 @@ class InsightResponse(BaseModel):
 @router.post("/insight", response_model=InsightResponse)
 async def generate_insight_report(
     request: InsightRequest,
+    editor=Depends(require_editor),
 ):
     """
     基于多维度统计数据，生成题跋艺术的深度洞察分析报告。

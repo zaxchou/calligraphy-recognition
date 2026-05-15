@@ -299,9 +299,8 @@ def require_artist_access(artist_name: str) -> Callable:
     画家属地访问控制 — 返回一个 FastAPI 依赖。
 
     规则：
-    - super_admin / admin → 直接通过
-    - editor → 检查 artist_claims 是否有该画家的 approved 认领 → 通过 / 403
-    - reader → 403
+    - super_admin / admin / editor → 直接通过（editor 默认可维护任何画家）
+    - reader → 检查 artist_claims 是否有该画家的 approved 认领 → 通过 / 403
 
     用法：
         @router.put("/image-info/{image_id}")
@@ -317,26 +316,22 @@ def require_artist_access(artist_name: str) -> Callable:
     async def _check(
         db_user: UserModel = Depends(get_current_user),
     ) -> UserModel:
-        # super_admin / admin → 全权通过
-        if db_user.role in ("super_admin", "admin"):
+        # super_admin / admin / editor → 全权通过
+        if db_user.role in ("super_admin", "admin", "editor"):
             return db_user
 
-        # editor → 检查认领关系
-        if db_user.role == "editor":
-            db = SessionLocal()
-            try:
-                claim = db.query(ArtistClaim).filter(
-                    ArtistClaim.user_id == db_user.id,
-                    ArtistClaim.artist_name == artist_name,
-                    ArtistClaim.status == "approved",
-                ).first()
-                if claim:
-                    return db_user
-            finally:
-                db.close()
-            raise HTTPException(status_code=403, detail=f"您未认领画家「{artist_name}」，无权操作")
-
-        # reader / guest → 拒绝
-        raise HTTPException(status_code=403, detail="无权操作")
+        # reader → 检查是否有该画家的 approved 认领
+        db = SessionLocal()
+        try:
+            claim = db.query(ArtistClaim).filter(
+                ArtistClaim.user_id == db_user.id,
+                ArtistClaim.artist_name == artist_name,
+                ArtistClaim.status == "approved",
+            ).first()
+            if claim:
+                return db_user
+        finally:
+            db.close()
+        raise HTTPException(status_code=403, detail=f"您未认领画家「{artist_name}」，无权操作")
 
     return _check

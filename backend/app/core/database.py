@@ -109,13 +109,13 @@ def run_migrations():
             logger.info("Migration: seeded role_permissions defaults")
 
         # ── site_settings 表 ──
-        conn.execute(text("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS site_settings (
                 key TEXT PRIMARY KEY,
                 value TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """))
+        """)
         # 种子默认值
         defaults = [
             ("title", "墨林百科"),
@@ -127,8 +127,8 @@ def run_migrations():
         ]
         for k, v in defaults:
             conn.execute(
-                text("INSERT OR IGNORE INTO site_settings (key, value) VALUES (:key, :value)"),
-                {"key": k, "value": v},
+                "INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)",
+                (k, v),
             )
         logger.info("Migration: ensured site_settings table exists")
 
