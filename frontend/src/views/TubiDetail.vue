@@ -83,6 +83,9 @@
           <el-button v-if="authStore.isLoggedIn" plain size="small" class="btn-action" @click="openSuggestEdit">
             <el-icon><EditPen /></el-icon><span class="btn-label">建议修改</span>
           </el-button>
+          <el-button plain size="small" class="btn-action" @click="openRevisions">
+            <el-icon><Clock /></el-icon><span class="btn-label">版本历史</span>
+          </el-button>
           <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
             <span class="btn-label">返回</span>
           </el-button>
@@ -462,6 +465,36 @@
         <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交修改建议</el-button>
       </template>
     </el-dialog>
+
+    <!-- 版本历史对话框 -->
+    <el-dialog v-model="showRevisionsDialog" title="版本历史" width="700px" destroy-on-close>
+      <div v-if="revisionsLoading" style="text-align:center;padding:40px;">
+        <el-icon class="is-loading" size="24"><Loading /></el-icon>
+        <p style="margin-top:12px;color:#999;">加载中...</p>
+      </div>
+      <template v-else>
+        <el-empty v-if="revisions.length === 0" description="暂无版本历史" />
+        <el-timeline v-else>
+          <el-timeline-item
+            v-for="rev in revisions"
+            :key="rev.id"
+            :timestamp="rev.created_at"
+            placement="top"
+          >
+            <div class="rev-header">
+              <span class="rev-number">#{{ rev.revision_number }}</span>
+              <el-tag :type="rev.operation_type === 'rollback' ? 'warning' : rev.operation_type === 'approve' ? 'success' : 'info'" size="small">
+                {{ rev.operation_type === 'rollback' ? '回滚' : rev.operation_type === 'approve' ? '审核通过' : '直接编辑' }}
+              </el-tag>
+            </div>
+            <div class="rev-summary">{{ rev.change_summary || '无摘要' }}</div>
+            <el-button v-if="rev.revision_number > 1" text size="small" type="primary" @click="handleRollback(rev)">
+              回滚到此版本
+            </el-button>
+          </el-timeline-item>
+        </el-timeline>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -526,6 +559,43 @@ async function handleSubmitChange() {
     ElMessage.error(e.response?.data?.detail || '提交失败')
   } finally {
     submitting.value = false
+  }
+}
+
+// 版本历史
+const showRevisionsDialog = ref(false)
+const revisions = ref([])
+const revisionsLoading = ref(false)
+
+async function openRevisions() {
+  if (!props.currentImage) return
+  showRevisionsDialog.value = true
+  revisionsLoading.value = true
+  try {
+    const resp = await api.get(`/artworks/${props.currentImage.id}/revisions`)
+    revisions.value = resp.revisions || []
+  } catch (e) {
+    ElMessage.error('加载版本历史失败')
+    revisions.value = []
+  } finally {
+    revisionsLoading.value = false
+  }
+}
+
+async function handleRollback(rev) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要回滚到版本 #${rev.revision_number}？此操作不可撤销。`,
+      '回滚确认',
+      { confirmButtonText: '确认回滚', cancelButtonText: '取消', type: 'warning' }
+    )
+    await api.post(`/artworks/${props.currentImage.id}/rollback/${rev.id}`)
+    ElMessage.success('回滚成功')
+    showRevisionsDialog.value = false
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.detail || '回滚失败')
+    }
   }
 }
 
@@ -1155,10 +1225,29 @@ defineExpose({
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-top: 10px;
+  flex-wrap: wrap;
   padding-top: 8px;
   border-top: 1px solid #ede9de;
 }
+
+/* 版本历史对话框 */
+.rev-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.rev-number {
+  font-weight: 700;
+  font-size: 15px;
+  color: #333;
+}
+.rev-summary {
+  font-size: 13px;
+  color: #666;
+  margin: 4px 0;
+}
+
 .btn-action {
   flex: 1;
   font-size: 12px !important;

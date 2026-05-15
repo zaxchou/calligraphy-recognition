@@ -17,7 +17,7 @@ logging.basicConfig(
 from app.core.config import get_settings
 from app.core.database import engine, Base, get_db
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims
+from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions
 
 try:
     from app.api import composition
@@ -153,6 +153,13 @@ app.include_router(
     artist_claims.router,
     prefix=settings.API_V1_STR,
     tags=["画家认领"]
+)
+
+# Phase 1: 版本历史
+app.include_router(
+    revisions.router,
+    prefix=settings.API_V1_STR,
+    tags=["版本历史"]
 )
 
 # Phase 5: 管理后台

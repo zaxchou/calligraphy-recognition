@@ -10,9 +10,11 @@ from app.models.change_request import ChangeRequest
 from app.models.research_note import ResearchNote
 from app.models.literature_reference import LiteratureReference
 from app.models.auction_record import AuctionRecord
+from app.models.work_revision import WorkRevision
 
 __all__ = [
     "Stele", "Character", "RecognitionLog", "TubiAnalysis", "TubiJob", "User",
     "ArtistClaim", "CollaboratorRequest",
     "ChangeRequest", "ResearchNote", "LiteratureReference", "AuctionRecord",
+    "WorkRevision",
 ]

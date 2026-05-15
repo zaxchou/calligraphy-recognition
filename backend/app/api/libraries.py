@@ -18,6 +18,7 @@ from app.models.library_collaborator import LibraryCollaborator
 from app.models.change_request import ChangeRequest
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
+from app.api.revisions import create_revision
 
 router = APIRouter(prefix="/libraries", tags=["作品库"])
 logger = logging.getLogger(__name__)
@@ -665,6 +666,22 @@ async def review_change_request(
 
     db.commit()
     db.refresh(cr)
+
+    # 审核通过时创建版本快照
+    if req.action == "approve" and artwork:
+        try:
+            create_revision(
+                db=db,
+                artwork_id=cr.artwork_id,
+                operation_type="approve",
+                change_summary=cr.change_summary or f"审核通过: {cr.field_name or cr.request_type}",
+                approved_by=user.id,
+                submitted_by=cr.submitter_id,
+                change_request_id=cr.id,
+            )
+        except Exception as _rev_e:
+            logger.warning("创建版本快照失败（不影响审核）: %s", _rev_e)
+
     logger.info(f"用户 {user.id} {req.action}了变更请求 {cr.id}")
     return {
         "id": cr.id,
