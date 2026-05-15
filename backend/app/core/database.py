@@ -132,6 +132,64 @@ def run_migrations():
             )
         logger.info("Migration: ensured site_settings table exists")
 
+        # ── 初始画库（Phase A） ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS artwork_libraries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name VARCHAR(255) NOT NULL,
+                artist_name VARCHAR(255),
+                description TEXT,
+                owner_id INTEGER NOT NULL,
+                visibility VARCHAR(20) DEFAULT 'private',
+                artwork_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        lib_names = [
+            ("李鱓作品全集", "李鱓"),
+            ("刘海勇作品全集", "刘海勇"),
+            ("郑燮作品全集", "郑燮"),
+        ]
+        existing_libs = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM artwork_libraries WHERE owner_id = 1"
+            ).fetchall()
+        }
+        for lib_name, artist_name in lib_names:
+            if lib_name not in existing_libs:
+                conn.execute(
+                    "INSERT INTO artwork_libraries (name, artist_name, owner_id, visibility) VALUES (?, ?, 1, 'public')",
+                    (lib_name, artist_name),
+                )
+                logger.info("Migration: 创建画库 %s", lib_name)
+        # 归入现有作品
+        lib_map = {
+            r[1]: r[0] for r in conn.execute(
+                "SELECT id, artist_name FROM artwork_libraries WHERE owner_id = 1 AND artist_name IS NOT NULL"
+            ).fetchall()
+        }
+        if lib_map:
+            null_rows = conn.execute(
+                "SELECT id, artist FROM tubi_analyses WHERE library_id IS NULL"
+            ).fetchall()
+            for row_id, artist_name in null_rows:
+                lib_id = lib_map.get(artist_name) or lib_map.get("李鱓")
+                conn.execute(
+                    "UPDATE tubi_analyses SET library_id = ?, owner_id = 1, visibility = 'public' WHERE id = ?",
+                    (lib_id, row_id),
+                )
+            if null_rows:
+                logger.info("Migration: 归入 %d 条作品到画库", len(null_rows))
+            for lib_id in lib_map.values():
+                count = conn.execute(
+                    "SELECT COUNT(*) FROM tubi_analyses WHERE library_id = ?", (lib_id,)
+                ).fetchone()[0]
+                conn.execute(
+                    "UPDATE artwork_libraries SET artwork_count = ? WHERE id = ?",
+                    (count, lib_id),
+                )
+
         conn.commit()
     finally:
         conn.close()

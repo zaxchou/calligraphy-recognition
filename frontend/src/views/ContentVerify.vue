@@ -451,6 +451,45 @@
           <AdminSettings />
         </div>
       </el-tab-pane>
+
+      <!-- 变更请求（仅管理员可见） -->
+      <el-tab-pane v-if="isAdmin" label="变更请求" name="change-requests">
+        <div class="tab-content full-tab-content">
+          <div class="change-requests-panel">
+            <div class="cr-header">
+              <h3>待审核变更请求</h3>
+              <el-tag v-if="pendingRequests.length > 0" type="warning" effect="dark">
+                {{ pendingRequests.length }} 条待审核
+              </el-tag>
+            </div>
+            <el-table :data="pendingRequests" v-loading="loadingRequests" style="width: 100%" stripe size="small">
+              <el-table-column prop="library_name" label="画库" width="120" show-overflow-tooltip />
+              <el-table-column prop="artwork_title" label="作品" min-width="140" show-overflow-tooltip />
+              <el-table-column prop="field_name" label="修改字段" width="100" />
+              <el-table-column label="旧值 → 新值" min-width="200">
+                <template #default="{ row }">
+                  <span class="cr-old-value">{{ row.old_value || '-' }}</span>
+                  <el-icon><Right /></el-icon>
+                  <span class="cr-new-value">{{ row.new_value || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="submitter_name" label="提交者" width="100" />
+              <el-table-column prop="created_at" label="提交时间" width="160" />
+              <el-table-column label="操作" width="150" fixed="right">
+                <template #default="{ row }">
+                  <el-button size="small" type="success" plain @click="approveRequest(row)" :loading="reviewingId === row.id">
+                    通过
+                  </el-button>
+                  <el-button size="small" type="danger" plain @click="rejectRequest(row)" :loading="reviewingId === row.id">
+                    拒绝
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="!loadingRequests && pendingRequests.length === 0" description="暂无待审核的变更请求" />
+          </div>
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
   </div>
@@ -479,13 +518,14 @@ import AdminDashboard from './admin/Dashboard.vue'
 import AdminUsers from './admin/Users.vue'
 import AdminSettings from './admin/Settings.vue'
 import { useAuthStore } from '../stores/authStore'
+import { libraryApi } from '../api/index.js'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config', 'change-requests']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'config')
 const verifyPanelRef = ref(null)
 // 切换标签时同步到 URL query（用 replace 避免污染历史）
@@ -670,6 +710,55 @@ async function startIncrementalSmartProcess() {
   } finally {
     incrementalProcessing.value = false
     showAnalyzeProgress.value = false
+  }
+}
+
+// 变更请求审核
+const pendingRequests = ref([])
+const loadingRequests = ref(false)
+const reviewingId = ref(null)
+
+watch(activeTab, (tab) => {
+  if (tab === 'change-requests') {
+    loadChangeRequests()
+  }
+})
+
+async function loadChangeRequests() {
+  loadingRequests.value = true
+  try {
+    const resp = await libraryApi.getAllChangeRequests('pending')
+    pendingRequests.value = resp.requests || []
+  } catch (e) {
+    console.error('获取变更请求失败', e)
+  } finally {
+    loadingRequests.value = false
+  }
+}
+
+async function approveRequest(row) {
+  reviewingId.value = row.id
+  try {
+    await libraryApi.reviewChangeRequest(row.id, { action: 'approve' })
+    ElMessage.success('已通过')
+    pendingRequests.value = pendingRequests.value.filter(r => r.id !== row.id)
+  } catch (e) {
+    ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    reviewingId.value = null
+  }
+}
+
+async function rejectRequest(row) {
+  reviewingId.value = row.id
+  try {
+    await libraryApi.reviewChangeRequest(row.id, { action: 'reject' })
+    ElMessage.success('已拒绝')
+    pendingRequests.value = pendingRequests.value.filter(r => r.id !== row.id)
+  } catch (e) {
+    ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    reviewingId.value = null
   }
 }
 
@@ -1503,4 +1592,34 @@ function copyReportAsMarkdown() {
 .conf-count { width: 120px; text-align: right; color: #999; font-family: monospace; font-size: 11px; }
 .conf-avg { font-size: 13px; color: #666; text-align: center; margin-top: 6px; font-family: monospace; }
 .conf-hint { font-size: 12px; color: #e6a23c; text-align: center; margin-top: 6px; }
+
+/* ── 变更请求审核面板 ── */
+.change-requests-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.cr-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cr-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #3a3a3a;
+}
+.cr-old-value {
+  color: #999;
+  text-decoration: line-through;
+  margin-right: 4px;
+}
+.cr-new-value {
+  color: #67c23a;
+  font-weight: 500;
+  margin-left: 4px;
+}
 </style>

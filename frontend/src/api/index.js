@@ -381,6 +381,9 @@ export const libraryApi = {
     return api.delete(`/libraries/${libraryId}/collaborators/${userId}`)
   },
   // 变更请求
+  getAllChangeRequests(status = 'pending') {
+    return api.get('/libraries/requests/all', { params: { status } })
+  },
   getChangeRequests(libraryId, status = 'pending') {
     return api.get(`/libraries/${libraryId}/requests`, { params: { status } })
   },

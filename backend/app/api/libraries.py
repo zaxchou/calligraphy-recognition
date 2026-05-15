@@ -417,6 +417,46 @@ class ChangeRequestReview(BaseModel):
     review_comment: Optional[str] = None
 
 
+@router.get("/requests/all")
+async def list_all_change_requests(
+    status: str = Query("pending", description="筛选状态: pending/approved/rejected"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """获取所有画库的变更请求（不限 library_id）
+    权限：仅 admin/super_admin 可查看全局列表
+    """
+    if user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="无权查看全局待审核列表")
+
+    query = db.query(ChangeRequest).filter(ChangeRequest.status == status)
+    query = query.order_by(ChangeRequest.created_at.desc()).limit(100)
+
+    result = []
+    for cr in query.all():
+        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+        lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
+        submitter = db.query(User).filter(User.id == cr.submitter_id).first()
+        result.append({
+            "id": cr.id,
+            "artwork_id": cr.artwork_id,
+            "artwork_title": artwork.title if artwork else None,
+            "library_id": cr.library_id,
+            "library_name": lib.name if lib else None,
+            "request_type": cr.request_type,
+            "field_name": cr.field_name,
+            "old_value": cr.old_value,
+            "new_value": cr.new_value,
+            "change_summary": cr.change_summary,
+            "submitter_id": cr.submitter_id,
+            "submitter_name": submitter.nickname if submitter else None,
+            "status": cr.status,
+            "created_at": cr.created_at.isoformat() if cr.created_at else None,
+            "reviewed_at": cr.reviewed_at.isoformat() if cr.reviewed_at else None,
+        })
+    return {"requests": result}
+
+
 @router.get("/{library_id}/requests")
 async def list_change_requests(
     library_id: int,
@@ -546,16 +586,24 @@ async def review_change_request(
     if cr.status != "pending":
         raise HTTPException(status_code=409, detail="该请求已被审核")
 
-    # 权限：仅库 owner 或 maintainer
+    # 权限：库 owner / maintainer / 作品 owner / admin
     lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
-    if lib and lib.owner_id != user.id:
-        is_maintainer = db.query(LibraryCollaborator).filter(
-            LibraryCollaborator.library_id == cr.library_id,
-            LibraryCollaborator.user_id == user.id,
-            LibraryCollaborator.role == "maintainer",
-        ).first() is not None
-        if not is_maintainer:
-            raise HTTPException(status_code=403, detail="仅库主或 maintainer 可以审核变更请求")
+    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+    can_review = False
+    if lib and lib.owner_id == user.id:
+        can_review = True
+    elif lib and db.query(LibraryCollaborator).filter(
+        LibraryCollaborator.library_id == cr.library_id,
+        LibraryCollaborator.user_id == user.id,
+        LibraryCollaborator.role == "maintainer",
+    ).first() is not None:
+        can_review = True
+    elif artwork and artwork.owner_id == user.id:
+        can_review = True
+    elif user.role in ("admin", "super_admin"):
+        can_review = True
+    if not can_review:
+        raise HTTPException(status_code=403, detail="仅库主/maintainer/作品所有者/管理员可以审核变更请求")
 
     if req.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action 必须是 approve 或 reject")

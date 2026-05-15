@@ -130,6 +130,7 @@ const MENU_DEF = [
       { key: 'verify', label: '题跋校对', icon: 'EditPen', link: '/admin?tab=verify', perm: 'content.verify' },
       { key: 'annotation', label: '标注图校对', icon: 'Picture', link: '/admin?tab=annotation', perm: 'content.annotate' },
       { key: 'upload', label: '作品上传', icon: 'Upload', link: '/admin?tab=upload', perm: 'content.upload' },
+      { key: 'change-requests', label: '变更审核', icon: 'InfoFilled', link: '/admin?tab=change-requests', perm: 'system.config' },
     ],
   },
   {

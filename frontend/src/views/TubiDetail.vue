@@ -80,6 +80,9 @@
           <el-button v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)" plain size="small" class="btn-action" @click="$emit('edit-current')">
             <el-icon><Edit /></el-icon><span class="btn-label">编辑</span>
           </el-button>
+          <el-button v-if="authStore.isLoggedIn" plain size="small" class="btn-action" @click="openSuggestEdit">
+            <el-icon><EditPen /></el-icon><span class="btn-label">建议修改</span>
+          </el-button>
           <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
             <span class="btn-label">返回</span>
           </el-button>
@@ -427,6 +430,38 @@
       v-model="imagePreviewVisible"
       :image-url="currentPreviewImage"
     />
+
+    <!-- 建议修改对话框 -->
+    <el-dialog v-model="showSuggestDialog" title="建议修改" width="560px" destroy-on-close>
+      <p style="margin-bottom:16px;color:var(--stone-gray)">
+        您正在对 <strong>{{ currentImage.title || '未命名' }}</strong> 提出修改建议，提交后由管理员审核。
+      </p>
+      <el-form :model="suggestForm" label-position="top">
+        <el-form-item label="修改字段">
+          <el-select v-model="suggestForm.field_name" style="width:100%">
+            <el-option label="标题" value="title" />
+            <el-option label="画家" value="artist" />
+            <el-option label="年代" value="year" />
+            <el-option label="时期" value="period" />
+            <el-option label="备注" value="notes" />
+            <el-option label="题跋内容" value="inscription_content" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="原值">
+          <el-input :model-value="suggestForm.old_value" disabled />
+        </el-form-item>
+        <el-form-item label="新值" required>
+          <el-input v-model="suggestForm.new_value" placeholder="输入修改后的值" />
+        </el-form-item>
+        <el-form-item label="修改说明">
+          <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSuggestDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交修改建议</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -434,11 +469,12 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Picture, Edit, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart, ZoomIn
+  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart, ZoomIn
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
 import { sealsApi } from '../api'
+import api from '../api'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
 import { useAuthStore } from '../stores/authStore'
 
@@ -448,6 +484,49 @@ const authStore = useAuthStore()
 
 function canEditItem(item) {
   return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
+}
+
+// 建议修改
+const showSuggestDialog = ref(false)
+const suggestForm = reactive({
+  field_name: 'title',
+  old_value: '',
+  new_value: '',
+  change_summary: ''
+})
+const submitting = ref(false)
+
+function openSuggestEdit() {
+  if (!props.currentImage) return
+  suggestForm.field_name = 'title'
+  suggestForm.old_value = props.currentImage.title || ''
+  suggestForm.new_value = ''
+  suggestForm.change_summary = ''
+  showSuggestDialog.value = true
+}
+
+async function handleSubmitChange() {
+  if (!suggestForm.new_value) {
+    ElMessage.warning('请输入新值')
+    return
+  }
+  submitting.value = true
+  try {
+    const data = {
+      field_name: suggestForm.field_name,
+      old_value: suggestForm.old_value,
+      new_value: suggestForm.new_value,
+      change_summary: suggestForm.change_summary,
+      request_type: suggestForm.field_name === 'inscription_content' ? 'edit_inscription' : 'edit_field'
+    }
+    await api.post(`/libraries/${props.currentImage.library_id}/requests`, data)
+    ElMessage.success('修改建议已提交')
+    showSuggestDialog.value = false
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '提交失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 // 印章显示

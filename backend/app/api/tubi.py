@@ -607,6 +607,7 @@ async def upload_image(
     year: Optional[int] = Form(None),
     period: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
+    library_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     editor=Depends(require_editor)
 ):
@@ -737,7 +738,23 @@ async def upload_image(
         logger.info("保存到数据库...")
         # 自动计算分期（period_phase）
         period_phase = get_period_phase(year, artist)
-        
+
+        # 验证画库访问权限
+        if library_id:
+            from app.models.artwork_library import ArtworkLibrary
+            from app.models.library_collaborator import LibraryCollaborator
+            lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == library_id).first()
+            if not lib:
+                raise HTTPException(status_code=404, detail="画库不存在")
+            is_owner = lib.owner_id == editor.id
+            is_collab = db.query(LibraryCollaborator).filter(
+                LibraryCollaborator.library_id == library_id,
+                LibraryCollaborator.user_id == editor.id,
+                LibraryCollaborator.role.in_(["editor", "maintainer"]),
+            ).first() is not None
+            if not (is_owner or is_collab):
+                raise HTTPException(status_code=403, detail="无权上传到该画库")
+
         db_analysis = TubiAnalysis(
             image_id=file_id,
             filename=file.filename,
@@ -752,11 +769,21 @@ async def upload_image(
             image_width=width,
             image_height=height,
             seal_content=_get_default_seal_content(artist),
+            owner_id=editor.id,
+            library_id=library_id,
+            visibility="public",
             status="uploaded"
         )
         db.add(db_analysis)
         db.commit()
         db.refresh(db_analysis)
+
+        # 更新画库作品计数
+        if library_id:
+            from app.models.artwork_library import ArtworkLibrary
+            count = db.query(TubiAnalysis).filter(TubiAnalysis.library_id == library_id).count()
+            db.query(ArtworkLibrary).filter(ArtworkLibrary.id == library_id).update({"artwork_count": count})
+            db.commit()
 
         # 清除作品列表缓存（有新作品即失效）
         _clear_results_cache()
@@ -799,6 +826,7 @@ async def upload_image(
 @router.post("/upload-multiple")
 async def upload_images(
     files: List[UploadFile] = File(...),
+    library_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     editor=Depends(require_editor)
 ):
@@ -939,6 +967,9 @@ async def upload_images(
                     year=parsed["year"],
                     period=parsed["period"],
                     seal_content=_get_default_seal_content(parsed["artist"]),
+                    owner_id=editor.id,
+                    library_id=library_id,
+                    visibility="public",
                     status="uploaded"
                 )
                 db.add(db_analysis)

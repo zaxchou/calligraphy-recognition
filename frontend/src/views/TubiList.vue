@@ -149,13 +149,15 @@
               <div class="table-col col-created">
                 <span class="date-val">{{ item.created_at ? item.created_at.slice(0, 10) : '-' }}</span>
               </div>
-              <div v-if="canEditItem(item)" class="table-col col-action">
+              <div class="table-col col-action">
                 <div class="action-btn-wrap" @mouseenter="openActionMenu($event)" @mouseleave="closeActionMenu">
                   <button class="action-btn" @click.stop>
                     操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
                   </button>
                   <div class="action-menu" v-show="activeActionItem === item.id">
                     <div class="action-menu-item" @click.stop="openDetailInNewWindow(item)">详情</div>
+                    <div v-if="authStore.isLoggedIn" class="action-menu-divider"></div>
+                    <div v-if="authStore.isLoggedIn" class="action-menu-item" @click.stop="openSuggestEdit(item)">建议修改</div>
                     <template v-if="canEditItem(item)">
                       <div class="action-menu-divider"></div>
                       <div class="action-menu-item" @click.stop="editItem(item)">编辑</div>
@@ -214,15 +216,48 @@
       @saved="onEditSaved"
       @deleted="onEditDeleted"
     />
+
+    <!-- 建议修改对话框 -->
+    <el-dialog v-model="showSuggestDialog" title="建议修改" width="560px" destroy-on-close>
+      <p style="margin-bottom:16px;color:var(--stone-gray)">
+        您正在对 <strong>{{ suggestArtwork?.title || '未命名' }}</strong> 提出修改建议，提交后由管理员审核。
+      </p>
+      <el-form :model="suggestForm" label-position="top">
+        <el-form-item label="修改字段">
+          <el-select v-model="suggestForm.field_name" style="width:100%">
+            <el-option label="标题" value="title" />
+            <el-option label="画家" value="artist" />
+            <el-option label="年代" value="year" />
+            <el-option label="时期" value="period" />
+            <el-option label="备注" value="notes" />
+            <el-option label="题跋内容" value="inscription_content" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="原值">
+          <el-input :model-value="suggestForm.old_value" disabled />
+        </el-form-item>
+        <el-form-item label="新值" required>
+          <el-input v-model="suggestForm.new_value" placeholder="输入修改后的值" />
+        </el-form-item>
+        <el-form-item label="修改说明">
+          <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSuggestDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交修改建议</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ArrowLeft, ArrowUp, ArrowDown, Picture, Search, Close } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowUp, ArrowDown, Picture, Search, Close, EditPen } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { tubiApi } from '../api'
+import api from '../api'
 import { useAuthStore } from '../stores/authStore'
 import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
 
@@ -382,6 +417,51 @@ function clearSearch() {
 
 function canEditItem(item) {
   return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
+}
+
+// 建议修改
+const showSuggestDialog = ref(false)
+const suggestForm = reactive({
+  field_name: 'title',
+  old_value: '',
+  new_value: '',
+  change_summary: ''
+})
+const submitting = ref(false)
+const suggestArtwork = ref(null)
+
+function openSuggestEdit(item) {
+  suggestArtwork.value = item
+  suggestForm.field_name = 'title'
+  suggestForm.old_value = item.title || ''
+  suggestForm.new_value = ''
+  suggestForm.change_summary = ''
+  showSuggestDialog.value = true
+}
+
+async function handleSubmitChange() {
+  if (!suggestForm.new_value) {
+    ElMessage.warning('请输入新值')
+    return
+  }
+  if (!suggestArtwork.value) return
+  submitting.value = true
+  try {
+    const data = {
+      field_name: suggestForm.field_name,
+      old_value: suggestForm.old_value,
+      new_value: suggestForm.new_value,
+      change_summary: suggestForm.change_summary,
+      request_type: suggestForm.field_name === 'inscription_content' ? 'edit_inscription' : 'edit_field'
+    }
+    await api.post(`/libraries/${suggestArtwork.value.library_id}/requests`, data)
+    ElMessage.success('修改建议已提交')
+    showSuggestDialog.value = false
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '提交失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 // 在新窗口打开详情
