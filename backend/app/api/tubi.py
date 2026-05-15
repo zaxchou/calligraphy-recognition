@@ -17,7 +17,7 @@ import redis
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
-from app.core.auth import require_admin_role, require_editor, get_optional_user, get_current_user
+from app.core.auth import require_admin_role, require_editor, require_permission, get_optional_user, get_current_user
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
@@ -609,7 +609,7 @@ async def upload_image(
     notes: Optional[str] = Form(None),
     library_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
-    editor=Depends(require_editor)
+    editor=Depends(require_permission("content.upload"))
 ):
     try:
         logger.info("开始上传文件: %s", file.filename)
@@ -828,7 +828,7 @@ async def upload_images(
     files: List[UploadFile] = File(...),
     library_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
-    editor=Depends(require_editor)
+    editor=Depends(require_permission("content.upload"))
 ):
     uploaded = []
     failed = []

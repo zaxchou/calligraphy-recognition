@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
-from app.core.auth import require_admin_role, require_editor
+from app.core.auth import require_admin_role, require_permission
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 
@@ -77,10 +77,17 @@ async def get_artist_by_name(name: str):
 
 
 @router.post("")
-async def create_artist(artist: ArtistCreate, editor=Depends(require_editor)):
+async def create_artist(artist: ArtistCreate, editor=Depends(require_permission("content.upload"))):
     """创建画家"""
     conn = get_db_connection()
     try:
+        # 检查是否已存在同名画家
+        existing = conn.execute(
+            "SELECT id FROM artists WHERE name = ?", (artist.name,)
+        ).fetchone()
+        if existing:
+            raise HTTPException(status_code=409, detail="画家已存在")
+
         now = datetime.now().isoformat()
         cursor = conn.execute(
             "INSERT INTO artists (name, birth_year, background, specialties, enabled, created_at, updated_at) "
