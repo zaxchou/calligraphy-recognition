@@ -6,8 +6,8 @@
         <el-icon size="24"><Collection /></el-icon>
       </div>
       <div class="logo-text">
-        <div class="logo-title">墨林百科</div>
-        <div class="logo-subtitle">最智能的中国画与书法大库</div>
+        <div class="logo-title">{{ siteConfig.title }}</div>
+        <div class="logo-subtitle">{{ siteConfig.subtitle }}</div>
       </div>
     </div>
 
@@ -106,6 +106,7 @@ import {
   Switch, Star, User
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { siteConfig } from '../../config'
 
 const route = useRoute()
 const router = useRouter()

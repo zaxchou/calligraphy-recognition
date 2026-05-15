@@ -6,8 +6,8 @@
         <div class="logo">
           <img src="/logo.png" alt="墨" class="logo-img">
           <div class="logo-text">
-            <span class="logo-main">墨林百科</span>
-            <span class="logo-sub">最智能的中国画与书法大库</span>
+            <span class="logo-main">{{ siteConfig.title }}</span>
+            <span class="logo-sub">{{ siteConfig.subtitle }}</span>
           </div>
         </div>
         <nav class="main-nav">
@@ -60,7 +60,7 @@
           <div class="drawer-logo">
             <img src="/logo.png" alt="墨" class="drawer-logo-img">
             <div class="drawer-logo-text">
-              <span class="drawer-logo-main">墨林百科</span>
+              <span class="drawer-logo-main">{{ siteConfig.title }}</span>
             </div>
           </div>
           <button class="drawer-close" @click="closeMobileMenu" aria-label="关闭菜单">
@@ -131,7 +131,7 @@
           <img src="/logo.png" alt="墨" class="divider-seal-img">
           <span class="divider-line"></span>
         </div>
-        <p class="footer-text">墨林百科 © 2026</p>
+        <p class="footer-text">{{ siteConfig.footer }}</p>
         <p class="footer-sub">作者 周豪 Zax</p>
       </div>
     </footer>
@@ -143,6 +143,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
+import { siteConfig } from './config'
 
 const router = useRouter()
 const authStore = useAuthStore()

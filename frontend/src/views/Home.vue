@@ -40,7 +40,7 @@
         <div class="hero-vignette"></div>
 
         <div class="hero-content">
-          <h1 class="hero-title">墨林百科<br/><span class="hero-title-accent">最智能的中国画与书法大库</span></h1>
+          <h1 class="hero-title">{{ siteConfig.title }}<br/><span class="hero-title-accent">{{ siteConfig.subtitle }}</span></h1>
           <p class="hero-subtitle">题跋识别 · 字体溯源 · 构图分析 · 知识检索</p>
           <div class="hero-actions">
             <button class="btn-primary" @click="$router.push('/tubi')">
@@ -150,6 +150,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { siteConfig } from '../config'
 import {
   DataAnalysis, Camera, ArrowRight, Collection, PictureFilled,
   TrendCharts, VideoPlay, Histogram

@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { siteConfig } from '../config'
 
-const SITE_NAME = '墨林百科 - 最智能的中国画与书法大库'
+const SITE_NAME = siteConfig.fullTitle
 
 const routes = [
   {

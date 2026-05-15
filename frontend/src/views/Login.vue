@@ -3,8 +3,8 @@
     <div class="login-card">
       <div class="login-header">
         <img src="/logo.png" alt="墨" class="login-logo">
-        <h1 class="login-title">墨林百科</h1>
-        <p class="login-subtitle">最智能的中国画与书法大库</p>
+        <h1 class="login-title">{{ siteConfig.title }}</h1>
+        <p class="login-subtitle">{{ siteConfig.subtitle }}</p>
       </div>
 
       <div class="login-body">
@@ -68,6 +68,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { ElMessage } from 'element-plus'
+import { siteConfig } from '../config'
 
 const router = useRouter()
 const route = useRoute()

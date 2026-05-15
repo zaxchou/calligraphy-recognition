@@ -11,6 +11,10 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import { siteConfig } from './config'
+
+// 全局默认标题
+document.title = siteConfig.htmlTitle
 
 const app = createApp(App)
 
