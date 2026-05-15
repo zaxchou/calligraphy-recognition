@@ -6,8 +6,8 @@
         <el-icon size="24"><Collection /></el-icon>
       </div>
       <div class="logo-text">
-        <div class="logo-title">中国画与书法</div>
-        <div class="logo-subtitle">AI 综合分析系统</div>
+        <div class="logo-title">墨林百科</div>
+        <div class="logo-subtitle">最智能的中国画与书法大库</div>
       </div>
     </div>
 

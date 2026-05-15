@@ -3,8 +3,8 @@
     <div class="login-card">
       <div class="login-header">
         <img src="/logo.png" alt="墨" class="login-logo">
-        <h1 class="login-title">中国画与书法</h1>
-        <p class="login-subtitle">AI 综合分析系统</p>
+        <h1 class="login-title">墨林百科</h1>
+        <p class="login-subtitle">最智能的中国画与书法大库</p>
       </div>
 
       <div class="login-body">

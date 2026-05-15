@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 
-const SITE_NAME = '中国画与书法AI综合分析系统'
+const SITE_NAME = '墨林百科 - 最智能的中国画与书法大库'
 
 const routes = [
   {

@@ -682,7 +682,7 @@ async function selectImage(img) {
   
   // 设置页面标题：作品名 - 版块名 - 站点名
   const artworkTitle = img.title || img.name || '未命名作品'
-  document.title = `${artworkTitle} - 题跋分析 - 中国画与书法AI综合分析系统`
+  document.title = `${artworkTitle} - 题跋分析 - 墨林百科`
   
   // 更新URL为详情页（仅真实ID，模拟数据ID为负数不更新URL）
   // 使用 image_id (UUID) 作为路由参数
