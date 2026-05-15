@@ -153,9 +153,6 @@ class Settings(BaseSettings):
     MINERU_API_BASE: str = os.getenv("MINERU_API_BASE", "https://mineru.net")
     MINERU_MODEL_VERSION: str = os.getenv("MINERU_MODEL_VERSION", "vlm")
 
-    # 管理员 API Key（为空则不开启鉴权，向后兼容）
-    ADMIN_API_KEY: str = os.getenv("ADMIN_API_KEY", "")
-
     # ── Phase 5 配额管理 ────────────────────────────────────────────
     FREE_AI_CALLS_PER_MONTH: int = int(os.getenv("FREE_AI_CALLS_PER_MONTH", "30"))
     PAID_AI_CALLS_PER_MONTH: int = int(os.getenv("PAID_AI_CALLS_PER_MONTH", "300"))
@@ -176,6 +173,7 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 
 @lru_cache()

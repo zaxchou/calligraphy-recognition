@@ -4,10 +4,10 @@
 Phase 3: 5级角色系统 — super_admin / admin / editor / reader / guest
 
 用法：
-    from app.core.auth import require_super_admin, require_admin, require_editor
+    from app.core.auth import require_super_admin, require_admin_role, require_editor
 
     @router.delete("/something")
-    async def delete_something(db=Depends(get_db), admin=Depends(require_admin)):
+    async def delete_something(db=Depends(get_db), admin=Depends(require_admin_role)):
         ...
 
     # 画家属地访问控制
@@ -23,40 +23,6 @@ from typing import Optional, Callable
 from fastapi import Header, HTTPException, Depends
 
 logger = logging.getLogger(__name__)
-
-
-# ════════════════════════════════════════════════════════════════
-# Legacy: Admin API Key (过渡兼容)
-# ════════════════════════════════════════════════════════════════
-
-async def require_admin_key(
-    x_admin_key: Optional[str] = Header(None),
-) -> bool:
-    """如果配置了 ADMIN_API_KEY，则校验 X-Admin-Key header。
-
-    当 ADMIN_API_KEY 为空时（默认），所有请求放行。
-    此依赖保留用于过渡期，未来全部迁移到 JWT 角色鉴权。
-    """
-    from app.core.config import get_settings
-    settings = get_settings()
-    admin_key = settings.ADMIN_API_KEY
-
-    if not admin_key:
-        return True
-
-    if not x_admin_key:
-        logger.warning("管理操作被拒绝：缺少 X-Admin-Key header")
-        raise HTTPException(status_code=403, detail="需要管理员权限")
-
-    if x_admin_key.strip() != admin_key:
-        logger.warning("管理操作被拒绝：X-Admin-Key 不匹配")
-        raise HTTPException(status_code=403, detail="管理员密钥错误")
-
-    return True
-
-
-# Backward-compat alias
-require_admin = require_admin_key
 
 
 # ════════════════════════════════════════════════════════════════

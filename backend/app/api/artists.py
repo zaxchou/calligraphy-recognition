@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
-from app.core.auth import require_admin, require_editor
+from app.core.auth import require_admin_role, require_editor
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 
@@ -132,7 +132,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
 
 
 @router.delete("/{artist_id}")
-async def delete_artist(artist_id: int, admin=Depends(require_admin)):
+async def delete_artist(artist_id: int, admin=Depends(require_admin_role)):
     """删除画家"""
     conn = get_db_connection()
     try:
