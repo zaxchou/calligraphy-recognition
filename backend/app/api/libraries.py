@@ -700,6 +700,17 @@ async def review_change_request(
     except Exception as _notif_e:
         logger.warning("创建通知失败（不影响审核）: %s", _notif_e)
 
+    # 审核通过时加贡献积分
+    if req.action == "approve" and cr.submitter_id and cr.submitter_id != user.id:
+        try:
+            submitter = db.query(User).filter(User.id == cr.submitter_id).first()
+            if submitter:
+                submitter.score = (submitter.score or 0) + 3
+                db.commit()
+                logger.info("用户 %s 贡献积分 +3（审核通过 cr=%d）", cr.submitter_id, cr.id)
+        except Exception as _score_e:
+            logger.warning("加积分失败（不影响审核）: %s", _score_e)
+
     logger.info(f"用户 {user.id} {req.action}了变更请求 {cr.id}")
     return {
         "id": cr.id,

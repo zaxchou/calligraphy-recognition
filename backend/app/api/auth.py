@@ -252,7 +252,8 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     return {
         **{"token": token, "user_id": user.id, "nickname": user.nickname,
-           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone},
+           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone,
+           "score": user.score or 0},
         "is_new_user": True,
     }
 
@@ -295,7 +296,8 @@ async def login_by_code(req: LoginCodeRequest, db: Session = Depends(get_db)):
     token = create_access_token(user_id=user.id, role=user.role)
     return {
         **{"token": token, "user_id": user.id, "nickname": user.nickname,
-           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone},
+           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone,
+           "score": user.score or 0},
         "is_new_user": is_new_user,
     }
 
@@ -332,6 +334,7 @@ async def login_by_password(req: LoginPasswordRequest, db: Session = Depends(get
     return {
         "token": token, "user_id": user.id, "nickname": user.nickname,
         "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone,
+        "score": user.score or 0,
     }
 
 

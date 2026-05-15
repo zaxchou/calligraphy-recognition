@@ -40,6 +40,13 @@
               </span>
             </div>
             <div class="uc-info-row">
+              <span class="uc-info-label">贡献积分</span>
+              <span class="uc-info-value">
+                <span style="font-weight:600;color:#c8a45c;">{{ authStore.score }}</span>
+                <span style="font-size:12px;color:#999;margin-left:4px;">分</span>
+              </span>
+            </div>
+            <div class="uc-info-row">
               <span class="uc-info-label">注册时间</span>
               <span class="uc-info-value">{{ profile?.created_at ? formatDate(profile.created_at) : '-' }}</span>
             </div>

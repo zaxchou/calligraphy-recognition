@@ -20,6 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => role.value === 'admin' || role.value === 'super_admin')
   const isSuperAdmin = computed(() => role.value === 'super_admin')
   const isEditor = computed(() => role.value === 'super_admin' || role.value === 'admin' || role.value === 'editor')
+  const score = computed(() => userInfo.value?.score || 0)
 
   function _saveSession(data) {
     token.value = data.token
@@ -30,6 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
       avatar_url: data.avatar_url || '',
       phone: data.phone || '',
       role: data.role || 'reader',
+      score: data.score || 0,
     }
     localStorage.setItem(TOKEN_KEY, data.token)
     localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
@@ -122,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     token, userInfo, loading,
     isLoggedIn, userId, nickname, avatarUrl, role,
-    isAdmin, isSuperAdmin, isEditor,
+    isAdmin, isSuperAdmin, isEditor, score,
     loginByCode, loginByPassword, sendCode, register, login,
     logout, getAuthHeader, refreshProfile,
     token, userInfo, loading,

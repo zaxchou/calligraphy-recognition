@@ -220,6 +220,13 @@ def run_migrations():
         conn.execute("CREATE INDEX IF NOT EXISTS ix_notifications_is_read ON notifications(is_read)")
         logger.info("Migration: ensured notifications table exists")
         conn.commit()
+
+        # ── Phase 7: 用户贡献积分 ──
+        user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "score" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN score INTEGER DEFAULT 0")
+            logger.info("Migration: added users.score")
+        conn.commit()
     finally:
         conn.close()
 
