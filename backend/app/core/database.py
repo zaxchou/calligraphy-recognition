@@ -108,6 +108,30 @@ def run_migrations():
         } | {("editor", pk) for pk in EDITOR_PERMISSIONS}:
             logger.info("Migration: seeded role_permissions defaults")
 
+        # ── site_settings 表 ──
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS site_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        # 种子默认值
+        defaults = [
+            ("title", "墨林百科"),
+            ("subtitle", "最智能的中国画与书法大库"),
+            ("full_title", "墨林百科 - 最智能的中国画与书法大库"),
+            ("domain", "molin.wiki"),
+            ("footer", "墨林百科 © 2026"),
+            ("author", "周豪 Zax"),
+        ]
+        for k, v in defaults:
+            conn.execute(
+                text("INSERT OR IGNORE INTO site_settings (key, value) VALUES (:key, :value)"),
+                {"key": k, "value": v},
+            )
+        logger.info("Migration: ensured site_settings table exists")
+
         conn.commit()
     finally:
         conn.close()

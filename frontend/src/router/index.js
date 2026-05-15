@@ -112,6 +112,12 @@ const routes = [
         component: () => import('../views/admin/Permissions.vue'),
         meta: { title: '权限配置', requiresSuperAdmin: true },
       },
+      {
+        path: 'settings',
+        name: 'AdminSettings',
+        component: () => import('../views/admin/SystemSettings.vue'),
+        meta: { title: '系统设置', requiresAuth: true },
+      },
     ],
   },
   // 旧路由重定向

@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 import logging
 import os
 
@@ -14,7 +15,7 @@ logging.basicConfig(
 )
 
 from app.core.config import get_settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, get_db
 from sqlalchemy import text
 from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims
 
@@ -226,6 +227,15 @@ def root():
         "version": settings.VERSION,
         "docs_url": "/docs"
     }
+
+
+@app.get(f"{settings.API_V1_STR}/site-settings")
+def get_public_site_settings(db: Session = Depends(get_db)):
+    """公开接口：获取站点全局设置（标题、副标题等），无需登录"""
+    rows = db.execute(
+        text("SELECT key, value FROM site_settings ORDER BY key")
+    ).fetchall()
+    return {"settings": {r[0]: r[1] for r in rows}}
 
 
 @app.get("/health")

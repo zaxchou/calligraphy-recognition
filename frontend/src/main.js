@@ -11,19 +11,27 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
-import { siteConfig } from './config'
+import { siteConfig, loadSiteConfig } from './config'
 
-// 全局默认标题
-document.title = siteConfig.htmlTitle
+async function init() {
+  // 1. 先从 API 拉取站点配置（标题、副标题等可由管理员在线修改）
+  await loadSiteConfig()
 
-const app = createApp(App)
+  // 2. 设置全局默认标题
+  document.title = siteConfig.htmlTitle
 
-// 注册所有图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
+  // 3. 挂载应用
+  const app = createApp(App)
+
+  // 注册所有图标
+  for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+    app.component(key, component)
+  }
+
+  app.use(createPinia())
+  app.use(ElementPlus, { locale: zhCn })
+  app.use(router)
+  app.mount('#app')
 }
 
-app.use(createPinia())
-app.use(ElementPlus, { locale: zhCn })
-app.use(router)
-app.mount('#app')
+init()

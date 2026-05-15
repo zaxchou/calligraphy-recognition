@@ -161,7 +161,7 @@ const MENU_DEF = [
       { key: 'dashboard', label: '系统概览', icon: 'DataBoard', link: '/admin?tab=dashboard', perm: 'system.dashboard' },
       { key: 'users', label: '用户管理', icon: 'UserFilled', link: '/admin?tab=users', perm: 'system.users' },
       { key: 'permissions', label: '权限配置', icon: 'Key', link: '/admin/permissions', perm: 'system.permissions' },
-      { key: 'config', label: '系统信息', icon: 'InfoFilled', link: '/admin?tab=config', perm: 'system.config' },
+      { key: 'settings', label: '系统设置', icon: 'InfoFilled', link: '/admin/settings', perm: 'system.config' },
     ],
   },
 ]
@@ -176,6 +176,7 @@ const menuGroups = computed(() => {
 
 function isActive(item) {
   if (item.link === '/admin/permissions') return route.path === '/admin/permissions'
+  if (item.link === '/admin/settings') return route.path === '/admin/settings'
   return activeTab.value === item.key
 }
 

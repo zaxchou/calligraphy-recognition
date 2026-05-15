@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sqlfunc
+from sqlalchemy import func as sqlfunc, text
 
 from app.core.auth import require_admin_role, require_super_admin, get_user_permissions, ALL_PERMISSION_KEYS
 from app.core.config import get_settings
@@ -379,3 +379,39 @@ def save_permissions(
 def my_permissions(perms: dict = Depends(get_user_permissions)):
     """返回当前登录用户的权限列表（供前端侧边栏渲染）"""
     return perms
+
+
+# ── 站点设置 ──
+
+class SiteSettingsUpdate(BaseModel):
+    settings: dict  # { "title": "墨林百科", "subtitle": "...", ... }
+
+
+@router.get("/site-settings")
+def get_admin_site_settings(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin_role),
+):
+    """管理员读取站点设置"""
+    rows = db.execute(
+        text("SELECT key, value FROM site_settings ORDER BY key")
+    ).fetchall()
+    return {"settings": {r[0]: r[1] for r in rows}}
+
+
+@router.put("/site-settings")
+def update_site_settings(
+    body: SiteSettingsUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_super_admin),
+):
+    """超级管理员更新站点设置"""
+    for key, value in body.settings.items():
+        db.execute(
+            text("INSERT INTO site_settings (key, value, updated_at) VALUES (:key, :value, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP"),
+            {"key": key, "value": value},
+        )
+    db.commit()
+    logger.info("管理员 %d 更新了站点设置", admin.id)
+    return {"ok": True, "message": "站点设置已更新"}
