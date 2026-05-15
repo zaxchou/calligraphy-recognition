@@ -458,24 +458,35 @@
           <div class="change-requests-panel">
             <div class="cr-header">
               <h3>待审核变更请求</h3>
-              <el-tag v-if="pendingRequests.length > 0" type="warning" effect="dark">
-                {{ pendingRequests.length }} 条待审核
-              </el-tag>
+              <div class="cr-header-actions">
+                <el-tag v-if="pendingRequests.length > 0" type="warning" effect="dark">
+                  {{ pendingRequests.length }} 条待审核
+                </el-tag>
+                <el-button v-if="selectedCrIds.length > 0" size="small" type="success" @click="batchApprove" :loading="batchReviewing">
+                  批量通过 ({{ selectedCrIds.length }})
+                </el-button>
+                <el-button v-if="selectedCrIds.length > 0" size="small" type="danger" @click="batchReject" :loading="batchReviewing">
+                  批量拒绝 ({{ selectedCrIds.length }})
+                </el-button>
+              </div>
             </div>
-            <el-table :data="pendingRequests" v-loading="loadingRequests" style="width: 100%" stripe size="small">
-              <el-table-column prop="library_name" label="画库" width="120" show-overflow-tooltip />
-              <el-table-column prop="artwork_title" label="作品" min-width="140" show-overflow-tooltip />
-              <el-table-column prop="field_name" label="修改字段" width="100" />
-              <el-table-column label="旧值 → 新值" min-width="200">
+            <el-table :data="pendingRequests" v-loading="loadingRequests" style="width: 100%" stripe size="small" @selection-change="onCrSelectionChange">
+              <el-table-column type="selection" width="40" />
+              <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
+              <el-table-column prop="artwork_title" label="作品" min-width="120" show-overflow-tooltip />
+              <el-table-column prop="field_name" label="字段" width="80" />
+              <el-table-column label="旧值 → 新值" min-width="180">
                 <template #default="{ row }">
                   <span class="cr-old-value">{{ row.old_value || '-' }}</span>
                   <el-icon><Right /></el-icon>
                   <span class="cr-new-value">{{ row.new_value || '-' }}</span>
+                  <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:8px;">diff</el-button>
                 </template>
               </el-table-column>
-              <el-table-column prop="submitter_name" label="提交者" width="100" />
-              <el-table-column prop="created_at" label="提交时间" width="160" />
-              <el-table-column label="操作" width="150" fixed="right">
+              <el-table-column prop="change_summary" label="摘要" width="120" show-overflow-tooltip />
+              <el-table-column prop="submitter_name" label="提交者" width="80" />
+              <el-table-column prop="created_at" label="时间" width="150" />
+              <el-table-column label="操作" width="160" fixed="right">
                 <template #default="{ row }">
                   <el-button size="small" type="success" plain @click="approveRequest(row)" :loading="reviewingId === row.id">
                     通过
@@ -491,6 +502,38 @@
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- diff 对比对话框 -->
+    <el-dialog v-model="showDiffDialog" title="差异对比" width="700px" destroy-on-close>
+      <div v-if="diffRow" class="diff-container">
+        <div class="diff-side diff-old">
+          <h4 class="diff-side-title">原值</h4>
+          <div class="diff-side-content">{{ diffRow.old_value || '(空)' }}</div>
+        </div>
+        <div class="diff-arrow">
+          <el-icon size="24"><Right /></el-icon>
+        </div>
+        <div class="diff-side diff-new">
+          <h4 class="diff-side-title">新值</h4>
+          <div class="diff-side-content">{{ diffRow.new_value || '(空)' }}</div>
+        </div>
+      </div>
+      <div class="diff-meta" v-if="diffRow">
+        <p><strong>修改字段：</strong>{{ diffRow.field_name }}</p>
+        <p><strong>修改说明：</strong>{{ diffRow.change_summary || '无' }}</p>
+        <p><strong>提交者：</strong>{{ diffRow.submitter_name }}</p>
+      </div>
+    </el-dialog>
+
+    <!-- 拒绝原因对话框 -->
+    <el-dialog v-model="showRejectDialog" title="拒绝原因" width="420px" destroy-on-close>
+      <p style="margin-bottom:12px;color:#666;">驳回此变更请求时需要填写原因：</p>
+      <el-input v-model="rejectReason" type="textarea" :rows="4" placeholder="请填写拒绝原因" />
+      <template #footer>
+        <el-button @click="showRejectDialog = false">取消</el-button>
+        <el-button type="danger" @click="confirmReject" :loading="reviewingId !== null">确认拒绝</el-button>
+      </template>
+    </el-dialog>
 
   </div>
 </template>
@@ -717,12 +760,30 @@ async function startIncrementalSmartProcess() {
 const pendingRequests = ref([])
 const loadingRequests = ref(false)
 const reviewingId = ref(null)
+const selectedCrIds = ref([])
+const batchReviewing = ref(false)
+// diff
+const showDiffDialog = ref(false)
+const diffRow = ref(null)
+// reject
+const showRejectDialog = ref(false)
+const rejectReason = ref('')
+const rejectTarget = ref(null)
 
 watch(activeTab, (tab) => {
   if (tab === 'change-requests') {
     loadChangeRequests()
   }
 })
+
+function onCrSelectionChange(rows) {
+  selectedCrIds.value = rows.map(r => r.id)
+}
+
+function showDiff(row) {
+  diffRow.value = row
+  showDiffDialog.value = true
+}
 
 async function loadChangeRequests() {
   loadingRequests.value = true
@@ -739,7 +800,7 @@ async function loadChangeRequests() {
 async function approveRequest(row) {
   reviewingId.value = row.id
   try {
-    await libraryApi.reviewChangeRequest(row.id, { action: 'approve' })
+    await libraryApi.reviewChangeRequest(row.id, { action: 'approve', review_comment: '' })
     ElMessage.success('已通过')
     pendingRequests.value = pendingRequests.value.filter(r => r.id !== row.id)
   } catch (e) {
@@ -749,17 +810,66 @@ async function approveRequest(row) {
   }
 }
 
-async function rejectRequest(row) {
+function rejectRequest(row) {
+  rejectTarget.value = row
+  rejectReason.value = ''
+  showRejectDialog.value = true
+}
+
+async function confirmReject() {
+  if (!rejectReason.value.trim()) {
+    ElMessage.warning('请填写拒绝原因')
+    return
+  }
+  const row = rejectTarget.value
+  if (!row) return
   reviewingId.value = row.id
   try {
-    await libraryApi.reviewChangeRequest(row.id, { action: 'reject' })
+    await libraryApi.reviewChangeRequest(row.id, { action: 'reject', review_comment: rejectReason.value })
     ElMessage.success('已拒绝')
     pendingRequests.value = pendingRequests.value.filter(r => r.id !== row.id)
+    showRejectDialog.value = false
   } catch (e) {
     ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     reviewingId.value = null
   }
+}
+
+async function batchApprove() {
+  batchReviewing.value = true
+  const ids = [...selectedCrIds.value]
+  let ok = 0
+  for (const id of ids) {
+    try {
+      await libraryApi.reviewChangeRequest(id, { action: 'approve', review_comment: '' })
+      ok++
+    } catch (e) {
+      console.error('批量通过失败 id=%d: %s', id, e.message)
+    }
+  }
+  ElMessage.success(`批量通过 ${ok}/${ids.length}`)
+  selectedCrIds.value = []
+  batchReviewing.value = false
+  loadChangeRequests()
+}
+
+async function batchReject() {
+  batchReviewing.value = true
+  const ids = [...selectedCrIds.value]
+  let ok = 0
+  for (const id of ids) {
+    try {
+      await libraryApi.reviewChangeRequest(id, { action: 'reject', review_comment: '批量拒绝' })
+      ok++
+    } catch (e) {
+      console.error('批量拒绝失败 id=%d: %s', id, e.message)
+    }
+  }
+  ElMessage.success(`批量拒绝 ${ok}/${ids.length}`)
+  selectedCrIds.value = []
+  batchReviewing.value = false
+  loadChangeRequests()
 }
 
 // 生命周期
@@ -1621,5 +1731,61 @@ function copyReportAsMarkdown() {
   color: #67c23a;
   font-weight: 500;
   margin-left: 4px;
+}
+.cr-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+/* diff 对比 */
+.diff-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.diff-side {
+  flex: 1;
+  border: 1px solid #e8e4da;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.diff-side-title {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f5f3ef;
+  border-bottom: 1px solid #e8e4da;
+}
+.diff-side-content {
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 60px;
+}
+.diff-old .diff-side-title { color: #e6a23c; background: #fdf6ec; }
+.diff-new .diff-side-title { color: #67c23a; background: #f0f9eb; }
+.diff-old .diff-side-content { background: #fef8f0; }
+.diff-new .diff-side-content { background: #f5fff0; }
+.diff-arrow {
+  display: flex;
+  align-items: center;
+  padding-top: 40px;
+  color: #999;
+}
+.diff-meta {
+  padding: 12px 16px;
+  background: #fafaf8;
+  border-radius: 6px;
+  border: 1px solid #e8e4da;
+}
+.diff-meta p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #555;
 }
 </style>
