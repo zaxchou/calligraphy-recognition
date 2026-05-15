@@ -1210,7 +1210,6 @@ defineExpose({
   font-size: 11px;
   padding: 3px 10px;
 }
-.btn-annotate {
 /* 面积示意图容器（用于定位打勾徽章） */
 .annotated-image-wrapper {
   position: relative;
