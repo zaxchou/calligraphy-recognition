@@ -28,7 +28,6 @@
           <el-button type="primary" size="small" @click="handleSearch" :icon="Search">搜索</el-button>
         </div>
         <el-button size="small" @click="backToTubi" :icon="ArrowLeft" text>返回主页</el-button>
-        <el-button v-if="authStore.isEditor" size="small" type="warning" @click="isAdmin = !isAdmin">{{ isAdmin ? '锁定' : '管理' }}</el-button>
       </div>
     </div>
 
@@ -100,7 +99,7 @@
                 <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
-            <div v-if="isAdmin" class="table-col col-action">操作</div>
+            <div v-if="authStore.isEditor" class="table-col col-action">操作</div>
           </div>
           <div class="works-table-body">
             <div
@@ -150,14 +149,14 @@
               <div class="table-col col-created">
                 <span class="date-val">{{ item.created_at ? item.created_at.slice(0, 10) : '-' }}</span>
               </div>
-              <div v-if="isAdmin" class="table-col col-action">
+              <div v-if="authStore.isEditor" class="table-col col-action">
                 <div class="action-btn-wrap" @mouseenter="openActionMenu($event)" @mouseleave="closeActionMenu">
                   <button class="action-btn" @click.stop>
                     操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
                   </button>
                   <div class="action-menu" v-show="activeActionItem === item.id">
                     <div class="action-menu-item" @click.stop="openDetailInNewWindow(item)">详情</div>
-                    <template v-if="isAdmin">
+                    <template v-if="authStore.isEditor">
                       <div class="action-menu-divider"></div>
                       <div class="action-menu-item" @click.stop="editItem(item)">编辑</div>
                       <div class="action-menu-divider"></div>
@@ -230,8 +229,6 @@ import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-
-const isAdmin = ref(authStore.isEditor)
 
 // 排行榜数据
 const rankings = ref([])
@@ -488,11 +485,6 @@ async function deleteItem(item) {
       ElMessage.error('删除失败')
     }
   }
-}
-
-// 管理权限切换（仅编辑者+可用，切换UI中管理功能的显示）
-function toggleAdmin() {
-  isAdmin.value = !isAdmin.value
 }
 
 // 同步页码到 URL

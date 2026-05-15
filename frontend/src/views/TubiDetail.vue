@@ -77,20 +77,11 @@
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
         </div>
         <div class="info-card-actions">
-          <el-button v-if="isAdmin" plain size="small" class="btn-action" @click="$emit('edit-current')">
+          <el-button v-if="authStore.isEditor" plain size="small" class="btn-action" @click="$emit('edit-current')">
             <el-icon><Edit /></el-icon><span class="btn-label">编辑</span>
           </el-button>
           <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
             <span class="btn-label">返回</span>
-          </el-button>
-          <el-button
-            v-if="authStore.isEditor"
-            plain
-            size="small"
-            class="btn-action btn-admin-toggle"
-            @click="toggleAdmin"
-          >
-            <span class="btn-label">{{ isAdmin ? '锁定' : '管理' }}</span>
           </el-button>
         </div>
       </div>
@@ -107,9 +98,9 @@
                 <h4 class="section-title">
                   <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
                   <el-button
+                    v-if="authStore.isEditor"
                     size="small" text
                     class="btn-annotate"
-                    :class="{ 'btn-annotate-hidden': !isAdmin }"
                     @click="$emit('open-annotator')"
                   >手动标注</el-button>
                 </h4>
@@ -454,7 +445,6 @@ import { useAuthStore } from '../stores/authStore'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const authStore = useAuthStore()
-const isAdmin = ref(authStore.isEditor)
 
 // 印章显示
 const sealLibraryCache = ref([])
@@ -551,10 +541,6 @@ const relatedWorks = computed(() => {
 
 function openRanking() {
   window.open('/#/tubi/list', '_blank')
-}
-
-function toggleAdmin() {
-  isAdmin.value = !isAdmin.value
 }
 
 // ── 册页缩略图滚轮横向滚动 ──────────────────────
@@ -1224,11 +1210,7 @@ defineExpose({
   font-size: 11px;
   padding: 3px 10px;
 }
-.btn-annotate-hidden {
-  visibility: hidden;
-  pointer-events: none;
-}
-
+.btn-annotate {
 /* 面积示意图容器（用于定位打勾徽章） */
 .annotated-image-wrapper {
   position: relative;

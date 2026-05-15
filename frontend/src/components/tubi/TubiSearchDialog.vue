@@ -7,16 +7,6 @@
     class="search-dialog-wide"
   >
     <div class="search-dialog-content">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <el-button
-          v-if="authStore.isEditor"
-          size="small"
-          :type="isAdmin ? 'warning' : 'default'"
-          @click="toggleAdmin"
-        >
-          {{ isAdmin ? '锁定' : '管理' }}
-        </el-button>
-      </div>
       <div v-if="loading" class="search-loading">
         <el-icon class="is-loading" size="32"><Loading /></el-icon>
         <p>正在搜索...</p>
@@ -89,10 +79,10 @@
               <el-button plain size="small" class="btn-edit" @click="viewItem(scope.row)">
                 查看
               </el-button>
-              <el-button v-if="isAdmin" plain size="small" class="btn-edit" @click="editItem(scope.row)">
+              <el-button v-if="authStore.isEditor" plain size="small" class="btn-edit" @click="editItem(scope.row)">
                 编辑
               </el-button>
-              <el-button v-if="isAdmin" plain size="small" type="danger" @click="deleteItem(scope.row)">
+              <el-button v-if="authStore.isEditor" plain size="small" type="danger" @click="deleteItem(scope.row)">
                 删除
               </el-button>
             </div>
@@ -110,7 +100,6 @@ import { Picture, Loading, Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
-const isAdmin = ref(authStore.isEditor)
 
 const props = defineProps({
   modelValue: {
@@ -144,10 +133,6 @@ watch(() => props.modelValue, (val) => {
 watch(localVisible, (val) => {
   emit('update:modelValue', val)
 })
-
-function toggleAdmin() {
-  isAdmin.value = !isAdmin.value
-}
 
 function viewItem(row) {
   emit('view', row)

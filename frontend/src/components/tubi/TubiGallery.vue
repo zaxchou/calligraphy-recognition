@@ -23,15 +23,6 @@
           <el-button size="small" type="primary" @click="goToList" class="btn-more-works">
             更多作品
           </el-button>
-          <el-button
-            v-if="authStore.isEditor"
-            size="small"
-            :type="isAdmin ? 'warning' : 'default'"
-            @click="toggleAdmin"
-            class="btn-admin-toggle"
-          >
-            {{ isAdmin ? '锁定' : '管理' }}
-          </el-button>
         </div>
       </div>
     </template>
@@ -78,7 +69,7 @@
             <span>{{ item.status === 'queued' ? '排队中' : item.status === 'analyzing' ? '分析中' : item.status === 'error' ? '失败' : item.status }}</span>
           </div>
 
-          <div v-if="isAdmin" class="gallery-actions">
+          <div v-if="authStore.isEditor" class="gallery-actions">
             <div class="action-tl">
               <el-button plain size="small" class="btn-edit" @click.stop="handleEdit(item)">
                 <el-icon :size="14"><Edit /></el-icon>
@@ -133,7 +124,6 @@ import { Plus, Search, Edit, Delete, Picture, Clock, Loading, Close } from '@ele
 import { useAuthStore } from '../../stores/authStore'
 
 const authStore = useAuthStore()
-const isAdmin = ref(authStore.isEditor)
 
 // Props
 const props = defineProps({
@@ -216,10 +206,6 @@ function clearTagFilter() {
 function goToList() {
   emit('go-list')
 }
-
-function toggleAdmin() {
-  isAdmin.value = !isAdmin.value
-}
 </script>
 
 <style scoped>
@@ -299,9 +285,6 @@ function toggleAdmin() {
   }
   .header-actions .el-button {
     padding: 5px 8px;
-  }
-  .btn-admin-toggle {
-    display: none !important;
   }
 }
 
