@@ -180,11 +180,12 @@ import { ArrowDown, Stamp } from '@element-plus/icons-vue'
 import { tubiApi, sealsApi } from '../../api'
 import { ARTISTS } from '../../tubi/constants'
 import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
-import { useAdminAuth } from '../../composables/useAdminAuth'
+import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-const { isAuthenticated: isAdmin } = useAdminAuth()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isEditor)
 
 const emit = defineEmits(['saved', 'deleted', 'replaced'])
 

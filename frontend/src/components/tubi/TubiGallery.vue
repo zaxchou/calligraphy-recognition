@@ -24,9 +24,9 @@
             更多作品
           </el-button>
           <el-button
+            v-if="authStore.isEditor"
             size="small"
             :type="isAdmin ? 'warning' : 'default'"
-            :icon="isAdmin ? 'lock' : 'unlock'"
             @click="toggleAdmin"
             class="btn-admin-toggle"
           >
@@ -80,13 +80,15 @@
 
           <div v-if="isAdmin" class="gallery-actions">
             <div class="action-tl">
-              <el-button plain size="small" circle class="btn-edit" @click.stop="handleEdit(item)" title="编辑">
-                <el-icon :size="12"><Edit /></el-icon>
+              <el-button plain size="small" class="btn-edit" @click.stop="handleEdit(item)">
+                <el-icon :size="14"><Edit /></el-icon>
+                <span>编辑</span>
               </el-button>
             </div>
             <div class="action-tr">
-              <el-button type="danger" size="small" circle @click.stop="handleDelete(item)" title="删除">
-                <el-icon :size="12"><Delete /></el-icon>
+              <el-button type="danger" size="small" @click.stop="handleDelete(item)">
+                <el-icon :size="14"><Delete /></el-icon>
+                <span>删除</span>
               </el-button>
             </div>
           </div>
@@ -128,9 +130,10 @@
 import { computed, ref } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Plus, Search, Edit, Delete, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
-import { useAdminAuth } from '../../composables/useAdminAuth'
+import { useAuthStore } from '../../stores/authStore'
 
-const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
+const authStore = useAuthStore()
+const isAdmin = ref(authStore.isEditor)
 
 // Props
 const props = defineProps({
@@ -169,7 +172,7 @@ const emit = defineEmits(['item-click', 'edit', 'delete', 'search', 'load-more',
 
 // Local state
 const searchKeyword = ref('')
-const displayLimit = ref(24)
+const displayLimit = ref(16)
 
 // Computed
 const displayedHistoryList = computed(() => {
@@ -214,24 +217,8 @@ function goToList() {
   emit('go-list')
 }
 
-async function toggleAdmin() {
-  if (isAdmin.value) {
-    logout()
-    return
-  }
-  try {
-    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
-      inputType: 'password',
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      closeOnClickModal: false,
-    })
-    if (login(pwd.value)) {
-      ElMessage.success('管理验证通过')
-    } else {
-      ElMessage.error('密码错误')
-    }
-  } catch { /* 用户取消 */ }
+function toggleAdmin() {
+  isAdmin.value = !isAdmin.value
 }
 </script>
 
@@ -428,23 +415,51 @@ async function toggleAdmin() {
 
 .gallery-actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  display: flex;
-  gap: 3px;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transition: opacity 0.2s ease;
 }
 
 .gallery-item:hover .gallery-actions {
   opacity: 1;
 }
 
+.gallery-actions .action-tl,
+.gallery-actions .action-tr {
+  position: absolute;
+  top: 8px;
+  pointer-events: auto;
+}
+
+.gallery-actions .action-tl { left: 8px; }
+.gallery-actions .action-tr { right: 8px; }
+
+.gallery-actions .el-button {
+  height: 22px;
+  padding: 0 10px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d0ccc0;
+  border-radius: 4px;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 3px;
+  color: #333;
+}
+
+.gallery-actions .el-button--danger {
+  color: #c45a3c;
+  border-color: #e8c8c0;
+  background: rgba(255, 240, 235, 0.94);
+}
+
 .gallery-label-tl {
   position: absolute;
   top: 4px;
   left: 4px;
-  z-index: 1;
+  z-index: 2;
 }
 
 .gallery-labels {

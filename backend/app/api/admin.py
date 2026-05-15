@@ -14,12 +14,13 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 
-from app.core.auth import require_admin_role
+from app.core.auth import require_admin_role, require_super_admin, get_user_permissions, ALL_PERMISSION_KEYS
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.user import User
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.artist_claim import ArtistClaim
+from app.models.role_permission import RolePermission
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -48,9 +49,11 @@ class UserOut(BaseModel):
 
 
 class UserUpdateIn(BaseModel):
+    nickname: Optional[str] = None
     role: Optional[str] = None
     subscription_tier: Optional[str] = None
     is_banned: Optional[bool] = None
+    ai_calls_this_month: Optional[int] = None
 
 
 class SubscriptionOut(BaseModel):
@@ -89,6 +92,7 @@ class ConfigOut(BaseModel):
 def _user_to_dict(u: User) -> dict:
     return {
         "id": u.id,
+        "uid": u.uid,
         "nickname": u.nickname,
         "avatar_url": u.avatar_url,
         "email": u.email,
@@ -157,6 +161,9 @@ def update_user(
     if not u:
         raise HTTPException(status_code=404, detail="用户不存在")
 
+    if body.nickname is not None:
+        u.nickname = body.nickname
+
     if body.role is not None:
         valid_roles = {"super_admin", "admin", "editor", "reader", "guest", "banned"}
         if body.role not in valid_roles:
@@ -178,10 +185,36 @@ def update_user(
         elif u.role == "banned":
             u.role = "reader"  # 解封恢复为 reader
 
+    if body.ai_calls_this_month is not None:
+        u.ai_calls_this_month = body.ai_calls_this_month
+
     db.commit()
     db.refresh(u)
     logger.info("管理员 %d 更新了用户 %d: role=%s tier=%s", admin.id, user_id, u.role, u.subscription_tier)
     return _user_to_dict(u)
+
+
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin_role),
+):
+    """删除用户。禁止删除自己和站长（uid=1）。"""
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="不能删除自己的账号")
+    if user_id == 1:
+        raise HTTPException(status_code=400, detail="不能删除站长账号")
+
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    nickname = u.nickname
+    db.delete(u)
+    db.commit()
+    logger.info("管理员 %d 删除了用户 %d (%s)", admin.id, user_id, nickname)
+    return {"ok": True, "message": f"用户「{nickname}」已删除"}
 
 
 # ── 全局统计 ──
@@ -297,3 +330,52 @@ def get_config(admin: User = Depends(require_admin_role)):
         free_library_limit=settings.FREE_LIBRARY_LIMIT,
         ai_model=settings.SILICONFLOW_MODEL or settings.DEEPSEEK_TEXT_MODEL or "deepseek-v4-flash",
     )
+
+
+# ── 权限配置 ──
+
+class PermissionsSaveIn(BaseModel):
+    permissions: dict  # { "admin": [...], "editor": [...], "reader": [...] }
+
+
+@router.get("/permissions")
+def list_permissions(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_super_admin),
+):
+    """获取所有非站长角色的权限配置"""
+    rows = db.query(RolePermission).all()
+    result = {"admin": [], "editor": [], "reader": []}
+    for r in rows:
+        if r.role in result:
+            result[r.role].append(r.permission_key)
+    return {"permissions": result, "all_keys": ALL_PERMISSION_KEYS}
+
+
+@router.put("/permissions")
+def save_permissions(
+    body: PermissionsSaveIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_super_admin),
+):
+    """批量保存权限配置（全量替换）"""
+    valid_roles = {"admin", "editor", "reader"}
+    for role, keys in body.permissions.items():
+        if role not in valid_roles:
+            raise HTTPException(status_code=400, detail=f"无效角色: {role}")
+        # 删除旧权限
+        db.query(RolePermission).filter(RolePermission.role == role).delete()
+        # 插入新权限
+        for key in keys:
+            if key not in ALL_PERMISSION_KEYS:
+                raise HTTPException(status_code=400, detail=f"无效权限键: {key}")
+            db.add(RolePermission(role=role, permission_key=key))
+    db.commit()
+    logger.info("管理员 %d 更新了角色权限配置", admin.id)
+    return {"ok": True, "message": "权限配置已保存"}
+
+
+@router.get("/my-permissions")
+def my_permissions(perms: dict = Depends(get_user_permissions)):
+    """返回当前登录用户的权限列表（供前端侧边栏渲染）"""
+    return perms

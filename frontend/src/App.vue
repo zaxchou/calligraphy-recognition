@@ -24,10 +24,13 @@
           <template v-if="authStore.isLoggedIn">
             <div class="user-menu-wrap" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
               <span class="user-nickname user-dropdown-trigger">
+                <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" class="user-avatar-mini" />
+                <span v-else class="user-avatar-mini-placeholder">{{ authStore.nickname?.charAt(0) || '用' }}</span>
                 {{ authStore.nickname }} <span class="user-arrow" :class="{ open: userMenuOpen }">▾</span>
               </span>
               <div class="user-dropdown" v-show="userMenuOpen" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
-                <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/content-verify')">📂 管理后台</div>
+                <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')">📂 管理后台</div>
+                <div class="user-dropdown-item" @click="go('/user/center')">👤 用户中心</div>
                 <div class="user-dropdown-item" @click="go('/my/knowledge')">📁 我的知识库</div>
                 <div class="user-dropdown-item" @click="go('/content-analysis?my=1')">🎨 我的分析历史</div>
                 <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
@@ -89,8 +92,11 @@
           </router-link>
           <template v-if="authStore.isLoggedIn">
             <div class="drawer-section-label">个人中心</div>
-            <router-link v-if="authStore.isEditor" to="/content-verify" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/content-verify') }" @click="closeMobileMenu">
+            <router-link v-if="authStore.isEditor" to="/admin" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/admin') }" @click="closeMobileMenu">
               <span class="nav-text">📂 管理后台</span>
+            </router-link>
+            <router-link to="/user/center" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+              <span class="nav-text">👤 用户中心</span>
             </router-link>
             <router-link to="/my/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
               <span class="nav-text">📁 我的知识库</span>
@@ -477,11 +483,34 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 4px 8px;
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
   user-select: none;
+}
+
+.user-avatar-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e8e4d8;
+  flex-shrink: 0;
+}
+
+.user-avatar-mini-placeholder {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f5f0e8;
+  border: 1px solid #e8e4d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #c8a45c;
+  flex-shrink: 0;
 }
 
 .user-dropdown-trigger:hover {

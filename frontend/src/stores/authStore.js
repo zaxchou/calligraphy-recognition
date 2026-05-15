@@ -24,6 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = data.token
     userInfo.value = {
       user_id: data.user_id,
+      uid: data.uid || '',
       nickname: data.nickname || `用户${data.user_id}`,
       avatar_url: data.avatar_url || '',
       phone: data.phone || '',
@@ -46,10 +47,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ── 密码登录 ──
-  async function loginByPassword(phone, password) {
+  async function loginByPassword(account, password) {
     loading.value = true
     try {
-      const resp = await api.post('/auth/login-password', { phone, password })
+      const resp = await api.post('/auth/login-password', { account, password })
       _saveSession(resp)
       return resp
     } finally {
@@ -104,6 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
       const resp = await api.get('/auth/profile')
       userInfo.value = {
         user_id: resp.user_id,
+        uid: resp.uid || '',
         nickname: resp.nickname || `用户${resp.user_id}`,
         avatar_url: resp.avatar_url || '',
         phone: resp.phone || '',

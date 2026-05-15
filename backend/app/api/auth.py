@@ -5,15 +5,17 @@ Phase 3: 废弃纯微信登录，新增手机号真实登录系统。
 """
 import hashlib
 import logging
+import os
 import time
+import uuid
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, File, HTTPException, Depends, Query, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.config import DATA_DIR, get_settings
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
@@ -72,15 +74,15 @@ class LoginCodeRequest(BaseModel):
 
 
 class LoginPasswordRequest(BaseModel):
-    phone: str
+    account: str
     password: str
 
-    @field_validator("phone")
+    @field_validator("account")
     @classmethod
-    def validate_phone(cls, v: str) -> str:
+    def validate_account(cls, v: str) -> str:
         v = v.strip()
-        if not v or len(v) < 11:
-            raise ValueError("手机号格式不正确")
+        if not v or len(v) < 2:
+            raise ValueError("请输入手机号或昵称")
         return v
 
 
@@ -105,6 +107,14 @@ def _generate_mock_openid(code: str) -> str:
     """Mock 模式下根据 code 生成一致的假 openid"""
     code_clean = code.replace("mock_", "")
     return "mock_openid_" + hashlib.md5(code_clean.encode()).hexdigest()[:16]
+
+
+def _assign_uid(db: Session, user: User) -> None:
+    """为新用户生成不可变 UID（8位数字，基于 10000000 + id）。"""
+    if user.uid:
+        return
+    user.uid = str(10000000 + user.id)
+    db.commit()
 
 
 def _check_code(phone: str, code: str) -> bool:
@@ -149,6 +159,7 @@ def _user_to_auth_response(user: User, token: str) -> dict:
     return {
         "token": token,
         "user_id": user.id,
+        "uid": user.uid,
         "nickname": user.nickname,
         "avatar_url": user.avatar_url,
         "role": user.role,
@@ -231,12 +242,13 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(user)
+        _assign_uid(db, user)
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="注册失败，请重试")
 
     token = create_access_token(user_id=user.id, role=user.role)
-    logger.info(f"新用户注册: id={user.id}, phone={phone}")
+    logger.info(f"新用户注册: id={user.id}, uid={user.uid}, phone={phone}")
 
     return {
         **{"token": token, "user_id": user.id, "nickname": user.nickname,
@@ -271,8 +283,9 @@ async def login_by_code(req: LoginCodeRequest, db: Session = Depends(get_db)):
         try:
             db.commit()
             db.refresh(user)
+            _assign_uid(db, user)
             is_new_user = True
-            logger.info(f"自动注册新用户: id={user.id}, phone={phone}")
+            logger.info(f"自动注册新用户: id={user.id}, uid={user.uid}, phone={phone}")
         except Exception:
             db.rollback()
             user = db.query(User).filter(User.phone == phone).first()
@@ -291,14 +304,20 @@ async def login_by_code(req: LoginCodeRequest, db: Session = Depends(get_db)):
 async def login_by_password(req: LoginPasswordRequest, db: Session = Depends(get_db)):
     """
     密码登录。
-    - 手机号 + 密码校验 → 返回JWT
+    - 支持 UID / 手机号 / 邮箱 / 昵称 + 密码校验 → 返回JWT
     - 未设置密码 → 提示先用验证码登录后设置密码
     """
-    phone = req.phone.strip()
+    account = req.account.strip()
 
-    user = db.query(User).filter(User.phone == phone).first()
+    # 依次尝试：UID → 手机号 → 邮箱 → 昵称
+    user = None
+    for field, value in [("uid", account), ("phone", account), ("email", account), ("nickname", account)]:
+        user = db.query(User).filter(getattr(User, field) == value).first()
+        if user:
+            break
+
     if not user:
-        raise HTTPException(status_code=401, detail="手机号未注册，请先注册")
+        raise HTTPException(status_code=401, detail="账号未注册，请先注册")
 
     if not user.password_hash:
         raise HTTPException(
@@ -397,8 +416,9 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
         try:
             db.commit()
             db.refresh(user)
+            _assign_uid(db, user)
             is_new_user = True
-            logger.info(f"新用户创建: id={user.id}, openid={openid[:16]}...")
+            logger.info(f"新用户创建: id={user.id}, uid={user.uid}, openid={openid[:16]}...")
         except Exception:
             db.rollback()
             user = db.query(User).filter(User.wechat_openid == openid).first()
@@ -442,6 +462,7 @@ class UpdateProfileRequest(BaseModel):
     nickname: Optional[str] = None
     avatar_url: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
 
 
 @router.get("/profile")
@@ -457,12 +478,14 @@ async def get_profile(
     ).all()
     return {
         "user_id": user.id,
+        "uid": user.uid,
         "nickname": user.nickname,
         "avatar_url": user.avatar_url,
         "email": user.email,
         "phone": user.phone,
         "role": user.role,
         "has_password": bool(user.password_hash),
+        "nickname_changed_at": user.nickname_changed_at.isoformat() if user.nickname_changed_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "claimed_artists": [c.artist_name for c in claims],
     }
@@ -475,12 +498,35 @@ async def update_profile(
     user: User = Depends(get_current_user),
 ):
     """更新个人信息"""
+    user = db.merge(user)  # 重新挂载到当前 session（get_current_user 的 session 已关闭）
     if req.nickname is not None:
+        # 昵称唯一性检测
+        dup = db.query(User).filter(
+            User.nickname == req.nickname,
+            User.id != user.id,
+        ).first()
+        if dup:
+            raise HTTPException(status_code=409, detail="该昵称已被使用")
+        # 一年内只能改一次（管理员跳过）
+        if user.nickname_changed_at and user.role not in ("super_admin", "admin"):
+            from datetime import datetime, timedelta, timezone
+            one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
+            if user.nickname_changed_at > one_year_ago:
+                raise HTTPException(status_code=400, detail="昵称每年只能修改一次")
+        if req.nickname != user.nickname:
+            user.nickname_changed_at = datetime.now(timezone.utc)
         user.nickname = req.nickname
     if req.avatar_url is not None:
         user.avatar_url = req.avatar_url
     if req.email is not None:
         user.email = req.email
+    if req.phone is not None:
+        # 检查手机号是否已被其他用户使用
+        if req.phone:
+            existing = db.query(User).filter(User.phone == req.phone, User.id != user.id).first()
+            if existing:
+                raise HTTPException(status_code=409, detail="该手机号已被其他用户使用")
+        user.phone = req.phone
     db.commit()
     db.refresh(user)
     return {"success": True, "message": "个人信息已更新"}
@@ -493,6 +539,7 @@ async def set_password(
     user: User = Depends(get_current_user),
 ):
     """设置或修改密码"""
+    user = db.merge(user)  # 重新挂载到当前 session
     if user.password_hash:
         # 已有密码，需要验证旧密码
         if not req.old_password:
@@ -503,3 +550,46 @@ async def set_password(
     user.password_hash = hash_password(req.password)
     db.commit()
     return {"success": True, "message": "密码设置成功"}
+
+
+# ════════════════════════════════════════════════════════════════
+# Avatar Upload
+# ════════════════════════════════════════════════════════════════
+
+ALLOWED_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2MB
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """上传用户头像"""
+    user = db.merge(user)  # 重新挂载到当前 session
+    if file.content_type not in ALLOWED_AVATAR_TYPES:
+        raise HTTPException(status_code=400, detail="仅支持 JPG/PNG/WebP/GIF 格式")
+
+    contents = await file.read()
+    if len(contents) > MAX_AVATAR_SIZE:
+        raise HTTPException(status_code=400, detail="头像文件不能超过 2MB")
+
+    # 保存到 data/avatars/
+    avatar_dir = os.path.join(DATA_DIR, "avatars")
+    os.makedirs(avatar_dir, exist_ok=True)
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(avatar_dir, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    # 更新用户头像 URL
+    avatar_url = f"/static/avatars/{filename}"
+    user.avatar_url = avatar_url
+    db.commit()
+
+    logger.info(f"用户 {user.id} 更新头像: {avatar_url}")
+    return {"success": True, "avatar_url": avatar_url}

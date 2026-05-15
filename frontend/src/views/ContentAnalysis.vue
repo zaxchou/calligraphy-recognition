@@ -15,9 +15,6 @@
         <el-select v-model="selectedArtist" size="small" class="claude-select" @change="onArtistChange">
           <el-option v-for="artist in artistList" :key="artist" :value="artist" :label="artist" />
         </el-select>
-        <el-button class="claude-btn-primary" size="small" @click="router.push('/content-verify')">
-          <el-icon><Edit /></el-icon>管理后台
-        </el-button>
       </div>
     </div>
 
@@ -402,7 +399,7 @@ import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { Edit, Download, MagicStick, Loading } from '@element-plus/icons-vue'
+import { Download, MagicStick, Loading } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

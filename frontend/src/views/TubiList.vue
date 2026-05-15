@@ -28,8 +28,7 @@
           <el-button type="primary" size="small" @click="handleSearch" :icon="Search">搜索</el-button>
         </div>
         <el-button size="small" @click="backToTubi" :icon="ArrowLeft" text>返回主页</el-button>
-        <el-button v-if="isAdmin" size="small" type="warning" @click="toggleAdmin">锁定</el-button>
-        <el-button v-else size="small" @click="toggleAdmin" text>管理</el-button>
+        <el-button v-if="authStore.isEditor" size="small" type="warning" @click="isAdmin = !isAdmin">{{ isAdmin ? '锁定' : '管理' }}</el-button>
       </div>
     </div>
 
@@ -225,13 +224,14 @@ import { ArrowLeft, ArrowUp, ArrowDown, Picture, Search, Close } from '@element-
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { tubiApi } from '../api'
+import { useAuthStore } from '../stores/authStore'
 import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
-import { useAdminAuth } from '../composables/useAdminAuth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
-const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
+const isAdmin = ref(authStore.isEditor)
 
 // 排行榜数据
 const rankings = ref([])
@@ -490,25 +490,9 @@ async function deleteItem(item) {
   }
 }
 
-// 管理权限切换
-async function toggleAdmin() {
-  if (isAdmin.value) {
-    logout()
-    return
-  }
-  try {
-    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
-      inputType: 'password',
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      closeOnClickModal: false,
-    })
-    if (login(pwd.value)) {
-      ElMessage.success('管理验证通过')
-    } else {
-      ElMessage.error('密码错误')
-    }
-  } catch { /* 用户取消 */ }
+// 管理权限切换（仅编辑者+可用，切换UI中管理功能的显示）
+function toggleAdmin() {
+  isAdmin.value = !isAdmin.value
 }
 
 // 同步页码到 URL
@@ -998,11 +982,11 @@ onMounted(() => {
   right: 0;
   top: 100%;
   margin-top: 2px;
-  width: 100%;
+  min-width: 100px;
   background: #fff;
-  border: 1px solid var(--border-cream);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--border-cream, #e8e4d8);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   z-index: 1000;
   padding: 4px 0;
 }

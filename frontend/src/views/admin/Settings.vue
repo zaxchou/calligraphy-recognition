@@ -1,95 +1,52 @@
 <template>
   <div class="admin-settings">
     <div class="page-header">
-      <h1 class="page-title">系统配置</h1>
-      <p class="page-subtitle">查看当前系统配额与参数配置</p>
+      <h1 class="page-title">系统信息</h1>
+      <p class="page-subtitle">当前系统配额与参数配置</p>
     </div>
 
-    <el-card class="config-card" shadow="never" v-loading="loading">
+    <el-card class="config-card" shadow="never" v-loading="loading" v-if="config">
       <template #header>
-        <span class="card-header-title">配额配置</span>
+        <span class="card-header-title">AI 调用配额</span>
       </template>
-      <el-descriptions :column="2" border v-if="config">
-        <el-descriptions-item label="免费用户AI调用次数">
-          <span class="config-value">{{ config.free_ai_calls ?? config.free_user?.ai_calls ?? config.ai_calls_free ?? '--' }}</span>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="免费用户每月调用次数">
+          <span class="config-value">{{ config.free_ai_calls_per_month ?? '--' }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="付费用户AI调用次数">
-          <span class="config-value">{{ config.premium_ai_calls ?? config.premium_user?.ai_calls ?? config.ai_calls_premium ?? '--' }}</span>
+        <el-descriptions-item label="付费用户每月调用次数">
+          <span class="config-value">{{ config.paid_ai_calls_per_month ?? '--' }}</span>
         </el-descriptions-item>
+        <el-descriptions-item label="当前 AI 模型">
+          <span class="config-value">{{ config.ai_model ?? '--' }}</span>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <el-card class="config-card" shadow="never" v-loading="loading" v-if="config">
+      <template #header>
+        <span class="card-header-title">存储配额</span>
+      </template>
+      <el-descriptions :column="2" border>
         <el-descriptions-item label="免费用户存储空间">
-          <span class="config-value">{{ formatStorage(config.free_storage ?? config.free_user?.storage ?? config.storage_free) }}</span>
+          <span class="config-value">{{ formatStorage(config.free_storage_bytes) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="付费用户存储空间">
-          <span class="config-value">{{ formatStorage(config.premium_storage ?? config.premium_user?.storage ?? config.storage_premium) }}</span>
+          <span class="config-value">{{ formatStorage(config.paid_storage_bytes) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="免费用户作品库数量">
-          <span class="config-value">{{ config.free_libraries ?? config.free_user?.libraries ?? config.libraries_free ?? '--' }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="付费用户作品库数量">
-          <span class="config-value">{{ config.premium_libraries ?? config.premium_user?.libraries ?? config.libraries_premium ?? '--' }}</span>
-        </el-descriptions-item>
-      </el-descriptions>
-      <div v-else-if="!loading" class="empty-state">
-        暂无配置数据
-      </div>
-    </el-card>
-
-    <el-card class="config-card" shadow="never" v-loading="loading" v-if="config">
-      <template #header>
-        <span class="card-header-title">其他参数</span>
-      </template>
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="最大上传文件大小">
-          <span class="config-value">{{ formatStorage(config.max_upload_size) }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="允许的文件类型">
-          <span class="config-value">{{ config.allowed_file_types?.join(', ') ?? config.allowed_types?.join(', ') ?? '--' }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="注册是否需要审核">
-          <el-tag :type="config.registration_review ? 'warning' : 'success'" size="small">
-            {{ config.registration_review ? '是' : '否' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="系统维护模式">
-          <el-tag :type="config.maintenance_mode ? 'danger' : 'success'" size="small">
-            {{ config.maintenance_mode ? '开启' : '关闭' }}
-          </el-tag>
+          <span class="config-value">{{ config.free_library_limit ?? '--' }}</span>
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
-    <el-card class="config-card" shadow="never" v-loading="loading" v-if="config">
-      <template #header>
-        <span class="card-header-title">管理员信息</span>
-      </template>
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="管理员账号">
-          <span class="config-value">{{ config.admin_email ?? config.admin_username ?? config.admin_account ?? '--' }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="API版本">
-          <span class="config-value">{{ config.api_version ?? 'v1' }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="服务器时间">
-          <span class="config-value">{{ config.server_time ?? '--' }}</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="服务状态">
-          <el-tag :type="config.service_status === 'healthy' ? 'success' : 'warning'" size="small">
-            {{ config.service_status === 'healthy' ? '正常运行' : (config.service_status ?? '--') }}
-          </el-tag>
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <div class="footer-note">
-      <el-icon><InfoFilled /></el-icon>
-      <span>配置修改功能将在后续版本中开放</span>
+    <div v-if="!config && !loading" class="empty-state">
+      暂无配置数据
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { InfoFilled } from '@element-plus/icons-vue'
 import { adminApi } from '../../api/adminApi'
 
 const loading = ref(false)

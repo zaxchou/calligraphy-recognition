@@ -84,6 +84,7 @@
             <span class="btn-label">返回</span>
           </el-button>
           <el-button
+            v-if="authStore.isEditor"
             plain
             size="small"
             class="btn-action btn-admin-toggle"
@@ -448,11 +449,12 @@ import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
 import { sealsApi } from '../api'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
-import { useAdminAuth } from '../composables/useAdminAuth'
+import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
+const authStore = useAuthStore()
+const isAdmin = ref(authStore.isEditor)
 
 // 印章显示
 const sealLibraryCache = ref([])
@@ -551,24 +553,8 @@ function openRanking() {
   window.open('/#/tubi/list', '_blank')
 }
 
-async function toggleAdmin() {
-  if (isAdmin.value) {
-    logout()
-    return
-  }
-  try {
-    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
-      inputType: 'password',
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      closeOnClickModal: false,
-    })
-    if (login(pwd.value)) {
-      ElMessage.success('管理验证通过')
-    } else {
-      ElMessage.error('密码错误')
-    }
-  } catch { /* 用户取消 */ }
+function toggleAdmin() {
+  isAdmin.value = !isAdmin.value
 }
 
 // ── 册页缩略图滚轮横向滚动 ──────────────────────

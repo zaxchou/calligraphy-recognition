@@ -7,9 +7,10 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    uid = Column(String, unique=True, nullable=True, comment="8位唯一用户编号（不可修改）")
     wechat_openid = Column(String, unique=True, nullable=True, comment="微信 OpenID（手机登录后可空）")
     wechat_unionid = Column(String, nullable=True, comment="微信 UnionID")
-    nickname = Column(String, nullable=True, comment="昵称")
+    nickname = Column(String, nullable=True, comment="昵称（每年可修改一次，全局唯一）")
     avatar_url = Column(String, nullable=True, comment="头像URL")
     email = Column(String, nullable=True, comment="邮箱")
     phone = Column(String, nullable=True, comment="手机号")
@@ -19,6 +20,7 @@ class User(Base):
     subscription_expires_at = Column(DateTime, nullable=True, comment="订阅到期时间")
     storage_used_bytes = Column(Integer, default=0, comment="已用存储(bytes)")
     ai_calls_this_month = Column(Integer, default=0, comment="本月AI调用数")
+    nickname_changed_at = Column(DateTime(timezone=True), nullable=True, comment="昵称最后修改时间（限每年一次）")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

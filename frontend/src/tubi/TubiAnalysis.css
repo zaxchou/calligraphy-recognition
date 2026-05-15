@@ -2591,12 +2591,19 @@ gallery-album-tag {
 .gallery-actions .action-tr { right: 8px; }
 
 .gallery-actions .el-button {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  font-size: 13px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
   background: rgba(255, 255, 255, 0.92);
   border-color: #dcdfe6;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gallery-actions .el-button .el-icon {
+  margin-right: 0;
 }
 
 .gallery-info {

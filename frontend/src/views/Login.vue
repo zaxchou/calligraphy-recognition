@@ -14,8 +14,15 @@
           <button :class="['mode-tab', { active: mode === 'password' }]" @click="mode = 'password'">密码登录</button>
         </div>
 
-        <!-- 手机号 -->
-        <input class="login-input" v-model="phone" placeholder="请输入手机号" maxlength="11" type="tel" />
+        <!-- 手机号 / 账号 -->
+        <input
+          class="login-input"
+          v-model="phone"
+          :placeholder="mode === 'password' ? 'UID / 手机号 / 邮箱 / 昵称' : '请输入手机号'"
+          maxlength="20"
+          type="tel"
+          @keyup.enter="mode === 'code' ? handleCodeLogin() : handlePasswordLogin()"
+        />
 
         <!-- 验证码模式 -->
         <template v-if="mode === 'code'">
@@ -111,14 +118,14 @@ async function handleCodeLogin() {
 }
 
 async function handlePasswordLogin() {
-  if (!phone.value.trim() || !password.value) { ElMessage.warning('请输入手机号和密码'); return }
+  if (!phone.value.trim() || !password.value) { ElMessage.warning('请输入账号和密码'); return }
   loading.value = true
   try {
     await authStore.loginByPassword(phone.value.trim(), password.value)
     ElMessage.success('登录成功')
     router.push(route.query.redirect || '/')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '密码错误或未设置密码')
+    ElMessage.error(e?.response?.data?.detail || '登录失败')
   } finally { loading.value = false }
 }
 

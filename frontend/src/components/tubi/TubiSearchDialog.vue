@@ -9,6 +9,7 @@
     <div class="search-dialog-content">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
         <el-button
+          v-if="authStore.isEditor"
           size="small"
           :type="isAdmin ? 'warning' : 'default'"
           @click="toggleAdmin"
@@ -106,9 +107,10 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture, Loading, Search } from '@element-plus/icons-vue'
-import { useAdminAuth } from '../../composables/useAdminAuth'
+import { useAuthStore } from '../../stores/authStore'
 
-const { isAuthenticated: isAdmin, login, logout } = useAdminAuth()
+const authStore = useAuthStore()
+const isAdmin = ref(authStore.isEditor)
 
 const props = defineProps({
   modelValue: {
@@ -143,24 +145,8 @@ watch(localVisible, (val) => {
   emit('update:modelValue', val)
 })
 
-async function toggleAdmin() {
-  if (isAdmin.value) {
-    logout()
-    return
-  }
-  try {
-    const pwd = await ElMessageBox.prompt('请输入管理密码', '管理验证', {
-      inputType: 'password',
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      closeOnClickModal: false,
-    })
-    if (login(pwd.value)) {
-      ElMessage.success('管理验证通过')
-    } else {
-      ElMessage.error('密码错误')
-    }
-  } catch { /* 用户取消 */ }
+function toggleAdmin() {
+  isAdmin.value = !isAdmin.value
 }
 
 function viewItem(row) {

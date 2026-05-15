@@ -1,55 +1,55 @@
 <template>
-  <div class="form-section">
-    <h4 class="form-section-title">选择图片</h4>
-    <el-upload
-      class="batch-upload-area"
-      drag
-      action="#"
-      :auto-upload="false"
-      :on-change="handleFileChange"
-      :on-remove="handleFileRemove"
-      :file-list="fileList"
-      :limit="50"
-      multiple
-      accept="image/*"
-      :disabled="disabled"
-    >
-      <el-icon class="el-icon--upload" size="56"><Upload /></el-icon>
-      <div class="el-upload__text">
-        拖拽图片到此处或 <em>点击选择</em>
-      </div>
-      <div class="el-upload__tip">
-        支持选择多张图片，支持 JPG、PNG 格式
-      </div>
-    </el-upload>
-
-    <div v-if="fileList.length > 0" class="batch-file-preview">
-      <div class="batch-file-header">
-        <div class="batch-file-count">已选择 {{ fileList.length }} 张图片</div>
-        <el-button
-          type="danger"
-          size="small"
-          plain
-          @click="clearAllFiles"
-          class="btn-clear-all"
-        >
-          清空全部
-        </el-button>
-      </div>
-      <div class="batch-file-grid">
-        <div v-for="(file, index) in fileList" :key="file.uid" class="batch-file-card">
-          <div class="batch-file-thumb-wrapper">
-            <img v-if="file.url" :src="file.url" class="batch-file-thumb" />
-            <div v-else class="batch-file-icon">
-              <el-icon size="32"><Picture /></el-icon>
-            </div>
-            <div class="batch-file-delete" @click.stop="removeFile(file, index)">
-              <el-icon><Close /></el-icon>
-            </div>
+  <div class="idle-upload">
+    <!-- Hero drop zone -->
+    <div class="drop-zone" :class="{ 'has-files': fileList.length > 0 }">
+      <el-upload
+        ref="uploadRef"
+        class="drop-zone-upload"
+        drag
+        action="#"
+        :auto-upload="false"
+        :on-change="handleFileChange"
+        :on-remove="handleFileRemove"
+        :file-list="fileList"
+        :limit="50"
+        multiple
+        accept="image/*"
+        :disabled="disabled"
+      >
+        <div class="drop-zone-inner">
+          <div class="drop-icon-wrap">
+            <el-icon class="drop-icon"><PictureFilled /></el-icon>
           </div>
-          <div class="batch-file-info">
-            <span class="batch-file-name">{{ file.name }}</span>
-            <span v-if="file.size" class="batch-file-size">{{ formatFileSize(file.size) }}</span>
+          <p class="drop-title">拖拽图片到此处</p>
+          <p class="drop-subtitle">或 <span class="drop-link">点击选择文件</span></p>
+          <p class="drop-hint">支持 JPG / PNG，每次最多 50 张</p>
+        </div>
+      </el-upload>
+    </div>
+
+    <!-- 文件列表 -->
+    <div v-if="fileList.length > 0" class="file-section">
+      <div class="file-section-hd">
+        <span class="file-count">已选择 <strong>{{ fileList.length }}</strong> 张图片</span>
+        <button class="file-clear" @click="clearAllFiles">清空全部</button>
+      </div>
+      <div class="file-grid">
+        <div
+          v-for="(file, index) in fileList"
+          :key="file.uid"
+          class="file-card"
+        >
+          <div class="file-thumb">
+            <img v-if="file.url" :src="file.url" />
+            <el-icon v-else class="file-thumb-icon"><Picture /></el-icon>
+            <button class="file-remove" @click.stop="removeFile(file, index)" title="移除">
+              <el-icon><Close /></el-icon>
+            </button>
+            <span class="file-index">{{ index + 1 }}</span>
+          </div>
+          <div class="file-meta">
+            <span class="file-name" :title="file.name">{{ file.name }}</span>
+            <span v-if="file.size" class="file-size">{{ formatFileSize(file.size) }}</span>
           </div>
         </div>
       </div>
@@ -59,264 +59,163 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { Upload, Picture, Close } from '@element-plus/icons-vue'
+import { Picture, PictureFilled, Close } from '@element-plus/icons-vue'
 
 const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  }
+  modelValue: { type: Array, default: () => [] },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
-
+const uploadRef = ref(null)
 const fileList = ref([...props.modelValue])
 
-watch(() => props.modelValue, (val) => {
-  fileList.value = [...val]
-}, { deep: true })
+watch(() => props.modelValue, (v) => { fileList.value = [...v] }, { deep: true })
+watch(fileList, (v) => { emit('update:modelValue', v) }, { deep: true })
 
-watch(fileList, (val) => {
-  emit('update:modelValue', val)
-}, { deep: true })
-
-function handleFileChange(uploadFile, uploadFiles) {
+function handleFileChange(_f, uploadFiles) {
   fileList.value = uploadFiles
-  uploadFiles.forEach(file => {
-    if (!file.url && file.raw) {
-      try {
-        file.url = URL.createObjectURL(file.raw)
-      } catch (e) {
-        console.error('生成预览URL失败:', file.name, e)
-      }
-    }
+  uploadFiles.forEach(f => {
+    if (!f.url && f.raw) { try { f.url = URL.createObjectURL(f.raw) } catch {} }
   })
 }
-
-function handleFileRemove(uploadFile, uploadFiles) {
-  if (uploadFile.url) {
-    try {
-      URL.revokeObjectURL(uploadFile.url)
-    } catch (e) {
-      console.error('释放预览URL失败:', e)
-    }
-  }
+function handleFileRemove(f, uploadFiles) {
+  if (f.url) { try { URL.revokeObjectURL(f.url) } catch {} }
   fileList.value = uploadFiles
 }
-
-function removeFile(file, index) {
-  if (file.url) {
-    try {
-      URL.revokeObjectURL(file.url)
-    } catch (e) {
-      console.error('释放预览URL失败:', e)
-    }
-  }
-  fileList.value.splice(index, 1)
+function removeFile(file, idx) {
+  if (file.url) { try { URL.revokeObjectURL(file.url) } catch {} }
+  fileList.value.splice(idx, 1)
 }
-
 function clearAllFiles() {
-  fileList.value.forEach(file => {
-    if (file.url) {
-      try {
-        URL.revokeObjectURL(file.url)
-      } catch (e) {
-        console.error('释放预览URL失败:', e)
-      }
-    }
-  })
+  fileList.value.forEach(f => { if (f.url) try { URL.revokeObjectURL(f.url) } catch {} })
   fileList.value = []
+  // 同步清除 el-upload 内部状态
+  uploadRef.value?.clearFiles()
 }
-
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
+  if (!bytes) return ''
+  const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 </script>
 
 <style scoped>
-/* === Claude 风格上传区域 === */
-
-/* 整个模块水平居中，但预览区域保持全宽 */
-.form-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.idle-upload {
+  max-width: 680px;
+  margin: 0 auto;
 }
 
-.batch-file-preview {
-  width: 100%;
-  align-self: stretch;
+/* ── Drop zone ── */
+.drop-zone {
+  transition: all 0.3s ease;
+}
+.drop-zone.has-files {
+  margin-bottom: 24px;
 }
 
-/* 拖拽区覆盖 */
+:deep(.el-upload) { width: 100%; }
 :deep(.el-upload-dragger) {
-  background: var(--ivory, #faf9f5);
-  border: 2px dashed var(--border-warm, #e8e6dc);
-  border-radius: var(--radius-xl, 16px);
-  transition: all var(--transition-normal, 250ms ease);
+  width: 100%; height: auto; min-height: 200px;
+  padding: 48px 24px;
+  background: #fafaf8;
+  border: 2px dashed #d9d6cc;
+  border-radius: 14px;
+  transition: all 0.25s ease;
+  display: flex; align-items: center; justify-content: center;
 }
-
 :deep(.el-upload-dragger:hover) {
-  border-color: var(--cinnabar, #c96442);
-  background: var(--parchment, #f5f4ed);
+  border-color: #c45a3c;
+  background: #f7f3eb;
 }
 
-:deep(.el-upload__text) {
-  color: var(--charcoal-warm, #4d4c48);
-  font-family: var(--font-sans);
-  font-size: 14px;
+.drop-zone-inner { text-align: center; }
+.drop-icon-wrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(196, 90, 60, 0.06);
+  margin-bottom: 14px;
 }
-
-:deep(.el-upload__text em) {
-  color: var(--cinnabar, #c96442);
-  font-weight: 500;
+.drop-icon { font-size: 26px; color: #c45a3c; }
+.drop-title {
+  font-size: 15px; color: #3a3222; margin: 0 0 6px;
+  font-family: 'Noto Serif SC', serif;
 }
-
-:deep(.el-upload__tip) {
-  color: var(--stone-gray, #87867f);
-  font-size: 12px;
+.drop-subtitle {
+  font-size: 13px; color: #8c7a5c; margin: 0 0 10px;
 }
+.drop-link { color: #c45a3c; font-weight: 500; }
+.drop-hint { font-size: 11px; color: #b0a890; margin: 0; }
 
-:deep(.el-icon--upload) {
-  color: var(--warm-silver, #b0aea5);
-  transition: color var(--transition-fast);
+/* ── File section ── */
+.file-section {
+  background: #fff; border: 1px solid #e8e4d8;
+  border-radius: 12px; overflow: hidden;
 }
-
-:deep(.el-upload-dragger:hover .el-icon--upload) {
-  color: var(--cinnabar, #c96442);
+.file-section-hd {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid #eeece4;
 }
-
-/* 预览区域 */
-.batch-file-preview {
-  margin-top: 24px;
-  padding: 20px;
-  background: var(--pure-white, #ffffff);
-  border-radius: var(--radius-lg, 12px);
-  border: 1px solid var(--border-cream, #f0eee6);
+.file-count { font-size: 13px; color: #5c5346; }
+.file-count strong { color: #3a3222; }
+.file-clear {
+  background: none; border: none; color: #b0a890; font-size: 12px;
+  cursor: pointer; padding: 4px 8px; border-radius: 4px;
+  transition: all 0.15s;
 }
+.file-clear:hover { color: #e05a3c; background: #fef0ec; }
 
-.batch-file-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-cream, #f0eee6);
-}
-
-.batch-file-count {
-  font-size: 14px;
-  color: var(--charcoal-warm, #4d4c48);
-  font-family: var(--font-sans);
-  font-weight: 500;
-}
-
-.btn-clear-all {
-  margin: 0;
-}
-
-/* 预览网格 */
-.batch-file-grid {
+/* ── Grid ── */
+.file-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 14px;
-  max-height: 320px;
-  overflow-y: auto;
-  padding: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 14px; padding: 18px;
 }
+.file-card {
+  background: #faf9f5; border-radius: 10px;
+  overflow: hidden; transition: box-shadow 0.2s;
+}
+.file-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
 
-.batch-file-card {
-  position: relative;
+/* Thumb */
+.file-thumb {
+  position: relative; width: 100%; aspect-ratio: 1;
+  background: #f0ebe0; overflow: hidden;
 }
+.file-thumb img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.3s;
+}
+.file-card:hover .file-thumb img { transform: scale(1.04); }
+.file-thumb-icon {
+  position: absolute; inset: 0; margin: auto;
+  font-size: 32px; color: #c8bd9e;
+}
+.file-index {
+  position: absolute; top: 6px; left: 6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,0.45); color: #fff;
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.file-remove {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(220, 60, 40, 0.85); color: #fff;
+  border: none; cursor: pointer; font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: scale(0.8);
+  transition: all 0.18s ease;
+}
+.file-card:hover .file-remove { opacity: 1; transform: scale(1); }
+.file-remove:hover { background: #d03030; }
 
-.batch-file-thumb-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: var(--radius-md, 8px);
-  overflow: hidden;
-  background: var(--parchment, #f5f4ed);
-  box-shadow: var(--shadow-ring, 0px 0px 0px 1px var(--ring-warm));
-  transition: box-shadow var(--transition-fast);
+/* Meta */
+.file-meta { padding: 8px 10px; }
+.file-name {
+  display: block; font-size: 11px; color: #3a3222;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-
-.batch-file-thumb-wrapper:hover {
-  box-shadow: var(--shadow-whisper, rgba(0,0,0,0.05) 0px 4px 24px);
-}
-
-.batch-file-thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.batch-file-icon {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--warm-silver, #b0aea5);
-}
-
-/* 删除按钮 — 精致小红点 */
-.batch-file-delete {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  background: rgba(181, 51, 51, 0.85);
-  backdrop-filter: blur(4px);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: white;
-  font-size: 10px;
-  opacity: 0;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-  transform: scale(0.8);
-}
-
-.batch-file-thumb-wrapper:hover .batch-file-delete {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.batch-file-delete:hover {
-  background: var(--error-crimson, #b53333);
-}
-
-/* 文件信息 */
-.batch-file-info {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.batch-file-name {
-  font-size: 12px;
-  color: var(--near-black, #141413);
-  font-family: var(--font-sans);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.batch-file-size {
-  font-size: 11px;
-  color: var(--stone-gray, #87867f);
-  font-family: var(--font-sans);
-}
+.file-size { font-size: 10px; color: #b0a890; }
 </style>

@@ -3,9 +3,7 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 120000, // 增加到120秒，因为AI识别可能需要较长时间
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  // 不设默认 Content-Type，让 axios 自动判断（JSON body → application/json, FormData → multipart/form-data）
 })
 
 // ── 网络错误自动重试（最多1次，5秒后重试）──────────────────────────

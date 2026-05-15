@@ -93,11 +93,30 @@ const routes = [
     component: () => import('../views/ContentAnalysis.vue'),
     meta: { title: '题跋大数据分析' }
   },
+  // 管理后台（新布局：侧边栏 + 内容区）
+  {
+    path: '/admin',
+    component: () => import('../views/admin/AdminLayout.vue'),
+    meta: { title: '管理后台', requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Admin',
+        component: () => import('../views/ContentVerify.vue'),
+        meta: { title: '管理后台' },
+      },
+      {
+        path: 'permissions',
+        name: 'AdminPermissions',
+        component: () => import('../views/admin/Permissions.vue'),
+        meta: { title: '权限配置', requiresSuperAdmin: true },
+      },
+    ],
+  },
+  // 旧路由重定向
   {
     path: '/content-verify',
-    name: 'ContentVerify',
-    component: () => import('../views/ContentVerify.vue'),
-    meta: { title: '管理后台' }
+    redirect: to => ({ path: '/admin', query: to.query }),
   },
   {
     path: '/annotate/:id',
@@ -118,6 +137,12 @@ const routes = [
     component: () => import('../views/MyKnowledge.vue'),
     meta: { title: '我的知识库', requiresAuth: true }
   },
+  {
+    path: '/user/center',
+    name: 'UserCenter',
+    component: () => import('../views/UserCenter.vue'),
+    meta: { title: '用户中心', requiresAuth: true }
+  },
 ]
 
 const router = createRouter({
@@ -131,9 +156,6 @@ router.afterEach((to) => {
   document.title = pageTitle ? `${pageTitle} - ${SITE_NAME}` : SITE_NAME
 })
 
-// 管理后台路由保护（旧版密码鉴权，保留兼容）
-const ADMIN_ROUTES = ['ContentVerify', 'AlbumManager', 'TagManager', 'ArtistInfoManager', 'ArtistRulesManager']
-
 router.beforeEach((to, _from, next) => {
   // 需要登录的路由
   if (to.meta?.requiresAuth) {
@@ -143,10 +165,19 @@ router.beforeEach((to, _from, next) => {
       return
     }
   }
-  // 旧版管理路由：密码鉴权
-  if (ADMIN_ROUTES.includes(to.name)) {
-    const auth = localStorage.getItem('admin_auth')
-    if (!auth || Date.now() > parseInt(auth, 10)) {
+  // 需要管理员权限的路由
+  if (to.meta?.requiresAdmin) {
+    const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
+    const role = userInfo?.role
+    if (role !== 'admin' && role !== 'super_admin') {
+      next({ name: 'Home' })
+      return
+    }
+  }
+  // 需要站长权限的路由
+  if (to.meta?.requiresSuperAdmin) {
+    const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
+    if (userInfo?.role !== 'super_admin') {
       next({ name: 'Home' })
       return
     }

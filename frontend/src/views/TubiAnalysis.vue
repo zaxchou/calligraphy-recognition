@@ -173,7 +173,7 @@ watch(
 // 历史记录相关
 const refreshAnalyticsKey = ref(0) // 递增触发 TubiHome 刷新分析数据
 const historyList = ref([])
-const historyPageSize = ref(16)
+const historyPageSize = ref(24)
 const historyPage = ref(1)
 const historyHasMore = ref(true)
 
@@ -1411,7 +1411,7 @@ async function loadHistory(page = 1) {
   historyLoading.value = true
   try {
     const skip = (page - 1) * historyPageSize.value
-    const artistParam = currentArtist.value && currentArtist.value !== '李鱓' ? currentArtist.value : undefined
+    const artistParam = currentArtist.value || undefined
     const response = await tubiApi.getAllResults(skip, historyPageSize.value, artistParam)
     console.log('历史记录API响应:', response)
     if (response.success) {

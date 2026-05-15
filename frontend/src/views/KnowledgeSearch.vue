@@ -107,9 +107,10 @@ import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
 import TableResultCard from '@/components/TableResultCard.vue'
-import { useAdminAuth } from '../composables/useAdminAuth'
+import { useAuthStore } from '../stores/authStore'
 
-const { isAuthenticated: isAdmin } = useAdminAuth()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isEditor)
 const router = useRouter()
 const route = useRoute()
 import DocumentOutline from '@/components/DocumentOutline.vue'

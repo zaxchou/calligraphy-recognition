@@ -43,6 +43,10 @@ settings = get_settings()
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
 
+# 执行增量迁移（幂等）
+from app.core.database import run_migrations
+run_migrations()
+
 # 确保常用查询字段有索引（给已有表加索引）
 _INDEX_SQL = """
 CREATE INDEX IF NOT EXISTS ix_tubi_analyses_created_at ON tubi_analyses(created_at);

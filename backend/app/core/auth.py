@@ -207,6 +207,93 @@ async def require_editor(user: "User" = Depends(get_current_user)):
     return user
 
 
+# ════════════════════════════════════════════════════════════════
+# Granular permission check
+# ════════════════════════════════════════════════════════════════
+
+ALL_PERMISSION_KEYS = [
+    "content.verify", "content.annotate", "content.upload", "content.batch",
+    "metadata.dimensions", "metadata.seals", "metadata.albums",
+    "metadata.strips", "metadata.tags",
+    "knowledge.artist_info", "knowledge.artist_rules",
+    "tools.dedup",
+    "system.dashboard", "system.users", "system.permissions", "system.config",
+]
+
+PERMISSION_CATEGORIES = {
+    "内容管理": ["content.verify", "content.annotate", "content.upload", "content.batch"],
+    "元数据管理": ["metadata.dimensions", "metadata.seals", "metadata.albums", "metadata.strips", "metadata.tags"],
+    "知识管理": ["knowledge.artist_info", "knowledge.artist_rules"],
+    "工具": ["tools.dedup"],
+    "系统管理": ["system.dashboard", "system.users", "system.permissions", "system.config"],
+}
+
+PERMISSION_LABELS = {
+    "content.verify": "题跋校对",
+    "content.annotate": "标注图校对",
+    "content.upload": "作品上传",
+    "content.batch": "批量操作",
+    "metadata.dimensions": "尺寸录入",
+    "metadata.seals": "印章管理",
+    "metadata.albums": "册页管理",
+    "metadata.strips": "条屏管理",
+    "metadata.tags": "标签管理",
+    "knowledge.artist_info": "作者信息",
+    "knowledge.artist_rules": "画家规则",
+    "tools.dedup": "作品查重",
+    "system.dashboard": "系统概览",
+    "system.users": "用户管理",
+    "system.permissions": "权限配置",
+    "system.config": "系统配置",
+}
+
+
+def require_permission(permission_key: str) -> Callable:
+    """
+    细粒度权限检查。
+    super_admin → 直接通过
+    其他角色 → 查 role_permissions 表
+    """
+    from app.core.database import SessionLocal
+    from app.models.role_permission import RolePermission
+    from app.models.user import User as UserModel
+
+    async def _check(user: UserModel = Depends(get_current_user)) -> UserModel:
+        if user.role == "super_admin":
+            return user
+        db = SessionLocal()
+        try:
+            has = db.query(RolePermission).filter(
+                RolePermission.role == user.role,
+                RolePermission.permission_key == permission_key,
+            ).first()
+            if not has:
+                raise HTTPException(status_code=403, detail="无此操作权限")
+            return user
+        finally:
+            db.close()
+    return _check
+
+
+async def get_user_permissions(user: "User" = Depends(get_current_user)):
+    """返回当前用户的所有权限键列表。用于前端侧边栏渲染。"""
+    from app.core.database import SessionLocal
+    from app.models.role_permission import RolePermission
+    from app.models.user import User as UserModel
+
+    if user.role == "super_admin":
+        return {"role": user.role, "permissions": list(ALL_PERMISSION_KEYS)}
+
+    db = SessionLocal()
+    try:
+        rows = db.query(RolePermission.permission_key).filter(
+            RolePermission.role == user.role,
+        ).all()
+        return {"role": user.role, "permissions": [r[0] for r in rows]}
+    finally:
+        db.close()
+
+
 def require_artist_access(artist_name: str) -> Callable:
     """
     画家属地访问控制 — 返回一个 FastAPI 依赖。

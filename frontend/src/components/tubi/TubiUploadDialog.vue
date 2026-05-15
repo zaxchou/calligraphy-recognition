@@ -12,7 +12,7 @@
     title="上传作品"
     width="700px"
     :close-on-click-modal="true"
-    class="modern-form-dialog batch-upload-dialog"
+    align-center class="modern-form-dialog batch-upload-dialog"
     :before-close="handleBatchDialogClose"
   >
     <!-- 动态 phase 组件 -->

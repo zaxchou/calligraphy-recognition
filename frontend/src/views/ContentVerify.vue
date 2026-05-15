@@ -37,298 +37,305 @@
         <el-button plain size="small" class="btn-edit" @click="openBatchReanalyze" :loading="analyzing">
           <el-icon><Refresh /></el-icon>批量重跑
         </el-button>
-        <el-button plain size="small" class="btn-edit" @click="startIncrementalSmartProcess" :loading="incrementalProcessing">
-          <el-icon><MagicStick /></el-icon>增量智能处理
-        </el-button>
-        <el-button plain size="small" class="btn-edit" @click="router.push('/content-analysis')">
-          <el-icon><HomeFilled /></el-icon>返回
-        </el-button>
       </div>
     </div>
 
+
+  <!-- 批量翻译选项弹窗 -->
+  <el-dialog
+    v-model="showTranslateModeDialog"
+    title="批量翻译选项"
+    width="420px"
+    class="translate-mode-dialog claude-dialog"
+  >
+    <div class="translate-mode-options">
+      <div class="mode-option" @click="startBatchTranslate('untranslated')">
+        <div class="mode-icon"><el-icon><Bottom /></el-icon></div>
+        <div class="mode-info">
+          <div class="mode-title">仅翻译未翻译的</div>
+          <div class="mode-desc">跳过已有翻译的记录，只翻译尚未翻译的条目</div>
+        </div>
+        <el-icon class="mode-arrow"><Right /></el-icon>
+      </div>
+      <div class="mode-option" @click="startBatchTranslate('all')">
+        <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
+        <div class="mode-info">
+          <div class="mode-title">重新翻译全部</div>
+          <div class="mode-desc">对所有已校对记录重新翻译（会覆盖已有翻译）</div>
+        </div>
+        <el-icon class="mode-arrow"><Right /></el-icon>
+      </div>
+    </div>
+  </el-dialog>
+
+  <!-- 批量翻译进度弹窗 -->
+  <el-dialog
+    v-model="showTranslateProgress"
+    title="批量翻译进度"
+    width="420px"
+    :close-on-click-modal="false"
+    :show-close="false"
+    class="translate-progress-dialog claude-dialog"
+  >
+    <div class="progress-body">
+      <div class="progress-info">
+        <span class="progress-label">正在翻译：</span>
+        <span class="progress-value">{{ translateProgress.current }} / {{ translateProgress.total }}</span>
+      </div>
+      <el-progress
+        :percentage="translateProgress.percent"
+        :color="translateProgressColor"
+        :stroke-width="8"
+        class="translate-progress-bar"
+      />
+      <div class="progress-status">
+        <span v-if="translateProgress.status === 'translating'" class="status-text">翻译中，请稍候...</span>
+        <span v-else-if="translateProgress.status === 'done'" class="status-text done">翻译完成！</span>
+      </div>
+    </div>
+    <template #footer>
+      <el-button plain @click="cancelBatchTranslate" :disabled="translateProgress.status === 'done'">取消</el-button>
+      <el-button plain class="btn-edit" @click="showTranslateProgress = false" :disabled="translateProgress.status !== 'done'">关闭</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 解析文字选项弹窗 -->
+  <el-dialog
+    v-model="showAnalyzeModeDialog"
+    title="解析文字"
+    width="420px"
+    class="translate-mode-dialog claude-dialog"
+  >
+    <div class="translate-mode-options">
+      <div class="mode-option" @click="startIncrementalSmartProcess()">
+        <div class="mode-icon"><el-icon><Refresh /></el-icon></div>
+        <div class="mode-info">
+          <div class="mode-title">增量重跑</div>
+          <div class="mode-desc">仅处理尚未分析或分析已过期的作品，保留已有结果</div>
+        </div>
+        <el-icon class="mode-arrow"><Right /></el-icon>
+      </div>
+      <div class="mode-option" @click="startBatchAnalyze('full')">
+        <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
+        <div class="mode-info">
+          <div class="mode-title">全部重跑</div>
+          <div class="mode-desc">重新分析所有作品的主题和情感（会覆盖已有分析结果）</div>
+        </div>
+        <el-icon class="mode-arrow"><Right /></el-icon>
+      </div>
+    </div>
+    <div v-if="batchResultData" style="margin-top:12px; padding:10px; background:#f5f7fa; border-radius:6px; font-size:13px; color:#333;">
+      <p style="margin:0 0 6px; font-weight:600;">📋 上次结果</p>
+      <p style="margin:2px 0;">{{ batchResultData.message }}</p>
+      <p v-if="batchResultData.report" style="margin:2px 0; color:#999;">
+        可信度 {{ batchResultData.report.confidence_stats?.average || '?' }} | LLM修正 {{ batchResultData.report.llm_corrected || 0 }} 幅 | {{ batchResultData.report.updated_at || '' }}
+      </p>
+      <el-button text size="small" type="primary" @click="showAnalyzeModeDialog = false; showBatchResultDialog = true" style="margin-top:4px;">查看完整报告</el-button>
+    </div>
+    <template #footer>
+      <el-button @click="showAnalyzeModeDialog = false">取消</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 批量重新分析进度弹窗 -->
+  <el-dialog
+    v-model="showAnalyzeProgress"
+    title="批量重新分析进度"
+    width="420px"
+    :close-on-click-modal="false"
+    :show-close="false"
+    class="translate-progress-dialog claude-dialog"
+  >
+    <div class="progress-body">
+      <div class="progress-info">
+        <span class="progress-label">正在分析：</span>
+        <span class="progress-value">{{ analyzeProgress.current }} / {{ analyzeProgress.total }}</span>
+      </div>
+      <el-progress
+        :percentage="analyzeProgress.percent"
+        :color="analyzeProgressColor"
+        :stroke-width="8"
+        class="translate-progress-bar"
+      />
+      <div class="progress-status">
+        <span v-if="analyzeProgress.status === 'analyzing'" class="status-text">分析中，请稍候...</span>
+        <span v-else-if="analyzeProgress.status === 'done'" class="status-text done">分析完成！</span>
+      </div>
+    </div>
+    <template #footer>
+      <el-button plain @click="cancelBatchAnalyze" :disabled="analyzeProgress.status === 'done'">取消</el-button>
+      <el-button plain class="btn-edit" @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">关闭</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 批量重跑结果弹窗 -->
+  <el-dialog
+    v-model="showBatchResultDialog"
+    title="批量重跑结果"
+    width="860px"
+    class="claude-dialog batch-result-dialog"
+    @close="closeBatchResultDialog"
+  >
+    <div v-if="batchResultData" class="batch-result-body">
+      <!-- 概览 -->
+      <div class="report-header">
+        <div class="report-title">{{ batchResultData.message }}</div>
+        <div class="report-summary">
+          重跑完成: <span class="highlight">{{ batchResultData.updated }}</span> 幅更新,
+          <span :class="batchResultData.errors > 0 ? 'error' : ''">{{ batchResultData.errors }}</span> 幅错误
+        </div>
+      </div>
+
+      <!-- 一、主题覆盖率对比 -->
+      <div class="report-section" v-if="batchResultData.report?.theme_coverage?.length">
+        <div class="section-title">一、主题覆盖率对比（新 vs 旧，含1st/2nd/3rd）</div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>主题</th>
+              <th>旧</th>
+              <th>旧%</th>
+              <th>新</th>
+              <th>新%</th>
+              <th>变化</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in batchResultData.report.theme_coverage" :key="item.name">
+              <td>{{ item.name }}</td>
+              <td>{{ item.old_count }}</td>
+              <td>{{ item.old_percent }}%</td>
+              <td>{{ item.new_count }}</td>
+              <td>{{ item.new_percent }}%</td>
+              <td :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
+                {{ item.change > 0 ? '+' : '' }}{{ item.change }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 一.5、第一主题分布对比 -->
+      <div class="report-section" v-if="batchResultData.report?.primary_theme_distribution?.length">
+        <div class="section-title">一.5、第一主题分布对比（新 vs 旧）</div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>主题</th>
+              <th>旧</th>
+              <th>旧%</th>
+              <th>新</th>
+              <th>新%</th>
+              <th>变化</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in batchResultData.report.primary_theme_distribution" :key="item.name">
+              <td>{{ item.name }}</td>
+              <td>{{ item.old_count }}</td>
+              <td>{{ item.old_percent }}%</td>
+              <td>{{ item.new_count }}</td>
+              <td>{{ item.new_percent }}%</td>
+              <td :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
+                {{ item.change > 0 ? '+' : '' }}{{ item.change }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 二、情感分布对比 -->
+      <div class="report-section" v-if="batchResultData.report?.sentiment_distribution?.length">
+        <div class="section-title">二、情感分布对比（新 vs 旧）</div>
+        <div class="sentiment-row" v-for="item in batchResultData.report.sentiment_distribution" :key="item.polarity">
+          <span class="sentiment-label" :class="item.polarity">{{ item.polarity }}</span>
+          <span>: 旧 {{ item.old_count }}({{ item.old_percent }}%) → 新 {{ item.new_count }}({{ item.new_percent }}%)</span>
+          <span :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
+            {{ item.change > 0 ? '+' : '' }}{{ item.change }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 三、情感分数对比 -->
+      <div class="report-section" v-if="batchResultData.report?.emotion_score_stats?.new_average !== undefined">
+        <div class="section-title">三、情感分数对比</div>
+        <div class="score-row">
+          新均值: <span class="highlight">{{ batchResultData.report.emotion_score_stats.new_average > 0 ? '+' : '' }}{{ batchResultData.report.emotion_score_stats.new_average }}</span>
+          <span v-if="batchResultData.report.emotion_score_stats.old_average !== null">
+            (旧: {{ batchResultData.report.emotion_score_stats.old_average > 0 ? '+' : '' }}{{ batchResultData.report.emotion_score_stats.old_average }})
+          </span>
+        </div>
+        <div class="score-row">
+          新范围: {{ batchResultData.report.emotion_score_stats.new_min }} ~ {{ batchResultData.report.emotion_score_stats.new_max }}
+        </div>
+      </div>
+
+      <!-- 四、主题变化路径 -->
+      <div class="report-section" v-if="batchResultData.report?.theme_change_paths?.length">
+        <div class="section-title">四、主题变化路径（Top 10）</div>
+        <div class="change-path" v-for="(item, idx) in batchResultData.report.theme_change_paths" :key="idx">
+          {{ item.from }} → {{ item.to }}: {{ item.count }} 幅
+        </div>
+        <div v-if="batchResultData.report.theme_change_paths.length === 0" class="no-change">无主题变化</div>
+      </div>
+
+      <!-- 四.五、可信度分布（v2.1） -->
+      <div class="report-section" v-if="batchResultData.report?.confidence_stats">
+        <div class="section-title">四.五、可信度分布</div>
+        <div class="confidence-grid">
+          <div class="conf-bar-row">
+            <span class="conf-label">高 (≥0.7)</span>
+            <div class="conf-bar-track"><div class="conf-bar high" :style="{ width: batchResultData.report.confidence_stats.high_percent + '%' }"></div></div>
+            <span class="conf-count">{{ batchResultData.report.confidence_stats.high }} 幅 ({{ batchResultData.report.confidence_stats.high_percent }}%)</span>
+          </div>
+          <div class="conf-bar-row">
+            <span class="conf-label">中 (0.4~0.7)</span>
+            <div class="conf-bar-track"><div class="conf-bar mid" :style="{ width: batchResultData.report.confidence_stats.mid_percent + '%' }"></div></div>
+            <span class="conf-count">{{ batchResultData.report.confidence_stats.mid }} 幅 ({{ batchResultData.report.confidence_stats.mid_percent }}%)</span>
+          </div>
+          <div class="conf-bar-row">
+            <span class="conf-label">低 (&lt;0.4)</span>
+            <div class="conf-bar-track"><div class="conf-bar low" :style="{ width: batchResultData.report.confidence_stats.low_percent + '%' }"></div></div>
+            <span class="conf-count">{{ batchResultData.report.confidence_stats.low }} 幅 ({{ batchResultData.report.confidence_stats.low_percent }}%)</span>
+          </div>
+        </div>
+        <div class="conf-avg">平均可信度：{{ batchResultData.report.confidence_stats.average }}</div>
+        <div v-if="batchResultData.report.low_conf_count > 0" class="conf-hint">
+          ⚠️ {{ batchResultData.report.low_conf_count }} 幅作品可信度 &lt; 0.6，建议运行分歧检测以校准规则
+        </div>
+        <div v-if="batchResultData.report.llm_corrected > 0" class="conf-hint" style="color:#67c23a">
+          ✅ DeepSeek 自动修正了 {{ batchResultData.report.llm_corrected }} 幅低可信度作品
+        </div>
+      </div>
+
+      <!-- 五、偏差检测与调整建议 -->
+      <div class="report-section" v-if="batchResultData.report?.deviation_checks?.length">
+        <div class="section-title">五、偏差检测与调整建议（基于第一主题）</div>
+        <div class="deviation-item" v-for="(item, idx) in batchResultData.report.deviation_checks" :key="idx">
+          <span :class="item.status === 'ok' ? 'status-ok' : 'status-warn'">
+            [{{ item.status === 'ok' ? 'OK' : '!' }}]
+          </span>
+          <span class="deviation-theme">{{ item.theme }}:</span>
+          <span>{{ item.suggestion }}</span>
+        </div>
+      </div>
+
+      <div class="report-footer">
+        重跑完成。请根据偏差检测结果调整规则，然后重新运行。
+      </div>
+    </div>
+    <template #footer>
+      <el-button plain size="small" @click="copyReportAsMarkdown" :disabled="!batchResultData">
+        <el-icon><CopyDocument /></el-icon>复制报告(MD)
+      </el-button>
+      <el-button @click="closeBatchResultDialog">取消</el-button>
+      <el-button type="primary" @click="rerunFromResult" :loading="analyzing">重新分析</el-button>
+    </template>
+  </el-dialog>
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" class="admin-tabs">
       <!-- 题跋校对 -->
       <el-tab-pane label="题跋校对" name="verify">
-
-    <!-- 批量翻译选项弹窗 -->
-    <el-dialog
-      v-model="showTranslateModeDialog"
-      title="批量翻译选项"
-      width="420px"
-      class="translate-mode-dialog claude-dialog"
-    >
-      <div class="translate-mode-options">
-        <div class="mode-option" @click="startBatchTranslate('untranslated')">
-          <div class="mode-icon"><el-icon><Bottom /></el-icon></div>
-          <div class="mode-info">
-            <div class="mode-title">仅翻译未翻译的</div>
-            <div class="mode-desc">跳过已有翻译的记录，只翻译尚未翻译的条目</div>
-          </div>
-          <el-icon class="mode-arrow"><Right /></el-icon>
-        </div>
-        <div class="mode-option" @click="startBatchTranslate('all')">
-          <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
-          <div class="mode-info">
-            <div class="mode-title">重新翻译全部</div>
-            <div class="mode-desc">对所有已校对记录重新翻译（会覆盖已有翻译）</div>
-          </div>
-          <el-icon class="mode-arrow"><Right /></el-icon>
-        </div>
-      </div>
-    </el-dialog>
-
-    <!-- 批量翻译进度弹窗 -->
-    <el-dialog
-      v-model="showTranslateProgress"
-      title="批量翻译进度"
-      width="420px"
-      :close-on-click-modal="false"
-      :show-close="false"
-      class="translate-progress-dialog claude-dialog"
-    >
-      <div class="progress-body">
-        <div class="progress-info">
-          <span class="progress-label">正在翻译：</span>
-          <span class="progress-value">{{ translateProgress.current }} / {{ translateProgress.total }}</span>
-        </div>
-        <el-progress
-          :percentage="translateProgress.percent"
-          :color="translateProgressColor"
-          :stroke-width="8"
-          class="translate-progress-bar"
-        />
-        <div class="progress-status">
-          <span v-if="translateProgress.status === 'translating'" class="status-text">翻译中，请稍候...</span>
-          <span v-else-if="translateProgress.status === 'done'" class="status-text done">翻译完成！</span>
-        </div>
-      </div>
-      <template #footer>
-        <el-button plain @click="cancelBatchTranslate" :disabled="translateProgress.status === 'done'">取消</el-button>
-        <el-button plain class="btn-edit" @click="showTranslateProgress = false" :disabled="translateProgress.status !== 'done'">关闭</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 批量重跑确认弹窗 -->
-    <el-dialog
-      v-model="showAnalyzeModeDialog"
-      title="批量重跑"
-      width="420px"
-      class="translate-mode-dialog claude-dialog"
-    >
-      <div style="padding: 12px 0; color: #666; line-height: 1.8;">
-        <p>使用<b>统一混合引擎</b>重新分析所有作品的主题和情感。</p>
-        <p style="color: #999; font-size: 13px;">• 规则引擎 → 低可信度自动调 DeepSeek 修正<br>• 会覆盖已有分析结果<br>• 基于 v5.6 规则引擎</p>
-        <div v-if="batchResultData" style="margin-top:12px; padding:10px; background:#f5f7fa; border-radius:6px; font-size:13px; color:#333;">
-          <p style="margin:0 0 6px; font-weight:600;">📋 上次结果</p>
-          <p style="margin:2px 0;">{{ batchResultData.message }}</p>
-          <p v-if="batchResultData.report" style="margin:2px 0; color:#999;">
-            可信度 {{ batchResultData.report.confidence_stats?.average || '?' }} | LLM修正 {{ batchResultData.report.llm_corrected || 0 }} 幅 | {{ batchResultData.report.updated_at || '' }}
-          </p>
-          <el-button text size="small" type="primary" @click="showAnalyzeModeDialog = false; showBatchResultDialog = true" style="margin-top:4px;">查看完整报告</el-button>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="showAnalyzeModeDialog = false">取消</el-button>
-        <el-button type="primary" @click="startBatchAnalyze('full')" :loading="analyzing">确定重跑</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 批量重新分析进度弹窗 -->
-    <el-dialog
-      v-model="showAnalyzeProgress"
-      title="批量重新分析进度"
-      width="420px"
-      :close-on-click-modal="false"
-      :show-close="false"
-      class="translate-progress-dialog claude-dialog"
-    >
-      <div class="progress-body">
-        <div class="progress-info">
-          <span class="progress-label">正在分析：</span>
-          <span class="progress-value">{{ analyzeProgress.current }} / {{ analyzeProgress.total }}</span>
-        </div>
-        <el-progress
-          :percentage="analyzeProgress.percent"
-          :color="analyzeProgressColor"
-          :stroke-width="8"
-          class="translate-progress-bar"
-        />
-        <div class="progress-status">
-          <span v-if="analyzeProgress.status === 'analyzing'" class="status-text">分析中，请稍候...</span>
-          <span v-else-if="analyzeProgress.status === 'done'" class="status-text done">分析完成！</span>
-        </div>
-      </div>
-      <template #footer>
-        <el-button plain @click="cancelBatchAnalyze" :disabled="analyzeProgress.status === 'done'">取消</el-button>
-        <el-button plain class="btn-edit" @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">关闭</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 批量重跑结果弹窗 -->
-    <el-dialog
-      v-model="showBatchResultDialog"
-      title="批量重跑结果"
-      width="860px"
-      class="claude-dialog batch-result-dialog"
-      @close="closeBatchResultDialog"
-    >
-      <div v-if="batchResultData" class="batch-result-body">
-        <!-- 概览 -->
-        <div class="report-header">
-          <div class="report-title">{{ batchResultData.message }}</div>
-          <div class="report-summary">
-            重跑完成: <span class="highlight">{{ batchResultData.updated }}</span> 幅更新,
-            <span :class="batchResultData.errors > 0 ? 'error' : ''">{{ batchResultData.errors }}</span> 幅错误
-          </div>
-        </div>
-
-        <!-- 一、主题覆盖率对比 -->
-        <div class="report-section" v-if="batchResultData.report?.theme_coverage?.length">
-          <div class="section-title">一、主题覆盖率对比（新 vs 旧，含1st/2nd/3rd）</div>
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th>主题</th>
-                <th>旧</th>
-                <th>旧%</th>
-                <th>新</th>
-                <th>新%</th>
-                <th>变化</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in batchResultData.report.theme_coverage" :key="item.name">
-                <td>{{ item.name }}</td>
-                <td>{{ item.old_count }}</td>
-                <td>{{ item.old_percent }}%</td>
-                <td>{{ item.new_count }}</td>
-                <td>{{ item.new_percent }}%</td>
-                <td :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
-                  {{ item.change > 0 ? '+' : '' }}{{ item.change }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 一.5、第一主题分布对比 -->
-        <div class="report-section" v-if="batchResultData.report?.primary_theme_distribution?.length">
-          <div class="section-title">一.5、第一主题分布对比（新 vs 旧）</div>
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th>主题</th>
-                <th>旧</th>
-                <th>旧%</th>
-                <th>新</th>
-                <th>新%</th>
-                <th>变化</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in batchResultData.report.primary_theme_distribution" :key="item.name">
-                <td>{{ item.name }}</td>
-                <td>{{ item.old_count }}</td>
-                <td>{{ item.old_percent }}%</td>
-                <td>{{ item.new_count }}</td>
-                <td>{{ item.new_percent }}%</td>
-                <td :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
-                  {{ item.change > 0 ? '+' : '' }}{{ item.change }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 二、情感分布对比 -->
-        <div class="report-section" v-if="batchResultData.report?.sentiment_distribution?.length">
-          <div class="section-title">二、情感分布对比（新 vs 旧）</div>
-          <div class="sentiment-row" v-for="item in batchResultData.report.sentiment_distribution" :key="item.polarity">
-            <span class="sentiment-label" :class="item.polarity">{{ item.polarity }}</span>
-            <span>: 旧 {{ item.old_count }}({{ item.old_percent }}%) → 新 {{ item.new_count }}({{ item.new_percent }}%)</span>
-            <span :class="item.change > 0 ? 'up' : item.change < 0 ? 'down' : ''">
-              {{ item.change > 0 ? '+' : '' }}{{ item.change }}
-            </span>
-          </div>
-        </div>
-
-        <!-- 三、情感分数对比 -->
-        <div class="report-section" v-if="batchResultData.report?.emotion_score_stats?.new_average !== undefined">
-          <div class="section-title">三、情感分数对比</div>
-          <div class="score-row">
-            新均值: <span class="highlight">{{ batchResultData.report.emotion_score_stats.new_average > 0 ? '+' : '' }}{{ batchResultData.report.emotion_score_stats.new_average }}</span>
-            <span v-if="batchResultData.report.emotion_score_stats.old_average !== null">
-              (旧: {{ batchResultData.report.emotion_score_stats.old_average > 0 ? '+' : '' }}{{ batchResultData.report.emotion_score_stats.old_average }})
-            </span>
-          </div>
-          <div class="score-row">
-            新范围: {{ batchResultData.report.emotion_score_stats.new_min }} ~ {{ batchResultData.report.emotion_score_stats.new_max }}
-          </div>
-        </div>
-
-        <!-- 四、主题变化路径 -->
-        <div class="report-section" v-if="batchResultData.report?.theme_change_paths?.length">
-          <div class="section-title">四、主题变化路径（Top 10）</div>
-          <div class="change-path" v-for="(item, idx) in batchResultData.report.theme_change_paths" :key="idx">
-            {{ item.from }} → {{ item.to }}: {{ item.count }} 幅
-          </div>
-          <div v-if="batchResultData.report.theme_change_paths.length === 0" class="no-change">无主题变化</div>
-        </div>
-
-        <!-- 四.五、可信度分布（v2.1） -->
-        <div class="report-section" v-if="batchResultData.report?.confidence_stats">
-          <div class="section-title">四.五、可信度分布</div>
-          <div class="confidence-grid">
-            <div class="conf-bar-row">
-              <span class="conf-label">高 (≥0.7)</span>
-              <div class="conf-bar-track"><div class="conf-bar high" :style="{ width: batchResultData.report.confidence_stats.high_percent + '%' }"></div></div>
-              <span class="conf-count">{{ batchResultData.report.confidence_stats.high }} 幅 ({{ batchResultData.report.confidence_stats.high_percent }}%)</span>
-            </div>
-            <div class="conf-bar-row">
-              <span class="conf-label">中 (0.4~0.7)</span>
-              <div class="conf-bar-track"><div class="conf-bar mid" :style="{ width: batchResultData.report.confidence_stats.mid_percent + '%' }"></div></div>
-              <span class="conf-count">{{ batchResultData.report.confidence_stats.mid }} 幅 ({{ batchResultData.report.confidence_stats.mid_percent }}%)</span>
-            </div>
-            <div class="conf-bar-row">
-              <span class="conf-label">低 (&lt;0.4)</span>
-              <div class="conf-bar-track"><div class="conf-bar low" :style="{ width: batchResultData.report.confidence_stats.low_percent + '%' }"></div></div>
-              <span class="conf-count">{{ batchResultData.report.confidence_stats.low }} 幅 ({{ batchResultData.report.confidence_stats.low_percent }}%)</span>
-            </div>
-          </div>
-          <div class="conf-avg">平均可信度：{{ batchResultData.report.confidence_stats.average }}</div>
-          <div v-if="batchResultData.report.low_conf_count > 0" class="conf-hint">
-            ⚠️ {{ batchResultData.report.low_conf_count }} 幅作品可信度 &lt; 0.6，建议运行分歧检测以校准规则
-          </div>
-          <div v-if="batchResultData.report.llm_corrected > 0" class="conf-hint" style="color:#67c23a">
-            ✅ DeepSeek 自动修正了 {{ batchResultData.report.llm_corrected }} 幅低可信度作品
-          </div>
-        </div>
-
-        <!-- 五、偏差检测与调整建议 -->
-        <div class="report-section" v-if="batchResultData.report?.deviation_checks?.length">
-          <div class="section-title">五、偏差检测与调整建议（基于第一主题）</div>
-          <div class="deviation-item" v-for="(item, idx) in batchResultData.report.deviation_checks" :key="idx">
-            <span :class="item.status === 'ok' ? 'status-ok' : 'status-warn'">
-              [{{ item.status === 'ok' ? 'OK' : '!' }}]
-            </span>
-            <span class="deviation-theme">{{ item.theme }}:</span>
-            <span>{{ item.suggestion }}</span>
-          </div>
-        </div>
-
-        <div class="report-footer">
-          重跑完成。请根据偏差检测结果调整规则，然后重新运行。
-        </div>
-      </div>
-      <template #footer>
-        <el-button plain size="small" @click="copyReportAsMarkdown" :disabled="!batchResultData">
-          <el-icon><CopyDocument /></el-icon>复制报告(MD)
-        </el-button>
-        <el-button @click="closeBatchResultDialog">取消</el-button>
-        <el-button type="primary" @click="rerunFromResult" :loading="analyzing">重新分析</el-button>
-      </template>
-    </el-dialog>
 
     <VerifyPanel
       ref="verifyPanelRef"
@@ -417,17 +424,10 @@
       <!-- 作品上传 -->
       <el-tab-pane label="作品上传" name="upload">
         <div class="tab-content full-tab-content upload-tab-content">
-          <div class="upload-entry">
-            <div class="upload-entry-icon">
-              <el-icon size="64" color="#c96442"><Upload /></el-icon>
-            </div>
-            <h3 class="upload-entry-title">上传作品图片</h3>
-            <p class="upload-entry-desc">支持批量拖拽上传，可选择直接入库、AI文本分析或AI标注图分析</p>
-            <el-button type="primary" size="large" @click="openUploadDialog" class="btn-primary upload-entry-btn">
-              <el-icon><Upload /></el-icon>
-              开始上传
-            </el-button>
-          </div>
+          <TubiUploadInline
+            @uploaded="onUploaded"
+            @refresh="fetchRecords"
+          />
         </div>
       </el-tab-pane>
 
@@ -444,22 +444,23 @@
           <AdminUsers />
         </div>
       </el-tab-pane>
+
+      <!-- 系统配置（仅管理员可见） -->
+      <el-tab-pane v-if="isAdmin" label="系统信息" name="config">
+        <div class="tab-content full-tab-content">
+          <AdminSettings />
+        </div>
+      </el-tab-pane>
     </el-tabs>
 
-    <!-- 上传弹窗 -->
-    <TubiUploadDialog
-      ref="uploadDialogRef"
-      @uploaded="onUploaded"
-      @refresh="fetchRecords"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, Refresh, RefreshRight, HomeFilled, Upload, CopyDocument, MagicStick } from '@element-plus/icons-vue'
+import { Bottom, Refresh, RefreshRight, Right, Upload, CopyDocument } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 import { useSSEStream } from '../composables/useSSEStream'
 
@@ -472,10 +473,11 @@ import AnnotationVerify from './AnnotationVerify.vue'
 import ArtistInfoManager from './ArtistInfoManager.vue'
 import ArtistRulesManager from './ArtistRulesManager.vue'
 import SealManager from './SealManager.vue'
-import TubiUploadDialog from '../components/tubi/TubiUploadDialog.vue'
+import TubiUploadInline from '../components/tubi/TubiUploadInline.vue'
 import ImageSearchPanel from '../components/tubi/ImageSearchPanel.vue'
 import AdminDashboard from './admin/Dashboard.vue'
 import AdminUsers from './admin/Users.vue'
+import AdminSettings from './admin/Settings.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const router = useRouter()
@@ -483,19 +485,59 @@ const route = useRoute()
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users']
-const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'verify')
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config']
+const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'config')
 const verifyPanelRef = ref(null)
-const uploadDialogRef = ref(null)
-
 // 切换标签时同步到 URL query（用 replace 避免污染历史）
 watch(activeTab, (tab) => {
   router.replace({ query: { ...route.query, tab } })
 })
+// 反向同步：侧边栏/URL 变化 → 切换标签
+watch(() => route.query.tab, (tab) => {
+  const t = Array.isArray(tab) ? tab[0] : tab
+  if (t && VALID_TABS.includes(t) && t !== activeTab.value) {
+    activeTab.value = t
+  }
+})
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-// 状态
+// 作者列表（必须在 watch 引用前声明）
+const artistList = ref([])
+const selectedArtist = ref('李鱓')
+
+// ── 注入 AdminLayout 共享状态 ──
+const adminArtistList = inject('adminArtistList', ref([]))
+const adminSelectedArtist = inject('adminSelectedArtist', ref('李鱓'))
+const adminStats = inject('adminStats', null)
+const adminBatchState = inject('adminBatchState', null)
+const adminBatchTrigger = inject('adminBatchTrigger', null)
+
+// 监听侧边栏作者切换 → 同步到 ContentVerify
+watch(adminSelectedArtist, (newArtist) => {
+  if (newArtist && newArtist !== selectedArtist.value) {
+    selectedArtist.value = newArtist
+  }
+})
+// ContentVerify 作者切换 → 同步到侧边栏
+watch(selectedArtist, (newArtist) => {
+  if (newArtist && newArtist !== adminSelectedArtist.value) {
+    adminSelectedArtist.value = newArtist
+  }
+})
+
+// 监听侧边栏批量操作触发
+watch(adminBatchTrigger, (type) => {
+  if (!type) return
+  if (type === 'translate') {
+    showTranslateModeDialog.value = true
+  } else if (type === 'reanalyze') {
+    openBatchReanalyze()
+  }
+  adminBatchTrigger.value = null // 重置
+})
+
+// ── 状态 ──
 const records = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -506,10 +548,6 @@ const translatedCount = ref(0)
 const analyzedCount = ref(0)
 const annotatedCount = ref(0)
 const incrementalProcessing = ref(false)
-
-// 作者列表
-const artistList = ref([])
-const selectedArtist = ref('李鱓')
 
 // 切换作者时同步 URL 并刷新数据
 watch(selectedArtist, (newArtist, oldArtist) => {
@@ -526,6 +564,8 @@ async function fetchArtistList() {
     const res = await fetch(`${API_BASE}/content-analysis/artists`)
     const data = await res.json()
     artistList.value = data.artists || []
+    // 同步到侧边栏
+    adminArtistList.value = artistList.value
     // URL query 优先恢复
     const urlArtist = route.query.artist
     if (urlArtist && artistList.value.includes(urlArtist)) {
@@ -559,13 +599,17 @@ const {
   closeBatchResultDialog,
 } = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => selectedArtist.value })
 
-// 智能打开：有缓存结果直接显示，无则弹确认
-function openBatchReanalyze() {
-  if (batchResultData.value) {
-    showBatchResultDialog.value = true
-  } else {
-    showAnalyzeModeDialog.value = true
+// 同步批量操作的 loading 状态到侧边栏
+watch([analyzing, batchTranslating], () => {
+  if (adminBatchState) {
+    adminBatchState.analyzing = analyzing.value
+    adminBatchState.translating = batchTranslating.value
   }
+})
+
+// 始终弹出模式选择窗口（含上次结果链接）
+function openBatchReanalyze() {
+  showAnalyzeModeDialog.value = true
 }
 
 // 从结果弹窗重新分析
@@ -576,6 +620,7 @@ function rerunFromResult() {
 
 // 增量智能处理：SSE 流式版，带进度显示
 async function startIncrementalSmartProcess() {
+  showAnalyzeModeDialog.value = false
   const artist = selectedArtist.value
   incrementalProcessing.value = true
   showAnalyzeProgress.value = true
@@ -650,6 +695,14 @@ async function fetchRecords() {
     translatedCount.value = data.translated_count || 0
     analyzedCount.value = data.analyzed_count || 0
     annotatedCount.value = data.annotated_count || 0
+    // 同步到侧边栏
+    if (adminStats) {
+      adminStats.verified = verifiedCount.value
+      adminStats.total = totalCount.value
+      adminStats.translated = translatedCount.value
+      adminStats.analyzed = analyzedCount.value
+      adminStats.annotated = annotatedCount.value
+    }
   } catch (e) {
     ElMessage.error('获取记录失败: ' + e.message)
   } finally {
@@ -802,14 +855,9 @@ function onTitleUpdated({ id, image_id, title }) {
 }
 
 // 上传完成回调
-function onUploaded(newImages) {
-  // 上传完成后刷新记录列表
+function onUploaded(count) {
   fetchRecords()
-  ElMessage.success(`已上传 ${newImages.length} 张作品`)
-}
-
-function openUploadDialog() {
-  uploadDialogRef.value?.open()
+  ElMessage.success(`已上传 ${count} 张作品`)
 }
 
 function onImageSearchItemClick(recordId) {
