@@ -239,7 +239,7 @@
         <el-form-item label="新值" required>
           <el-input v-model="suggestForm.new_value" placeholder="输入修改后的值" />
         </el-form-item>
-        <el-form-item label="修改说明">
+        <el-form-item label="修改说明" required>
           <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
         </el-form-item>
       </el-form>
@@ -442,6 +442,10 @@ function openSuggestEdit(item) {
 async function handleSubmitChange() {
   if (!suggestForm.new_value) {
     ElMessage.warning('请输入新值')
+    return
+  }
+  if (!suggestForm.change_summary || !suggestForm.change_summary.trim()) {
+    ElMessage.warning('请填写修改说明')
     return
   }
   if (!suggestArtwork.value) return

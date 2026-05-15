@@ -536,6 +536,10 @@ async def submit_change_request(
     if req.request_type not in valid_types:
         raise HTTPException(status_code=400, detail=f"request_type 必须是 {valid_types} 之一")
 
+    # 强制编辑摘要
+    if not req.change_summary or not req.change_summary.strip():
+        raise HTTPException(status_code=400, detail="请填写修改说明（change_summary）")
+
     # 验证 artwork 存在且属于该库
     artwork = db.query(TubiAnalysis).filter(
         TubiAnalysis.id == req.artwork_id,

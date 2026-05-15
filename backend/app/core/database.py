@@ -191,6 +191,16 @@ def run_migrations():
                 )
 
         conn.commit()
+
+        # ── Phase 2: change_request 扩展字段 ──
+        cr_cols = {row[1] for row in conn.execute("PRAGMA table_info(change_requests)").fetchall()}
+        if "draft_data" not in cr_cols:
+            conn.execute("ALTER TABLE change_requests ADD COLUMN draft_data TEXT")
+            logger.info("Migration: added change_requests.draft_data")
+        if "base_revision" not in cr_cols:
+            conn.execute("ALTER TABLE change_requests ADD COLUMN base_revision INTEGER")
+            logger.info("Migration: added change_requests.base_revision")
+        conn.commit()
     finally:
         conn.close()
 
