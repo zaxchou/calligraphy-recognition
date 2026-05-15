@@ -1688,6 +1688,15 @@ async def get_all_results(
             "tags": analysis.tags,
         }
 
+        # 解析 position_analysis JSON（全量/分页都需要，前端名家对比依赖此字段）
+        pos_analysis_data = None
+        if analysis.position_analysis:
+            try:
+                pos_analysis_data = json.loads(analysis.position_analysis) if isinstance(analysis.position_analysis, str) else analysis.position_analysis
+            except Exception:
+                pos_analysis_data = None
+        item["position_analysis"] = pos_analysis_data
+
         # 全量查询跳过重字段（regions, 分析文本, JSON解析等），大幅减小缓存体积
         if not is_full_list:
             # 检查标注图片是否存在
@@ -1696,19 +1705,10 @@ async def get_all_results(
                 annotated_path_local = _to_local_path(analysis.annotated_image_path)
                 annotated_exists = _cached_exists(annotated_path_local)
 
-            # 解析 position_analysis JSON
-            pos_analysis_data = None
-            if analysis.position_analysis:
-                try:
-                    pos_analysis_data = json.loads(analysis.position_analysis) if isinstance(analysis.position_analysis, str) else analysis.position_analysis
-                except Exception:
-                    pos_analysis_data = None
-
             item.update({
                 "image_width": analysis.image_width,
                 "image_height": analysis.image_height,
                 "regions": analysis.regions,
-                "position_analysis": pos_analysis_data,
                 "annotated_image_url": get_static_url(f"annotated/annotated_{analysis.image_id}.jpg") if annotated_exists else None,
                 "is_manual_annotated": bool(analysis.is_manual_annotated) if analysis.is_manual_annotated is not None else False,
                 "analysis_note": analysis.analysis_note,
