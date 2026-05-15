@@ -22,6 +22,7 @@
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
+            <NotificationBell />
             <div class="user-menu-wrap" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
               <span class="user-nickname user-dropdown-trigger">
                 <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" class="user-avatar-mini" />
@@ -143,6 +144,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
+import NotificationBell from './components/NotificationBell.vue'
 import { siteConfig } from './config'
 
 const router = useRouter()

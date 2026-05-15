@@ -19,6 +19,7 @@ from app.models.change_request import ChangeRequest
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.api.revisions import create_revision
+from app.api.notifications import create_notification_for_review, notify_admins_of_pending
 
 router = APIRouter(prefix="/libraries", tags=["作品库"])
 logger = logging.getLogger(__name__)
@@ -563,6 +564,13 @@ async def submit_change_request(
     db.commit()
     db.refresh(cr)
     logger.info(f"用户 {user.id} 提交了库 {library_id} 的变更请求 {cr.id}")
+
+    # 通知管理员
+    try:
+        notify_admins_of_pending(cr.id, db)
+    except Exception as _notif_e:
+        logger.warning("通知管理员失败（不影响提交）: %s", _notif_e)
+
     return {
         "id": cr.id,
         "artwork_id": cr.artwork_id,
@@ -685,6 +693,12 @@ async def review_change_request(
             )
         except Exception as _rev_e:
             logger.warning("创建版本快照失败（不影响审核）: %s", _rev_e)
+
+    # 通知提交者
+    try:
+        create_notification_for_review(cr.id, req.action, user.id, db)
+    except Exception as _notif_e:
+        logger.warning("创建通知失败（不影响审核）: %s", _notif_e)
 
     logger.info(f"用户 {user.id} {req.action}了变更请求 {cr.id}")
     return {

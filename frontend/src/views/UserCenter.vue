@@ -101,6 +101,40 @@
             </button>
           </div>
         </div>
+
+        <!-- 我的贡献 -->
+        <div class="uc-card">
+          <h3 class="uc-block-title">我的贡献</h3>
+          <div v-if="contributionsLoading" style="text-align:center;padding:20px;">
+            <el-icon class="is-loading" size="20"><Loading /></el-icon>
+          </div>
+          <div v-else-if="contributions.length === 0" style="padding:12px 0;color:#999;font-size:13px;">
+            你还没有提交过修改建议。
+          </div>
+          <el-timeline v-else>
+            <el-timeline-item
+              v-for="c in contributions" :key="c.id"
+              :timestamp="c.created_at"
+              placement="top"
+              size="small"
+            >
+              <div style="font-size:13px;">
+                <strong>{{ c.artwork_title || '作品' }}</strong>
+                <span style="color:#999;margin:0 4px;">→</span>
+                <span>{{ c.field_name || c.request_type }}</span>
+                <el-tag
+                  :type="c.status === 'approved' ? 'success' : c.status === 'rejected' ? 'danger' : 'warning'"
+                  size="small" style="margin-left:8px;"
+                >
+                  {{ c.status === 'approved' ? '已通过' : c.status === 'rejected' ? '已驳回' : '待审核' }}
+                </el-tag>
+                <p v-if="c.change_summary" style="margin:4px 0 0;color:#888;font-size:12px;">
+                  {{ c.change_summary }}
+                </p>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+        </div>
       </div>
     </div>
   </div>
@@ -111,7 +145,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { ElMessage } from 'element-plus'
-import api from '../api'
+import { Loading } from '@element-plus/icons-vue'
+import api, { notificationApi } from '../api'
 import AvatarCropper from '../components/AvatarCropper.vue'
 
 const authStore = useAuthStore()
@@ -127,6 +162,8 @@ const cropperRef = ref(null)
 
 const editForm = reactive({ nickname: '', email: '', phone: '' })
 const pwdForm = reactive({ old_password: '', password: '', confirm: '' })
+const contributions = ref([])
+const contributionsLoading = ref(false)
 
 const roleLabels = {
   super_admin: '站长', admin: '副站长', editor: '编者',
@@ -141,6 +178,7 @@ onMounted(async () => {
     return
   }
   await loadProfile()
+  await loadContributions()
 })
 
 async function loadProfile() {
@@ -206,6 +244,18 @@ async function handleUpdateProfile() {
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '保存失败')
   } finally { profileSaving.value = false }
+}
+
+async function loadContributions() {
+  contributionsLoading.value = true
+  try {
+    const resp = await notificationApi.myContributions()
+    contributions.value = resp.contributions || []
+  } catch (e) {
+    console.error('加载贡献记录失败', e)
+  } finally {
+    contributionsLoading.value = false
+  }
 }
 
 async function handleChangePassword() {

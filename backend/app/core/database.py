@@ -201,6 +201,25 @@ def run_migrations():
             conn.execute("ALTER TABLE change_requests ADD COLUMN base_revision INTEGER")
             logger.info("Migration: added change_requests.base_revision")
         conn.commit()
+
+        # ── Phase 4: notifications 表 ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                type VARCHAR(30) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                body TEXT,
+                reference_type VARCHAR(30),
+                reference_id INTEGER,
+                is_read INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_notifications_user_id ON notifications(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_notifications_is_read ON notifications(is_read)")
+        logger.info("Migration: ensured notifications table exists")
+        conn.commit()
     finally:
         conn.close()
 

@@ -17,7 +17,7 @@ logging.basicConfig(
 from app.core.config import get_settings
 from app.core.database import engine, Base, get_db
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions
+from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications
 
 try:
     from app.api import composition
@@ -160,6 +160,13 @@ app.include_router(
     revisions.router,
     prefix=settings.API_V1_STR,
     tags=["版本历史"]
+)
+
+# Phase 4: 通知
+app.include_router(
+    notifications.router,
+    prefix=settings.API_V1_STR,
+    tags=["通知"]
 )
 
 # Phase 5: 管理后台

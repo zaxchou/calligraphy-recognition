@@ -468,4 +468,12 @@ export const notesApi = {
   },
 }
 
+export const notificationApi = {
+  list() { return api.get('/notifications') },
+  unreadCount() { return api.get('/notifications/unread-count') },
+  markRead(id) { return api.put(`/notifications/${id}/read`) },
+  markAllRead() { return api.put('/notifications/read-all') },
+  myContributions() { return api.get('/notifications/my/contributions') },
+}
+
 export default api
