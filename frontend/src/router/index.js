@@ -14,6 +14,43 @@ const routes = [
     component: () => import('../views/Login.vue'),
     meta: { title: '登录' }
   },
+  // 画家百科
+  {
+    path: '/artists',
+    name: 'ArtistList',
+    component: () => import('../views/ArtistList.vue'),
+    meta: { title: '艺术家百科' }
+  },
+  {
+    path: '/artist/:name',
+    name: 'ArtistOverview',
+    component: () => import('../views/artist/ArtistOverview.vue'),
+    meta: { title: '画家百科' }
+  },
+  {
+    path: '/artist/:name/works',
+    name: 'ArtistWorks',
+    component: () => import('../views/artist/ArtistWorks.vue'),
+    meta: { title: '画家作品' }
+  },
+  {
+    path: '/artist/:name/seals',
+    name: 'ArtistSeals',
+    component: () => import('../views/artist/ArtistSeals.vue'),
+    meta: { title: '画家印章' }
+  },
+  {
+    path: '/artist/:name/literature',
+    name: 'ArtistLiterature',
+    component: () => import('../views/artist/ArtistLiterature.vue'),
+    meta: { title: '画家文献' }
+  },
+  {
+    path: '/artist/:name/analysis',
+    name: 'ArtistAnalysis',
+    component: () => import('../views/artist/ArtistAnalysis.vue'),
+    meta: { title: '画家数据分析' }
+  },
   {
     path: '/recognize',
     name: 'Recognize',
@@ -147,6 +184,24 @@ const routes = [
     name: 'UserCenter',
     component: () => import('../views/UserCenter.vue'),
     meta: { title: '用户中心', requiresAuth: true }
+  },
+  {
+    path: '/libraries',
+    name: 'Libraries',
+    component: () => import('../views/Libraries.vue'),
+    meta: { title: '我的作品库', requiresAuth: true }
+  },
+  {
+    path: '/libraries/public',
+    name: 'PublicLibraries',
+    component: () => import('../views/PublicLibraries.vue'),
+    meta: { title: '公开作品库' }
+  },
+  {
+    path: '/libraries/:id',
+    name: 'LibraryDetail',
+    component: () => import('../views/LibraryDetail.vue'),
+    meta: { title: '作品库详情' }
   },
 ]
 

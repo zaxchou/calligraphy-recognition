@@ -170,6 +170,9 @@ class Settings(BaseSettings):
     WECHAT_APP_ID: str = os.getenv("WECHAT_APP_ID", "")
     WECHAT_APP_SECRET: str = os.getenv("WECHAT_APP_SECRET", "")
     WECHAT_MOCK_MODE: bool = os.getenv("WECHAT_MOCK_MODE", "true").lower() in ("1", "true", "yes", "y")
+
+    # 百度百科 / 百度搜索 API Key
+    BAIDU_API_KEY: str = os.getenv("BAIDU_API_KEY", "")
     
     class Config:
         env_file = ".env"

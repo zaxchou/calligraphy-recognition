@@ -227,6 +227,100 @@ def run_migrations():
             conn.execute("ALTER TABLE users ADD COLUMN score INTEGER DEFAULT 0")
             logger.info("Migration: added users.score")
         conn.commit()
+
+        # ════════════════════════════════════════════════════════
+        # 画家百科 Phase 1: 扩展 artists 表 + 新建相关表
+        # ════════════════════════════════════════════════════════
+
+        # ── artists 表扩展 ──
+        artist_cols = {row[1] for row in conn.execute("PRAGMA table_info(artists)").fetchall()}
+        for col, col_type in [
+            ("alias", "TEXT DEFAULT ''"),
+            ("dynasty", "TEXT DEFAULT ''"),
+            ("hometown", "TEXT DEFAULT ''"),
+            ("avatar_url", "TEXT DEFAULT ''"),
+            ("death_year", "INTEGER"),
+            ("biography", "TEXT DEFAULT ''"),
+            ("bio_events", "TEXT DEFAULT '[]'"),
+            ("art_school", "TEXT DEFAULT ''"),
+            ("masterpieces", "TEXT DEFAULT '[]'"),
+            ("tags", "TEXT DEFAULT '[]'"),
+            ("baidu_url", "TEXT DEFAULT ''"),
+            ("view_count", "INTEGER DEFAULT 0"),
+            ("featured", "INTEGER DEFAULT 0"),
+        ]:
+            if col not in artist_cols:
+                conn.execute(f"ALTER TABLE artists ADD COLUMN {col} {col_type}")
+                logger.info("Migration: added artists.%s", col)
+        conn.commit()
+
+        # ── art_schools 表 ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS art_schools (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT DEFAULT '',
+                dynasty TEXT DEFAULT '',
+                origin TEXT DEFAULT '',
+                rep_artists TEXT DEFAULT '[]',
+                style_features TEXT DEFAULT '[]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        logger.info("Migration: ensured art_schools table exists")
+        conn.commit()
+
+        # ── artwork_artists 表（作品-画家多对多） ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS artwork_artists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                artwork_id INTEGER NOT NULL,
+                artist_id INTEGER NOT NULL,
+                role VARCHAR(20) DEFAULT 'author',
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(artwork_id, artist_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_artwork_artists_artwork_id ON artwork_artists(artwork_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_artwork_artists_artist_id ON artwork_artists(artist_id)")
+        logger.info("Migration: ensured artwork_artists table exists")
+        conn.commit()
+
+        # ── artist_change_requests 表 ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS artist_change_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                artist_id INTEGER NOT NULL,
+                request_type VARCHAR(30) NOT NULL,
+                field_name VARCHAR(100),
+                old_value TEXT,
+                new_value TEXT,
+                change_summary TEXT,
+                submitter_id INTEGER NOT NULL,
+                reviewer_id INTEGER,
+                status VARCHAR(20) DEFAULT 'pending',
+                review_comment TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_artist_cr_artist_id ON artist_change_requests(artist_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_artist_cr_status ON artist_change_requests(status)")
+        logger.info("Migration: ensured artist_change_requests table exists")
+        conn.commit()
+
+        # ── artist_stats_cache 表 ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS artist_stats_cache (
+                artist_id INTEGER PRIMARY KEY,
+                stats_data TEXT NOT NULL,
+                updated_at TIMESTAMP NOT NULL
+            )
+        """)
+        logger.info("Migration: ensured artist_stats_cache table exists")
+        conn.commit()
     finally:
         conn.close()
 

@@ -13,6 +13,7 @@
         <nav class="main-nav">
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
+          <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
           <router-link to="/tubi" class="nav-item" :class="{ active: $route.path.startsWith('/tubi') }"><span class="nav-text">题跋分析</span></router-link>
           <!-- 字体识别模块暂不开放 -->
           <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
@@ -74,6 +75,9 @@
           </router-link>
           <router-link to="/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">写意知识库</span>
+          </router-link>
+          <router-link to="/artists" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <span class="nav-text">艺术家百科</span>
           </router-link>
           <router-link to="/tubi" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tubi') }" @click="closeMobileMenu">
             <span class="nav-text">题跋分析</span>
@@ -276,7 +280,6 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 100;
   backdrop-filter: blur(18px);
   background: rgba(250, 249, 245, 0.85);
-  z-index: 10000001;
 }
 
 .header-content {

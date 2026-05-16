@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 import logging
 import os
 
@@ -17,7 +17,7 @@ logging.basicConfig(
 from app.core.config import get_settings
 from app.core.database import engine, Base, get_db
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications
+from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications, libraries, artist_changes, artwork_artists
 
 try:
     from app.api import composition
@@ -85,8 +85,18 @@ except Exception as e:
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
+    docs_url="/docs",
     description="书法碑帖字体认证系统 API"
 )
+
+
+@app.middleware("http")
+async def redirect_root(request: Request, call_next):
+    if request.url.path == "/" and request.method == "GET":
+        return RedirectResponse(url="http://localhost:8080")
+    response = await call_next(request)
+    return response
+
 
 # CORS配置（从环境变量读取，逗号分隔；默认 * 允许所有）
 _cors = settings.CORS_ALLOW_ORIGINS
@@ -142,6 +152,20 @@ app.include_router(
     tags=["画家规则"]
 )
 
+# 画家编辑审核
+app.include_router(
+    artist_changes.router,
+    prefix=settings.API_V1_STR,
+    tags=["画家编辑审核"]
+)
+
+# 作品-画家关联
+app.include_router(
+    artwork_artists.router,
+    prefix=settings.API_V1_STR,
+    tags=["作品-画家关联"]
+)
+
 app.include_router(
     auth.router,
     prefix=settings.API_V1_STR + "/auth",
@@ -167,6 +191,13 @@ app.include_router(
     notifications.router,
     prefix=settings.API_V1_STR,
     tags=["通知"]
+)
+
+# Phase A: 画库管理
+app.include_router(
+    libraries.router,
+    prefix=settings.API_V1_STR,
+    tags=["作品库"]
 )
 
 # Phase 5: 管理后台

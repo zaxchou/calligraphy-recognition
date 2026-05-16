@@ -153,7 +153,7 @@ import { useRouter } from 'vue-router'
 import { siteConfig } from '../config'
 import {
   DataAnalysis, Camera, ArrowRight, Collection, PictureFilled,
-  TrendCharts, VideoPlay, Histogram
+  TrendCharts, VideoPlay, Histogram, UserFilled
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -177,6 +177,15 @@ const showVideoBg = ref(true)
 
 // ── 功能卡片配置 ──────────────────────────────────
 const features = [
+  { 
+    title: '艺术家百科', 
+    desc: '探索历代书画名家生平、作品与艺术风格', 
+    path: '/artists', 
+    icon: 'UserFilled', 
+    iconClass: '',
+    bgClass: 'bg-artist',
+    tag: '百科',
+  },
   { 
     title: '写意知识库', 
     desc: '潘天寿、黄宾虹等名家题跋印章与绘画作品语义检索', 
@@ -416,6 +425,9 @@ onMounted(() => {
 /* 各卡片专属渐变色背景（方案3） */
 .feature-card-light.bg-knowledge {
   background: linear-gradient(135deg, rgba(201,100,66,0.06) 0%, rgba(245,244,237,1) 60%);
+}
+.feature-card-light.bg-artist {
+  background: linear-gradient(135deg, rgba(196,90,60,0.08) 0%, rgba(245,244,237,1) 60%);
 }
 .feature-card-light.bg-tubi {
   background: linear-gradient(135deg, rgba(184,164,126,0.08) 0%, rgba(245,244,237,1) 60%);
