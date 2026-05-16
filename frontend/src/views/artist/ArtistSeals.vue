@@ -1,21 +1,21 @@
 <template>
   <div class="artist-sub-page">
     <div class="asp-header">
-      <h2><router-link :to="artistUrl" class="asp-back-link">{{ artistName }}</router-link> 的印章</h2>
+      <h2><router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-back-link">{{ artistName }}</router-link> 的印章</h2>
     </div>
     <div class="asp-sub-nav">
-      <router-link :to="artistUrl" class="asp-nav-item">概览</router-link>
-      <router-link :to="artistUrl + '/works'" class="asp-nav-item">作品</router-link>
-      <router-link :to="artistUrl + '/seals'" class="asp-nav-item active">印章</router-link>
-      <router-link :to="artistUrl + '/literature'" class="asp-nav-item">文献</router-link>
-      <router-link :to="artistUrl + '/analysis'" class="asp-nav-item">分析</router-link>
+      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-nav-item">概览</router-link>
+      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="asp-nav-item">作品</router-link>
+      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="asp-nav-item active">印章</router-link>
+      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="asp-nav-item">文献</router-link>
+      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="asp-nav-item">分析</router-link>
     </div>
     <div v-if="loading" class="asp-loading">加载中...</div>
     <div v-else-if="seals.length === 0" class="asp-empty">暂无印章数据</div>
     <div v-else class="as-grid">
       <div v-for="s in seals" :key="s.id" class="as-card">
         <div v-if="s.images && s.images.length > 0" class="as-image-wrap">
-          <img v-for="(img, i) in s.images.slice(0, 3)" :key="i" :src="img" class="as-image" />
+          <img v-for="(img, i) in s.images.slice(0, 3)" :key="i" :src="img" class="as-image" :alt="s.name" />
         </div>
         <div v-else class="as-image-placeholder">印</div>
         <div class="as-info">
@@ -28,13 +28,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const artistName = route.params.name
-const artistUrl = computed(() => '/artist/' + encodeURIComponent(artistName))
 const seals = ref([])
 const loading = ref(true)
 
@@ -42,7 +41,7 @@ async function fetchSeals() {
   try {
     const res = await fetch(`${API_BASE}/seals?artist=${encodeURIComponent(artistName)}&limit=100`)
     const data = await res.json()
-    seals.value = data.seals || []
+    seals.value = data.seals || data.records || data.results || data.data || []
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
@@ -51,7 +50,7 @@ onMounted(fetchSeals)
 </script>
 
 <style scoped>
-.artist-sub-page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+.artist-sub-page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; min-height: 100vh; background: #fafaf8; }
 .asp-header h2 { font-family: 'Noto Serif SC', serif; font-size: 22px; color: #3a3222; margin: 0 0 16px; }
 .asp-back-link { color: #3a3222; text-decoration: none; }
 .asp-back-link:hover { color: #c45a3c; }

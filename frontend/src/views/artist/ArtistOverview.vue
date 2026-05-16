@@ -5,34 +5,39 @@
     <div v-else-if="notFound" class="ao-not-found">
       <div class="ao-not-found-icon">?</div>
       <h2>未找到该画家</h2>
-      <p>请确认名称是否正确，或返回<a href="#/artists">艺术家列表</a>浏览</p>
+      <p>请确认名称是否正确，或返回<router-link to="/artists">艺术家列表</router-link>浏览</p>
     </div>
 
     <template v-else-if="artist">
       <div class="ao-header">
-        <div class="ao-avatar">{{ artist.name?.charAt(0) || '?' }}</div>
+        <div v-if="artist.avatar_url" class="ao-avatar-img-wrap">
+          <img :src="artist.avatar_url" :alt="artist.name" class="ao-avatar-img" />
+        </div>
+        <div v-else class="ao-avatar">{{ artist.name?.charAt(0) || '?' }}</div>
         <div class="ao-header-info">
           <h1 class="ao-name">{{ artist.name }}</h1>
           <p v-if="artist.alias" class="ao-alias">{{ artist.alias }}</p>
+          <p v-else-if="artist.dynasty" class="ao-alias">{{ artist.dynasty }}画家</p>
           <div class="ao-header-tags">
             <span v-if="artist.dynasty" class="ao-tag">{{ artist.dynasty }}</span>
             <span v-if="artist.art_school" class="ao-tag ao-tag-school">{{ artist.art_school }}</span>
+            <span v-if="artist.birth_year || artist.death_year" class="ao-tag">{{ formatYears(artist.birth_year, artist.death_year) }}</span>
           </div>
         </div>
         <div v-if="authStore.isEditor" class="ao-header-actions">
-          <el-button size="small" plain class="ao-btn-edit">编辑</el-button>
-          <el-button size="small" plain class="ao-btn-edit">AI 补充</el-button>
-          <el-button size="small" plain class="ao-btn-edit">我的修改</el-button>
+          <el-button size="small" plain @click="handleEdit">编辑</el-button>
+          <el-button size="small" plain @click="handleAiFill" :loading="aiFilling">AI 补充</el-button>
+          <el-button size="small" plain @click="handleMyChanges">我的修改</el-button>
         </div>
       </div>
 
       <nav class="ao-sub-nav">
         <router-link
           v-for="tab in subNavTabs"
-          :key="tab.path"
-          :to="tab.path"
+          :key="tab.name"
+          :to="{ name: tab.name, params: { name: artistName } }"
           class="ao-nav-item"
-          :class="{ active: isActiveTab(tab.path) }"
+          :class="{ active: isActiveTab(tab.name) }"
         >
           {{ tab.label }}
         </router-link>
@@ -62,12 +67,17 @@
               <span class="ao-info-label">画派</span>
               <span class="ao-info-value">{{ artist.art_school }}</span>
             </div>
+            <div v-if="artist.specialties" class="ao-info-item">
+              <span class="ao-info-label">专长</span>
+              <span class="ao-info-value">{{ artist.specialties }}</span>
+            </div>
           </div>
         </section>
 
         <section class="ao-card ao-bio-card">
           <h2 class="ao-card-title">生平</h2>
           <p v-if="artist.biography" class="ao-bio-text">{{ artist.biography }}</p>
+          <div v-else-if="artist.background" class="ao-bio-text" v-html="renderBackground(artist.background)"></div>
           <p v-else class="ao-bio-empty">暂无生平信息</p>
         </section>
 
@@ -78,7 +88,7 @@
               <div class="ao-timeline-dot" />
               <div class="ao-timeline-content">
                 <span v-if="event.year" class="ao-timeline-year">{{ event.year }}</span>
-                <span class="ao-timeline-desc">{{ event.event || event.description || '' }}</span>
+                <span class="ao-timeline-desc">{{ event.event || event.description || event.title || '' }}</span>
               </div>
             </div>
           </div>
@@ -109,13 +119,13 @@
         <section v-if="masterpieces.length > 0" class="ao-card ao-masterpieces-card">
           <h2 class="ao-card-title">代表作品</h2>
           <div class="ao-masterpieces-scroll">
-            <div v-for="item in masterpieces" :key="item.id" class="ao-masterpiece-item">
+            <div v-for="item in masterpieces" :key="item.id || item.title" class="ao-masterpiece-item" @click="goToWork(item.id)">
               <div class="ao-masterpiece-thumb">
-                <img v-if="item.image_url" :src="item.image_url" :alt="item.title || '作品'" />
-                <span v-else class="ao-thumb-placeholder">📄</span>
+                <img v-if="item.thumbnail_url || item.image_url" :src="item.thumbnail_url || item.image_url" :alt="item.title || '作品'" />
+                <span v-else class="ao-thumb-placeholder">{{ (item.title || '?').charAt(0) }}</span>
               </div>
               <div class="ao-masterpiece-info">
-                <p class="ao-masterpiece-title">{{ item.title || '无题' }}</p>
+                <p class="ao-masterpiece-title">{{ item.title || item.work_name || '无题' }}</p>
                 <p v-if="item.year" class="ao-masterpiece-year">{{ item.year }}</p>
               </div>
             </div>
@@ -128,33 +138,33 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-const artistEncoded = computed(() => encodeURIComponent(route.params.name))
 
+const artistName = computed(() => route.params.name)
 const loading = ref(true)
 const notFound = ref(false)
 const artist = ref(null)
 const stats = ref({})
 const masterpieces = ref([])
+const aiFilling = ref(false)
 
 const subNavTabs = [
-  { label: '概览', path: '' },
-  { label: '作品', path: 'works' },
-  { label: '印章', path: 'seals' },
-  { label: '文献', path: 'literature' },
-  { label: '分析', path: 'analysis' },
+  { label: '概览', name: 'ArtistOverview' },
+  { label: '作品', name: 'ArtistWorks' },
+  { label: '印章', name: 'ArtistSeals' },
+  { label: '文献', name: 'ArtistLiterature' },
+  { label: '分析', name: 'ArtistAnalysis' },
 ]
 
-function isActiveTab(tabPath) {
-  const current = route.path.replace(/\/+$/, '')
-  const base = current.substring(0, current.lastIndexOf('/'))
-  if (!tabPath) return current === base || current.endsWith('/artist/' + artistEncoded.value)
-  return current.endsWith('/' + tabPath)
+function isActiveTab(name) {
+  return route.name === name
 }
 
 const timelineEvents = computed(() => {
@@ -176,8 +186,45 @@ function formatYears(birth, death) {
   return `${b} — ${d}`
 }
 
+function renderBackground(bg) {
+  if (!bg) return ''
+  return bg.replace(/\n/g, '<br>')
+}
+
+function goToWork(id) {
+  if (id) window.open(`/#/tubi/${id}`, '_blank')
+}
+
+function handleEdit() {
+  router.push('/admin?tab=artist-info')
+}
+
+async function handleAiFill() {
+  if (!artist.value?.id) return
+  aiFilling.value = true
+  try {
+    const res = await fetch(`${API_BASE}/artists/${artist.value.id}/ai-fill`, { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      ElMessage.success(data.message || 'AI补充完成')
+      await fetchArtist()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      ElMessage.error(err.detail || 'AI补充失败')
+    }
+  } catch (e) {
+    ElMessage.error('AI补充请求失败: ' + e.message)
+  } finally {
+    aiFilling.value = false
+  }
+}
+
+function handleMyChanges() {
+  router.push('/admin?tab=change-requests')
+}
+
 async function fetchArtist() {
-  const name = route.params.name
+  const name = artistName.value
   if (!name) {
     notFound.value = true
     loading.value = false
@@ -186,16 +233,12 @@ async function fetchArtist() {
   try {
     const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(name)}`)
     if (!res.ok) {
-      if (res.status === 404) {
-        notFound.value = true
-      }
+      if (res.status === 404) notFound.value = true
       return
     }
     const data = await res.json()
     artist.value = data.artist || null
-    if (!artist.value) {
-      notFound.value = true
-    }
+    if (!artist.value) notFound.value = true
   } catch (e) {
     console.error('获取画家信息失败:', e)
     notFound.value = true
@@ -216,7 +259,7 @@ async function fetchStats() {
 }
 
 async function fetchMasterpieces() {
-  const name = route.params.name
+  const name = artistName.value
   if (!name) return
   try {
     const res = await fetch(`${API_BASE}/content-analysis/records?artist=${encodeURIComponent(name)}&limit=10`)
@@ -248,22 +291,18 @@ onMounted(async () => {
   min-height: 100vh;
   background: #fafaf8;
 }
-
 .ao-loading {
   text-align: center;
   padding: 80px 0;
   color: #8a8578;
   font-size: 0.95rem;
 }
-
 .ao-not-found {
   text-align: center;
   padding: 80px 24px;
 }
-
 .ao-not-found-icon {
-  width: 80px;
-  height: 80px;
+  width: 80px; height: 80px;
   margin: 0 auto 20px;
   border-radius: 50%;
   background: #f5f0ea;
@@ -274,7 +313,6 @@ onMounted(async () => {
   font-size: 2.25rem;
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
 }
-
 .ao-not-found h2 {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 1.4rem;
@@ -282,34 +320,22 @@ onMounted(async () => {
   margin: 0 0 12px;
   font-weight: 500;
 }
-
-.ao-not-found p {
-  color: #8a8578;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.ao-not-found a {
-  color: #c45a3c;
-  text-decoration: none;
-}
-
-.ao-not-found a:hover {
-  text-decoration: underline;
-}
-
+.ao-not-found p { color: #8a8578; font-size: 0.9rem; margin: 0; }
+.ao-not-found a { color: #c45a3c; text-decoration: none; }
+.ao-not-found a:hover { text-decoration: underline; }
 .ao-header {
   display: flex;
   align-items: flex-start;
   gap: 24px;
   margin-bottom: 28px;
 }
-
-.ao-avatar {
-  width: 80px;
-  height: 80px;
+.ao-avatar, .ao-avatar-img-wrap {
+  width: 80px; height: 80px;
   flex-shrink: 0;
   border-radius: 50%;
+  overflow: hidden;
+}
+.ao-avatar {
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff;
   display: flex;
@@ -319,12 +345,11 @@ onMounted(async () => {
   font-size: 2rem;
   font-weight: 500;
 }
-
-.ao-header-info {
-  flex: 1;
-  min-width: 0;
+.ao-avatar-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
 }
-
+.ao-header-info { flex: 1; min-width: 0; }
 .ao-name {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 2rem;
@@ -334,20 +359,13 @@ onMounted(async () => {
   letter-spacing: 0.08em;
   line-height: 1.2;
 }
-
 .ao-alias {
   font-size: 0.9rem;
   color: #8a8578;
   margin: 0 0 10px;
   line-height: 1.4;
 }
-
-.ao-header-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+.ao-header-tags { display: flex; gap: 8px; flex-wrap: wrap; }
 .ao-tag {
   display: inline-block;
   font-size: 0.75rem;
@@ -358,12 +376,7 @@ onMounted(async () => {
   letter-spacing: 0.04em;
   line-height: 1.5;
 }
-
-.ao-tag-school {
-  background: #f0ede8;
-  color: #6b6b60;
-}
-
+.ao-tag-school { background: #f0ede8; color: #6b6b60; }
 .ao-header-actions {
   display: flex;
   gap: 8px;
@@ -371,28 +384,23 @@ onMounted(async () => {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-
 .ao-btn-edit {
   font-size: 0.8rem;
   color: #8a6f4c;
   border-color: #d6d2c8;
 }
-
 .ao-btn-edit:hover {
   color: #c45a3c;
   border-color: #c45a3c;
   background: #fdf6f0;
 }
-
 .ao-sub-nav {
   display: flex;
   justify-content: center;
   gap: 0;
   margin-bottom: 36px;
   border-bottom: 1px solid #edeae1;
-  position: relative;
 }
-
 .ao-nav-item {
   display: block;
   padding: 12px 24px;
@@ -404,7 +412,6 @@ onMounted(async () => {
   position: relative;
   white-space: nowrap;
 }
-
 .ao-nav-item::after {
   content: '';
   position: absolute;
@@ -416,34 +423,17 @@ onMounted(async () => {
   background: #c45a3c;
   transition: width 0.25s ease;
 }
-
-.ao-nav-item:hover {
-  color: #3a3222;
-}
-
-.ao-nav-item.active {
-  color: #3a3222;
-  font-weight: 500;
-}
-
-.ao-nav-item.active::after {
-  width: 60%;
-}
-
-.ao-body {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
+.ao-nav-item:hover { color: #3a3222; }
+.ao-nav-item.active { color: #3a3222; font-weight: 500; }
+.ao-nav-item.active::after { width: 60%; }
+.ao-body { display: flex; flex-direction: column; gap: 28px; }
 .ao-card {
   background: #fff;
   border-radius: 12px;
   padding: 28px;
   border: 1px solid #edeae1;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
 }
-
 .ao-card-title {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 1.1rem;
@@ -454,51 +444,38 @@ onMounted(async () => {
   border-left: 3px solid #c45a3c;
   letter-spacing: 0.06em;
 }
-
 .ao-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
 }
-
-.ao-info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
+.ao-info-item { display: flex; flex-direction: column; gap: 4px; }
 .ao-info-label {
   font-size: 0.75rem;
   color: #a09b8e;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-
 .ao-info-value {
   font-size: 0.95rem;
   color: #3a3222;
   line-height: 1.4;
 }
-
 .ao-bio-text {
   font-size: 0.95rem;
   color: #3a3222;
   line-height: 1.8;
   margin: 0;
-  text-indent: 2em;
 }
-
 .ao-bio-empty {
   color: #a09b8e;
   font-size: 0.9rem;
   margin: 0;
 }
-
 .ao-timeline {
   position: relative;
   padding-left: 24px;
 }
-
 .ao-timeline::before {
   content: '';
   position: absolute;
@@ -508,53 +485,35 @@ onMounted(async () => {
   width: 2px;
   background: #edeae1;
 }
-
-.ao-timeline-item {
-  position: relative;
-  padding-bottom: 20px;
-}
-
-.ao-timeline-item:last-child {
-  padding-bottom: 0;
-}
-
+.ao-timeline-item { position: relative; padding-bottom: 20px; }
+.ao-timeline-item:last-child { padding-bottom: 0; }
 .ao-timeline-dot {
   position: absolute;
   left: -18px;
   top: 6px;
-  width: 10px;
-  height: 10px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background: #c45a3c;
   border: 2px solid #fafaf8;
   box-shadow: 0 0 0 2px #dbbca8;
 }
-
-.ao-timeline-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
+.ao-timeline-content { display: flex; flex-direction: column; gap: 2px; }
 .ao-timeline-year {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 0.85rem;
   font-weight: 500;
   color: #c45a3c;
 }
-
 .ao-timeline-desc {
   font-size: 0.9rem;
   color: #3a3222;
   line-height: 1.5;
 }
-
 .ao-stats-row {
   display: flex;
   gap: 24px;
   justify-content: center;
 }
-
 .ao-stat-item {
   display: flex;
   flex-direction: column;
@@ -562,20 +521,17 @@ onMounted(async () => {
   gap: 6px;
   min-width: 100px;
 }
-
 .ao-stat-number {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 1.75rem;
   font-weight: 500;
   color: #c45a3c;
 }
-
 .ao-stat-label {
   font-size: 0.8rem;
   color: #8a8578;
   letter-spacing: 0.06em;
 }
-
 .ao-masterpieces-scroll {
   display: flex;
   gap: 16px;
@@ -584,29 +540,19 @@ onMounted(async () => {
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
 }
-
-.ao-masterpieces-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-
-.ao-masterpieces-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ao-masterpieces-scroll::-webkit-scrollbar-thumb {
-  background: #d6d2c8;
-  border-radius: 3px;
-}
-
+.ao-masterpieces-scroll::-webkit-scrollbar { height: 6px; }
+.ao-masterpieces-scroll::-webkit-scrollbar-track { background: transparent; }
+.ao-masterpieces-scroll::-webkit-scrollbar-thumb { background: #d6d2c8; border-radius: 3px; }
 .ao-masterpiece-item {
   flex-shrink: 0;
   width: 160px;
   scroll-snap-align: start;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
-
+.ao-masterpiece-item:hover { transform: translateY(-2px); }
 .ao-masterpiece-thumb {
-  width: 160px;
-  height: 120px;
+  width: 160px; height: 120px;
   border-radius: 8px;
   overflow: hidden;
   background: #f5f0ea;
@@ -615,22 +561,13 @@ onMounted(async () => {
   justify-content: center;
   margin-bottom: 8px;
 }
-
-.ao-masterpiece-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
+.ao-masterpiece-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .ao-thumb-placeholder {
+  font-family: 'Noto Serif SC', serif;
   font-size: 1.5rem;
-  opacity: 0.5;
+  color: #a09b8e;
 }
-
-.ao-masterpiece-info {
-  text-align: center;
-}
-
+.ao-masterpiece-info { text-align: center; }
 .ao-masterpiece-title {
   font-size: 0.85rem;
   color: #3a3222;
@@ -640,72 +577,20 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.ao-masterpiece-year {
-  font-size: 0.75rem;
-  color: #a09b8e;
-  margin: 0;
-}
-
+.ao-masterpiece-year { font-size: 0.75rem; color: #a09b8e; margin: 0; }
 @media (max-width: 768px) {
-  .ao-page {
-    padding: 24px 16px 60px;
-  }
-
-  .ao-header {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 16px;
-  }
-
-  .ao-header-actions {
-    justify-content: center;
-  }
-
-  .ao-name {
-    font-size: 1.5rem;
-  }
-
-  .ao-sub-nav {
-    gap: 0;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .ao-nav-item {
-    padding: 10px 14px;
-    font-size: 0.82rem;
-  }
-
-  .ao-card {
-    padding: 20px;
-  }
-
-  .ao-info-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .ao-stats-row {
-    gap: 12px;
-  }
-
-  .ao-stat-item {
-    min-width: 80px;
-  }
-
-  .ao-stat-number {
-    font-size: 1.4rem;
-  }
-
-  .ao-masterpiece-item {
-    width: 130px;
-  }
-
-  .ao-masterpiece-thumb {
-    width: 130px;
-    height: 100px;
-  }
+  .ao-page { padding: 24px 16px 60px; }
+  .ao-header { flex-direction: column; align-items: center; text-align: center; gap: 16px; }
+  .ao-header-actions { justify-content: center; }
+  .ao-name { font-size: 1.5rem; }
+  .ao-sub-nav { gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ao-nav-item { padding: 10px 14px; font-size: 0.82rem; }
+  .ao-card { padding: 20px; }
+  .ao-info-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ao-stats-row { gap: 12px; }
+  .ao-stat-item { min-width: 80px; }
+  .ao-stat-number { font-size: 1.4rem; }
+  .ao-masterpiece-item { width: 130px; }
+  .ao-masterpiece-thumb { width: 130px; height: 100px; }
 }
 </style>
