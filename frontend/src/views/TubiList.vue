@@ -149,27 +149,37 @@
               <div class="table-col col-created">
                 <span class="date-val">{{ item.created_at ? item.created_at.slice(0, 10) : '-' }}</span>
               </div>
-              <div class="table-col col-action">
-                <div class="action-btn-wrap" @mouseenter="openActionMenu($event)" @mouseleave="closeActionMenu">
-                  <button class="action-btn" @click.stop>
+              <div class="table-col col-action" @click.stop="toggleActionMenu($event, item)">
+                <div class="action-btn-wrap">
+                  <span class="action-btn">
                     操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                  </button>
-                  <div class="action-menu" v-show="activeActionItem === item.id">
-                    <div class="action-menu-item" @click.stop="openDetailInNewWindow(item)">详情</div>
-                    <div v-if="authStore.isLoggedIn" class="action-menu-divider"></div>
-                    <div v-if="authStore.isLoggedIn" class="action-menu-item" @click.stop="openSuggestEdit(item)">建议修改</div>
-                    <template v-if="canEditItem(item)">
-                      <div class="action-menu-divider"></div>
-                      <div class="action-menu-item" @click.stop="editItem(item)">编辑</div>
-                      <div class="action-menu-divider"></div>
-                      <div class="action-menu-item action-menu-danger" @click.stop="deleteItem(item)">删除</div>
-                    </template>
-                  </div>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- 下拉菜单（Teleport 到 body，绕过表格裁剪） -->
+        <Teleport to="body">
+          <div class="tl-action-menu-backdrop" v-show="menuVisible" @click="closeMenu" />
+          <div
+            class="tl-action-menu"
+            v-show="menuVisible"
+            :style="menuStyle"
+            @click.stop
+          >
+            <div class="tl-action-menu-item" @click.stop="doDetail">详情</div>
+            <div v-if="authStore.isLoggedIn" class="tl-action-menu-divider"></div>
+            <div v-if="authStore.isLoggedIn" class="tl-action-menu-item" @click.stop="doSuggest">我的意见</div>
+            <template v-if="activeActionItem && canEditItem(activeActionItem)">
+              <div class="tl-action-menu-divider"></div>
+              <div class="tl-action-menu-item" @click.stop="doEdit">编辑</div>
+              <div class="tl-action-menu-divider"></div>
+              <div class="tl-action-menu-item tl-action-menu-danger" @click.stop="doDelete">删除</div>
+            </template>
+          </div>
+        </Teleport>
       </div>
 
       <!-- 加载骨架屏 -->
@@ -217,10 +227,10 @@
       @deleted="onEditDeleted"
     />
 
-    <!-- 建议修改对话框 -->
-    <el-dialog v-model="showSuggestDialog" title="建议修改" width="560px" destroy-on-close>
+    <!-- 我的意见对话框 -->
+    <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close>
       <p style="margin-bottom:16px;color:var(--stone-gray)">
-        您正在对 <strong>{{ suggestArtwork?.title || '未命名' }}</strong> 提出修改建议，提交后由管理员审核。
+        您正在对 <strong>{{ suggestArtwork?.title || '未命名' }}</strong> 提出修改意见，提交后由管理员审核。
       </p>
       <el-form :model="suggestForm" label-position="top">
         <el-form-item label="修改字段">
@@ -234,10 +244,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="原值">
-          <el-input :model-value="suggestForm.old_value" disabled />
+          <div class="old-value-display">{{ suggestForm.old_value }}</div>
         </el-form-item>
         <el-form-item label="新值" required>
-          <el-input v-model="suggestForm.new_value" placeholder="输入修改后的值" />
+          <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="在原值基础上修改，或输入新内容" />
         </el-form-item>
         <el-form-item label="修改说明" required>
           <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
@@ -245,14 +255,14 @@
       </el-form>
       <template #footer>
         <el-button @click="showSuggestDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交修改建议</el-button>
+        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交意见</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ArrowLeft, ArrowUp, ArrowDown, Picture, Search, Close, EditPen } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
@@ -285,17 +295,41 @@ const searchKeyword = ref('')
 const filterTag = ref(null) // 标签筛选
 const isSearchMode = ref(false)
 const activeActionItem = ref(null)
+const menuVisible = ref(false)
+const menuStyle = ref({})
 
-let actionMenuTimer = null
-function openActionMenu(e) {
-  if (actionMenuTimer) clearTimeout(actionMenuTimer)
-  const row = e.currentTarget.closest('[data-row-id]')
-  if (row) activeActionItem.value = row.dataset.rowId
-}
-function closeActionMenu() {
-  actionMenuTimer = setTimeout(() => {
+function toggleActionMenu(e, item) {
+  e.stopPropagation()
+  if (menuVisible.value && activeActionItem.value === item) {
+    menuVisible.value = false
     activeActionItem.value = null
-  }, 150)
+    return
+  }
+  activeActionItem.value = item
+  menuVisible.value = true
+  const btn = e.currentTarget.querySelector('.action-btn')
+  if (btn) {
+    const rect = btn.getBoundingClientRect()
+    menuStyle.value = { top: (rect.bottom + 3) + 'px', left: rect.left + 'px' }
+  }
+}
+function closeMenu() { menuVisible.value = false; activeActionItem.value = null }
+
+function doDetail() {
+  if (activeActionItem.value) openDetailInNewWindow(activeActionItem.value)
+  closeMenu()
+}
+function doSuggest() {
+  if (activeActionItem.value) openSuggestEdit(activeActionItem.value)
+  closeMenu()
+}
+function doEdit() {
+  if (activeActionItem.value) editItem(activeActionItem.value)
+  closeMenu()
+}
+function doDelete() {
+  if (activeActionItem.value) deleteItem(activeActionItem.value)
+  closeMenu()
 }
 const selectedArtist = ref('all')
 
@@ -419,7 +453,7 @@ function canEditItem(item) {
   return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
 }
 
-// 建议修改
+// 我的意见
 const showSuggestDialog = ref(false)
 const suggestForm = reactive({
   field_name: 'title',
@@ -430,11 +464,25 @@ const suggestForm = reactive({
 const submitting = ref(false)
 const suggestArtwork = ref(null)
 
+function getSuggestFieldValue(fieldName) {
+  const item = suggestArtwork.value
+  if (!item) return ''
+  const val = item[fieldName]
+  return val !== null && val !== undefined ? String(val) : ''
+}
+
+function updateSuggestOldValue() {
+  suggestForm.old_value = getSuggestFieldValue(suggestForm.field_name)
+  suggestForm.new_value = suggestForm.old_value
+}
+
+watch(() => suggestForm.field_name, updateSuggestOldValue)
+
 function openSuggestEdit(item) {
   suggestArtwork.value = item
   suggestForm.field_name = 'title'
-  suggestForm.old_value = item.title || ''
-  suggestForm.new_value = ''
+  suggestForm.old_value = getSuggestFieldValue('title')
+  suggestForm.new_value = suggestForm.old_value
   suggestForm.change_summary = ''
   showSuggestDialog.value = true
 }
@@ -452,6 +500,7 @@ async function handleSubmitChange() {
   submitting.value = true
   try {
     const data = {
+      artwork_id: suggestArtwork.value.id || suggestArtwork.value.db_id,
       field_name: suggestForm.field_name,
       old_value: suggestForm.old_value,
       new_value: suggestForm.new_value,
@@ -663,7 +712,7 @@ async function loadRankings() {
     const skip = (currentPage.value - 1) * pageSize.value
     const artistParam = selectedArtist.value !== 'all' ? selectedArtist.value : undefined
     const sortField = SORT_FIELD_MAP[activeSort.value]
-    const response = await tubiApi.getAllResults(skip, pageSize.value, artistParam, sortField, sortDirection.value)
+    const response = await tubiApi.getAllResults(skip, pageSize.value, artistParam, null, sortField, sortDirection.value)
     if (response.success) {
       // 转换字段名
       const works = (response.data || []).map(item => ({
@@ -930,7 +979,6 @@ onMounted(() => {
   padding: 6px 16px;
   transition: background var(--transition-fast), transform var(--transition-normal), box-shadow var(--transition-normal);
   cursor: pointer;
-  align-items: center;
   animation: rowFadeIn 0.3s ease forwards;
 }
 .works-table-row:nth-child(1) { animation-delay: 0s; }
@@ -979,6 +1027,7 @@ onMounted(() => {
 .table-col {
   display: flex;
   align-items: center;
+  align-self: stretch;
   font-size: 12px;
   color: var(--charcoal-warm);
   font-family: var(--font-sans);
@@ -1028,21 +1077,23 @@ onMounted(() => {
 .col-action {
   flex: 0 0 90px;
   justify-content: center;
-}
-.col-action {
-  position: relative;
+  cursor: pointer;
 }
 .action-btn-wrap {
-  position: relative;
-  display: inline-flex;
-  padding-bottom: 6px;
-  margin-bottom: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 0;
+  cursor: pointer;
 }
 .action-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 5px 12px;
+  width: 72px;
+  height: 32px;
   background: var(--cinnabar);
   color: #fff;
   border: none;
@@ -1053,48 +1104,28 @@ onMounted(() => {
   white-space: nowrap;
   font-family: var(--font-sans);
   line-height: 1.4;
+  flex-shrink: 0;
 }
 .action-btn:hover {
   background: var(--cinnabar-light);
 }
-.action-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  margin-top: 2px;
-  min-width: 100px;
-  background: #fff;
-  border: 1px solid var(--border-cream, #e8e4d8);
-  border-radius: var(--radius-md, 8px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  z-index: 1000;
-  padding: 4px 0;
-}
-.action-menu-item {
-  padding: 8px 14px;
+
+/* 我的意见对话框 */
+.old-value-display {
+  width: 100%;
+  padding: 10px 12px;
+  background: #f5f5f5;
+  border: 1px solid #e8e4dc;
+  border-radius: 6px;
   font-size: 13px;
-  color: var(--charcoal-warm);
-  cursor: pointer;
-  text-align: center;
-  transition: background var(--transition-fast);
-  font-family: var(--font-sans);
-}
-.action-menu-item:hover {
-  background: var(--ivory);
-}
-.action-menu-item:first-child {
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-.action-menu-item:last-child {
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-}
-.action-menu-danger {
-  color: var(--error-crimson) !important;
-}
-.action-menu-divider {
-  height: 1px;
-  background: var(--border-cream);
-  margin: 4px 0;
+  color: #888;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  user-select: text;
+  cursor: text;
 }
 
 /* 作品缩略图 */
@@ -1473,3 +1504,42 @@ onMounted(() => {
   }
 }
 </style>
+<style>
+.tl-action-menu-backdrop {
+  position: fixed; inset: 0;
+  z-index: 9998;
+}
+.tl-action-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 100px;
+  background: #fff;
+  border: 1px solid #e8e4d8;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  padding: 4px 0;
+}
+.tl-action-menu-item {
+  padding: 7px 14px;
+  font-size: 12px;
+  color: #606266;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.tl-action-menu-item:hover {
+  background: #f0ebe0;
+  color: #3a3222;
+}
+.tl-action-menu-danger {
+  color: #f56c6c !important;
+}
+.tl-action-menu-danger:hover {
+  background: #fef0f0 !important;
+}
+.tl-action-menu-divider {
+  height: 1px;
+  background: #e8e4d8;
+  margin: 4px 0;
+}
+  </style>
