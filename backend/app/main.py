@@ -94,8 +94,13 @@ app = FastAPI(
 async def redirect_root(request: Request, call_next):
     if request.url.path == "/" and request.method == "GET":
         return RedirectResponse(url="http://localhost:8080")
-    response = await call_next(request)
-    return response
+    return await call_next(request)
+
+
+# 健康检查
+@app.get("/api/v1/health")
+async def health_check():
+    return {"status": "ok", "version": settings.VERSION}
 
 
 # CORS配置（从环境变量读取，逗号分隔；默认 * 允许所有）
