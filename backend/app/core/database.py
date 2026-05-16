@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 import logging
 from app.core.config import get_settings
 
+
 logger = logging.getLogger(__name__)
 settings = get_settings()
 logger.info("Using database: %s", settings.DATABASE_URL)
@@ -254,6 +255,9 @@ def run_migrations():
                 logger.info("Migration: added artists.%s", col)
         conn.commit()
 
+        # ── 画家百科 Phase 2: 新增百科字段 ──
+        _ensure_artist_columns()
+
         # ── art_schools 表 ──
         conn.execute("""
             CREATE TABLE IF NOT EXISTS art_schools (
@@ -320,6 +324,41 @@ def run_migrations():
             )
         """)
         logger.info("Migration: ensured artist_stats_cache table exists")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _ensure_artist_columns():
+    """幂等地为 artists 表添加新百科字段"""
+    import sqlite3
+    from app.core.config import get_settings
+    s = get_settings()
+    db_path = s.DATABASE_URL.replace("sqlite:///", "")
+    conn = sqlite3.connect(db_path, timeout=30)
+    try:
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(artists)").fetchall()}
+        new_cols = [
+            ("banner_url", "TEXT DEFAULT ''"),
+            ("summary", "TEXT DEFAULT ''"),
+            ("nationality", "TEXT DEFAULT ''"),
+            ("occupation", "TEXT DEFAULT ''"),
+            ("main_achievements", "TEXT DEFAULT ''"),
+            ("representative_works_text", "TEXT DEFAULT ''"),
+            ("art_style", "TEXT DEFAULT ''"),
+            ("influence", "TEXT DEFAULT ''"),
+            ("historical_evaluation", "TEXT DEFAULT ''"),
+            ("character_relations", "TEXT DEFAULT '[]'"),
+            ("anecdotes", "TEXT DEFAULT '[]'"),
+            ("art_chronology", "TEXT DEFAULT '[]'"),
+            ("published_works", "TEXT DEFAULT '[]'"),
+            ("gallery_images", "TEXT DEFAULT '[]'"),
+            ("references", "TEXT DEFAULT '[]'"),
+        ]
+        for col, col_type in new_cols:
+            if col not in existing:
+                conn.execute(f"ALTER TABLE artists ADD COLUMN {col} {col_type}")
+                logger.info("Migration: added artists.%s", col)
         conn.commit()
     finally:
         conn.close()

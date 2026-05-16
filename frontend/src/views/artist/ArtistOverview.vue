@@ -1,136 +1,238 @@
 <template>
-  <div class="ao-page">
-    <div v-if="loading" class="ao-loading">加载中...</div>
+  <div class="bk-page">
+    <div v-if="loading" class="bk-loading">加载中...</div>
 
-    <div v-else-if="notFound" class="ao-not-found">
-      <div class="ao-not-found-icon">?</div>
+    <div v-else-if="notFound" class="bk-not-found">
+      <div class="bk-not-found-icon">?</div>
       <h2>未找到该画家</h2>
       <p>请确认名称是否正确，或返回<router-link to="/artists">艺术家列表</router-link>浏览</p>
     </div>
 
     <template v-else-if="artist">
-      <div class="ao-header">
-        <div v-if="artist.avatar_url" class="ao-avatar-img-wrap">
-          <img :src="artist.avatar_url" :alt="artist.name" class="ao-avatar-img" />
-        </div>
-        <div v-else class="ao-avatar">{{ artist.name?.charAt(0) || '?' }}</div>
-        <div class="ao-header-info">
-          <h1 class="ao-name">{{ artist.name }}</h1>
-          <p v-if="artist.alias" class="ao-alias">{{ artist.alias }}</p>
-          <p v-else-if="artist.dynasty" class="ao-alias">{{ artist.dynasty }}画家</p>
-          <div class="ao-header-tags">
-            <span v-if="artist.dynasty" class="ao-tag">{{ artist.dynasty }}</span>
-            <span v-if="artist.art_school" class="ao-tag ao-tag-school">{{ artist.art_school }}</span>
-            <span v-if="artist.birth_year || artist.death_year" class="ao-tag">{{ formatYears(artist.birth_year, artist.death_year) }}</span>
+      <div class="bk-hero" :style="heroStyle">
+        <div class="bk-hero-overlay" />
+        <div class="bk-hero-content">
+          <div class="bk-hero-left">
+            <div v-if="artist.avatar_url" class="bk-hero-avatar-wrap">
+              <img :src="artist.avatar_url" :alt="artist.name" class="bk-hero-avatar" />
+            </div>
+            <div v-else class="bk-hero-avatar bk-hero-avatar-text">{{ artist.name?.charAt(0) || '?' }}</div>
+            <div class="bk-hero-text">
+              <h1 class="bk-hero-name">{{ artist.name }}</h1>
+              <p v-if="artist.alias" class="bk-hero-alias">{{ artist.alias }}</p>
+              <div class="bk-hero-tags">
+                <span v-if="artist.dynasty" class="bk-hero-tag">{{ artist.dynasty }}</span>
+                <span v-if="artist.art_school" class="bk-hero-tag bk-hero-tag-school">{{ artist.art_school }}</span>
+                <span v-if="artist.birth_year || artist.death_year" class="bk-hero-tag">{{ formatYears(artist.birth_year, artist.death_year) }}</span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div v-if="authStore.isEditor" class="ao-header-actions">
-          <el-button size="small" plain @click="handleEdit">编辑</el-button>
-          <el-button size="small" plain @click="handleAiFill" :loading="aiFilling">AI 补充</el-button>
-          <el-button size="small" plain @click="handleMyChanges">我的修改</el-button>
+          <div v-if="authStore.isEditor" class="bk-hero-actions">
+            <el-button size="small" plain class="bk-btn-ghost" @click="handleEdit">编辑</el-button>
+            <el-button size="small" plain class="bk-btn-ghost" @click="handleAiFill" :loading="aiFilling">AI 补充</el-button>
+            <el-button size="small" plain class="bk-btn-ghost" @click="handleMyChanges">我的修改</el-button>
+          </div>
         </div>
       </div>
 
-      <nav class="ao-sub-nav">
+      <nav class="bk-sub-nav">
         <router-link
           v-for="tab in subNavTabs"
           :key="tab.name"
           :to="{ name: tab.name, params: { name: artistName } }"
-          class="ao-nav-item"
-          :class="{ active: isActiveTab(tab.name) }"
+          class="bk-nav-item"
+          :class="{ active: route.name === tab.name }"
         >
           {{ tab.label }}
         </router-link>
+        <a v-if="artist.baidu_url" :href="artist.baidu_url" target="_blank" class="bk-nav-item bk-nav-external">去百科 &rarr;</a>
       </nav>
 
-      <div class="ao-body">
-        <section class="ao-card ao-info-card">
-          <h2 class="ao-card-title">基本信息</h2>
-          <div class="ao-info-grid">
-            <div v-if="artist.alias" class="ao-info-item">
-              <span class="ao-info-label">别号</span>
-              <span class="ao-info-value">{{ artist.alias }}</span>
-            </div>
-            <div v-if="artist.hometown" class="ao-info-item">
-              <span class="ao-info-label">籍贯</span>
-              <span class="ao-info-value">{{ artist.hometown }}</span>
-            </div>
-            <div v-if="artist.birth_year || artist.death_year" class="ao-info-item">
-              <span class="ao-info-label">生卒</span>
-              <span class="ao-info-value">{{ formatYears(artist.birth_year, artist.death_year) }}</span>
-            </div>
-            <div v-if="artist.dynasty" class="ao-info-item">
-              <span class="ao-info-label">朝代</span>
-              <span class="ao-info-value">{{ artist.dynasty }}</span>
-            </div>
-            <div v-if="artist.art_school" class="ao-info-item">
-              <span class="ao-info-label">画派</span>
-              <span class="ao-info-value">{{ artist.art_school }}</span>
-            </div>
-            <div v-if="artist.specialties" class="ao-info-item">
-              <span class="ao-info-label">专长</span>
-              <span class="ao-info-value">{{ artist.specialties }}</span>
-            </div>
-          </div>
-        </section>
+      <div class="bk-body">
+        <aside class="bk-sidebar">
+          <section class="bk-card">
+            <h2 class="bk-card-title">基本信息</h2>
+            <table class="bk-info-table">
+              <tr v-if="artist.name">
+                <td class="bk-info-label">本名</td>
+                <td class="bk-info-value">{{ artist.name }}</td>
+              </tr>
+              <tr v-if="artist.alias">
+                <td class="bk-info-label">别号</td>
+                <td class="bk-info-value">{{ artist.alias }}</td>
+              </tr>
+              <tr v-if="artist.alias && artist.alias.includes(',')">
+                <td class="bk-info-label">字/号</td>
+                <td class="bk-info-value">{{ artist.alias }}</td>
+              </tr>
+              <tr v-if="artist.dynasty">
+                <td class="bk-info-label">朝代</td>
+                <td class="bk-info-value">{{ artist.dynasty }}</td>
+              </tr>
+              <tr v-if="artist.hometown">
+                <td class="bk-info-label">出生地</td>
+                <td class="bk-info-value">{{ artist.hometown }}</td>
+              </tr>
+              <tr v-if="artist.nationality">
+                <td class="bk-info-label">国籍</td>
+                <td class="bk-info-value">{{ artist.nationality }}</td>
+              </tr>
+              <tr v-if="artist.birth_year || artist.death_year">
+                <td class="bk-info-label">出生日期</td>
+                <td class="bk-info-value">{{ artist.birth_year || '不详' }}</td>
+              </tr>
+              <tr v-if="artist.birth_year || artist.death_year">
+                <td class="bk-info-label">逝世日期</td>
+                <td class="bk-info-value">{{ artist.death_year || '不详' }}</td>
+              </tr>
+              <tr v-if="artist.occupation">
+                <td class="bk-info-label">职业</td>
+                <td class="bk-info-value">{{ artist.occupation }}</td>
+              </tr>
+              <tr v-if="artist.art_school">
+                <td class="bk-info-label">画派</td>
+                <td class="bk-info-value">{{ artist.art_school }}</td>
+              </tr>
+              <tr v-if="artist.main_achievements">
+                <td class="bk-info-label">主要成就</td>
+                <td class="bk-info-value">{{ artist.main_achievements }}</td>
+              </tr>
+              <tr v-if="artist.representative_works_text">
+                <td class="bk-info-label">代表作品</td>
+                <td class="bk-info-value">{{ artist.representative_works_text }}</td>
+              </tr>
+            </table>
+          </section>
 
-        <section class="ao-card ao-bio-card">
-          <h2 class="ao-card-title">生平</h2>
-          <p v-if="artist.biography" class="ao-bio-text">{{ artist.biography }}</p>
-          <div v-else-if="artist.background" class="ao-bio-text" v-html="renderBackground(artist.background)"></div>
-          <p v-else class="ao-bio-empty">暂无生平信息</p>
-        </section>
-
-        <section v-if="timelineEvents.length > 0" class="ao-card ao-timeline-card">
-          <h2 class="ao-card-title">生平年表</h2>
-          <div class="ao-timeline">
-            <div v-for="(event, idx) in timelineEvents" :key="idx" class="ao-timeline-item">
-              <div class="ao-timeline-dot" />
-              <div class="ao-timeline-content">
-                <span v-if="event.year" class="ao-timeline-year">{{ event.year }}</span>
-                <span class="ao-timeline-desc">{{ event.event || event.description || event.title || '' }}</span>
+          <section class="bk-card">
+            <h2 class="bk-card-title">数据概览</h2>
+            <div class="bk-stats-grid">
+              <div class="bk-stat-item">
+                <span class="bk-stat-number">{{ stats.total ?? '-' }}</span>
+                <span class="bk-stat-label">作品</span>
+              </div>
+              <div class="bk-stat-item">
+                <span class="bk-stat-number">{{ stats.analyzed ?? '-' }}</span>
+                <span class="bk-stat-label">已分析</span>
+              </div>
+              <div class="bk-stat-item">
+                <span class="bk-stat-number">{{ stats.seal_count ?? '-' }}</span>
+                <span class="bk-stat-label">印章</span>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="ao-card ao-stats-card">
-          <h2 class="ao-card-title">数据概览</h2>
-          <div class="ao-stats-row">
-            <div class="ao-stat-item">
-              <span class="ao-stat-number">{{ stats.total ?? '-' }}</span>
-              <span class="ao-stat-label">作品总数</span>
+          <section v-if="tags.length > 0" class="bk-card">
+            <h2 class="bk-card-title">标签</h2>
+            <div class="bk-tags-wrap">
+              <span v-for="(tag, idx) in tags" :key="idx" class="bk-tag-item">{{ tag }}</span>
             </div>
-            <div class="ao-stat-item">
-              <span class="ao-stat-number">{{ stats.analyzed ?? '-' }}</span>
-              <span class="ao-stat-label">已分析</span>
-            </div>
-            <div class="ao-stat-item">
-              <span class="ao-stat-number">{{ stats.verified ?? '-' }}</span>
-              <span class="ao-stat-label">已核验</span>
-            </div>
-            <div class="ao-stat-item">
-              <span class="ao-stat-number">{{ stats.seal_count ?? '-' }}</span>
-              <span class="ao-stat-label">印章</span>
-            </div>
-          </div>
-        </section>
+          </section>
+        </aside>
 
-        <section v-if="masterpieces.length > 0" class="ao-card ao-masterpieces-card">
-          <h2 class="ao-card-title">代表作品</h2>
-          <div class="ao-masterpieces-scroll">
-            <div v-for="item in masterpieces" :key="item.id || item.title" class="ao-masterpiece-item" @click="goToWork(item.id)">
-              <div class="ao-masterpiece-thumb">
-                <img v-if="item.thumbnail_url || item.image_url" :src="item.thumbnail_url || item.image_url" :alt="item.title || '作品'" />
-                <span v-else class="ao-thumb-placeholder">{{ (item.title || '?').charAt(0) }}</span>
-              </div>
-              <div class="ao-masterpiece-info">
-                <p class="ao-masterpiece-title">{{ item.title || item.work_name || '无题' }}</p>
-                <p v-if="item.year" class="ao-masterpiece-year">{{ item.year }}</p>
+        <main class="bk-main">
+          <section v-if="artist.summary || artist.biography" class="bk-card">
+            <h2 class="bk-card-title">概述</h2>
+            <p class="bk-text">{{ artist.summary || artist.biography }}</p>
+          </section>
+
+          <section v-if="artist.biography" class="bk-card">
+            <h2 class="bk-card-title">人物生平</h2>
+            <p class="bk-text">{{ artist.biography }}</p>
+            <div v-if="timelineEvents.length > 0" class="bk-timeline">
+              <div v-for="(evt, idx) in timelineEvents" :key="idx" class="bk-timeline-item">
+                <div class="bk-timeline-dot" />
+                <div class="bk-timeline-content">
+                  <span v-if="evt.year" class="bk-timeline-year">{{ evt.year }}</span>
+                  <span class="bk-timeline-desc">{{ evt.event || evt.description || '' }}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <section v-if="artChronology.length > 0" class="bk-card">
+            <h2 class="bk-card-title">艺术年谱</h2>
+            <div class="bk-chronology">
+              <div v-for="(item, idx) in artChronology" :key="idx" class="bk-chrono-item">
+                <div class="bk-chrono-year">{{ item.year }}</div>
+                <div class="bk-chrono-body">
+                  <div class="bk-chrono-event">{{ item.event }}</div>
+                  <p v-if="item.description" class="bk-chrono-desc">{{ item.description }}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="artist.art_style" class="bk-card">
+            <h2 class="bk-card-title">艺术特色</h2>
+            <p class="bk-text" v-html="renderMarkdown(artist.art_style)" />
+          </section>
+
+          <section v-if="artist.main_achievements" class="bk-card">
+            <h2 class="bk-card-title">主要成就</h2>
+            <p class="bk-text">{{ artist.main_achievements }}</p>
+          </section>
+
+          <section v-if="artist.influence" class="bk-card">
+            <h2 class="bk-card-title">后世影响</h2>
+            <p class="bk-text">{{ artist.influence }}</p>
+          </section>
+
+          <section v-if="artist.historical_evaluation" class="bk-card">
+            <h2 class="bk-card-title">历史评价</h2>
+            <p class="bk-text">{{ artist.historical_evaluation }}</p>
+          </section>
+
+          <section v-if="characterRelations.length > 0" class="bk-card">
+            <h2 class="bk-card-title">人物关系</h2>
+            <div class="bk-relations-row">
+              <div v-for="(rel, idx) in characterRelations" :key="idx" class="bk-relation-card">
+                <div class="bk-relation-name">{{ rel.name }}</div>
+                <div class="bk-relation-role">{{ rel.relationship }}</div>
+                <p v-if="rel.description" class="bk-relation-desc">{{ rel.description }}</p>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="anecdotes.length > 0" class="bk-card">
+            <h2 class="bk-card-title">轶事典故</h2>
+            <div v-for="(item, idx) in anecdotes" :key="idx" class="bk-anecdote-item">
+              <div class="bk-anecdote-header" @click="toggleAnecdote(idx)">
+                <span class="bk-anecdote-title">{{ item.title || `轶事 ${idx + 1}` }}</span>
+                <span class="bk-anecdote-toggle">{{ expandedAnecdote === idx ? '−' : '+' }}</span>
+              </div>
+              <div v-show="expandedAnecdote === idx" class="bk-anecdote-body">
+                <p class="bk-text">{{ item.content || item.description || '' }}</p>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="masterpieces.length > 0" class="bk-card">
+            <h2 class="bk-card-title">代表作品</h2>
+            <div class="bk-masterpiece-grid">
+              <div v-for="item in masterpieces" :key="item.id || item.title" class="bk-masterpiece-item" @click="goToWork(item.id)">
+                <div class="bk-masterpiece-thumb">
+                  <img v-if="item.thumbnail_url || item.image_url" :src="item.thumbnail_url || item.image_url" :alt="item.title || '作品'" />
+                  <span v-else class="bk-thumb-placeholder">{{ (item.title || '?').charAt(0) }}</span>
+                </div>
+                <p class="bk-masterpiece-title">{{ item.title || item.work_name || '无题' }}</p>
+                <p v-if="item.year" class="bk-masterpiece-year">{{ item.year }}</p>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="artist.published_works" class="bk-card">
+            <h2 class="bk-card-title">出版著作</h2>
+            <p class="bk-text">{{ artist.published_works }}</p>
+          </section>
+
+          <section v-if="references.length > 0" class="bk-card">
+            <h2 class="bk-card-title">参考文献</h2>
+            <ol class="bk-ref-list">
+              <li v-for="(ref, idx) in references" :key="idx" class="bk-ref-item">{{ typeof ref === 'string' ? ref : ref.text || ref.title || '' }}</li>
+            </ol>
+          </section>
+        </main>
       </div>
     </template>
   </div>
@@ -154,6 +256,7 @@ const artist = ref(null)
 const stats = ref({})
 const masterpieces = ref([])
 const aiFilling = ref(false)
+const expandedAnecdote = ref(-1)
 
 const subNavTabs = [
   { label: '概览', name: 'ArtistOverview' },
@@ -163,21 +266,57 @@ const subNavTabs = [
   { label: '分析', name: 'ArtistAnalysis' },
 ]
 
-function isActiveTab(name) {
-  return route.name === name
-}
+const heroStyle = computed(() => {
+  if (artist.value?.banner_url) {
+    return {
+      backgroundImage: `url(${artist.value.banner_url})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  }
+  return {
+    background: 'linear-gradient(135deg, #3a3222 0%, #6b5b4a 40%, #8a7a6a 100%)',
+  }
+})
 
 const timelineEvents = computed(() => {
   if (!artist.value?.bio_events) return []
+  return parseJsonField(artist.value.bio_events)
+})
+
+const artChronology = computed(() => {
+  if (!artist.value?.art_chronology) return []
+  return parseJsonField(artist.value.art_chronology)
+})
+
+const characterRelations = computed(() => {
+  if (!artist.value?.character_relations) return []
+  return parseJsonField(artist.value.character_relations)
+})
+
+const anecdotes = computed(() => {
+  if (!artist.value?.anecdotes) return []
+  return parseJsonField(artist.value.anecdotes)
+})
+
+const tags = computed(() => {
+  if (!artist.value?.tags) return []
+  return parseJsonField(artist.value.tags)
+})
+
+const references = computed(() => {
+  if (!artist.value?.references) return []
+  return parseJsonField(artist.value.references)
+})
+
+function parseJsonField(field) {
   try {
-    const parsed = typeof artist.value.bio_events === 'string'
-      ? JSON.parse(artist.value.bio_events)
-      : artist.value.bio_events
+    const parsed = typeof field === 'string' ? JSON.parse(field) : field
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return []
   }
-})
+}
 
 function formatYears(birth, death) {
   if (!birth && !death) return ''
@@ -186,9 +325,20 @@ function formatYears(birth, death) {
   return `${b} — ${d}`
 }
 
-function renderBackground(bg) {
-  if (!bg) return ''
-  return bg.replace(/\n/g, '<br>')
+function renderMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.+)$/gm, '<h3 class="bk-md-h3">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 class="bk-md-h2">$1</h2>')
+    .replace(/\n/g, '<br>')
+}
+
+function toggleAnecdote(idx) {
+  expandedAnecdote.value = expandedAnecdote.value === idx ? -1 : idx
 }
 
 function goToWork(id) {
@@ -284,28 +434,28 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.ao-page {
-  max-width: 1000px;
+.bk-page {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 0 24px 80px;
   min-height: 100vh;
-  background: #fafaf8;
+  background: #f5f2ed;
 }
-.ao-loading {
+.bk-loading {
   text-align: center;
   padding: 80px 0;
   color: #8a8578;
   font-size: 0.95rem;
 }
-.ao-not-found {
+.bk-not-found {
   text-align: center;
   padding: 80px 24px;
 }
-.ao-not-found-icon {
+.bk-not-found-icon {
   width: 80px; height: 80px;
   margin: 0 auto 20px;
   border-radius: 50%;
-  background: #f5f0ea;
+  background: #f0e8e0;
   color: #8a8578;
   display: flex;
   align-items: center;
@@ -313,29 +463,58 @@ onMounted(async () => {
   font-size: 2.25rem;
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
 }
-.ao-not-found h2 {
+.bk-not-found h2 {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 1.4rem;
   color: #3a3222;
   margin: 0 0 12px;
   font-weight: 500;
 }
-.ao-not-found p { color: #8a8578; font-size: 0.9rem; margin: 0; }
-.ao-not-found a { color: #c45a3c; text-decoration: none; }
-.ao-not-found a:hover { text-decoration: underline; }
-.ao-header {
+.bk-not-found p { color: #8a8578; font-size: 0.9rem; margin: 0; }
+.bk-not-found a { color: #c45a3c; text-decoration: none; }
+.bk-not-found a:hover { text-decoration: underline; }
+
+.bk-hero {
+  position: relative;
+  height: 280px;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
   display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  margin-bottom: 28px;
+  align-items: flex-end;
 }
-.ao-avatar, .ao-avatar-img-wrap {
+.bk-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%);
+}
+.bk-hero-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 32px;
+  gap: 16px;
+}
+.bk-hero-left {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+.bk-hero-avatar-wrap {
   width: 80px; height: 80px;
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
+  border: 3px solid rgba(255,255,255,0.8);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
-.ao-avatar {
+.bk-hero-avatar {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.bk-hero-avatar-text {
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff;
   display: flex;
@@ -345,74 +524,78 @@ onMounted(async () => {
   font-size: 2rem;
   font-weight: 500;
 }
-.ao-avatar-img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-.ao-header-info { flex: 1; min-width: 0; }
-.ao-name {
+.bk-hero-text { flex: 1; }
+.bk-hero-name {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 2rem;
+  font-size: 2.4rem;
   font-weight: 500;
-  color: #3a3222;
+  color: #fff;
   margin: 0 0 6px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   line-height: 1.2;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
-.ao-alias {
-  font-size: 0.9rem;
-  color: #8a8578;
+.bk-hero-alias {
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.8);
   margin: 0 0 10px;
   line-height: 1.4;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
-.ao-header-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-.ao-tag {
+.bk-hero-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.bk-hero-tag {
   display: inline-block;
   font-size: 0.75rem;
-  padding: 3px 12px;
+  padding: 3px 14px;
   border-radius: 999px;
-  background: #f5f0ea;
-  color: #8a6f4c;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
   letter-spacing: 0.04em;
   line-height: 1.5;
+  backdrop-filter: blur(4px);
 }
-.ao-tag-school { background: #f0ede8; color: #6b6b60; }
-.ao-header-actions {
+.bk-hero-tag-school { background: rgba(255,255,255,0.15); }
+.bk-hero-actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.ao-btn-edit {
+.bk-btn-ghost {
   font-size: 0.8rem;
-  color: #8a6f4c;
-  border-color: #d6d2c8;
+  color: rgba(255,255,255,0.85) !important;
+  border-color: rgba(255,255,255,0.4) !important;
+  background: transparent !important;
 }
-.ao-btn-edit:hover {
-  color: #c45a3c;
-  border-color: #c45a3c;
-  background: #fdf6f0;
+.bk-btn-ghost:hover {
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.7) !important;
+  background: rgba(255,255,255,0.1) !important;
 }
-.ao-sub-nav {
+
+.bk-sub-nav {
   display: flex;
-  justify-content: center;
+  align-items: center;
   gap: 0;
-  margin-bottom: 36px;
-  border-bottom: 1px solid #edeae1;
+  margin-bottom: 32px;
+  border-bottom: 1px solid #e0d8ce;
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+  padding: 0 16px;
 }
-.ao-nav-item {
+.bk-nav-item {
   display: block;
-  padding: 12px 24px;
+  padding: 14px 22px;
   font-size: 0.9rem;
-  color: #8a8578;
+  color: #7a6f5e;
   text-decoration: none;
   letter-spacing: 0.06em;
   transition: color 0.2s;
   position: relative;
   white-space: nowrap;
 }
-.ao-nav-item::after {
+.bk-nav-item::after {
   content: '';
   position: absolute;
   bottom: 0;
@@ -423,60 +606,136 @@ onMounted(async () => {
   background: #c45a3c;
   transition: width 0.25s ease;
 }
-.ao-nav-item:hover { color: #3a3222; }
-.ao-nav-item.active { color: #3a3222; font-weight: 500; }
-.ao-nav-item.active::after { width: 60%; }
-.ao-body { display: flex; flex-direction: column; gap: 28px; }
-.ao-card {
+.bk-nav-item:hover { color: #3a3222; }
+.bk-nav-item.active { color: #3a3222; font-weight: 500; }
+.bk-nav-item.active::after { width: 60%; }
+.bk-nav-external {
+  margin-left: auto;
+  color: #c45a3c;
+  font-size: 0.85rem;
+}
+.bk-nav-external:hover { color: #a84838; }
+
+.bk-body {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+.bk-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.bk-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bk-card {
   background: #fff;
   border-radius: 12px;
-  padding: 28px;
+  padding: 24px;
   border: 1px solid #edeae1;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
 }
-.ao-card-title {
+.bk-card-title {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 500;
   color: #3a3222;
-  margin: 0 0 20px;
+  margin: 0 0 18px;
   padding-left: 12px;
   border-left: 3px solid #c45a3c;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
-.ao-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+
+.bk-info-table {
+  width: 100%;
+  border-collapse: collapse;
 }
-.ao-info-item { display: flex; flex-direction: column; gap: 4px; }
-.ao-info-label {
-  font-size: 0.75rem;
+.bk-info-table tr {
+  border-bottom: 1px solid #f0ece4;
+}
+.bk-info-table tr:last-child {
+  border-bottom: none;
+}
+.bk-info-table td {
+  padding: 8px 0;
+  vertical-align: top;
+  line-height: 1.5;
+}
+.bk-info-label {
+  width: 72px;
+  font-size: 0.78rem;
   color: #a09b8e;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  white-space: nowrap;
+  padding-right: 8px;
 }
-.ao-info-value {
-  font-size: 0.95rem;
+.bk-info-value {
+  font-size: 0.9rem;
   color: #3a3222;
-  line-height: 1.4;
 }
-.ao-bio-text {
+
+.bk-stats-grid {
+  display: flex;
+  gap: 0;
+  justify-content: space-around;
+}
+.bk-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 70px;
+}
+.bk-stat-number {
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: #c45a3c;
+}
+.bk-stat-label {
+  font-size: 0.75rem;
+  color: #8a8578;
+  letter-spacing: 0.06em;
+}
+
+.bk-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bk-tag-item {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #f0ece4;
+  color: #6b5b4a;
+  letter-spacing: 0.04em;
+}
+
+.bk-text {
   font-size: 0.95rem;
   color: #3a3222;
   line-height: 1.8;
   margin: 0;
 }
-.ao-bio-empty {
-  color: #a09b8e;
-  font-size: 0.9rem;
-  margin: 0;
-}
-.ao-timeline {
+
+.bk-timeline {
   position: relative;
   padding-left: 24px;
+  margin-top: 20px;
 }
-.ao-timeline::before {
+.bk-timeline::before {
   content: '';
   position: absolute;
   left: 6px;
@@ -485,90 +744,210 @@ onMounted(async () => {
   width: 2px;
   background: #edeae1;
 }
-.ao-timeline-item { position: relative; padding-bottom: 20px; }
-.ao-timeline-item:last-child { padding-bottom: 0; }
-.ao-timeline-dot {
+.bk-timeline-item {
+  position: relative;
+  padding-bottom: 18px;
+}
+.bk-timeline-item:last-child { padding-bottom: 0; }
+.bk-timeline-dot {
   position: absolute;
   left: -18px;
   top: 6px;
   width: 10px; height: 10px;
   border-radius: 50%;
   background: #c45a3c;
-  border: 2px solid #fafaf8;
+  border: 2px solid #fff;
   box-shadow: 0 0 0 2px #dbbca8;
 }
-.ao-timeline-content { display: flex; flex-direction: column; gap: 2px; }
-.ao-timeline-year {
+.bk-timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bk-timeline-year {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 0.85rem;
   font-weight: 500;
   color: #c45a3c;
 }
-.ao-timeline-desc {
+.bk-timeline-desc {
   font-size: 0.9rem;
   color: #3a3222;
   line-height: 1.5;
 }
-.ao-stats-row {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
+
+.bk-chronology {
+  position: relative;
 }
-.ao-stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 100px;
-}
-.ao-stat-number {
-  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 1.75rem;
-  font-weight: 500;
-  color: #c45a3c;
-}
-.ao-stat-label {
-  font-size: 0.8rem;
-  color: #8a8578;
-  letter-spacing: 0.06em;
-}
-.ao-masterpieces-scroll {
+.bk-chrono-item {
   display: flex;
   gap: 16px;
-  overflow-x: auto;
-  padding: 4px 4px 12px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
+  padding-bottom: 20px;
+  position: relative;
 }
-.ao-masterpieces-scroll::-webkit-scrollbar { height: 6px; }
-.ao-masterpieces-scroll::-webkit-scrollbar-track { background: transparent; }
-.ao-masterpieces-scroll::-webkit-scrollbar-thumb { background: #d6d2c8; border-radius: 3px; }
-.ao-masterpiece-item {
+.bk-chrono-item:last-child { padding-bottom: 0; }
+.bk-chrono-item::before {
+  content: '';
+  position: absolute;
+  left: 60px;
+  top: 24px;
+  bottom: 0;
+  width: 1px;
+  background: #edeae1;
+}
+.bk-chrono-item:last-child::before { display: none; }
+.bk-chrono-year {
+  width: 60px;
   flex-shrink: 0;
-  width: 160px;
-  scroll-snap-align: start;
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #c45a3c;
+  padding-top: 2px;
+  position: relative;
+}
+.bk-chrono-year::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 8px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #c45a3c;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #dbbca8;
+}
+.bk-chrono-body {
+  flex: 1;
+  padding-left: 16px;
+}
+.bk-chrono-event {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #3a3222;
+  margin-bottom: 4px;
+}
+.bk-chrono-desc {
+  font-size: 0.88rem;
+  color: #6b5b4a;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.bk-md-h2 {
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #3a3222;
+  margin: 16px 0 8px;
+}
+.bk-md-h3 {
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #3a3222;
+  margin: 12px 0 6px;
+}
+
+.bk-relations-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.bk-relation-card {
+  flex: 1;
+  min-width: 160px;
+  max-width: 260px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid #edeae1;
+  background: #faf8f5;
+}
+.bk-relation-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #3a3222;
+}
+.bk-relation-role {
+  font-size: 0.8rem;
+  color: #c45a3c;
+  margin: 2px 0 6px;
+}
+.bk-relation-desc {
+  font-size: 0.85rem;
+  color: #6b5b4a;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.bk-anecdote-item {
+  border-bottom: 1px solid #f0ece4;
+}
+.bk-anecdote-item:last-child {
+  border-bottom: none;
+}
+.bk-anecdote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.bk-anecdote-header:hover {
+  color: #c45a3c;
+}
+.bk-anecdote-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: inherit;
+}
+.bk-anecdote-toggle {
+  font-size: 1.2rem;
+  color: #c45a3c;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.bk-anecdote-body {
+  padding-bottom: 16px;
+}
+
+.bk-masterpiece-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+.bk-masterpiece-item {
   cursor: pointer;
   transition: transform 0.2s;
+  text-align: center;
 }
-.ao-masterpiece-item:hover { transform: translateY(-2px); }
-.ao-masterpiece-thumb {
-  width: 160px; height: 120px;
+.bk-masterpiece-item:hover {
+  transform: translateY(-3px);
+}
+.bk-masterpiece-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
   border-radius: 8px;
   overflow: hidden;
-  background: #f5f0ea;
+  background: #f0ece4;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
 }
-.ao-masterpiece-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.ao-thumb-placeholder {
+.bk-masterpiece-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bk-thumb-placeholder {
   font-family: 'Noto Serif SC', serif;
   font-size: 1.5rem;
   color: #a09b8e;
 }
-.ao-masterpiece-info { text-align: center; }
-.ao-masterpiece-title {
+.bk-masterpiece-title {
   font-size: 0.85rem;
   color: #3a3222;
   margin: 0 0 2px;
@@ -577,20 +956,72 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ao-masterpiece-year { font-size: 0.75rem; color: #a09b8e; margin: 0; }
-@media (max-width: 768px) {
-  .ao-page { padding: 24px 16px 60px; }
-  .ao-header { flex-direction: column; align-items: center; text-align: center; gap: 16px; }
-  .ao-header-actions { justify-content: center; }
-  .ao-name { font-size: 1.5rem; }
-  .ao-sub-nav { gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .ao-nav-item { padding: 10px 14px; font-size: 0.82rem; }
-  .ao-card { padding: 20px; }
-  .ao-info-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-  .ao-stats-row { gap: 12px; }
-  .ao-stat-item { min-width: 80px; }
-  .ao-stat-number { font-size: 1.4rem; }
-  .ao-masterpiece-item { width: 130px; }
-  .ao-masterpiece-thumb { width: 130px; height: 100px; }
+.bk-masterpiece-year {
+  font-size: 0.75rem;
+  color: #a09b8e;
+  margin: 0;
+}
+
+.bk-ref-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.bk-ref-item {
+  font-size: 0.88rem;
+  color: #3a3222;
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 900px) {
+  .bk-body {
+    flex-direction: column;
+  }
+  .bk-sidebar {
+    width: 100%;
+    position: static;
+    order: 0;
+  }
+  .bk-main {
+    order: 1;
+  }
+  .bk-hero {
+    height: 220px;
+  }
+  .bk-hero-content {
+    padding: 20px;
+  }
+  .bk-hero-name {
+    font-size: 1.6rem;
+  }
+  .bk-hero-avatar-wrap {
+    width: 56px; height: 56px;
+  }
+  .bk-hero-avatar-text {
+    width: 56px; height: 56px;
+    font-size: 1.4rem;
+  }
+  .bk-sub-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 8px;
+  }
+  .bk-nav-item {
+    padding: 12px 14px;
+    font-size: 0.82rem;
+  }
+  .bk-card {
+    padding: 18px;
+  }
+  .bk-relations-row {
+    flex-direction: column;
+  }
+  .bk-relation-card {
+    max-width: none;
+  }
+  .bk-masterpiece-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+  }
 }
 </style>

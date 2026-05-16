@@ -2,7 +2,7 @@
   <div class="artist-info-manager">
     <div class="toolbar">
       <div class="toolbar-left">
-        <el-input v-model="searchQuery" placeholder="搜索画家姓名..." clearable size="small" style="width:200px" @input="onSearchInput" />
+        <el-input v-model="searchQuery" placeholder="搜索画家姓名..." clearable size="small" style="width:200px" />
         <el-select v-model="dynastyFilter" placeholder="筛选朝代" clearable size="small" style="width:130px">
           <el-option v-for="p in periods" :key="p" :label="p" :value="p" />
         </el-select>
@@ -15,6 +15,7 @@
         <div class="artist-row">
           <div class="artist-main">
             <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="36" shape="square" />
+            <el-avatar v-else :size="36" shape="square" style="background:#c45a3c">{{ artist.name?.charAt(0) || '?' }}</el-avatar>
             <span class="artist-name">{{ artist.name }}</span>
             <el-tag v-if="artist.dynasty" size="small">{{ artist.dynasty }}</el-tag>
             <el-tag v-if="artist.alias" size="small" type="info">{{ artist.alias }}</el-tag>
@@ -39,15 +40,14 @@
       <div v-if="!loading && artists.length === 0" class="empty-state"><el-empty description="暂无画家数据" /></div>
     </div>
 
-    <el-dialog v-model="showEditDialog" :title="editingArtist ? '编辑画家：' + editingArtist.name : '新增画家'" width="700px" class="claude-dialog" destroy-on-close top="3vh">
+    <el-dialog v-model="showEditDialog" :title="editingArtist ? '编辑画家：' + editingArtist.name : '新增画家'" width="800px" class="claude-dialog" destroy-on-close top="3vh">
       <el-tabs v-model="activeTab" type="border-card">
-        <!-- 基本信息 -->
         <el-tab-pane label="基本信息" name="basic">
           <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
             <div class="form-row">
               <el-form-item label="姓名" required class="form-item-half">
                 <el-input v-model="editForm.name" placeholder="如：李鱓" />
-                <div v-if="editingArtist && editForm.name !== editingArtist.name" class="rename-warning">⚠️ 修改姓名将同步更新所有相关画作的作者信息</div>
+                <div v-if="editingArtist && editForm.name !== editingArtist.name" class="rename-warning">修改姓名将同步更新所有相关画作的作者信息</div>
               </el-form-item>
               <el-form-item label="字号" class="form-item-half">
                 <el-input v-model="editForm.alias" placeholder="字复堂，号懊道人" />
@@ -82,12 +82,17 @@
             <el-form-item label="背景简介">
               <el-input v-model="editForm.background" type="textarea" :rows="2" placeholder="画家背景简介，支持Markdown格式" />
             </el-form-item>
+            <el-form-item label="概述">
+              <el-input v-model="editForm.summary" type="textarea" :rows="3" placeholder="画家概述（用于百科展示）" />
+            </el-form-item>
           </el-form>
         </el-tab-pane>
 
-        <!-- 生平与时间线 -->
-        <el-tab-pane label="生平与头像" name="bio">
+        <el-tab-pane label="生平与年谱" name="bio">
           <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
+            <el-form-item label="生平简介">
+              <el-input v-model="editForm.biography" type="textarea" :rows="6" placeholder="详细生平介绍文本" />
+            </el-form-item>
             <el-form-item label="头像">
               <div class="avatar-url-row">
                 <el-input v-model="editForm.avatar_url" placeholder="https://..." style="flex:1" />
@@ -95,21 +100,16 @@
                 <el-avatar v-else :size="48" shape="square" style="background:#c45a3c">{{ editForm.name?.charAt(0) || '?' }}</el-avatar>
               </div>
             </el-form-item>
-            <el-form-item label="生平简介">
-              <el-input v-model="editForm.biography" type="textarea" :rows="4" placeholder="详细生平介绍文本" />
-            </el-form-item>
             <el-form-item label="生平时间线">
-              <div class="bio-events-list">
-                <div class="bio-events-header">
-                  <span class="bio-events-hint">按时间顺序添加重要生平事件</span>
-                </div>
-                <div v-for="(evt, idx) in editForm.bio_events" :key="idx" class="bio-event-item">
-                  <div class="bio-event-header-row">
-                    <span class="bio-event-index">#{{ idx + 1 }}</span>
+              <div class="array-editor">
+                <p class="array-editor-hint">按时间顺序添加重要生平事件</p>
+                <div v-for="(evt, idx) in editForm.bio_events" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
                     <el-button type="danger" size="small" text @click="removeBioEvent(idx)">删除</el-button>
                   </div>
-                  <div class="bio-event-fields">
-                    <el-input v-model="evt.year" placeholder="年份(如：1713)" size="small" style="width:120px" type="number" />
+                  <div class="array-item-fields">
+                    <el-input v-model="evt.year" placeholder="年份" size="small" style="width:100px" type="number" />
                     <el-input v-model="evt.type" placeholder="类型(如：入仕)" size="small" style="width:120px" />
                     <el-input v-model="evt.title" placeholder="标题" size="small" style="flex:1" />
                   </div>
@@ -118,27 +118,188 @@
                 <el-button type="primary" size="small" plain @click="addBioEvent" style="margin-top:8px">
                   <el-icon><Plus /></el-icon>添加事件
                 </el-button>
-                <p v-if="editForm.bio_events.length === 0" class="bio-events-empty">暂未添加时间线事件，点击上方按钮添加</p>
+                <p v-if="editForm.bio_events.length === 0" class="array-editor-empty">暂未添加时间线事件</p>
+              </div>
+            </el-form-item>
+            <el-form-item label="艺术年谱">
+              <div class="array-editor">
+                <p class="array-editor-hint">按时间顺序添加艺术创作年谱</p>
+                <div v-for="(item, idx) in editForm.art_chronology" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
+                    <el-button type="danger" size="small" text @click="removeChronologyEvent(idx)">删除</el-button>
+                  </div>
+                  <div class="array-item-fields">
+                    <el-input v-model="item.year" placeholder="年份" size="small" style="width:100px" />
+                    <el-input v-model="item.event" placeholder="事件标题" size="small" style="flex:1" />
+                  </div>
+                  <el-input v-model="item.description" placeholder="详细描述" size="small" style="margin-top:6px" />
+                </div>
+                <el-button type="primary" size="small" plain @click="addChronologyEvent" style="margin-top:8px">
+                  <el-icon><Plus /></el-icon>添加年谱条目
+                </el-button>
+                <p v-if="editForm.art_chronology.length === 0" class="array-editor-empty">暂未添加艺术年谱</p>
               </div>
             </el-form-item>
           </el-form>
         </el-tab-pane>
 
-        <!-- 高级信息 -->
-        <el-tab-pane label="高级信息" name="advanced">
+        <el-tab-pane label="艺术研究" name="research">
           <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
-            <el-form-item label="代表作">
-              <el-select v-model="editForm.masterpieces" multiple filterable allow-create default-first-option placeholder="输入代表作名称后回车添加" style="width:100%" />
+            <el-form-item label="艺术特色">
+              <el-input v-model="editForm.art_style" type="textarea" :rows="6" placeholder="画家的艺术风格、技法特点等" />
             </el-form-item>
-            <el-form-item label="标签">
-              <el-select v-model="editForm.tags" multiple filterable allow-create default-first-option placeholder="输入标签后回车添加" style="width:100%" />
+            <el-form-item label="主要成就">
+              <el-input v-model="editForm.main_achievements" type="textarea" :rows="4" placeholder="画家的主要艺术成就" />
+            </el-form-item>
+            <el-form-item label="后世影响">
+              <el-input v-model="editForm.influence" type="textarea" :rows="4" placeholder="画家对后世的影响与贡献" />
+            </el-form-item>
+            <el-form-item label="历史评价">
+              <el-input v-model="editForm.historical_evaluation" type="textarea" :rows="4" placeholder="后人对画家的历史评价" />
             </el-form-item>
             <el-form-item label="百度百科链接">
               <el-input v-model="editForm.baidu_url" placeholder="https://baike.baidu.com/..." />
             </el-form-item>
-            <el-form-item label="推荐展示">
-              <el-switch v-model="editForm.featured" :active-value="1" :inactive-value="0" active-text="推荐首页展示" inactive-text="不推荐" />
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane label="人物关系" name="relations">
+          <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
+            <el-form-item label="人物关系">
+              <div class="array-editor">
+                <p class="array-editor-hint">添加与画家相关的人物关系</p>
+                <div v-for="(rel, idx) in editForm.character_relations" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
+                    <el-button type="danger" size="small" text @click="removeRelation(idx)">删除</el-button>
+                  </div>
+                  <div class="array-item-fields">
+                    <el-input v-model="rel.name" placeholder="姓名" size="small" style="flex:1" />
+                    <el-input v-model="rel.relationship" placeholder="关系(如：好友)" size="small" style="width:120px" />
+                  </div>
+                  <div style="display:flex;gap:6px;margin-top:6px">
+                    <el-input v-model="rel.description" placeholder="关系描述" size="small" style="flex:1" />
+                    <el-input v-model="rel.image_url" placeholder="人物头像URL" size="small" style="flex:1" />
+                  </div>
+                </div>
+                <el-button type="primary" size="small" plain @click="addRelation" style="margin-top:8px">
+                  <el-icon><Plus /></el-icon>添加关系
+                </el-button>
+                <p v-if="editForm.character_relations.length === 0" class="array-editor-empty">暂未添加人物关系</p>
+              </div>
             </el-form-item>
+            <el-form-item label="轶事典故">
+              <div class="array-editor">
+                <p class="array-editor-hint">添加与画家相关的轶事典故</p>
+                <div v-for="(ane, idx) in editForm.anecdotes" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
+                    <el-button type="danger" size="small" text @click="removeAnecdote(idx)">删除</el-button>
+                  </div>
+                  <el-input v-model="ane.title" placeholder="典故标题" size="small" style="margin-bottom:6px" />
+                  <el-input v-model="ane.content" placeholder="典故内容" size="small" type="textarea" :rows="2" />
+                </div>
+                <el-button type="primary" size="small" plain @click="addAnecdote" style="margin-top:8px">
+                  <el-icon><Plus /></el-icon>添加典故
+                </el-button>
+                <p v-if="editForm.anecdotes.length === 0" class="array-editor-empty">暂未添加轶事典故</p>
+              </div>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <el-tab-pane label="高级信息" name="advanced">
+          <el-form :model="editForm" label-position="top" class="modern-form artist-edit-form">
+            <div class="form-row">
+              <el-form-item label="代表作品" class="form-item-half">
+                <el-select v-model="editForm.masterpieces" multiple filterable allow-create default-first-option placeholder="输入代表作名称后回车添加" style="width:100%" />
+              </el-form-item>
+              <el-form-item label="代表作品文本" class="form-item-half">
+                <el-input v-model="editForm.representative_works_text" placeholder="用于百科展示的代表作品文本" />
+              </el-form-item>
+            </div>
+            <el-form-item label="标签">
+              <el-select v-model="editForm.tags" multiple filterable allow-create default-first-option placeholder="输入标签后回车添加" style="width:100%" />
+            </el-form-item>
+            <el-form-item label="出版著作">
+              <div class="array-editor">
+                <p class="array-editor-hint">添加画家的出版著作</p>
+                <div v-for="(pw, idx) in editForm.published_works" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
+                    <el-button type="danger" size="small" text @click="removePublishedWork(idx)">删除</el-button>
+                  </div>
+                  <div class="array-item-fields">
+                    <el-input v-model="pw.title" placeholder="书名" size="small" style="flex:1" />
+                    <el-input v-model="pw.publisher" placeholder="出版社" size="small" style="flex:1" />
+                    <el-input v-model="pw.year" placeholder="年份" size="small" style="width:100px" />
+                  </div>
+                </div>
+                <el-button type="primary" size="small" plain @click="addPublishedWork" style="margin-top:8px">
+                  <el-icon><Plus /></el-icon>添加著作
+                </el-button>
+                <p v-if="editForm.published_works.length === 0" class="array-editor-empty">暂未添加出版著作</p>
+              </div>
+            </el-form-item>
+            <el-form-item label="参考文献">
+              <div class="array-editor">
+                <p class="array-editor-hint">添加参考文献</p>
+                <div v-for="(ref, idx) in editForm.references" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
+                    <el-button type="danger" size="small" text @click="removeReference(idx)">删除</el-button>
+                  </div>
+                  <div class="array-item-fields">
+                    <el-input v-model="ref.author" placeholder="作者" size="small" style="width:120px" />
+                    <el-input v-model="ref.title" placeholder="文献标题" size="small" style="flex:1" />
+                  </div>
+                  <div class="array-item-fields" style="margin-top:6px">
+                    <el-input v-model="ref.publisher" placeholder="出版社/期刊" size="small" style="flex:1" />
+                    <el-input v-model="ref.year" placeholder="年份" size="small" style="width:100px" />
+                  </div>
+                </div>
+                <el-button type="primary" size="small" plain @click="addReference" style="margin-top:8px">
+                  <el-icon><Plus /></el-icon>添加文献
+                </el-button>
+                <p v-if="editForm.references.length === 0" class="array-editor-empty">暂未添加参考文献</p>
+              </div>
+            </el-form-item>
+            <el-form-item label="作品图集">
+              <div class="array-editor">
+                <p class="array-editor-hint">添加作品展示图片</p>
+                <div v-for="(img, idx) in editForm.gallery_images" :key="idx" class="array-item">
+                  <div class="array-item-header">
+                    <span class="array-item-index">#{{ idx + 1 }}</span>
+                    <el-button type="danger" size="small" text @click="removeGalleryImage(idx)">删除</el-button>
+                  </div>
+                  <div class="array-item-fields">
+                    <el-input v-model="img.url" placeholder="图片URL" size="small" style="flex:1" />
+                    <el-input v-model="img.title" placeholder="图片标题" size="small" style="flex:1" />
+                  </div>
+                </div>
+                <el-button type="primary" size="small" plain @click="addGalleryImage" style="margin-top:8px">
+                  <el-icon><Plus /></el-icon>添加图片
+                </el-button>
+                <p v-if="editForm.gallery_images.length === 0" class="array-editor-empty">暂未添加作品图集</p>
+              </div>
+            </el-form-item>
+            <div class="form-row">
+              <el-form-item label="封面题图" class="form-item-half">
+                <el-input v-model="editForm.banner_url" placeholder="封面题图URL" />
+              </el-form-item>
+              <el-form-item label="国籍" class="form-item-half">
+                <el-input v-model="editForm.nationality" placeholder="如：中国" />
+              </el-form-item>
+            </div>
+            <div class="form-row">
+              <el-form-item label="职业" class="form-item-half">
+                <el-input v-model="editForm.occupation" placeholder="如：画家、书法家" />
+              </el-form-item>
+              <el-form-item label="推荐展示" class="form-item-half">
+                <el-switch v-model="editForm.featured" :active-value="1" :inactive-value="0" active-text="推荐首页展示" inactive-text="不推荐" />
+              </el-form-item>
+            </div>
             <el-form-item label="启用状态">
               <el-switch v-model="editForm.enabled" :active-value="1" :inactive-value="0" active-text="已启用" inactive-text="已禁用" />
             </el-form-item>
@@ -183,13 +344,19 @@ const defaultForm = {
   name: '', alias: '', dynasty: '', hometown: '', avatar_url: '',
   birth_year: null, death_year: null, biography: '', background: '',
   specialties: '', bio_events: [], art_school: '', masterpieces: [],
-  tags: [], baidu_url: '', featured: 0, enabled: 1
+  tags: [], baidu_url: '', featured: 0, enabled: 1,
+  summary: '', nationality: '', occupation: '',
+  main_achievements: '', representative_works_text: '',
+  art_style: '', influence: '', historical_evaluation: '',
+  character_relations: [], anecdotes: [], art_chronology: [],
+  published_works: [], gallery_images: [], references: [],
+  banner_url: ''
 }
 
 const editForm = ref({ ...defaultForm })
 
 const filteredArtists = computed(() => {
-  let list = [...artists.value]
+  let list = artists.value.slice()
   const q = searchQuery.value.trim().toLowerCase()
   if (q) list = list.filter(a => a.name.toLowerCase().includes(q))
   if (dynastyFilter.value) list = list.filter(a => a.dynasty === dynastyFilter.value)
@@ -217,7 +384,13 @@ async function loadArtists() {
       ...a,
       bio_events: parseJsonArray(a.bio_events),
       masterpieces: parseJsonArray(a.masterpieces),
-      tags: parseJsonArray(a.tags)
+      tags: parseJsonArray(a.tags),
+      art_chronology: parseJsonArray(a.art_chronology),
+      character_relations: parseJsonArray(a.character_relations),
+      anecdotes: parseJsonArray(a.anecdotes),
+      published_works: parseJsonArray(a.published_works),
+      references: parseJsonArray(a.references),
+      gallery_images: parseJsonArray(a.gallery_images)
     }))
   } catch (e) {
     ElMessage.error('加载画家列表失败: ' + e.message)
@@ -232,12 +405,25 @@ async function loadPeriods() {
   } catch (e) { console.warn('加载朝代列表失败', e) }
 }
 
-function onSearchInput() {}
+function resetForm() {
+  editForm.value = {
+    name: '', alias: '', dynasty: '', hometown: '', avatar_url: '',
+    birth_year: null, death_year: null, biography: '', background: '',
+    specialties: '', bio_events: [], art_school: '', masterpieces: [],
+    tags: [], baidu_url: '', featured: 0, enabled: 1,
+    summary: '', nationality: '', occupation: '',
+    main_achievements: '', representative_works_text: '',
+    art_style: '', influence: '', historical_evaluation: '',
+    character_relations: [], anecdotes: [], art_chronology: [],
+    published_works: [], gallery_images: [], references: [],
+    banner_url: ''
+  }
+}
 
 function openCreate() {
   editingArtist.value = null
   activeTab.value = 'basic'
-  editForm.value = { ...defaultForm, bio_events: [], masterpieces: [], tags: [] }
+  resetForm()
   showEditDialog.value = true
 }
 
@@ -261,7 +447,22 @@ function openEdit(artist) {
     tags: Array.isArray(artist.tags) ? [...artist.tags] : [],
     baidu_url: artist.baidu_url || '',
     featured: artist.featured ?? 0,
-    enabled: artist.enabled ?? 1
+    enabled: artist.enabled ?? 1,
+    summary: artist.summary || '',
+    nationality: artist.nationality || '',
+    occupation: artist.occupation || '',
+    main_achievements: artist.main_achievements || '',
+    representative_works_text: artist.representative_works_text || '',
+    art_style: artist.art_style || '',
+    influence: artist.influence || '',
+    historical_evaluation: artist.historical_evaluation || '',
+    character_relations: Array.isArray(artist.character_relations) ? artist.character_relations.map(r => ({ ...r })) : [],
+    anecdotes: Array.isArray(artist.anecdotes) ? artist.anecdotes.map(a => ({ ...a })) : [],
+    art_chronology: Array.isArray(artist.art_chronology) ? artist.art_chronology.map(c => ({ ...c })) : [],
+    published_works: Array.isArray(artist.published_works) ? artist.published_works.map(p => ({ ...p })) : [],
+    gallery_images: Array.isArray(artist.gallery_images) ? artist.gallery_images.map(g => ({ ...g })) : [],
+    references: Array.isArray(artist.references) ? artist.references.map(r => ({ ...r })) : [],
+    banner_url: artist.banner_url || ''
   }
   showEditDialog.value = true
 }
@@ -272,6 +473,54 @@ function addBioEvent() {
 
 function removeBioEvent(idx) {
   editForm.value.bio_events.splice(idx, 1)
+}
+
+function addChronologyEvent() {
+  editForm.value.art_chronology.push({ year: '', event: '', description: '' })
+}
+
+function removeChronologyEvent(idx) {
+  editForm.value.art_chronology.splice(idx, 1)
+}
+
+function addRelation() {
+  editForm.value.character_relations.push({ name: '', relationship: '', description: '', image_url: '' })
+}
+
+function removeRelation(idx) {
+  editForm.value.character_relations.splice(idx, 1)
+}
+
+function addAnecdote() {
+  editForm.value.anecdotes.push({ title: '', content: '' })
+}
+
+function removeAnecdote(idx) {
+  editForm.value.anecdotes.splice(idx, 1)
+}
+
+function addPublishedWork() {
+  editForm.value.published_works.push({ title: '', publisher: '', year: '' })
+}
+
+function removePublishedWork(idx) {
+  editForm.value.published_works.splice(idx, 1)
+}
+
+function addReference() {
+  editForm.value.references.push({ author: '', title: '', publisher: '', year: '' })
+}
+
+function removeReference(idx) {
+  editForm.value.references.splice(idx, 1)
+}
+
+function addGalleryImage() {
+  editForm.value.gallery_images.push({ url: '', title: '' })
+}
+
+function removeGalleryImage(idx) {
+  editForm.value.gallery_images.splice(idx, 1)
 }
 
 async function handleSave() {
@@ -309,7 +558,22 @@ async function handleSave() {
       tags: JSON.stringify(editForm.value.tags),
       baidu_url: editForm.value.baidu_url,
       featured: editForm.value.featured,
-      enabled: editForm.value.enabled
+      enabled: editForm.value.enabled,
+      summary: editForm.value.summary,
+      nationality: editForm.value.nationality,
+      occupation: editForm.value.occupation,
+      main_achievements: editForm.value.main_achievements,
+      representative_works_text: editForm.value.representative_works_text,
+      art_style: editForm.value.art_style,
+      influence: editForm.value.influence,
+      historical_evaluation: editForm.value.historical_evaluation,
+      character_relations: JSON.stringify(editForm.value.character_relations),
+      anecdotes: JSON.stringify(editForm.value.anecdotes),
+      art_chronology: JSON.stringify(editForm.value.art_chronology),
+      published_works: JSON.stringify(editForm.value.published_works),
+      gallery_images: JSON.stringify(editForm.value.gallery_images),
+      references: JSON.stringify(editForm.value.references),
+      banner_url: editForm.value.banner_url
     }
 
     if (editingArtist.value) {
@@ -393,12 +657,11 @@ onMounted(() => { loadArtists(); loadPeriods() })
 .form-item-half { flex: 1; min-width: 160px; }
 .rename-warning { font-size: 12px; color: #e6a23c; margin-top: 4px; }
 .avatar-url-row { display: flex; gap: 8px; align-items: center; width: 100%; }
-.bio-events-list { width: 100%; display: flex; flex-direction: column; gap: 4px; }
-.bio-events-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.bio-events-hint { font-size: 12px; color: #909399; }
-.bio-events-empty { font-size: 12px; color: #c0c4cc; text-align: center; padding: 20px; }
-.bio-event-item { border: 1px solid #e4e7ed; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
-.bio-event-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.bio-event-index { font-size: 11px; color: #909399; font-weight: 600; }
-.bio-event-fields { display: flex; gap: 6px; flex-wrap: wrap; }
+.array-editor { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.array-editor-hint { font-size: 12px; color: #909399; margin: 0 0 8px 0; }
+.array-editor-empty { font-size: 12px; color: #c0c4cc; text-align: center; padding: 20px; margin: 0; }
+.array-item { border: 1px solid #e4e7ed; border-radius: 6px; padding: 10px 12px; background: #fafafa; }
+.array-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.array-item-index { font-size: 11px; color: #909399; font-weight: 600; }
+.array-item-fields { display: flex; gap: 6px; flex-wrap: wrap; }
 </style>

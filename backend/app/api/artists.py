@@ -39,6 +39,21 @@ class ArtistCreate(BaseModel):
     baidu_url: Optional[str] = ""
     featured: Optional[int] = 0
     enabled: Optional[int] = 1
+    banner_url: Optional[str] = ""
+    summary: Optional[str] = ""
+    nationality: Optional[str] = ""
+    occupation: Optional[str] = ""
+    main_achievements: Optional[str] = ""
+    representative_works_text: Optional[str] = ""
+    art_style: Optional[str] = ""
+    influence: Optional[str] = ""
+    historical_evaluation: Optional[str] = ""
+    character_relations: Optional[str] = ""
+    anecdotes: Optional[str] = ""
+    art_chronology: Optional[str] = ""
+    published_works: Optional[str] = ""
+    gallery_images: Optional[str] = ""
+    references: Optional[str] = ""
 
 class ArtistUpdate(BaseModel):
     name: Optional[str] = None
@@ -58,6 +73,21 @@ class ArtistUpdate(BaseModel):
     baidu_url: Optional[str] = None
     featured: Optional[int] = None
     enabled: Optional[int] = None
+    banner_url: Optional[str] = None
+    summary: Optional[str] = None
+    nationality: Optional[str] = None
+    occupation: Optional[str] = None
+    main_achievements: Optional[str] = None
+    representative_works_text: Optional[str] = None
+    art_style: Optional[str] = None
+    influence: Optional[str] = None
+    historical_evaluation: Optional[str] = None
+    character_relations: Optional[str] = None
+    anecdotes: Optional[str] = None
+    art_chronology: Optional[str] = None
+    published_works: Optional[str] = None
+    gallery_images: Optional[str] = None
+    references: Optional[str] = None
 
 
 # ============ API 端点 ============
@@ -210,12 +240,20 @@ async def create_artist(artist: ArtistCreate, editor=Depends(require_permission(
         cursor = conn.execute(
             "INSERT INTO artists (name, alias, dynasty, hometown, avatar_url, birth_year, death_year, "
             "biography, background, specialties, bio_events, art_school, masterpieces, tags, baidu_url, "
-            "featured, enabled, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "featured, enabled, banner_url, summary, nationality, occupation, main_achievements, "
+            "representative_works_text, art_style, influence, historical_evaluation, character_relations, "
+            "anecdotes, art_chronology, published_works, gallery_images, references, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+            "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (artist.name, artist.alias, artist.dynasty, artist.hometown, artist.avatar_url,
              artist.birth_year, artist.death_year, artist.biography, artist.background,
              artist.specialties, artist.bio_events, artist.art_school, artist.masterpieces,
-             artist.tags, artist.baidu_url, artist.featured, artist.enabled, now, now)
+             artist.tags, artist.baidu_url, artist.featured, artist.enabled,
+             artist.banner_url, artist.summary, artist.nationality, artist.occupation,
+             artist.main_achievements, artist.representative_works_text, artist.art_style,
+             artist.influence, artist.historical_evaluation, artist.character_relations,
+             artist.anecdotes, artist.art_chronology, artist.published_works,
+             artist.gallery_images, artist.references, now, now)
         )
         conn.commit()
         return {"success": True, "id": cursor.lastrowid, "message": "画家创建成功"}
@@ -238,7 +276,11 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
         updates = {}
         for field in ["name", "alias", "dynasty", "hometown", "avatar_url", "birth_year",
                        "death_year", "biography", "background", "specialties", "bio_events",
-                       "art_school", "masterpieces", "tags", "baidu_url", "featured", "enabled"]:
+                       "art_school", "masterpieces", "tags", "baidu_url", "featured", "enabled",
+                       "banner_url", "summary", "nationality", "occupation", "main_achievements",
+                       "representative_works_text", "art_style", "influence", "historical_evaluation",
+                       "character_relations", "anecdotes", "art_chronology", "published_works",
+                       "gallery_images", "references"]:
             val = getattr(artist, field, None)
             if val is not None:
                 updates[field] = val
@@ -452,6 +494,37 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
                     updates["specialties"] = info["specialties"][:200]
                 if info.get("art_school") and not artist["art_school"]:
                     updates["art_school"] = info["art_school"]
+                # 新增百科字段
+                if info.get("summary") and not artist["summary"]:
+                    updates["summary"] = info["summary"]
+                if info.get("occupation") and not artist["occupation"]:
+                    updates["occupation"] = info["occupation"]
+                if info.get("main_achievements") and not artist["main_achievements"]:
+                    updates["main_achievements"] = info["main_achievements"]
+                if info.get("art_style") and not artist["art_style"]:
+                    updates["art_style"] = info["art_style"]
+                if info.get("character_relations") and not artist["character_relations"]:
+                    updates["character_relations"] = info["character_relations"]
+                if info.get("nationality") and not artist["nationality"]:
+                    updates["nationality"] = info["nationality"]
+                if info.get("influence") and not artist["influence"]:
+                    updates["influence"] = info["influence"]
+                if info.get("historical_evaluation") and not artist["historical_evaluation"]:
+                    updates["historical_evaluation"] = info["historical_evaluation"]
+                if info.get("anecdotes") and not artist["anecdotes"]:
+                    updates["anecdotes"] = info["anecdotes"]
+                if info.get("art_chronology") and not artist["art_chronology"]:
+                    updates["art_chronology"] = info["art_chronology"]
+                if info.get("published_works") and not artist["published_works"]:
+                    updates["published_works"] = info["published_works"]
+                if info.get("gallery_images") and not artist["gallery_images"]:
+                    updates["gallery_images"] = info["gallery_images"]
+                if info.get("banner_url") and not artist["banner_url"]:
+                    updates["banner_url"] = info["banner_url"]
+                if info.get("representative_works_text") and not artist["representative_works_text"]:
+                    updates["representative_works_text"] = info["representative_works_text"]
+                if info.get("references") and not artist["references"]:
+                    updates["references"] = info["references"]
         except Exception as e:
             logger.warning("百度百科抓取失败: %s", e)
 

@@ -123,6 +123,23 @@ def _fetch_via_api(name: str, appid: Optional[str] = None) -> Optional[dict]:
             # 可能包含籍贯等信息
             if not extracted.get("hometown") and "宿州" in joined or "湖南" in joined or "浙江" in joined or "江苏" in joined:
                 extracted["hometown"] = re.sub(r'<[^>]+>', '', plain_values[0]) if plain_values else ""
+        elif key.endswith("_achievement") or key.endswith("_award") or key.endswith("_honor"):
+            achievements_text = joined
+            if achievements_text:
+                extracted["main_achievements"] = achievements_text[:500]
+        elif key.endswith("_style") or key.endswith("_genre"):
+            style_text = joined
+            if style_text:
+                extracted["art_style"] = style_text[:300]
+
+    # 设置概要 = 摘要
+    if extracted.get("abstract"):
+        extracted["summary"] = extracted["abstract"]
+
+    # 设置职业 = 专长首项
+    spec_parts = extracted.get("specialties_parts", [])
+    if spec_parts:
+        extracted["occupation"] = spec_parts[0][:50]
 
     # 解析别名（字号）
     alias_parts = extracted.pop("alias_parts", [])
@@ -194,11 +211,17 @@ def _fetch_via_scrape(name: str) -> Optional[dict]:
         else:
             extracted["abstract"] = abstract_el.get_text(strip=True)[:500]
 
+    # 提取头像
+    avatar_el = soup.select_one(".summary-pic img, .lemmaWgt-poster img, .basicInfo-img img, .albumBg img")
+    if avatar_el:
+        src = avatar_el.get("src") or avatar_el.get("data-src") or ""
+        if src and not src.startswith("data:"):
+            extracted["avatar_url"] = src if src.startswith("http") else f"https:{src}"
+
     # 提取基本信息表中的字段
     basic_info = soup.select(".basicInfo-item")
     for item in basic_info:
         text = item.get_text(strip=True)
-        # 尝试匹配键值对
         if "：" in text:
             key, val = text.split("：", 1)
             key = key.strip()
@@ -219,14 +242,75 @@ def _fetch_via_scrape(name: str) -> Optional[dict]:
             elif "朝代" in key or "时代" in key:
                 extracted["dynasty"] = val
             elif "代表" in key:
-                # 取逗号分隔的前6个
                 parts = [p.strip() for p in re.split(r'[,，、]', val) if p.strip()]
                 if parts:
                     extracted["masterpieces"] = json.dumps(parts[:6], ensure_ascii=False)
             elif "主要成就" in key:
+                extracted["main_achievements"] = val[:500]
                 extracted["specialties"] = val[:100]
+            elif "职业" in key or "称谓" in key:
+                extracted["occupation"] = val[:50]
+            elif "国籍" in key:
+                extracted["nationality"] = val[:30]
+
+    # 概要 = 摘要
+    if extracted.get("abstract") and not extracted.get("summary"):
+        extracted["summary"] = extracted["abstract"]
+
+    # 尝试从页面正文提取艺术特色 / 后世影响 / 人物关系
+    content_sections = soup.select(".para, .para-title, .J-content")
+    current_heading = ""
+    content_buffer = []
+    for el in content_sections:
+        tag = el.name if el.name else ""
+        text = el.get_text(strip=True)
+        if not text:
+            continue
+        if el.name in ("h2", "h3", "h4", "dt") or el.get("class") and "para-title" in (el.get("class") or []):
+            # 遇到标题时，保存上一节内容
+            if current_heading and content_buffer:
+                section_text = "".join(content_buffer)[:1000]
+                _save_section_content(current_heading, section_text, extracted)
+            current_heading = text
+            content_buffer = []
+        else:
+            content_buffer.append(text)
+    # 最后一节
+    if current_heading and content_buffer:
+        section_text = "".join(content_buffer)[:1000]
+        _save_section_content(current_heading, section_text, extracted)
 
     return extracted
+
+
+def _save_section_content(heading: str, content: str, extracted: dict):
+    """根据章节标题保存内容到对应字段"""
+    heading_lower = heading.lower()
+    if any(kw in heading for kw in ["艺术特色", "艺术风格", "绘画风格", "艺术特点", "创作风格"]):
+        if not extracted.get("art_style"):
+            extracted["art_style"] = content
+    elif any(kw in heading for kw in ["后世影响", "历史影响", "影响", "地位"]):
+        if not extracted.get("influence"):
+            extracted["influence"] = content
+    elif any(kw in heading for kw in ["历史评价", "人物评价", "后世评价"]):
+        if not extracted.get("historical_evaluation"):
+            extracted["historical_evaluation"] = content
+    elif any(kw in heading for kw in ["人物关系", "师承", "师从", "弟子", "师徒"]):
+        if not extracted.get("character_relations"):
+            lines = [line.strip() for line in content.split("\n") if line.strip()]
+            extracted["character_relations"] = json.dumps(lines[:20], ensure_ascii=False)
+    elif any(kw in heading for kw in ["轶事", "典故", "趣闻", "逸事"]):
+        if not extracted.get("anecdotes"):
+            lines = [line.strip() for line in content.split("\n") if line.strip()]
+            extracted["anecdotes"] = json.dumps(lines[:10], ensure_ascii=False)
+    elif any(kw in heading for kw in ["年谱", "生平年表", "艺术年表", "大事记"]):
+        if not extracted.get("art_chronology"):
+            lines = [line.strip() for line in content.split("\n") if line.strip()]
+            extracted["art_chronology"] = json.dumps(lines[:30], ensure_ascii=False)
+    elif any(kw in heading for kw in ["著作", "出版", "作品集"]):
+        if not extracted.get("published_works"):
+            lines = [line.strip() for line in content.split("\n") if line.strip()]
+            extracted["published_works"] = json.dumps(lines[:20], ensure_ascii=False)
 
 
 if __name__ == "__main__":
