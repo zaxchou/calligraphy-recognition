@@ -533,7 +533,7 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
             try:
                 from app.services.qwen_llm_client import call_qwen_chat
 
-                if artist.get("background") and artist.get("specialties") and artist.get("biography"):
+                if artist["background"] and artist["specialties"] and artist["biography"]:
                     pass  # 已有足够信息，跳过AI
                 else:
                     prompt = f"""请简要介绍画家{artist_name}的以下信息，用JSON格式返回：

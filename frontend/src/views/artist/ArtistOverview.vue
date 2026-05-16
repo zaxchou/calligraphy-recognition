@@ -29,7 +29,6 @@
           </div>
           <div v-if="authStore.isEditor" class="bk-hero-actions">
             <el-button size="small" plain class="bk-btn-ghost" @click="handleEdit">编辑</el-button>
-            <el-button size="small" plain class="bk-btn-ghost" @click="handleAiFill" :loading="aiFilling">AI 补充</el-button>
             <el-button size="small" plain class="bk-btn-ghost" @click="handleMyChanges">我的修改</el-button>
           </div>
         </div>
@@ -255,7 +254,6 @@ const notFound = ref(false)
 const artist = ref(null)
 const stats = ref({})
 const masterpieces = ref([])
-const aiFilling = ref(false)
 const expandedAnecdote = ref(-1)
 
 const subNavTabs = [
@@ -347,26 +345,6 @@ function goToWork(id) {
 
 function handleEdit() {
   router.push('/admin?tab=artist-info')
-}
-
-async function handleAiFill() {
-  if (!artist.value?.id) return
-  aiFilling.value = true
-  try {
-    const res = await fetch(`${API_BASE}/artists/${artist.value.id}/ai-fill`, { method: 'POST' })
-    if (res.ok) {
-      const data = await res.json()
-      ElMessage.success(data.message || 'AI补充完成')
-      await fetchArtist()
-    } else {
-      const err = await res.json().catch(() => ({}))
-      ElMessage.error(err.detail || 'AI补充失败')
-    }
-  } catch (e) {
-    ElMessage.error('AI补充请求失败: ' + e.message)
-  } finally {
-    aiFilling.value = false
-  }
 }
 
 function handleMyChanges() {
