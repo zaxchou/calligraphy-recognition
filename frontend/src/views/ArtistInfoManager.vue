@@ -28,7 +28,7 @@
           <div class="artist-actions">
             <el-button size="small" @click="openEdit(artist)">编辑</el-button>
             <el-button size="small" type="primary" plain @click="handleAiFill(artist)" :loading="aiFillLoading[artist.id]">
-              <el-icon><MagicStick /></el-icon>AI查询
+              <el-icon><MagicStick /></el-icon>AI补充
             </el-button>
             <el-button size="small" :type="artist.enabled ? 'warning' : 'success'" plain @click="toggleEnabled(artist)">
               {{ artist.enabled ? '禁用' : '启用' }}
