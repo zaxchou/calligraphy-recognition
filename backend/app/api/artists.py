@@ -159,9 +159,9 @@ async def get_artist(artist_id: int):
         artist["artwork_count"] = artwork_count
 
         lib_rows = conn.execute(
-            "SELECT library_id FROM artwork_libraries WHERE artist_name = ?", (name,)
+            "SELECT id FROM artwork_libraries WHERE artist_name = ?", (name,)
         ).fetchall()
-        artist["related_libraries"] = [r["library_id"] for r in lib_rows]
+        artist["related_libraries"] = [r["id"] for r in lib_rows]
 
         return {"success": True, "artist": artist}
     finally:
@@ -185,9 +185,9 @@ async def get_artist_by_name(name: str):
         artist["artwork_count"] = artwork_count
 
         lib_rows = conn.execute(
-            "SELECT library_id FROM artwork_libraries WHERE artist_name = ?", (name,)
+            "SELECT id FROM artwork_libraries WHERE artist_name = ?", (name,)
         ).fetchall()
-        artist["related_libraries"] = [r["library_id"] for r in lib_rows]
+        artist["related_libraries"] = [r["id"] for r in lib_rows]
 
         return {"success": True, "artist": artist}
     finally:

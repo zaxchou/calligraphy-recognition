@@ -88,7 +88,7 @@
           <h2 class="ao-card-title">数据概览</h2>
           <div class="ao-stats-row">
             <div class="ao-stat-item">
-              <span class="ao-stat-number">{{ stats.total_works ?? '-' }}</span>
+              <span class="ao-stat-number">{{ stats.total ?? '-' }}</span>
               <span class="ao-stat-label">作品总数</span>
             </div>
             <div class="ao-stat-item">
@@ -98,6 +98,10 @@
             <div class="ao-stat-item">
               <span class="ao-stat-number">{{ stats.verified ?? '-' }}</span>
               <span class="ao-stat-label">已核验</span>
+            </div>
+            <div class="ao-stat-item">
+              <span class="ao-stat-number">{{ stats.seal_count ?? '-' }}</span>
+              <span class="ao-stat-label">印章</span>
             </div>
           </div>
         </section>
@@ -149,7 +153,7 @@ const subNavTabs = [
 function isActiveTab(tabPath) {
   const current = route.path.replace(/\/+$/, '')
   const base = current.substring(0, current.lastIndexOf('/'))
-  if (!tabPath) return current === base || current.endsWith('/artist/' + artistEncoded)
+  if (!tabPath) return current === base || current.endsWith('/artist/' + artistEncoded.value)
   return current.endsWith('/' + tabPath)
 }
 
@@ -187,7 +191,11 @@ async function fetchArtist() {
       }
       return
     }
-    artist.value = await res.json()
+    const data = await res.json()
+    artist.value = data.artist || null
+    if (!artist.value) {
+      notFound.value = true
+    }
   } catch (e) {
     console.error('获取画家信息失败:', e)
     notFound.value = true
@@ -199,7 +207,8 @@ async function fetchStats() {
   try {
     const res = await fetch(`${API_BASE}/artists/${artist.value.id}/stats`)
     if (res.ok) {
-      stats.value = await res.json()
+      const data = await res.json()
+      stats.value = data.stats || {}
     }
   } catch (e) {
     console.error('获取统计数据失败:', e)

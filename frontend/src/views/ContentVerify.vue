@@ -361,47 +361,47 @@
       <!-- 标注图校对 -->
       <el-tab-pane label="标注图校对" name="annotation">
         <div class="tab-content full-tab-content">
-          <AnnotationVerify :artist="selectedArtist" />
+          <AnnotationVerify :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'av-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 尺寸录入 -->
       <el-tab-pane label="尺寸录入" name="dimensions">
         <div class="tab-content full-tab-content">
-          <DimensionInput :artist="selectedArtist" />
+          <DimensionInput :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'dim-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 印章管理 -->
       <el-tab-pane label="印章管理" name="seal">
         <div class="tab-content full-tab-content">
-          <SealManager :artist="selectedArtist" />
+          <SealManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'seal-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 册页管理 -->
       <el-tab-pane label="册页管理" name="album">
         <div class="tab-content full-tab-content">
-          <AlbumManager :artist="selectedArtist" />
+          <AlbumManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'album-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 条屏管理 -->
       <el-tab-pane label="条屏管理" name="strip">
         <div class="tab-content full-tab-content">
-          <StripManager :artist="selectedArtist" />
+          <StripManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'strip-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 标签管理 -->
       <el-tab-pane label="标签管理" name="tag">
         <div class="tab-content full-tab-content">
-          <TagManager :artist="selectedArtist" />
+          <TagManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'tag-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
-      <!-- 作者信息 -->
-      <el-tab-pane label="作者信息" name="artist-info">
+      <!-- 书画家信息 -->
+      <el-tab-pane label="书画家信息" name="artist-info">
         <div class="tab-content full-tab-content">
           <ArtistInfoManager />
         </div>
@@ -410,7 +410,7 @@
       <!-- 画家规则 -->
       <el-tab-pane label="画家规则" name="artist-rules">
         <div class="tab-content full-tab-content">
-          <ArtistRulesManager :artist="selectedArtist" />
+          <ArtistRulesManager :artist="selectedArtist" :key="'rules-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
@@ -452,71 +452,181 @@
         </div>
       </el-tab-pane>
 
-      <!-- 变更请求（仅管理员可见） -->
-      <el-tab-pane v-if="isAdmin" label="变更请求" name="change-requests">
+      <!-- 变更请求（仅管理员/编辑可见） -->
+      <el-tab-pane v-if="isAdmin || isEditor" label="变更请求" name="change-requests">
         <div class="tab-content full-tab-content">
           <div class="change-requests-panel">
-            <div class="cr-header">
-              <h3>待审核变更请求</h3>
-              <div class="cr-header-actions">
-                <el-tag v-if="pendingRequests.length > 0" type="warning" effect="dark">
-                  {{ pendingRequests.length }} 条待审核
-                </el-tag>
-                <el-button v-if="selectedCrIds.length > 0" size="small" type="success" @click="batchApprove" :loading="batchReviewing">
-                  批量通过 ({{ selectedCrIds.length }})
-                </el-button>
-                <el-button v-if="selectedCrIds.length > 0" size="small" type="danger" @click="batchReject" :loading="batchReviewing">
-                  批量拒绝 ({{ selectedCrIds.length }})
-                </el-button>
+            <el-radio-group v-model="crViewMode" size="small" style="margin-bottom:16px;">
+              <el-radio-button value="pending">待审核</el-radio-button>
+              <el-radio-button value="mine">我的提交</el-radio-button>
+            </el-radio-group>
+
+            <!-- 待审核视图 -->
+            <template v-if="crViewMode === 'pending'">
+              <div class="cr-header">
+                <h3>待审核变更请求</h3>
+                <div class="cr-header-actions">
+                  <el-tag v-if="pendingRequests.length > 0" type="warning" effect="dark">
+                    {{ pendingRequests.length }} 条待审核
+                  </el-tag>
+                  <el-button v-if="selectedCrIds.length > 0" size="small" type="success" @click="batchApprove" :loading="batchReviewing">
+                    批量通过 ({{ selectedCrIds.length }})
+                  </el-button>
+                  <el-button v-if="selectedCrIds.length > 0" size="small" type="danger" @click="batchReject" :loading="batchReviewing">
+                    批量拒绝 ({{ selectedCrIds.length }})
+                  </el-button>
+                </div>
               </div>
-            </div>
-            <el-table :data="pendingRequests" v-loading="loadingRequests" style="width: 100%" stripe size="small" @selection-change="onCrSelectionChange">
-              <el-table-column type="selection" width="40" />
-              <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
-              <el-table-column prop="artwork_title" label="作品" min-width="120" show-overflow-tooltip />
-              <el-table-column prop="field_name" label="字段" width="80" />
-              <el-table-column label="旧值 → 新值" min-width="180">
-                <template #default="{ row }">
-                  <span class="cr-old-value">{{ row.old_value || '-' }}</span>
-                  <el-icon><Right /></el-icon>
-                  <span class="cr-new-value">{{ row.new_value || '-' }}</span>
-                  <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:8px;">diff</el-button>
-                </template>
-              </el-table-column>
-              <el-table-column prop="change_summary" label="摘要" width="120" show-overflow-tooltip />
-              <el-table-column prop="submitter_name" label="提交者" width="80" />
-              <el-table-column prop="created_at" label="时间" width="150" />
-              <el-table-column label="操作" width="160" fixed="right">
-                <template #default="{ row }">
-                  <el-button size="small" type="success" plain @click="approveRequest(row)" :loading="reviewingId === row.id">
-                    通过
+              <el-table :data="pendingRequests" v-loading="loadingRequests" style="width: 100%" stripe size="small" @selection-change="onCrSelectionChange">
+                <el-table-column type="selection" width="40" />
+                <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
+                <el-table-column label="作品" min-width="120" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tubi/${row.artwork_image_id}`)">
+                      {{ row.artwork_title || '未命名' }}
+                    </el-link>
+                    <span v-else>{{ row.artwork_title || '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="field_name" label="字段" width="80" />
+                <el-table-column label="旧值 → 新值" min-width="200">
+                  <template #default="{ row }">
+                    <div class="cr-diff-inline">
+                      <template v-if="row.field_name === 'annotation_regions'">
+                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
+                        <span style="color:#999;margin:0 4px;">→</span>
+                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">查看对比</el-button>
+                      </template>
+                      <template v-else>
+                        <span class="cr-diff-old">{{ row.old_value || '-' }}</span>
+                        <el-icon><Right /></el-icon>
+                        <span class="cr-diff-new">{{ row.new_value || '-' }}</span>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">对比</el-button>
+                      </template>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="change_summary" label="摘要" width="120" show-overflow-tooltip />
+                <el-table-column prop="submitter_name" label="提交者" width="80" />
+                <el-table-column prop="created_at" label="时间" width="150" />
+                <el-table-column label="操作" width="160" fixed="right">
+                  <template #default="{ row }">
+                    <el-button size="small" type="success" plain @click="approveRequest(row)" :loading="reviewingId === row.id">
+                      通过
+                    </el-button>
+                    <el-button size="small" type="danger" plain @click="rejectRequest(row)" :loading="reviewingId === row.id">
+                      拒绝
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty v-if="!loadingRequests && pendingRequests.length === 0" description="暂无待审核的变更请求" />
+            </template>
+
+            <!-- 我的提交视图 -->
+            <template v-if="crViewMode === 'mine'">
+              <div class="cr-header">
+                <h3>我的提交</h3>
+                <div class="cr-header-actions">
+                  <el-radio-group v-model="myCrStatusFilter" size="small">
+                    <el-radio-button value="">全部</el-radio-button>
+                    <el-radio-button value="pending">待审核</el-radio-button>
+                    <el-radio-button value="approved">已通过</el-radio-button>
+                    <el-radio-button value="rejected">已驳回</el-radio-button>
+                  </el-radio-group>
+                  <el-button size="small" circle text @click="loadMyRequests" :loading="loadingMyRequests" style="margin-left:8px;">
+                    <el-icon><Refresh /></el-icon>
                   </el-button>
-                  <el-button size="small" type="danger" plain @click="rejectRequest(row)" :loading="reviewingId === row.id">
-                    拒绝
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-empty v-if="!loadingRequests && pendingRequests.length === 0" description="暂无待审核的变更请求" />
+                </div>
+              </div>
+              <el-table :data="myRequests" v-loading="loadingMyRequests" style="width: 100%" stripe size="small">
+                <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
+                <el-table-column label="作品" min-width="120" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tubi/${row.artwork_image_id}`)">
+                      {{ row.artwork_title || '未命名' }}
+                    </el-link>
+                    <span v-else>{{ row.artwork_title || '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="field_name" label="字段" width="80" />
+                <el-table-column label="旧值 → 新值" min-width="200">
+                  <template #default="{ row }">
+                    <div class="cr-diff-inline">
+                      <template v-if="row.field_name === 'annotation_regions'">
+                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
+                        <span style="color:#999;margin:0 4px;">→</span>
+                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">查看对比</el-button>
+                      </template>
+                      <template v-else>
+                        <span class="cr-diff-old">{{ row.old_value || '-' }}</span>
+                        <el-icon><Right /></el-icon>
+                        <span class="cr-diff-new">{{ row.new_value || '-' }}</span>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">对比</el-button>
+                      </template>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="change_summary" label="摘要" width="120" show-overflow-tooltip />
+                <el-table-column label="状态" width="90">
+                  <template #default="{ row }">
+                    <el-tag :type="row.status === 'approved' ? 'success' : row.status === 'rejected' ? 'danger' : 'warning'" size="small" effect="plain">
+                      {{ row.status === 'approved' ? '已通过' : row.status === 'rejected' ? '已驳回' : '待审核' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="审核意见" width="160" show-overflow-tooltip>
+                  <template #default="{ row }">{{ row.review_comment || (row.status === 'pending' ? '等待审核' : '无') }}</template>
+                </el-table-column>
+                <el-table-column label="审核人" width="80">
+                  <template #default="{ row }">{{ row.reviewer_name || '-' }}</template>
+                </el-table-column>
+                <el-table-column prop="created_at" label="提交时间" width="150" />
+                <el-table-column prop="reviewed_at" label="审核时间" width="150" />
+              </el-table>
+              <el-empty v-if="!loadingMyRequests && myRequests.length === 0" description="暂无提交记录" />
+            </template>
           </div>
+        </div>
+      </el-tab-pane>
+      <!-- 作品库管理 -->
+      <el-tab-pane label="作品库管理" name="libraries">
+        <div class="tab-content full-tab-content">
+          <LibrariesAdmin />
         </div>
       </el-tab-pane>
     </el-tabs>
 
     <!-- diff 对比对话框 -->
-    <el-dialog v-model="showDiffDialog" title="差异对比" width="700px" destroy-on-close>
-      <div v-if="diffRow" class="diff-container">
-        <div class="diff-side diff-old">
-          <h4 class="diff-side-title">原值</h4>
-          <div class="diff-side-content">{{ diffRow.old_value || '(空)' }}</div>
-        </div>
-        <div class="diff-arrow">
-          <el-icon size="24"><Right /></el-icon>
-        </div>
-        <div class="diff-side diff-new">
-          <h4 class="diff-side-title">新值</h4>
-          <div class="diff-side-content">{{ diffRow.new_value || '(空)' }}</div>
-        </div>
+    <el-dialog v-model="showDiffDialog" :title="diffRow?.field_name === 'annotation_regions' ? '标注图差异对比' : '差异对比'" width="720px" destroy-on-close>
+      <div v-if="diffRow">
+        <template v-if="diffRow.field_name === 'annotation_regions'">
+          <div style="padding:24px 0;text-align:center;">
+            <el-icon :size="48" style="color:#e6a23c;"><WarningFilled /></el-icon>
+            <p style="margin-top:16px;font-size:15px;color:#333;">标注图变更</p>
+            <p style="margin-top:8px;color:#999;font-size:13px;">
+              此请求修改了作品的标注区域。点击下方按钮在新标签页中预览新标注区域的效果。
+            </p>
+            <el-button type="primary" style="margin-top:16px;" @click="previewAnnotationRegions(diffRow)">
+              在新窗口预览新标注
+            </el-button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="diff-container">
+            <div class="diff-panel">
+              <h4 class="diff-panel-title diff-panel-old">原值</h4>
+              <div class="diff-panel-content" v-html="renderDiffSegments(diffOldSegments)"></div>
+            </div>
+            <div class="diff-arrow"><el-icon size="20"><Right /></el-icon></div>
+            <div class="diff-panel">
+              <h4 class="diff-panel-title diff-panel-new">新值</h4>
+              <div class="diff-panel-content" v-html="renderDiffSegments(diffNewSegments)"></div>
+            </div>
+          </div>
+        </template>
       </div>
       <div class="diff-meta" v-if="diffRow">
         <p><strong>修改字段：</strong>{{ diffRow.field_name }}</p>
@@ -542,7 +652,7 @@
 import { ref, onMounted, watch, computed, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, Refresh, RefreshRight, Right, Upload, CopyDocument } from '@element-plus/icons-vue'
+import { Bottom, Refresh, RefreshRight, Right, Upload, CopyDocument, WarningFilled } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 import { useSSEStream } from '../composables/useSSEStream'
 
@@ -562,13 +672,29 @@ import AdminUsers from './admin/Users.vue'
 import AdminSettings from './admin/Settings.vue'
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi } from '../api/index.js'
+import { computeDiff } from '../utils/diff'
+import LibrariesAdmin from './Libraries.vue'
+
+function escapeHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+function renderDiffSegments(segments) {
+  const parts = (segments || []).map(s => {
+    if (s.type === 'same') return `<span class="diff-same">${escapeHtml(s.text)}</span>`
+    if (s.type === 'added') return `<span class="diff-added">${escapeHtml(s.text)}</span>`
+    if (s.type === 'removed') return `<span class="diff-removed">${escapeHtml(s.text)}</span>`
+    return escapeHtml(s.text)
+  })
+  return `<span class="diff-text">${parts.join('')}</span>`
+}
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
+const isEditor = computed(() => authStore.isEditor)
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config', 'change-requests']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config', 'change-requests', 'libraries']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'config')
 const verifyPanelRef = ref(null)
 // 切换标签时同步到 URL query（用 replace 避免污染历史）
@@ -585,27 +711,24 @@ watch(() => route.query.tab, (tab) => {
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-// 作者列表（必须在 watch 引用前声明）
-const artistList = ref([])
-const selectedArtist = ref('李鱓')
-
 // ── 注入 AdminLayout 共享状态 ──
-const adminArtistList = inject('adminArtistList', ref([]))
-const adminSelectedArtist = inject('adminSelectedArtist', ref('李鱓'))
-const adminStats = inject('adminStats', null)
+const adminAccessibleLibraries = inject('adminAccessibleLibraries', ref([]))
+const adminSelectedLibraryId = inject('adminSelectedLibraryId', ref(null))
+const adminLibStats = inject('adminLibStats', null)
 const adminBatchState = inject('adminBatchState', null)
 const adminBatchTrigger = inject('adminBatchTrigger', null)
 
-// 监听侧边栏作者切换 → 同步到 ContentVerify
-watch(adminSelectedArtist, (newArtist) => {
-  if (newArtist && newArtist !== selectedArtist.value) {
-    selectedArtist.value = newArtist
-  }
-})
-// ContentVerify 作者切换 → 同步到侧边栏
-watch(selectedArtist, (newArtist) => {
-  if (newArtist && newArtist !== adminSelectedArtist.value) {
-    adminSelectedArtist.value = newArtist
+// 监听侧边栏作品库切换 → 同步
+watch(adminSelectedLibraryId, (newLibId) => {
+  if (newLibId && newLibId !== selectedLibraryId.value) {
+    selectedLibraryId.value = newLibId
+    // 自动将作者下拉设为当前作品库的画家
+    const lib = adminAccessibleLibraries.value.find(l => l.id === newLibId)
+    if (lib && lib.artist_name && artistList.value.includes(lib.artist_name)) {
+      selectedArtist.value = lib.artist_name
+      router.replace({ query: { ...route.query, artist: lib.artist_name, lib_id: newLibId } })
+    }
+    fetchRecords()
   }
 })
 
@@ -631,27 +754,32 @@ const translatedCount = ref(0)
 const analyzedCount = ref(0)
 const annotatedCount = ref(0)
 const incrementalProcessing = ref(false)
+const selectedLibraryId = ref(null)
+const selectedArtist = ref('all')
+const artistList = ref([])
 
-// 切换作者时同步 URL 并刷新数据
-watch(selectedArtist, (newArtist, oldArtist) => {
-  if (newArtist !== oldArtist) {
-    router.replace({ query: { ...route.query, artist: newArtist } })
+// URL → artist 同步（浏览器后退/前进时刷新）
+watch(() => route.query.artist, (newArtist) => {
+  const artist = Array.isArray(newArtist) ? newArtist[0] : newArtist
+  if (artist && artist !== selectedArtist.value) {
+    selectedArtist.value = artist
     fetchRecords()
   }
 })
+
 function onArtistChange() {
-  // watch 会处理刷新
+  router.replace({ query: { ...route.query, artist: selectedArtist.value } })
+  fetchRecords()
 }
 async function fetchArtistList() {
   try {
     const res = await fetch(`${API_BASE}/content-analysis/artists`)
     const data = await res.json()
     artistList.value = data.artists || []
-    // 同步到侧边栏
-    adminArtistList.value = artistList.value
-    // URL query 优先恢复
     const urlArtist = route.query.artist
-    if (urlArtist && artistList.value.includes(urlArtist)) {
+    if (urlArtist === 'all') {
+      selectedArtist.value = 'all'
+    } else if (urlArtist && artistList.value.includes(urlArtist)) {
       selectedArtist.value = urlArtist
     } else if (artistList.value.length > 0 && !artistList.value.includes(selectedArtist.value)) {
       selectedArtist.value = artistList.value[0]
@@ -680,7 +808,7 @@ const {
   batchResultData,
   showBatchResultDialog,
   closeBatchResultDialog,
-} = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => selectedArtist.value })
+} = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => '', getLibraryId: () => selectedLibraryId.value })
 
 // 同步批量操作的 loading 状态到侧边栏
 watch([analyzing, batchTranslating], () => {
@@ -704,13 +832,15 @@ function rerunFromResult() {
 // 增量智能处理：SSE 流式版，带进度显示
 async function startIncrementalSmartProcess() {
   showAnalyzeModeDialog.value = false
-  const artist = selectedArtist.value
   incrementalProcessing.value = true
   showAnalyzeProgress.value = true
   analyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
   try {
+    const params = new URLSearchParams()
+    params.set('incremental', 'true')
+    if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
     const response = await fetch(
-      `${API_BASE}/content-analysis/batch-reanalyze/stream?artist=${encodeURIComponent(artist)}&incremental=true`,
+      `${API_BASE}/content-analysis/batch-reanalyze/stream?${params.toString()}`,
       { method: 'POST' }
     )
     const { streamSSE } = useSSEStream()
@@ -731,7 +861,7 @@ async function startIncrementalSmartProcess() {
             message: event.message,
             report: { ...event.report, updated_at: new Date().toLocaleString() },
           }
-          try { localStorage.setItem(`batch-reanalyze-result_${selectedArtist.value}`, JSON.stringify(batchResultData.value)) } catch {}
+          try { localStorage.setItem(`batch-reanalyze-result_lib${selectedLibraryId.value}`, JSON.stringify(batchResultData.value)) } catch {}
           analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
           showBatchResultDialog.value = true
           if (event.report?.llm_corrected > 0) {
@@ -757,14 +887,28 @@ async function startIncrementalSmartProcess() {
 }
 
 // 变更请求审核
+const crViewMode = ref('pending')
 const pendingRequests = ref([])
 const loadingRequests = ref(false)
 const reviewingId = ref(null)
 const selectedCrIds = ref([])
 const batchReviewing = ref(false)
+// 我的提交
+const myRequests = ref([])
+const loadingMyRequests = ref(false)
+const myCrStatusFilter = ref('')
 // diff
 const showDiffDialog = ref(false)
 const diffRow = ref(null)
+
+const diffOldSegments = computed(() => {
+  if (!diffRow.value) return []
+  return computeDiff(diffRow.value.old_value, diffRow.value.new_value).filter(s => s.type !== 'added')
+})
+const diffNewSegments = computed(() => {
+  if (!diffRow.value) return []
+  return computeDiff(diffRow.value.old_value, diffRow.value.new_value).filter(s => s.type !== 'removed')
+})
 // reject
 const showRejectDialog = ref(false)
 const rejectReason = ref('')
@@ -773,7 +917,16 @@ const rejectTarget = ref(null)
 watch(activeTab, (tab) => {
   if (tab === 'change-requests') {
     loadChangeRequests()
+    loadMyRequests()
   }
+}, { immediate: true })
+
+watch(myCrStatusFilter, () => {
+  loadMyRequests()
+})
+
+watch(crViewMode, (mode) => {
+  if (mode === 'mine') loadMyRequests()
 })
 
 function onCrSelectionChange(rows) {
@@ -785,6 +938,20 @@ function showDiff(row) {
   showDiffDialog.value = true
 }
 
+function previewAnnotationRegions(row) {
+  const imageId = row.artwork_image_id
+  if (!imageId) {
+    ElMessage.warning('无法获取作品图片ID')
+    return
+  }
+  let newValue = row.new_value || '[]'
+  if (typeof newValue !== 'string') {
+    newValue = JSON.stringify(newValue)
+  }
+  const encoded = encodeURIComponent(newValue)
+  window.open(`/#/annotate/${imageId}?mode=review&regions=${encoded}`, '_blank')
+}
+
 async function loadChangeRequests() {
   loadingRequests.value = true
   try {
@@ -794,6 +961,19 @@ async function loadChangeRequests() {
     console.error('获取变更请求失败', e)
   } finally {
     loadingRequests.value = false
+  }
+}
+
+async function loadMyRequests() {
+  loadingMyRequests.value = true
+  try {
+    const resp = await libraryApi.getMyChangeRequests(myCrStatusFilter.value || undefined)
+    myRequests.value = resp.requests || []
+  } catch (e) {
+    console.error('获取我的提交失败', e)
+    ElMessage.error('获取我的提交失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    loadingMyRequests.value = false
   }
 }
 
@@ -875,7 +1055,13 @@ async function batchReject() {
 // 生命周期
 onMounted(async () => {
   await fetchArtistList()
-  // fetchArtistList 可能不改变 selectedArtist（默认李鱓在列表中时），需手动触发首次加载
+  // 首次加载时，如果左侧已选了作品库，同步作者下拉
+  if (selectedLibraryId.value) {
+    const lib = adminAccessibleLibraries.value.find(l => l.id === selectedLibraryId.value)
+    if (lib && lib.artist_name && artistList.value.includes(lib.artist_name)) {
+      selectedArtist.value = lib.artist_name
+    }
+  }
   fetchRecords()
 })
 
@@ -886,6 +1072,7 @@ async function fetchRecords() {
     const artistParam = selectedArtist.value === 'all' ? '' : selectedArtist.value
     const params = new URLSearchParams({ limit: 500 })
     if (artistParam) params.set('artist', artistParam)
+    if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
     const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
     const data = await res.json()
     records.value = data.records || []
@@ -895,12 +1082,12 @@ async function fetchRecords() {
     analyzedCount.value = data.analyzed_count || 0
     annotatedCount.value = data.annotated_count || 0
     // 同步到侧边栏
-    if (adminStats) {
-      adminStats.verified = verifiedCount.value
-      adminStats.total = totalCount.value
-      adminStats.translated = translatedCount.value
-      adminStats.analyzed = analyzedCount.value
-      adminStats.annotated = annotatedCount.value
+    if (adminLibStats) {
+      adminLibStats.verified = verifiedCount.value
+      adminLibStats.total = totalCount.value
+      adminLibStats.translated = translatedCount.value
+      adminLibStats.analyzed = analyzedCount.value
+      adminLibStats.annotated = annotatedCount.value
     }
   } catch (e) {
     ElMessage.error('获取记录失败: ' + e.message)
@@ -1745,13 +1932,13 @@ function copyReportAsMarkdown() {
   gap: 16px;
   margin-bottom: 20px;
 }
-.diff-side {
+.diff-panel {
   flex: 1;
   border: 1px solid #e8e4da;
   border-radius: 6px;
   overflow: hidden;
 }
-.diff-side-title {
+.diff-panel-title {
   margin: 0;
   padding: 8px 12px;
   font-size: 13px;
@@ -1759,18 +1946,37 @@ function copyReportAsMarkdown() {
   background: #f5f3ef;
   border-bottom: 1px solid #e8e4da;
 }
-.diff-side-content {
+.diff-panel-old { color: #999; background: #f8f8f8; }
+.diff-panel-new { color: #333; background: #f0f9eb; }
+.diff-panel-content {
   padding: 12px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.8;
   white-space: pre-wrap;
   word-break: break-all;
   min-height: 60px;
+  max-height: 300px;
+  overflow-y: auto;
 }
-.diff-old .diff-side-title { color: #e6a23c; background: #fdf6ec; }
-.diff-new .diff-side-title { color: #67c23a; background: #f0f9eb; }
-.diff-old .diff-side-content { background: #fef8f0; }
-.diff-new .diff-side-content { background: #f5fff0; }
+.diff-text {
+  font-family: inherit;
+}
+.diff-same {
+  color: #333;
+}
+.diff-added {
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+.diff-removed {
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 2px;
+  padding: 1px 0;
+  text-decoration: line-through;
+}
 .diff-arrow {
   display: flex;
   align-items: center;
