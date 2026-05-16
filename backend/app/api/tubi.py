@@ -22,6 +22,7 @@ from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
 from app.services.inscription_content_analyzer import get_period_phase
+from app.api.revisions import create_revision
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -740,6 +741,7 @@ async def upload_image(
         period_phase = get_period_phase(year, artist)
 
         # 验证画库访问权限
+        lib_artist_name = None
         if library_id:
             from app.models.artwork_library import ArtworkLibrary
             from app.models.library_collaborator import LibraryCollaborator
@@ -754,6 +756,10 @@ async def upload_image(
             ).first() is not None
             if not (is_owner or is_collab):
                 raise HTTPException(status_code=403, detail="无权上传到该画库")
+            lib_artist_name = (lib.artist_name or "").strip()
+            if not lib_artist_name:
+                raise HTTPException(status_code=400, detail="画库未设置画家（artist_name），无法自动绑定作者")
+            artist = lib_artist_name
 
         db_analysis = TubiAnalysis(
             image_id=file_id,
@@ -788,6 +794,12 @@ async def upload_image(
         # 清除作品列表缓存（有新作品即失效）
         _clear_results_cache()
         _clear_stats_cache()
+        try:
+            from app.api.artists import invalidate_stats_cache
+            if artist:
+                invalidate_stats_cache(artist)
+        except Exception:
+            pass
 
         # 自动追加到图像搜索索引
         try:
@@ -833,6 +845,25 @@ async def upload_images(
     uploaded = []
     failed = []
     total_files = len(files)
+
+    lib_artist_name = None
+    if library_id:
+        from app.models.artwork_library import ArtworkLibrary
+        from app.models.library_collaborator import LibraryCollaborator
+        lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == library_id).first()
+        if not lib:
+            raise HTTPException(status_code=404, detail="画库不存在")
+        is_owner = lib.owner_id == editor.id
+        is_collab = db.query(LibraryCollaborator).filter(
+            LibraryCollaborator.library_id == library_id,
+            LibraryCollaborator.user_id == editor.id,
+            LibraryCollaborator.role.in_(["editor", "maintainer"]),
+        ).first() is not None
+        if not (is_owner or is_collab):
+            raise HTTPException(status_code=403, detail="无权上传到该画库")
+        lib_artist_name = (lib.artist_name or "").strip()
+        if not lib_artist_name:
+            raise HTTPException(status_code=400, detail="画库未设置画家（artist_name），无法自动绑定作者")
     
     for i, file in enumerate(files):
         try:
@@ -954,6 +985,10 @@ async def upload_images(
             # 保存到数据库 - 使用标准化路径
             # 解析文件名提取 title/artist/year/period
             parsed = _parse_calligraphy_filename(file.filename)
+            artist = lib_artist_name or parsed["artist"]
+            title = parsed["title"]
+            year = parsed["year"]
+            period = parsed["period"]
             try:
                 db_analysis = TubiAnalysis(
                     image_id=file_id,
@@ -962,11 +997,11 @@ async def upload_images(
                     thumbnail_path=normalize_path(thumbnail_path) if thumbnail_path else None,
                     image_width=width,
                     image_height=height,
-                    title=parsed["title"],
-                    artist=parsed["artist"],
-                    year=parsed["year"],
-                    period=parsed["period"],
-                    seal_content=_get_default_seal_content(parsed["artist"]),
+                    title=title,
+                    artist=artist,
+                    year=year,
+                    period=period,
+                    seal_content=_get_default_seal_content(artist),
                     owner_id=editor.id,
                     library_id=library_id,
                     visibility="public",
@@ -979,6 +1014,10 @@ async def upload_images(
                 uploaded.append({
                     "id": file_id,
                     "filename": file.filename,
+                    "title": title,
+                    "artist": artist,
+                    "year": year,
+                    "period": period,
                     "url": get_static_url(f"uploads/{filename}"),
                     "thumbnail_url": get_static_url(f"thumbnails/{thumbnail_filename}") if thumbnail_filename else None,
                     "width": width,
@@ -1159,6 +1198,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
             "filename": db_analysis.filename,
             "title": db_analysis.title,
             "owner_id": db_analysis.owner_id,
+            "library_id": db_analysis.library_id,
             "artist": db_analysis.artist,
             "year": db_analysis.year,
             "period": db_analysis.period,
@@ -1632,12 +1672,13 @@ async def get_all_results(
     artist: Optional[str] = Query(default=None, description="画家名称筛选"),
     sort_by: Optional[str] = Query(default=None, description="排序字段"),
     sort_dir: Optional[str] = Query(default="desc", description="排序方向: asc, desc"),
+    library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_optional_user),
 ):
     """获取所有分析结果列表"""
-    # 自定义排序时跳过缓存
-    use_cache = not artist and not sort_by and limit >= 500
+    # 自定义排序或筛选时跳过缓存
+    use_cache = not artist and not sort_by and not library_id and limit >= 500
     if use_cache:
         cached = _get_results_cache()
         if cached:
@@ -1658,6 +1699,9 @@ async def get_all_results(
         )
     else:
         query = query.filter(TubiAnalysis.visibility != "private")
+
+    if library_id:
+        query = query.filter(TubiAnalysis.library_id == library_id)
 
     # 排序
     sort_map = {
@@ -1710,6 +1754,7 @@ async def get_all_results(
             "filename": analysis.filename,
             "title": analysis.title,
             "owner_id": analysis.owner_id,
+            "library_id": analysis.library_id,
             "artist": analysis.artist,
             "year": analysis.year,
             "period": analysis.period,
@@ -1998,9 +2043,16 @@ async def delete_image(image_id: str, request: Request, db: Session = Depends(ge
 
     # 删除数据库记录
     db.delete(db_analysis)
+    artist_for_cache = db_analysis.artist
     db.commit()
     _clear_results_cache()  # 删除后使缓存失效
     _clear_stats_cache()
+    try:
+        from app.api.artists import invalidate_stats_cache
+        if artist_for_cache:
+            invalidate_stats_cache(artist_for_cache)
+    except Exception:
+        pass
 
     return {
         "success": True,
@@ -2101,7 +2153,11 @@ class AlbumDimensionRequest(BaseModel):
 
 
 @router.get("/dimensions")
-async def get_dimensions(artist: Optional[str] = None, db: Session = Depends(get_db)):
+async def get_dimensions(
+    artist: Optional[str] = None,
+    library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
+    db: Session = Depends(get_db)
+):
     """
     尺寸录入专用接口：
     - 返回所有记录（默认李鱓）
@@ -2118,6 +2174,8 @@ async def get_dimensions(artist: Optional[str] = None, db: Session = Depends(get
     else:
         # 默认只查李鱓
         query = query.filter(TubiAnalysis.artist.in_(["李鱓", "李复堂", "李鳆"]))
+    if library_id:
+        query = query.filter(TubiAnalysis.library_id == library_id)
     
     records = query.order_by(TubiAnalysis.year, TubiAnalysis.id).all()
 
@@ -2263,6 +2321,7 @@ class AlbumRenameRequest(BaseModel):
 @router.get("/albums")
 async def get_albums(
     artist: Optional[str] = Query(default=None, description="画家名称筛选"),
+    library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
     db: Session = Depends(get_db)
 ):
     """获取所有册页列表（含统计）"""
@@ -2273,6 +2332,8 @@ async def get_albums(
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
         query = query.filter(TubiAnalysis.artist.in_(aliases))
+    if library_id:
+        query = query.filter(TubiAnalysis.library_id == library_id)
     records_with_album = query.order_by(TubiAnalysis.album_name, TubiAnalysis.album_index).all()
     
     albums = defaultdict(list)
@@ -2523,6 +2584,7 @@ class TagItemRequest(BaseModel):
 @router.get("/tags")
 async def get_tags(
     artist: Optional[str] = Query(default=None, description="画家名称筛选"),
+    library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
     db: Session = Depends(get_db)
 ):
     """获取所有标签列表（含统计）"""
@@ -2535,6 +2597,8 @@ async def get_tags(
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
         query = query.filter(TubiAnalysis.artist.in_(aliases))
+    if library_id:
+        query = query.filter(TubiAnalysis.library_id == library_id)
     records_with_tags = query.all()
     
     for r in records_with_tags:
@@ -2942,6 +3006,19 @@ async def update_regions_manual(
     from app.services.area_calculator import calculate_area_stats_fillpoly
     stats = calculate_area_stats_fillpoly(regions_dict, width, height)
 
+    # 数据修改前创建版本快照
+    try:
+        create_revision(
+            db=db,
+            artwork_id=db_analysis.id,
+            operation_type="manual_save",
+            change_summary=f"手动保存区域标注（{len(inscription_list)} 个题跋 + {len(painting_list)} 个绘画区域）",
+            approved_by=user.id,
+            submitted_by=user.id,
+        )
+    except Exception as e:
+        logger.warning("创建版本快照失败（不影响保存）: %s", e)
+
     db_analysis.regions = json.dumps(regions_dict, ensure_ascii=False)
     db_analysis.inscription_percent = stats["inscription_percent"]
     db_analysis.painting_percent = stats["painting_percent"]
@@ -3021,6 +3098,89 @@ async def update_regions_manual(
             "is_manual_annotated": True
         }
     }
+
+
+@router.post("/{image_id}/recover-regions")
+async def recover_regions(
+    image_id: str,
+    db: Session = Depends(get_db),
+    editor=Depends(require_editor)
+):
+    """
+    数据恢复端点：修复 regions 字段格式。
+    当 regions 为数组（错误格式）时，自动转换为正确的 dict 格式。
+    """
+    if image_id.isdigit():
+        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.id == int(image_id)).first()
+    else:
+        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    if not db_analysis:
+        raise HTTPException(status_code=404, detail="图像不存在")
+
+    # 解析 regions
+    raw_regions = db_analysis.regions
+    if isinstance(raw_regions, str):
+        try:
+            raw_regions = json.loads(raw_regions)
+        except (json.JSONDecodeError, TypeError):
+            raw_regions = None
+
+    if raw_regions is None:
+        return {"success": True, "status": "no_regions", "message": "没有 regions 数据，无需修复"}
+
+    # 已经是正确的 dict 格式
+    if isinstance(raw_regions, dict) and "inscription_regions" in raw_regions:
+        return {"success": True, "status": "already_correct", "message": "regions 格式正确，无需修复"}
+
+    # 数组格式 → 需要修复
+    if isinstance(raw_regions, list):
+        # 先创建 revision 快照坏状态
+        try:
+            create_revision(
+                db=db,
+                artwork_id=db_analysis.id,
+                operation_type="recover",
+                change_summary=f"数据恢复：将数组格式 regions 转换为 dict 格式（原数组长度={len(raw_regions)}）",
+                approved_by=editor.id,
+                submitted_by=editor.id,
+            )
+        except Exception as e:
+            logger.warning("创建版本快照失败（不影响恢复）: %s", e)
+
+        # 转换数组格式为 dict 格式
+        inscription_list = []
+        painting_list = []
+        for r in raw_regions:
+            region_type = r.get("type", "inscription") if isinstance(r, dict) else "inscription"
+            if isinstance(r, dict) and "points" in r:
+                entry = {"type": "polygon", "points": r["points"]}
+            elif isinstance(r, dict) and "x1" in r:
+                entry = {"type": "rectangle", "x1": r["x1"], "y1": r["y1"], "x2": r["x2"], "y2": r["y2"]}
+            else:
+                continue
+            if region_type == "painting":
+                painting_list.append(entry)
+            else:
+                inscription_list.append(entry)
+
+        regions_dict = {
+            "inscription_regions": inscription_list,
+            "painting_regions": painting_list,
+            "blank_regions": [],
+            "_meta": {"user_edited": True, "recovered": True}
+        }
+
+        db_analysis.regions = json.dumps(regions_dict, ensure_ascii=False)
+        db_analysis.updated_at = datetime.now()
+        db.commit()
+
+        return {
+            "success": True,
+            "status": "recovered",
+            "message": f"已修复 regions 格式，转换 {len(inscription_list)} 个题跋区域 + {len(painting_list)} 个绘画区域"
+        }
+
+    return {"success": True, "status": "unknown_format", "message": f"未知 regions 格式: {type(raw_regions).__name__}"}
 
 
 # ============ 4c: 我的统计数据 API ============

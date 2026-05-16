@@ -452,7 +452,6 @@ async def sync_artist_name(artist_id: int, req: SyncNameRequest, editor=Depends(
 
 @router.post("/{artist_id}/ai-fill")
 async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
-    """AI一键查询画家信息并填充（百度百科优先，AI补充）"""
     conn = get_db_connection()
     try:
         artist = conn.execute("SELECT * FROM artists WHERE id = ?", (artist_id,)).fetchone()
@@ -461,112 +460,21 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
 
         artist_name = artist["name"]
         updates = {}
-        rules_created = False
 
-        # 1. 尝试百度百科抓取
-        try:
-            from app.services.baidu_crawler import fetch_artist_from_baike
-            baike = fetch_artist_from_baike(artist_name)
-            if baike.get("success") and baike.get("data"):
-                info = baike["data"]
-                # 仅填充空字段
-                if info.get("birth_year") and not artist["birth_year"]:
-                    updates["birth_year"] = int(info["birth_year"])
-                if info.get("death_year") and not artist["death_year"]:
-                    updates["death_year"] = int(info["death_year"])
-                if info.get("alias") and not artist["alias"]:
-                    updates["alias"] = info["alias"][:100]
-                if info.get("hometown") and not artist["hometown"]:
-                    updates["hometown"] = info["hometown"][:100]
-                if info.get("dynasty") and not artist["dynasty"]:
-                    updates["dynasty"] = info["dynasty"][:50]
-                if info.get("biography") and not artist["biography"]:
-                    updates["biography"] = info["biography"]
-                elif info.get("abstract") and not artist["biography"]:
-                    updates["biography"] = info["abstract"]
-                if info.get("avatar_url") and not artist["avatar_url"]:
-                    updates["avatar_url"] = info["avatar_url"]
-                if info.get("baidu_url") and not artist["baidu_url"]:
-                    updates["baidu_url"] = info["baidu_url"]
-                if info.get("masterpieces") and not artist["masterpieces"]:
-                    updates["masterpieces"] = info["masterpieces"]
-                if info.get("specialties") and not artist["specialties"]:
-                    updates["specialties"] = info["specialties"][:200]
-                if info.get("art_school") and not artist["art_school"]:
-                    updates["art_school"] = info["art_school"]
-                # 新增百科字段
-                if info.get("summary") and not artist["summary"]:
-                    updates["summary"] = info["summary"]
-                if info.get("occupation") and not artist["occupation"]:
-                    updates["occupation"] = info["occupation"]
-                if info.get("main_achievements") and not artist["main_achievements"]:
-                    updates["main_achievements"] = info["main_achievements"]
-                if info.get("art_style") and not artist["art_style"]:
-                    updates["art_style"] = info["art_style"]
-                if info.get("character_relations") and not artist["character_relations"]:
-                    updates["character_relations"] = info["character_relations"]
-                if info.get("nationality") and not artist["nationality"]:
-                    updates["nationality"] = info["nationality"]
-                if info.get("influence") and not artist["influence"]:
-                    updates["influence"] = info["influence"]
-                if info.get("historical_evaluation") and not artist["historical_evaluation"]:
-                    updates["historical_evaluation"] = info["historical_evaluation"]
-                if info.get("anecdotes") and not artist["anecdotes"]:
-                    updates["anecdotes"] = info["anecdotes"]
-                if info.get("art_chronology") and not artist["art_chronology"]:
-                    updates["art_chronology"] = info["art_chronology"]
-                if info.get("published_works") and not artist["published_works"]:
-                    updates["published_works"] = info["published_works"]
-                if info.get("gallery_images") and not artist["gallery_images"]:
-                    updates["gallery_images"] = info["gallery_images"]
-                if info.get("banner_url") and not artist["banner_url"]:
-                    updates["banner_url"] = info["banner_url"]
-                if info.get("representative_works_text") and not artist["representative_works_text"]:
-                    updates["representative_works_text"] = info["representative_works_text"]
-                if info.get("references") and not artist["references"]:
-                    updates["references"] = info["references"]
-        except Exception as e:
-            logger.warning("百度百科抓取失败: %s", e)
+        baike_data = _fetch_baike_data(artist_name)
 
-        # 2. AI补充（仅填充百度百科未覆盖的字段）
-        if not updates.get("background") or not updates.get("specialties"):
-            try:
-                from app.services.qwen_llm_client import call_qwen_chat
+        if baike_data:
+            updates = _merge_baike_updates(artist, baike_data)
 
-                if artist["background"] and artist["specialties"] and artist["biography"]:
-                    pass  # 已有足够信息，跳过AI
-                else:
-                    prompt = f"""请简要介绍画家{artist_name}的以下信息，用JSON格式返回：
-{{
-  "birth_year": 出生年份（整数，如不知道写null），
-  "background": "背景简介（50字以内）",
-  "specialties": "专长",
-  "biography": "生平简介（100字以内）"
-}}
-只返回JSON，不要其他文字。"""
+        if not updates or len(updates) < 3:
+            ai_data = _ai_generate_fields(artist_name, artist, baike_data)
+            if ai_data:
+                for k, v in ai_data.items():
+                    if v and not artist[k] and k not in updates:
+                        if k in ("birth_year", "death_year", "featured", "enabled", "view_count"):
+                            continue
+                        updates[k] = v
 
-                    response = call_qwen_chat(
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.3,
-                        max_tokens=500,
-                    )
-                    if "error" not in response:
-                        result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        json_match = re.search(r'\{[^}]+\}', result, re.DOTALL)
-                        if json_match:
-                            ai_info = json.loads(json_match.group())
-                            if ai_info.get("birth_year") and not updates.get("birth_year") and not artist["birth_year"]:
-                                updates["birth_year"] = int(ai_info["birth_year"])
-                            if ai_info.get("background") and not artist["background"]:
-                                updates["background"] = ai_info["background"]
-                            if ai_info.get("specialties") and not artist["specialties"]:
-                                updates["specialties"] = ai_info["specialties"]
-                            if ai_info.get("biography") and not updates.get("biography") and not artist["biography"]:
-                                updates["biography"] = ai_info["biography"]
-            except Exception as e:
-                logger.warning("AI补充失败: %s", e)
-
-        # 写入数据库
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
             set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -574,14 +482,15 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
                 f"UPDATE artists SET {set_clause} WHERE id = ?",
                 (*updates.values(), artist_id)
             )
+            conn.commit()
 
-        conn.commit()
         msg = "查询完成"
         if updates:
-            msg += f"，已更新 {len(updates)} 个字段"
+            fields_done = ", ".join(updates.keys())
+            msg = f"已更新 {len(updates)} 个字段：{fields_done}"
         else:
             msg += "，无需更新"
-        return {"success": True, "message": msg, "updates": updates, "rules_created": rules_created}
+        return {"success": True, "message": msg, "updates": updates}
 
     except HTTPException:
         raise
@@ -590,3 +499,161 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
+
+
+def _fetch_baike_data(artist_name: str) -> dict:
+    try:
+        from app.services.baidu_crawler import fetch_artist_from_baike
+        result = fetch_artist_from_baike(artist_name)
+        if result.get("success") and result.get("data"):
+            return result["data"]
+    except Exception:
+        pass
+
+    try:
+        import requests
+        encoded = requests.utils.quote(artist_name)
+        url = f"https://baike.baidu.com/item/{encoded}"
+        resp = requests.get(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html",
+        }, timeout=10)
+        if resp.status_code == 200 and len(resp.text) > 5000:
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(resp.text, "html.parser")
+                data = {}
+                meta_desc = soup.select_one("meta[name=description]")
+                if meta_desc:
+                    data["summary"] = meta_desc.get("content", "")[:2000]
+                title_el = soup.select_one("title")
+                if title_el:
+                    title_text = title_el.get_text(strip=True)
+                    data["name"] = title_text.replace("_百度百科", "")
+                basic_items = soup.select(".basicInfo-item")
+                for item in basic_items:
+                    text = item.get_text(strip=True)
+                    if "：" in text or ":" in text:
+                        sep = "：" if "：" in text else ":"
+                        key, val = text.split(sep, 1)
+                        key = key.strip(); val = val.strip()
+                        if "出生" in key or "生年" in key:
+                            m = re.search(r'(\d{4})', val)
+                            if m: data["birth_year"] = int(m.group(1))
+                        elif "逝世" in key or "卒年" in key:
+                            m = re.search(r'(\d{4})', val)
+                            if m: data["death_year"] = int(m.group(1))
+                        elif "字" == key or "号" == key:
+                            old = data.get("alias", "")
+                            data["alias"] = f"{old} {key}{val}".strip()
+                        elif "籍贯" in key or "出生地" in key:
+                            data["hometown"] = val[:100]
+                        elif "朝代" in key or "时代" in key:
+                            data["dynasty"] = val[:50]
+                        elif "职业" in key:
+                            data["occupation"] = val[:50]
+                        elif "主要成就" in key:
+                            data["main_achievements"] = val[:500]
+                        elif "代表" in key:
+                            parts = [p.strip() for p in re.split(r'[,，、]', val) if p.strip()]
+                            if parts: data["masterpieces"] = json.dumps(parts[:6], ensure_ascii=False)
+                if data.get("summary"):
+                    data["biography"] = data["summary"]
+                data["baidu_url"] = url
+                data["source"] = "scrape"
+                return data
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    return {}
+
+
+def _merge_baike_updates(artist, baike_data: dict) -> dict:
+    updates = {}
+    field_map = {
+        "birth_year": "birth_year", "death_year": "death_year",
+        "alias": "alias", "hometown": "hometown", "dynasty": "dynasty",
+        "biography": "biography", "avatar_url": "avatar_url",
+        "baidu_url": "baidu_url", "masterpieces": "masterpieces",
+        "specialties": "specialties", "art_school": "art_school",
+        "summary": "summary", "occupation": "occupation",
+        "main_achievements": "main_achievements", "art_style": "art_style",
+        "character_relations": "character_relations", "nationality": "nationality",
+        "influence": "influence", "historical_evaluation": "historical_evaluation",
+        "anecdotes": "anecdotes", "art_chronology": "art_chronology",
+        "published_works": "published_works", "gallery_images": "gallery_images",
+        "banner_url": "banner_url", "representative_works_text": "representative_works_text",
+        "references": "references",
+    }
+    for baike_key, db_col in field_map.items():
+        val = baike_data.get(baike_key)
+        if val and not artist[db_col]:
+            if db_col == "birth_year" and isinstance(val, (int, float)):
+                updates[db_col] = int(val)
+            elif db_col == "death_year" and isinstance(val, (int, float)):
+                updates[db_col] = int(val)
+            elif db_col == "alias":
+                updates[db_col] = str(val)[:100]
+            elif db_col in ("hometown", "dynasty"):
+                updates[db_col] = str(val)[:50]
+            elif db_col == "specialties":
+                updates[db_col] = str(val)[:200]
+            else:
+                updates[db_col] = str(val)
+    return updates
+
+
+def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
+    try:
+        from app.services.qwen_llm_client import call_qwen_chat
+
+        summary_hint = baike_data.get("summary", "")[:200] if baike_data else ""
+
+        prompt = f"""请为画家「{artist_name}」生成百科信息，用纯JSON返回（不要markdown代码块）：
+
+已有部分信息作为参考：{summary_hint}
+
+返回格式：
+{{
+  "summary": "100字概述",
+  "biography": "300字详细生平介绍",
+  "art_style": "200字艺术特色，包括画风、用笔、用墨特点",
+  "main_achievements": "100字主要成就",
+  "influence": "150字后世影响",
+  "historical_evaluation": "100字历史评价",
+  "occupation": "职业（如：画家、书法家）",
+  "nationality": "国籍（如：中国）",
+  "representative_works_text": "代表作名称，逗号分隔",
+  "specialties": "专长词条，如：写意花鸟、泼墨"
+}}
+
+只返回JSON，不要其他文字。"""
+        response = call_qwen_chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3, max_tokens=1500,
+        )
+        if "error" not in response:
+            result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+            json_match = re.search(r'\{[^{}]*\}', result, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+    except Exception:
+        pass
+    return {}
+
+
+def invalidate_stats_cache(artist_name: str):
+    try:
+        conn = get_db_connection()
+        try:
+            conn.execute(
+                "DELETE FROM artist_stats_cache WHERE artist_id IN (SELECT id FROM artists WHERE name = ?)",
+                (artist_name,)
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass

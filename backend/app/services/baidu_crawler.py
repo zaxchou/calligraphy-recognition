@@ -76,7 +76,10 @@ def _fetch_via_api(name: str, appid: Optional[str] = None) -> Optional[dict]:
     resp.raise_for_status()
     data = resp.json()
 
-    if not data or "title" not in data:
+    if not data or "errno" in data:
+        return None
+
+    if "title" not in data:
         return None
 
     extracted = {
