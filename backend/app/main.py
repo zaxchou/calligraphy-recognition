@@ -17,7 +17,7 @@ logging.basicConfig(
 from app.core.config import get_settings
 from app.core.database import engine, Base, get_db
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications, libraries, artist_changes, artwork_artists
+from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications, libraries, artist_changes, artwork_artists, artworks
 
 try:
     from app.api import composition
@@ -169,6 +169,13 @@ app.include_router(
     artwork_artists.router,
     prefix=settings.API_V1_STR,
     tags=["作品-画家关联"]
+)
+
+# 作品管理（作品库内）
+app.include_router(
+    artworks.router,
+    prefix=settings.API_V1_STR,
+    tags=["作品管理"]
 )
 
 app.include_router(
