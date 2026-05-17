@@ -17,7 +17,7 @@
           :style="imgStyle"
           @load="onImgLoad"
         />
-        <div class="crop-circle" :style="circleStyle" />
+        <div class="crop-square" :style="squareStyle" />
       </div>
       <div class="crop-controls">
         <span class="crop-hint">拖拽图片调整位置</span>
@@ -58,11 +58,11 @@ const dragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
 const origOffset = ref({ x: 0, y: 0 })
 
-const CIRCLE_SIZE = 220
+const CROP_SIZE = 200
 
-const circleStyle = computed(() => ({
-  width: CIRCLE_SIZE + 'px',
-  height: CIRCLE_SIZE + 'px',
+const squareStyle = computed(() => ({
+  width: CROP_SIZE + 'px',
+  height: CROP_SIZE + 'px',
 }))
 
 const imgStyle = computed(() => ({
@@ -92,7 +92,7 @@ function onImgLoad() {
     naturalH.value = img.naturalHeight
     const fw = frame.clientWidth
     const fh = frame.clientHeight
-    const s = Math.max(CIRCLE_SIZE / naturalW.value, CIRCLE_SIZE / naturalH.value, 0.6)
+    const s = Math.max(CROP_SIZE / naturalW.value, CROP_SIZE / naturalH.value, 0.6)
     scale.value = Math.round(s * 100) / 100
     offsetX.value = (fw - naturalW.value * s) / 2
     offsetY.value = (fh - naturalH.value * s) / 2
@@ -115,33 +115,25 @@ function onMouseMove(e) {
 }
 function onMouseUp() { dragging.value = false }
 
-// ── 裁剪 ──
+// ── 方形裁剪 ──
 function doCrop() {
   const frame = frameRef.value
   if (!imgRef.value || !frame) return
 
   cropping.value = true
   const canvas = document.createElement('canvas')
-  const size = CIRCLE_SIZE * 2 // 2x retina
+  const size = CROP_SIZE * 2
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
-
-  // 圆形裁剪
-  ctx.beginPath()
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-  ctx.clip()
 
   const fw = frame.clientWidth
   const fh = frame.clientHeight
   const s = scale.value
 
-  // 圆在 frame 中居中 → 圆心 (fw/2, fh/2)
-  // 图片在 frame 中的位置: (offsetX, offsetY)，尺寸: (naturalW*s, naturalH*s)
-  // frame 坐标 → 源图坐标: srcCoord = (frameCoord - offset) / s
   const srcCenterX = (fw / 2 - offsetX.value) / s
   const srcCenterY = (fh / 2 - offsetY.value) / s
-  const srcCropSize = CIRCLE_SIZE / s
+  const srcCropSize = CROP_SIZE / s
 
   ctx.drawImage(
     imgRef.value,
@@ -183,11 +175,12 @@ defineExpose({ open })
   position: absolute;
   width: auto; height: auto; max-width: none;
 }
-.crop-circle {
-  position: absolute; border-radius: 50%;
+.crop-square {
+  position: absolute;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+  background: rgba(255,255,255,0.06);
   border: 2px solid rgba(255,255,255,0.8);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
   pointer-events: none;
 }
 .crop-controls {

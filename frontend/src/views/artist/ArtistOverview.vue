@@ -160,6 +160,10 @@
     </template>
   </div>
 
+  <button class="av-back-top" :class="{ visible: showBackTop }" @click="scrollToTop" title="回到顶部">
+    <el-icon><ArrowUp /></el-icon>
+  </button>
+
   <el-dialog v-model="showSuggestDialog" title="我的修改" width="520px" align-center :close-on-click-modal="false" @open="onSuggestDialogOpen">
     <el-form label-width="80px" label-position="left">
       <el-form-item label="修改字段">
@@ -185,10 +189,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { ElMessage } from 'element-plus'
+import { ArrowUp } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -202,6 +207,7 @@ const artist = ref(null)
 const stats = ref({})
 const expandedAnecdote = ref(-1)
 const activeToc = ref('')
+const showBackTop = ref(false)
 
 const suggestFields = [
   { value: 'summary', label: '概述' },
@@ -318,6 +324,10 @@ function renderMarkdown(text) {
     .replace(/^### (.+)$/gm, '<h3 class="av-md-h3">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="av-md-h2">$1</h2>')
     .replace(/\n/g, '<br>')
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function scrollToSection(id) {
@@ -440,6 +450,8 @@ async function fetchStats() {
 }
 
 let tocObserver = null
+let backTopHandler = null
+
 function setupTocObserver() {
   const sectionIds = tocItems.value.map(i => i.id)
   if (sectionIds.length === 0) return
@@ -466,6 +478,13 @@ onMounted(async () => {
   }
   loading.value = false
   setTimeout(setupTocObserver, 200)
+  backTopHandler = () => { showBackTop.value = window.scrollY > 600 }
+  window.addEventListener('scroll', backTopHandler, { passive: true })
+})
+
+onUnmounted(() => {
+  if (backTopHandler) window.removeEventListener('scroll', backTopHandler)
+  if (tocObserver) tocObserver.disconnect()
 })
 
 watch(tocItems, (items) => {
@@ -494,7 +513,7 @@ watch(tocItems, (items) => {
 /* ── Header ── */
 .av-header {
   position: relative;
-  padding: 64px 0 48px;
+  padding: 32px 0 28px;
   margin-bottom: 0;
   border-radius: 12px;
   overflow: hidden;
@@ -507,22 +526,22 @@ watch(tocItems, (items) => {
 .av-header .av-meta-school { background: rgba(196,90,60,0.45); color: #fff; }
 .av-header-inner {
   position: relative; z-index: 1;
-  display: flex; gap: 32px; align-items: flex-start;
-  padding: 0 48px;
+  display: flex; gap: 24px; align-items: flex-start;
+  padding: 0 32px;
 }
 .av-header-avatar { flex-shrink: 0; margin-top: 0; }
 .av-avatar-img {
-  width: 300px; height: 300px; border-radius: 16px;
+  width: 200px; height: 200px; border-radius: 12px;
   object-fit: cover; display: block;
-  box-shadow: 0 6px 30px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 .av-avatar-text {
   display: flex; align-items: center; justify-content: center;
-  width: 300px; height: 300px; border-radius: 16px;
+  width: 200px; height: 200px; border-radius: 12px;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 96px; font-weight: 500;
-  box-shadow: 0 6px 30px rgba(0,0,0,0.25);
+  font-size: 72px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 .av-header-info { flex: 1; min-width: 0; }
 .av-name {
@@ -549,6 +568,21 @@ watch(tocItems, (items) => {
   flex-shrink: 0; display: flex; flex-direction: column;
   align-items: flex-end; gap: 10px; padding-top: 4px;
 }
+.av-header-actions .el-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+
+.av-back-top {
+  position: fixed; right: 32px; bottom: 40px; z-index: 100;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #3a3222; color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.av-back-top.visible { opacity: 0.85; pointer-events: auto; }
+.av-back-top:hover { opacity: 1; background: #c45a3c; }
 
 .av-suggest-old {
   max-height: 160px; overflow-y: auto; font-size: 13px;
@@ -670,12 +704,13 @@ watch(tocItems, (items) => {
 @media (max-width: 1024px) { .av-toc { display: none; } }
 @media (max-width: 768px) {
   .av-page { padding: 0 16px 80px; }
-  .av-header { padding: 40px 0 36px; }
+  .av-header { padding: 24px 0 20px; }
   .av-header-inner { flex-direction: column; gap: 16px; padding: 0 20px; }
   .av-header-actions { flex-direction: row; align-items: center; }
   .av-name { font-size: 26px; }
   .av-body { flex-direction: column; gap: 32px; }
   .av-relations-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .av-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .av-back-top { right: 16px; bottom: 24px; }
 }
 </style>
