@@ -749,6 +749,17 @@ p.welcome-subtitle {
   border-radius: var(--radius-md);
 }
 
+/* 全局按钮垂直居中 */
+.el-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+.el-button span {
+  line-height: 1;
+}
+
 /* 链接色 */
 .el-button--primary {
   --el-button-bg-color: var(--cinnabar) !important;

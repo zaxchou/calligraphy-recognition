@@ -568,10 +568,6 @@ watch(tocItems, (items) => {
   flex-shrink: 0; display: flex; flex-direction: column;
   align-items: flex-end; gap: 10px; padding-top: 4px;
 }
-.av-header-actions .el-button {
-  display: inline-flex; align-items: center; justify-content: center;
-  line-height: 1;
-}
 
 .av-back-top {
   position: fixed; right: 32px; bottom: 40px; z-index: 100;
