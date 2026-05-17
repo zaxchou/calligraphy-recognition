@@ -558,7 +558,7 @@ onMounted(async () => {
 <style scoped>
 .ae-root { display: block; min-height: 100vh; background: #fafaf8; padding-left: 130px; }
 
-.ae-sidebar { width: 130px; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: fixed; left: 240px; top: 64px; bottom: 0; display: flex; flex-direction: column; z-index: 5; }
+.ae-sidebar { width: 130px; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: fixed; left: 120px; top: 64px; bottom: 0; display: flex; flex-direction: column; z-index: 5; }
 .ae-sidebar-top { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #edeae1; }
 .ae-back-btn { padding: 2px; min-height: auto; }
 .ae-artist-name { font-size: 12px; color: #3a3222; font-weight: 600; font-family: 'Noto Serif SC', serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
