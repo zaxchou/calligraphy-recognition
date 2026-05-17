@@ -1,22 +1,11 @@
 <template>
   <div class="ae-root">
     <div class="ae-sidebar">
-      <div class="ae-back">
-        <el-button size="small" text @click="goBack"><el-icon><ArrowLeft /></el-icon>返回列表</el-button>
-      </div>
-      <div class="ae-sidebar-title">编辑画家</div>
-      <div class="ae-sidebar-name">{{ form.name || '未命名' }}</div>
       <nav class="ae-nav">
         <a v-for="s in sections" :key="s.id" class="ae-nav-item" :class="{ active: activeSection === s.id }" @click="scrollTo(s.id)">
           {{ s.label }}
         </a>
       </nav>
-      <div class="ae-actions">
-        <el-button type="primary" @click="handleSave" :loading="saving" class="ae-btn-save">保存修改</el-button>
-        <el-button @click="handleAiFill" :loading="aiLoading" class="ae-btn-ai">
-          <el-icon><MagicStick /></el-icon>AI补充
-        </el-button>
-      </div>
     </div>
 
     <div class="ae-main">
@@ -371,8 +360,13 @@
         </section>
 
         <div class="ae-bottom-bar">
-          <el-button @click="goBack">取消</el-button>
-          <el-button type="primary" @click="handleSave" :loading="saving" class="ae-btn-save-main">保存修改</el-button>
+          <el-button @click="goBack" size="default">取消</el-button>
+          <div class="ae-bottom-actions">
+            <el-button size="default" @click="handleAiFill" :loading="aiLoading">
+              <el-icon><MagicStick /></el-icon>AI补充
+            </el-button>
+            <el-button type="primary" size="default" @click="handleSave" :loading="saving">保存修改</el-button>
+          </div>
         </div>
       </template>
     </div>
@@ -419,14 +413,14 @@ const form = reactive({
 const JSON_ARRAYS = ['bio_events', 'art_chronology', 'character_relations', 'anecdotes', 'masterpieces', 'tags', 'published_works', 'references', 'gallery_images']
 
 const sections = [
-  { id: 'basic', label: '基本资料' },
-  { id: 'overview', label: '概述与图像' },
+  { id: 'basic', label: '基本' },
+  { id: 'overview', label: '概述' },
   { id: 'biography', label: '生平' },
-  { id: 'chronology', label: '艺术年谱' },
-  { id: 'research', label: '艺术研究' },
-  { id: 'relations', label: '人物关系' },
-  { id: 'literature', label: '文献与出版' },
-  { id: 'gallery', label: '作品图集' },
+  { id: 'chronology', label: '年谱' },
+  { id: 'research', label: '研究' },
+  { id: 'relations', label: '关系' },
+  { id: 'literature', label: '文献' },
+  { id: 'gallery', label: '图集' },
 ]
 
 function addItem(field, defaults) { form[field].push({...defaults}) }
@@ -580,19 +574,13 @@ onMounted(async () => {
 <style scoped>
 .ae-root { display: flex; min-height: 100vh; background: #fafaf8; }
 
-.ae-sidebar { width: 220px; flex-shrink: 0; background: #fff; border-right: 1px solid #edeae1; padding: 20px 14px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-.ae-back { margin-bottom: 10px; }
-.ae-sidebar-title { font-size: 11px; color: #8a8578; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
-.ae-sidebar-name { font-size: 15px; color: #3a3222; font-weight: 600; font-family: 'Noto Serif SC', serif; margin-bottom: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ae-nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.ae-nav-item { padding: 9px 12px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+.ae-sidebar { width: 140px; flex-shrink: 0; background: #fff; border-right: 1px solid #edeae1; padding: 16px 10px; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 10; }
+.ae-nav { display: flex; flex-direction: column; gap: 1px; }
+.ae-nav-item { padding: 8px 10px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: center; }
 .ae-nav-item:hover { background: #f5f3ed; color: #3a3222; }
 .ae-nav-item.active { background: #fdf6f0; color: #c45a3c; font-weight: 500; }
-.ae-actions { margin-top: 14px; padding-top: 14px; border-top: 1px solid #edeae1; display: flex; flex-direction: column; gap: 8px; }
-.ae-btn-save { width: 100%; justify-content: center; font-weight: 500; }
-.ae-btn-ai { width: 100%; justify-content: center; }
 
-.ae-main { flex: 1; padding: 32px 40px 120px; max-width: 960px; }
+.ae-main { flex: 1; padding: 32px 40px 120px; max-width: 960px; margin-left: 140px; }
 .ae-loading { text-align: center; padding: 100px 0; color: #b0a890; }
 .ae-section { margin-bottom: 52px; scroll-margin-top: 20px; }
 .ae-section-title { font-family: 'Noto Serif SC', serif; font-size: 19px; color: #3a3222; margin: 0 0 22px; padding-left: 12px; border-left: 3px solid #c45a3c; }
@@ -600,7 +588,7 @@ onMounted(async () => {
 .ae-grid { display: grid; gap: 16px; }
 .ae-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .ae-grid-3 { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 768px) { .ae-grid-2, .ae-grid-3 { grid-template-columns: 1fr; } .ae-sidebar { display: none; } .ae-main { padding: 20px 16px 120px; } }
+@media (max-width: 768px) { .ae-grid-2, .ae-grid-3 { grid-template-columns: 1fr; } .ae-sidebar { display: none; } .ae-main { margin-left: 0; padding: 20px 16px 120px; } }
 
 .ae-field { margin-bottom: 18px; }
 .ae-label { display: block; font-size: 13px; color: #5c5346; font-weight: 500; margin-bottom: 6px; }
@@ -633,8 +621,8 @@ onMounted(async () => {
 .ae-gallery-item-info { padding: 4px 0; }
 .ae-gallery-item-title { font-size: 11px; color: #5c5346; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 120px; }
 
-.ae-bottom-bar { display: flex; justify-content: flex-end; gap: 12px; padding: 24px 0; border-top: 1px solid #edeae1; margin-top: 32px; }
-.ae-btn-save-main { font-weight: 500; min-width: 120px; }
+.ae-bottom-bar { display: flex; justify-content: space-between; align-items: center; padding: 24px 0; border-top: 1px solid #edeae1; margin-top: 32px; }
+.ae-bottom-actions { display: flex; gap: 10px; align-items: center; }
 
 :deep(.el-input__wrapper) { display: flex; align-items: center; }
 .ae-field :deep(.el-input__inner) { line-height: normal; }
