@@ -23,6 +23,7 @@
           <div class="sb-stat"><span class="sb-stat-num">{{ libStats.analyzed }}</span><span class="sb-stat-lbl">分析</span></div>
           <div class="sb-stat"><span class="sb-stat-num">{{ libStats.annotated }}</span><span class="sb-stat-lbl">标注</span></div>
         </div>
+        <div class="sb-total" v-if="libStats.total > 0">共 {{ libStats.total }} 幅</div>
 
         <!-- 操作按钮 -->
         <div class="sb-actions">
@@ -322,6 +323,12 @@ onMounted(() => {
 .sb-stat-lbl {
   font-size: 9px;
   color: #b0a890;
+}
+
+.sb-total {
+  text-align: center;
+  font-size: 9px;
+  color: #8c7a5c;
 }
 
 .sb-actions {
