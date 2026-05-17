@@ -615,11 +615,12 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
 
         summary_hint = baike_data.get("summary", "")[:200] if baike_data else ""
 
-        prompt = f"""请为画家「{artist_name}」生成百科信息，用纯JSON返回（不要markdown代码块）：
+        prompt = f"""请为画家「{artist_name}」生成百科信息，用纯JSON返回（不要markdown代码块）。
 
 已有部分信息作为参考：{summary_hint}
 
-返回格式：
+请返回以下JSON格式（字符串字段用中文填写，数组字段每个元素填完整信息）：
+
 {{
   "summary": "100字概述",
   "biography": "300字详细生平介绍",
@@ -629,14 +630,36 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
   "historical_evaluation": "100字历史评价",
   "occupation": "职业（如：画家、书法家）",
   "nationality": "国籍（如：中国）",
-  "representative_works_text": "代表作名称，逗号分隔",
-  "specialties": "专长词条，如：写意花鸟、泼墨"
+  "representative_works_text": "代表作名称，逗号分隔（如：《松藤图》《土墙蝶花图》）",
+  "specialties": "专长词条（如：写意花鸟、泼墨）",
+  "art_chronology": [{{
+    "year": "年份（如：1711）",
+    "event": "事件标题（如：中举人）",
+    "location": "地点（如：江苏兴化）",
+    "description": "详细描述该年艺术活动"
+  }}],
+  "anecdotes": [{{
+    "title": "典故标题",
+    "content": "典故详细内容"
+  }}],
+  "character_relations": [{{
+    "name": "相关人物姓名",
+    "relationship": "关系（好友/老师/学生/同门）",
+    "description": "关系详细描述"
+  }}],
+  "published_works": [{{
+    "title": "著作名称",
+    "publisher": "出版社",
+    "year": "年份"
+  }}]
 }}
 
+art_chronology 至少列出5-10个关键年份的事件，从出生到去世按年份排列。
+anecdotes 至少列出2-3个著名轶事。
 只返回JSON，不要其他文字。"""
         response = call_qwen_chat(
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=1500,
+            temperature=0.3, max_tokens=2500,
         )
         if "error" not in response:
             result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -645,7 +668,12 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
             end = result.rfind("}")
             if start >= 0 and end > start:
                 try:
-                    return json.loads(result[start:end + 1])
+                    parsed = json.loads(result[start:end + 1])
+                    json_arrays = ["art_chronology", "anecdotes", "character_relations", "published_works"]
+                    for field in json_arrays:
+                        if field in parsed and isinstance(parsed[field], list):
+                            parsed[field] = json.dumps(parsed[field], ensure_ascii=False)
+                    return parsed
                 except json.JSONDecodeError:
                     pass
     except Exception:

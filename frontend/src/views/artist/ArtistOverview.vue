@@ -185,9 +185,11 @@
           <section v-if="characterRelations.length > 0" class="bk-card">
             <h2 class="bk-card-title">人物关系</h2>
             <div class="bk-relations-row">
-              <div v-for="(rel, idx) in characterRelations" :key="idx" class="bk-relation-card">
+              <div v-for="(rel, idx) in characterRelations" :key="idx" class="bk-relation-card" @click="goToRelationArtist(rel)">
+                <el-avatar v-if="rel.image_url" :src="rel.image_url" :size="48" shape="circle" />
+                <el-avatar v-else :size="48" shape="circle" style="background:#c45a3c;color:#fff;font-size:18px">{{ (rel.name || '?').charAt(0) }}</el-avatar>
                 <div class="bk-relation-name">{{ rel.name }}</div>
-                <div class="bk-relation-role">{{ rel.relationship }}</div>
+                <el-tag size="small" type="warning">{{ rel.relationship }}</el-tag>
                 <p v-if="rel.description" class="bk-relation-desc">{{ rel.description }}</p>
               </div>
             </div>
@@ -220,9 +222,28 @@
             </div>
           </section>
 
-          <section v-if="artist.published_works" class="bk-card">
+          <section v-if="publishedWorks.length > 0" class="bk-card">
             <h2 class="bk-card-title">出版著作</h2>
-            <p class="bk-text">{{ artist.published_works }}</p>
+            <div class="bk-published-grid">
+              <div v-for="(pw, idx) in publishedWorks" :key="idx" class="bk-published-item">
+                <div class="bk-published-title">{{ pw.title }}</div>
+                <div class="bk-published-meta">{{ [pw.publisher, pw.year].filter(Boolean).join(' · ') }}</div>
+                <a v-if="pw.isbn" :href="pw.isbn.startsWith('http') ? pw.isbn : undefined" target="_blank" class="bk-published-isbn">{{ pw.isbn }}</a>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="galleryImages.length > 0" class="bk-card">
+            <h2 class="bk-card-title">作品图集</h2>
+            <div class="bk-gallery-grid">
+              <div v-for="(gi, idx) in galleryImages" :key="idx" class="bk-gallery-item" @click="gi.artwork_id && goToWork(gi.artwork_id)">
+                <div class="bk-gallery-thumb">
+                  <img v-if="gi.url" :src="gi.url" :alt="gi.title || gi.artwork_name" loading="lazy" />
+                  <span v-else class="bk-thumb-placeholder">{{ (gi.title || '?').charAt(0) }}</span>
+                </div>
+                <p class="bk-gallery-title">{{ gi.title || gi.artwork_name || '未命名' }}</p>
+              </div>
+            </div>
           </section>
 
           <section v-if="references.length > 0" class="bk-card">
@@ -297,6 +318,16 @@ const anecdotes = computed(() => {
   return parseJsonField(artist.value.anecdotes)
 })
 
+const publishedWorks = computed(() => {
+  if (!artist.value?.published_works) return []
+  return parseJsonField(artist.value.published_works)
+})
+
+const galleryImages = computed(() => {
+  if (!artist.value?.gallery_images) return []
+  return parseJsonField(artist.value.gallery_images)
+})
+
 const tags = computed(() => {
   if (!artist.value?.tags) return []
   return parseJsonField(artist.value.tags)
@@ -341,6 +372,10 @@ function toggleAnecdote(idx) {
 
 function goToWork(id) {
   if (id) window.open(`/#/tubi/${id}`, '_blank')
+}
+
+function goToRelationArtist(rel) {
+  if (rel.name) router.push({ name: 'ArtistOverview', params: { name: rel.name } })
 }
 
 function handleEdit() {
@@ -950,6 +985,19 @@ onMounted(async () => {
   line-height: 1.7;
   margin-bottom: 4px;
 }
+
+.bk-published-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.bk-published-item { padding: 14px; background: #fafaf8; border: 1px solid #edeae1; border-radius: 8px; }
+.bk-published-title { font-size: 14px; font-weight: 600; color: #3a3222; margin-bottom: 4px; font-family: 'Noto Serif SC', serif; }
+.bk-published-meta { font-size: 12px; color: #8a8578; }
+.bk-published-isbn { font-size: 11px; color: #c45a3c; display: block; margin-top: 4px; }
+
+.bk-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.bk-gallery-item { cursor: pointer; transition: transform 0.2s; }
+.bk-gallery-item:hover { transform: translateY(-2px); }
+.bk-gallery-thumb { width: 100%; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden; background: #f5f3ed; display: flex; align-items: center; justify-content: center; }
+.bk-gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.bk-gallery-title { font-size: 12px; color: #3a3222; margin: 6px 0 0; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 900px) {
   .bk-body {

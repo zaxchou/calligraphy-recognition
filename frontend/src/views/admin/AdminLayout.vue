@@ -9,31 +9,33 @@
         </button>
       </div>
 
-      <!-- 紧凑控制面板（作者 + 统计 + 操作） -->
-      <div v-if="!sidebarCollapsed" class="sidebar-panel">
-        <!-- 作者选择 -->
-        <select class="sb-select" v-model="selectedArtist" @change="onArtistChange">
-          <option value="all">全部作者</option>
-          <option v-for="a in artistList" :key="a" :value="a">{{ a }}</option>
+      <!-- 紧凑控制面板（作品库选择 + 统计 + 操作）→ 仅作品库权限可见 -->
+      <div v-if="!sidebarCollapsed && hasLibraryAccess" class="sidebar-panel">
+        <!-- 作品库选择 -->
+        <select class="sb-select" v-model="selectedLibraryId" @change="onLibraryChange">
+          <option value="" disabled>选择作品库</option>
+          <option v-for="lib in accessibleLibraries" :key="lib.id" :value="lib.id">
+            {{ lib.name }}{{ lib.artist_name ? ' - ' + lib.artist_name : '' }}
+          </option>
         </select>
 
         <!-- 统计（紧凑两列） -->
-        <div class="sb-stats" v-if="stats.total > 0">
-          <div class="sb-stat"><span class="sb-stat-num">{{ stats.verified }}</span><span class="sb-stat-lbl">已校对</span></div>
-          <div class="sb-stat"><span class="sb-stat-num">{{ stats.translated }}</span><span class="sb-stat-lbl">已翻译</span></div>
-          <div class="sb-stat"><span class="sb-stat-num">{{ stats.analyzed }}</span><span class="sb-stat-lbl">已分析</span></div>
-          <div class="sb-stat"><span class="sb-stat-num">{{ stats.annotated }}</span><span class="sb-stat-lbl">已标注</span></div>
+        <div class="sb-stats" v-if="libStats.total > 0">
+          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.verified }}</span><span class="sb-stat-lbl">已校对</span></div>
+          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.translated }}</span><span class="sb-stat-lbl">已翻译</span></div>
+          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.analyzed }}</span><span class="sb-stat-lbl">已分析</span></div>
+          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.annotated }}</span><span class="sb-stat-lbl">已标注</span></div>
         </div>
-        <div class="sb-stats sb-stats-total" v-if="stats.total > 0">
-          <span class="sb-stat-total">共 {{ stats.total }} 幅</span>
+        <div class="sb-stats sb-stats-total" v-if="libStats.total > 0">
+          <span class="sb-stat-total">共 {{ libStats.total }} 幅</span>
         </div>
 
         <!-- 操作按钮 -->
         <div class="sb-actions">
-          <button class="sb-btn" :disabled="batchState.translating" @click="triggerBatch('translate')">
+          <button class="sb-btn" :disabled="batchState.translating || !selectedLibraryId" @click="triggerBatch('translate')">
             翻译题跋
           </button>
-          <button class="sb-btn" :disabled="batchState.analyzing" @click="triggerBatch('reanalyze')">
+          <button class="sb-btn" :disabled="batchState.analyzing || !selectedLibraryId" @click="triggerBatch('reanalyze')">
             解析文字
           </button>
         </div>
@@ -82,18 +84,24 @@ import { useAuthStore } from '../../stores/authStore'
 import { adminApi } from '../../api/adminApi'
 import {
   EditPen, Picture, Upload, ScaleToOriginal, Stamp, Notebook, List, PriceTag,
-  User, Setting, Search, DataBoard, UserFilled, Key, InfoFilled,
+  User, Setting, Search, DataBoard, UserFilled, Key, InfoFilled, Collection,
 } from '@element-plus/icons-vue'
 
 // 图标名 → 组件映射（用于侧边栏动态渲染）
 const iconMap = {
   EditPen, Picture, Upload, ScaleToOriginal, Stamp, Notebook, List, PriceTag,
-  User, Setting, Search, DataBoard, UserFilled, Key, InfoFilled,
+  User, Setting, Search, DataBoard, UserFilled, Key, InfoFilled, Collection,
 }
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+// 作品库权限：admin/super_admin/editor 可见
+const hasLibraryAccess = computed(() => {
+  const role = authStore.role
+  return role === 'super_admin' || role === 'admin' || role === 'editor'
+})
 
 // 侧边栏折叠状态持久化（按用户）
 const SB_COLLAPSED_KEY = computed(() => `admin_sb_collapsed_${authStore.user?.id || 'anon'}`)
@@ -110,15 +118,15 @@ const userPermissions = ref([])
 const activeTab = computed(() => route.query?.tab || 'verify')
 
 // ── 共享控制面板状态（provide 给 ContentVerify） ──
-const artistList = ref([])
-const selectedArtist = ref(route.query.artist || '李鱓')
-const stats = reactive({ verified: 0, total: 0, translated: 0, analyzed: 0, annotated: 0 })
+const accessibleLibraries = ref([])
+const selectedLibraryId = ref(null)
+const libStats = reactive({ verified: 0, total: 0, translated: 0, analyzed: 0, annotated: 0 })
 const batchState = reactive({ translating: false, analyzing: false })
 const batchTrigger = ref(null)  // ContentVerify 会 watch 这个来触发批量操作
 
-provide('adminArtistList', artistList)
-provide('adminSelectedArtist', selectedArtist)
-provide('adminStats', stats)
+provide('adminAccessibleLibraries', accessibleLibraries)
+provide('adminSelectedLibraryId', selectedLibraryId)
+provide('adminLibStats', libStats)
 provide('adminBatchState', batchState)
 provide('adminBatchTrigger', batchTrigger)
 
@@ -130,7 +138,8 @@ const MENU_DEF = [
       { key: 'verify', label: '题跋校对', icon: 'EditPen', link: '/admin?tab=verify', perm: 'content.verify' },
       { key: 'annotation', label: '标注图校对', icon: 'Picture', link: '/admin?tab=annotation', perm: 'content.annotate' },
       { key: 'upload', label: '作品上传', icon: 'Upload', link: '/admin?tab=upload', perm: 'content.upload' },
-      { key: 'change-requests', label: '变更审核', icon: 'InfoFilled', link: '/admin?tab=change-requests', perm: 'system.config' },
+      { key: 'change-requests', label: '变更审核', icon: 'InfoFilled', link: '/admin?tab=change-requests', perm: 'content.verify' },
+      { key: 'libraries', label: '作品库管理', icon: 'Collection', link: '/admin?tab=libraries', perm: 'content.upload' },
     ],
   },
   {
@@ -146,7 +155,7 @@ const MENU_DEF = [
   {
     category: '知识管理',
     items: [
-      { key: 'artist-info', label: '作者信息', icon: 'User', link: '/admin?tab=artist-info', perm: 'knowledge.artist_info' },
+      { key: 'artist-info', label: '书画家信息', icon: 'User', link: '/admin?tab=artist-info', perm: 'knowledge.artist_info' },
       { key: 'artist-rules', label: '画家规则', icon: 'Setting', link: '/admin?tab=artist-rules', perm: 'knowledge.artist_rules' },
     ],
   },
@@ -196,18 +205,42 @@ function collapseAll() {
   expandedGroups.value = new Set()
 }
 
-// ── 作者列表 ──
-async function loadArtistList() {
+// ── 作品库列表 ──
+async function loadAccessibleLibraries() {
   try {
     const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
+    const token = localStorage.getItem('auth_token') || ''
+    const res = await fetch(`${API_BASE}/libraries/accessible-libraries`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
-    artistList.value = data.artists || []
-  } catch (e) { console.error('获取作者列表失败', e) }
+    accessibleLibraries.value = data.libraries || []
+    // 自动选中第一个
+    if (accessibleLibraries.value.length > 0 && !selectedLibraryId.value) {
+      selectedLibraryId.value = accessibleLibraries.value[0].id
+      loadLibStats()
+    }
+  } catch (e) { console.error('获取作品库列表失败', e) }
 }
 
-function onArtistChange() {
-  router.replace({ query: { ...route.query, artist: selectedArtist.value } })
+function onLibraryChange() {
+  router.replace({ query: { ...route.query, lib_id: selectedLibraryId.value } })
+  loadLibStats()
+}
+
+async function loadLibStats() {
+  if (!selectedLibraryId.value) return
+  try {
+    const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+    const token = localStorage.getItem('auth_token') || ''
+    const res = await fetch(`${API_BASE}/libraries/${selectedLibraryId.value}/stats`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    Object.assign(libStats, data)
+  } catch (e) { console.error('获取作品库统计失败', e) }
 }
 
 // ── 批量操作触发 ──
@@ -237,20 +270,15 @@ async function loadPermissions() {
   }
 }
 
-// 同步 URL artist → select
-watch(() => route.query.artist, (a) => {
-  const artist = Array.isArray(a) ? a[0] : a
-  if (artist && artist !== selectedArtist.value) {
-    selectedArtist.value = artist
-  }
-})
-
 onMounted(() => {
   loadPermissions()
-  loadArtistList()
-  // 从 URL 恢复 artist
-  const urlArtist = route.query.artist
-  if (urlArtist) selectedArtist.value = Array.isArray(urlArtist) ? urlArtist[0] : urlArtist
+  loadAccessibleLibraries()
+  // 从 URL 恢复 lib_id
+  const urlLibId = route.query.lib_id
+  if (urlLibId) {
+    selectedLibraryId.value = parseInt(urlLibId) || null
+    loadLibStats()
+  }
 })
 </script>
 
