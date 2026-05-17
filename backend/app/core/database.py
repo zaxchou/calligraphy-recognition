@@ -249,6 +249,7 @@ def run_migrations():
             ("baidu_url", "TEXT DEFAULT ''"),
             ("view_count", "INTEGER DEFAULT 0"),
             ("featured", "INTEGER DEFAULT 0"),
+            ("photos", "TEXT DEFAULT '[]'"),
         ]:
             if col not in artist_cols:
                 conn.execute(f"ALTER TABLE artists ADD COLUMN {col} {col_type}")
@@ -353,7 +354,6 @@ def _ensure_artist_columns():
             ("art_chronology", "TEXT DEFAULT '[]'"),
             ("published_works", "TEXT DEFAULT '[]'"),
             ("gallery_images", "TEXT DEFAULT '[]'"),
-            ("photos", "TEXT DEFAULT '[]'"),
             ("references", "TEXT DEFAULT '[]'"),
             ("verified", "INTEGER DEFAULT 0"),
         ]

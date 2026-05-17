@@ -2,6 +2,7 @@
 增强版匹配器 - 使用多特征融合和关键点匹配
 """
 import os
+import logging
 import numpy as np
 import cv2
 from typing import List, Dict, Optional, Tuple
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.models.character import Character
 from app.core.path_utils import get_full_file_path
 from app.services.image_processor import binarize_image
+
+logger = logging.getLogger(__name__)
 
 
 class EnhancedMatcher:
