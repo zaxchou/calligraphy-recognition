@@ -12,7 +12,7 @@
       <header class="av-header">
         <div class="av-header-inner">
           <div class="av-header-avatar">
-            <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="120" shape="square" class="av-avatar-img" />
+            <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="160" shape="square" class="av-avatar-img" />
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
           </div>
           <div class="av-header-info">
@@ -28,12 +28,8 @@
             <p v-if="artist.summary" class="av-summary">{{ artist.summary }}</p>
           </div>
           <div class="av-header-actions">
-            <a v-if="artist.baidu_url" :href="artist.baidu_url" target="_blank" class="av-baike-link">
-              <el-button size="small" text>百度百科 <span style="font-size:10px;margin-left:2px">&#8599;</span></el-button>
-            </a>
-            <template v-if="authStore.isEditor">
-              <el-button size="small" plain @click="handleEdit">编辑</el-button>
-            </template>
+            <a v-if="artist.baidu_url" :href="artist.baidu_url" target="_blank" class="av-baike-link"><el-button size="small" plain>百度百科 &#8599;</el-button></a>
+            <el-button size="small" plain @click="openSuggestEdit">我的修改</el-button>
           </div>
         </div>
       </header>
@@ -164,12 +160,36 @@
       </div>
     </template>
   </div>
+
+  <el-dialog v-model="showSuggestDialog" title="我的修改" width="520px" align-center :close-on-click-modal="false" @open="onSuggestDialogOpen">
+    <el-form label-width="80px" label-position="left">
+      <el-form-item label="修改字段">
+        <el-select v-model="suggestForm.field_name" placeholder="选择要修改的字段" style="width:100%">
+          <el-option v-for="f in suggestFields" :key="f.value" :label="f.label" :value="f.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="当前内容">
+        <div class="av-suggest-old">{{ suggestForm.old_value || '(空)' }}</div>
+      </el-form-item>
+      <el-form-item label="修改为">
+        <el-input v-model="suggestForm.new_value" type="textarea" :rows="5" placeholder="请输入新内容" />
+      </el-form-item>
+      <el-form-item label="修改说明">
+        <el-input v-model="suggestForm.change_summary" placeholder="简要说明为什么做此修改" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showSuggestDialog = false">取消</el-button>
+      <el-button type="primary" :loading="submitting" @click="handleSubmitChange">提交</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -183,6 +203,33 @@ const artist = ref(null)
 const stats = ref({})
 const expandedAnecdote = ref(-1)
 const activeToc = ref('')
+
+const suggestFields = [
+  { value: 'summary', label: '概述' },
+  { value: 'biography', label: '生平简介' },
+  { value: 'art_style', label: '艺术特色' },
+  { value: 'art_chronology', label: '艺术年谱' },
+  { value: 'main_achievements', label: '主要成就' },
+  { value: 'influence', label: '后世影响' },
+  { value: 'historical_evaluation', label: '历史评价' },
+  { value: 'occupation', label: '职业' },
+  { value: 'nationality', label: '国籍' },
+  { value: 'representative_works_text', label: '代表作品' },
+  { value: 'specialties', label: '专长' },
+  { value: 'character_relations', label: '人物关系' },
+  { value: 'anecdotes', label: '轶事典故' },
+  { value: 'published_works', label: '出版著作' },
+  { value: 'references', label: '参考文献' },
+]
+
+const showSuggestDialog = ref(false)
+const suggestForm = reactive({
+  field_name: 'summary',
+  old_value: '',
+  new_value: '',
+  change_summary: '',
+})
+const submitting = ref(false)
 
 const subNavTabs = [
   { label: '概览', name: 'ArtistOverview' },
@@ -290,12 +337,72 @@ function goToRelationArtist(rel) {
   if (rel.name) router.push({ name: 'ArtistOverview', params: { name: rel.name } })
 }
 
-function handleEdit() {
-  router.push('/admin?tab=artist-info')
+function openSuggestEdit() {
+  suggestForm.field_name = 'summary'
+  suggestForm.old_value = getArtistField('summary')
+  suggestForm.new_value = suggestForm.old_value
+  suggestForm.change_summary = ''
+  showSuggestDialog.value = true
 }
 
-function handleMyChanges() {
-  router.push('/admin?tab=change-requests')
+function getArtistField(fieldName) {
+  if (!artist.value) return ''
+  const val = artist.value[fieldName]
+  if (val === null || val === undefined) return ''
+  if (typeof val === 'object') return JSON.stringify(val, null, 2)
+  return String(val)
+}
+
+function onSuggestDialogOpen() {
+  suggestForm.old_value = getArtistField(suggestForm.field_name)
+  suggestForm.new_value = suggestForm.old_value
+}
+
+watch(() => suggestForm.field_name, () => {
+  if (showSuggestDialog.value) {
+    suggestForm.old_value = getArtistField(suggestForm.field_name)
+    suggestForm.new_value = suggestForm.old_value
+  }
+})
+
+async function handleSubmitChange() {
+  if (!suggestForm.new_value) {
+    ElMessage.warning('请输入新值')
+    return
+  }
+  if (!suggestForm.change_summary.trim()) {
+    ElMessage.warning('请填写修改说明')
+    return
+  }
+  submitting.value = true
+  try {
+    const params = new URLSearchParams({
+      field_name: suggestForm.field_name,
+      old_value: suggestForm.old_value,
+      new_value: suggestForm.new_value,
+      change_summary: suggestForm.change_summary,
+    })
+    const res = await fetch(`${API_BASE}/artists/${artist.value.id}/change-requests?${params}`, {
+      method: 'POST',
+      headers: authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {},
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.direct_update) {
+        ElMessage.success('已直接更新（编辑权限）')
+      } else {
+        ElMessage.success('修改建议已提交，等待审核')
+      }
+      showSuggestDialog.value = false
+    } else {
+      const err = await res.json().catch(() => ({}))
+      ElMessage.error(err.detail || '提交失败')
+    }
+  } catch (e) {
+    ElMessage.error('提交失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 async function fetchArtist() {
@@ -388,7 +495,7 @@ watch(tocItems, (items) => {
 /* ── Header ── */
 .av-header {
   position: relative;
-  padding: 56px 0 40px;
+  padding: 64px 0 48px;
   margin-bottom: 0;
   border-radius: 12px;
   overflow: hidden;
@@ -401,19 +508,19 @@ watch(tocItems, (items) => {
 .av-header .av-meta-school { background: rgba(196,90,60,0.45); color: #fff; }
 .av-header-inner {
   position: relative; z-index: 1;
-  display: flex; gap: 28px; align-items: flex-start;
-  padding: 0 40px;
+  display: flex; gap: 32px; align-items: flex-start;
+  padding: 0 48px;
 }
-.av-header-avatar { flex-shrink: 0; margin-top: 2px; }
-.av-avatar-img { border: 3px solid rgba(255,255,255,0.25); box-shadow: 0 4px 24px rgba(0,0,0,0.2); }
+.av-header-avatar { flex-shrink: 0; margin-top: 0; }
+.av-avatar-img { border: 3px solid rgba(255,255,255,0.3); box-shadow: 0 6px 30px rgba(0,0,0,0.25); border-radius: 10px; }
 .av-avatar-text {
   display: flex; align-items: center; justify-content: center;
-  width: 120px; height: 120px; border-radius: 8px;
+  width: 160px; height: 160px; border-radius: 10px;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 48px; font-weight: 500;
-  border: 3px solid rgba(255,255,255,0.25);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  font-size: 64px; font-weight: 500;
+  border: 3px solid rgba(255,255,255,0.3);
+  box-shadow: 0 6px 30px rgba(0,0,0,0.25);
 }
 .av-header-info { flex: 1; min-width: 0; }
 .av-name {
@@ -438,9 +545,16 @@ watch(tocItems, (items) => {
 }
 .av-header-actions {
   flex-shrink: 0; display: flex; flex-direction: column;
-  align-items: flex-end; gap: 8px;
+  align-items: flex-end; gap: 10px; padding-top: 4px;
 }
 .av-baike-link { text-decoration: none; }
+
+.av-suggest-old {
+  max-height: 160px; overflow-y: auto; font-size: 13px;
+  color: #8a8578; line-height: 1.6; padding: 10px 12px;
+  background: #f5f3ed; border-radius: 6px; white-space: pre-wrap;
+  word-break: break-all;
+}
 
 /* ── Sub Nav ── */
 .av-sub-nav {

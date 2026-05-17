@@ -36,8 +36,14 @@ async def submit_artist_change_request(
         if user.role in ("editor", "admin", "super_admin"):
             safe_fields = [
                 "name", "alias", "dynasty", "hometown", "birth_year", "death_year",
-                "avatar_url", "biography", "bio_events", "art_school", "masterpieces",
-                "tags", "baidu_url", "featured", "background", "specialties",
+                "nationality", "occupation", "art_school", "specialties",
+                "avatar_url", "banner_url", "baidu_url", "featured",
+                "summary", "background", "biography",
+                "art_style", "main_achievements", "influence", "historical_evaluation",
+                "representative_works_text",
+                "art_chronology", "character_relations", "anecdotes",
+                "published_works", "masterpieces", "tags",
+                "gallery_images", "references",
             ]
             if field_name not in safe_fields:
                 raise HTTPException(status_code=400, detail=f"不允许修改字段: {field_name}")
