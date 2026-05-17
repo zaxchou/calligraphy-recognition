@@ -577,7 +577,7 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
                     if k not in updates or not updates[k]:
                         updates[k] = v
 
-        _filter_hallucinated_aliases(updates)
+        _filter_hallucinated_aliases(updates, artist_name)
 
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
@@ -702,8 +702,11 @@ def _fetch_baike_data(artist_name: str) -> dict:
     return {}
 
 
-def _filter_hallucinated_aliases(updates: dict):
-    """剔除AI幻觉产生的抄袭式alias"""
+def _filter_hallucinated_aliases(updates: dict, artist_name: str = ""):
+    """剔除AI幻觉产生的抄袭式alias及李鱓特征数据"""
+    if artist_name == "李鱓":
+        return
+
     if "alias" in updates:
         alias_val = str(updates["alias"])
         HALLUCINATED = (
@@ -712,7 +715,24 @@ def _filter_hallucinated_aliases(updates: dict):
         for h in HALLUCINATED:
             if alias_val == h or alias_val.startswith(h):
                 del updates["alias"]
-                return
+                break
+
+    hometown = str(updates.get("hometown", ""))
+    birth = updates.get("birth_year")
+    bio = str(updates.get("biography", ""))
+    summary = str(updates.get("summary", ""))
+
+    is_lishan_clone = False
+    if hometown == "江苏兴化" and birth == 1686:
+        is_lishan_clone = True
+    if "字复堂" in bio or "号懊道人" in bio:
+        is_lishan_clone = True
+
+    if is_lishan_clone:
+        for key in ("hometown", "birth_year", "death_year", "biography", "summary",
+                     "art_style", "main_achievements", "influence", "historical_evaluation",
+                     "occupation", "nationality", "representative_works_text", "specialties"):
+            updates.pop(key, None)
 
 
 def _merge_baike_updates(artist, baike_data: dict) -> dict:
