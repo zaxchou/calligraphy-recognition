@@ -17,6 +17,7 @@
     "lucide-vue-next": "^1.0.0",
     "pdfjs-dist": "^4.8.69",
     "pinia": "^3.0.4",
+    "pinyin-pro": "^3.28.1",
     "vue": "^3.3.8",
     "vue-router": "^4.2.5"
   },

@@ -5,129 +5,232 @@
       <p class="al-subtitle">探索历代书画家的艺术世界</p>
     </div>
 
-    <div class="al-filter-bar">
-      <el-input v-model="searchQuery" placeholder="搜索画家..." clearable @input="onSearch" class="al-search" />
-      <el-select v-model="dynastyFilter" placeholder="朝代" clearable @change="fetchArtists" class="al-filter-select">
-        <el-option v-for="p in periods" :key="p" :label="p" :value="p" />
-      </el-select>
-      <el-select v-model="schoolFilter" placeholder="画派" clearable @change="fetchArtists" class="al-filter-select">
-        <el-option v-for="s in schools" :key="s.id" :label="s.name" :value="s.name" />
-      </el-select>
+    <div class="al-toolbar">
+      <div class="al-view-switch">
+        <el-radio-group v-model="viewMode" size="small" @change="onViewModeChange">
+          <el-radio-button value="card"><el-icon><Grid /></el-icon> 卡片</el-radio-button>
+          <el-radio-button value="timeline">时间轴</el-radio-button>
+          <el-radio-button value="table">表格</el-radio-button>
+        </el-radio-group>
+      </div>
+
+      <div class="al-filters">
+        <el-input v-model="keyword" placeholder="搜索画家/字号..." clearable class="al-search"
+          @input="debouncedSearch" @clear="onFilterChange">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-select v-model="dynastyFilters" placeholder="朝代" clearable multiple collapse-tags
+          collapse-tags-tooltip class="al-filter-select" @change="onFilterChange">
+          <el-option v-for="p in store.periods" :key="p" :label="p" :value="p" />
+        </el-select>
+        <el-select v-model="schoolFilters" placeholder="画派" clearable multiple collapse-tags
+          collapse-tags-tooltip class="al-filter-select" @change="onFilterChange">
+          <el-option v-for="s in store.schools" :key="s.id" :label="s.name" :value="s.name" />
+        </el-select>
+        <el-select v-model="sortBy" placeholder="排序" class="al-sort" @change="onFilterChange">
+          <el-option label="默认" value="created_at" />
+          <el-option label="姓名 A-Z" value="name" />
+          <el-option label="出生年份" value="birth_year" />
+        </el-select>
+      </div>
+
+      <PinyinNav :names="store.letterNames" :active-letter="activeLetter" @select="onLetterSelect" />
     </div>
 
-    <section v-if="featuredArtists.length > 0" class="al-section">
+    <section v-if="featuredArtists.length > 0" class="al-featured">
       <h2 class="al-section-title">推荐画家</h2>
       <div class="al-featured-scroll">
-        <div v-for="artist in featuredArtists" :key="artist.id" class="al-featured-card" @click="goToArtist(artist.name)">
-          <div class="al-card-avatar">{{ artist.name.charAt(0) }}</div>
-          <div class="al-card-name">{{ artist.name }}</div>
-          <div class="al-card-alias">{{ artist.alias || '' }}</div>
-          <div class="al-card-meta">{{ artist.dynasty }} · {{ artist.artwork_count || 0 }}件作品</div>
+        <div v-for="artist in featuredArtists" :key="artist.id" class="al-featured-card"
+          @click="goToArtist(artist.name)">
+          <div class="al-featured-avatar">{{ artist.name.charAt(0) }}</div>
+          <div class="al-featured-name">{{ artist.name }}</div>
+          <div class="al-featured-meta">{{ artist.dynasty }} · {{ artist.artwork_count || 0 }}件</div>
         </div>
       </div>
     </section>
 
-    <div v-for="group in dynastyGroups" :key="group.dynasty" class="al-section">
-      <h2 class="al-section-title">{{ group.dynasty }}</h2>
-      <div class="al-grid">
-        <div v-for="artist in group.artists" :key="artist.id" class="al-card" @click="goToArtist(artist.name)">
-          <div class="al-card-avatar">{{ artist.name.charAt(0) }}</div>
-          <div class="al-card-info">
-            <div class="al-card-name">{{ artist.name }}</div>
-            <div class="al-card-alias">{{ artist.alias || '' }}</div>
-            <div class="al-card-years">{{ artist.birth_year || '?' }}{{ artist.death_year ? '-' + artist.death_year : '' }}</div>
-            <div class="al-card-tags">
-              <span v-if="artist.dynasty" class="al-tag">{{ artist.dynasty }}</span>
-              <span v-if="artist.art_school" class="al-tag al-tag-school">{{ artist.art_school }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div v-if="loading && store.list.length === 0" class="al-loading">加载中...</div>
 
-    <div v-if="loading" class="al-loading">加载中...</div>
+    <template v-else>
+      <div v-if="viewMode === 'card'" class="al-card-grid">
+        <ArtistCard v-for="artist in store.list" :key="artist.id" :artist="artist"
+          @click="goToArtist(artist.name)" />
+      </div>
+
+      <div v-else-if="viewMode === 'timeline'">
+        <ArtistTimeline :artists="store.list" @select="goToArtist" />
+      </div>
+
+      <el-table v-else :data="store.list" stripe style="width:100%" @row-click="onRowClick"
+        class="al-table" empty-text="没有符合条件的艺术家">
+        <el-table-column label="" width="56">
+          <template #default="{ row }">
+            <div class="at-avatar" :style="{ backgroundImage: row.avatar_url ? `url(${row.avatar_url})` : '' }">
+              <span v-if="!row.avatar_url">{{ row.name.charAt(0) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="姓名" prop="name" sortable="custom" width="100" />
+        <el-table-column label="字号" prop="alias" min-width="120" />
+        <el-table-column label="朝代" prop="dynasty" width="80" />
+        <el-table-column label="生卒年" width="120">
+          <template #default="{ row }">
+            {{ row.birth_year || '?' }} – {{ row.death_year || '?' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="画派" prop="art_school" min-width="100" />
+        <el-table-column label="作品" prop="artwork_count" width="70" />
+      </el-table>
+
+      <div v-if="viewMode === 'table' && store.total > 40" class="al-pagination">
+        <el-pagination background layout="prev, pager, next" :total="store.total"
+          :page-size="40" :current-page="currentPage" @current-change="onPageChange" />
+      </div>
+
+      <div v-if="viewMode !== 'table' && store.hasMore && !loadingMore" class="al-load-more">
+        <el-button text @click="loadMore" :loading="loadingMore">加载更多</el-button>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { Grid, Search } from '@element-plus/icons-vue'
+import { useArtistStore } from '../stores/artistStore'
+import { artistsApi } from '../api/artists'
+import ArtistCard from '../components/artist/ArtistCard.vue'
+import ArtistTimeline from '../components/artist/ArtistTimeline.vue'
+import PinyinNav from '../components/artist/PinyinNav.vue'
 
 const router = useRouter()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+const store = useArtistStore()
 
+const viewMode = ref(localStorage.getItem('artistViewMode') || 'card')
+const keyword = ref('')
+const dynastyFilters = ref([])
+const schoolFilters = ref([])
+const sortBy = ref('created_at')
+const activeLetter = ref('')
+const currentPage = ref(1)
+const loading = ref(false)
+const loadingMore = ref(false)
 const featuredArtists = ref([])
-const allArtists = ref([])
-const periods = ref([])
-const schools = ref([])
-const searchQuery = ref('')
-const dynastyFilter = ref('')
-const schoolFilter = ref('')
-const loading = ref(true)
-
-const dynastyGroups = computed(() => {
-  const filtered = allArtists.value.filter(a => {
-    if (dynastyFilter.value && a.dynasty !== dynastyFilter.value) return false
-    if (schoolFilter.value && a.art_school !== schoolFilter.value) return false
-    return true
-  })
-  const groups = {}
-  for (const a of filtered) {
-    const d = a.dynasty || '未知'
-    if (!groups[d]) groups[d] = { dynasty: d, artists: [] }
-    groups[d].artists.push(a)
-  }
-  return Object.values(groups)
-})
+let debounceTimer = null
 
 async function fetchFeatured() {
   try {
-    const res = await fetch(`${API_BASE}/artists?featured=1&page_size=20`)
-    const data = await res.json()
-    featuredArtists.value = data.artists || []
+    const res = await artistsApi.list({ featured: 1, page_size: 20 })
+    featuredArtists.value = res.data.artists || []
   } catch (e) { console.error(e) }
 }
 
-async function fetchArtists() {
+function onViewModeChange() {
+  localStorage.setItem('artistViewMode', viewMode.value)
+}
+
+function buildFilters() {
+  return {
+    dynasty: dynastyFilters.value.join(','),
+    school: schoolFilters.value.join(','),
+    keyword: keyword.value,
+    sort: sortBy.value,
+  }
+}
+
+async function doLoad(page = 1) {
+  loading.value = true
   try {
-    const params = new URLSearchParams({ page_size: 200, sort: 'created_at' })
-    if (dynastyFilter.value) params.set('dynasty', dynastyFilter.value)
-    if (schoolFilter.value) params.set('school', schoolFilter.value)
-    if (searchQuery.value) params.set('keyword', searchQuery.value)
-    const res = await fetch(`${API_BASE}/artists?${params}`)
-    const data = await res.json()
-    allArtists.value = data.artists || []
-  } catch (e) { console.error(e) }
+    await store.fetchPage(page, buildFilters())
+    currentPage.value = page
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
-async function fetchPeriods() {
+async function loadMore() {
+  loadingMore.value = true
   try {
-    const res = await fetch(`${API_BASE}/artists/periods`)
-    const data = await res.json()
-    periods.value = data.periods || []
-  } catch (e) { console.error(e) }
+    await store.fetchPage(currentPage.value + 1, buildFilters())
+    currentPage.value++
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loadingMore.value = false
+  }
 }
 
-async function fetchSchools() {
-  try {
-    const res = await fetch(`${API_BASE}/artists/schools`)
-    const data = await res.json()
-    schools.value = data.schools || []
-  } catch (e) { console.error(e) }
+function onFilterChange() {
+  store.clear()
+  currentPage.value = 1
+  doLoad(1)
 }
 
-function onSearch() {
-  fetchArtists()
+function onPageChange(page) {
+  currentPage.value = page
+  doLoad(page)
+}
+
+function debouncedSearch() {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    onFilterChange()
+  }, 300)
+}
+
+function onLetterSelect(letter) {
+  activeLetter.value = letter
+  onFilterChange()
+}
+
+function onRowClick(row) {
+  goToArtist(row.name)
 }
 
 function goToArtist(name) {
   router.push(`/artist/${encodeURIComponent(name)}`)
 }
 
+let scrollObserver = null
+
+function setupInfiniteScroll() {
+  document.querySelectorAll('.al-scroll-sentinel').forEach(el => el.remove())
+  if (viewMode.value !== 'card') return
+  const sentinel = document.createElement('div')
+  sentinel.className = 'al-scroll-sentinel'
+  const grid = document.querySelector('.al-card-grid')
+  if (grid) grid.after(sentinel)
+  if (scrollObserver) scrollObserver.disconnect()
+  scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && store.hasMore && !loadingMore.value) {
+      loadMore()
+    }
+  }, { rootMargin: '200px' })
+  if (sentinel) scrollObserver.observe(sentinel)
+}
+
+watch(viewMode, () => {
+  if (scrollObserver) scrollObserver.disconnect()
+  setTimeout(setupInfiniteScroll, 100)
+})
+
+watch(() => store.list.length, () => {
+  if (viewMode.value === 'card') {
+    setTimeout(setupInfiniteScroll, 100)
+  }
+})
+
 onMounted(async () => {
-  loading.value = true
-  await Promise.all([fetchFeatured(), fetchArtists(), fetchPeriods(), fetchSchools()])
-  loading.value = false
+  await store.loadMeta()
+  await Promise.all([doLoad(1), fetchFeatured()])
+  setTimeout(setupInfiniteScroll, 200)
+})
+
+onUnmounted(() => {
+  if (scrollObserver) scrollObserver.disconnect()
 })
 </script>
 
@@ -142,7 +245,7 @@ onMounted(async () => {
 
 .al-hero {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
 .al-title {
@@ -161,52 +264,110 @@ onMounted(async () => {
   margin: 0;
 }
 
-.al-filter-bar {
+.al-toolbar {
+  margin-bottom: 32px;
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  margin-bottom: 48px;
+}
+
+.al-view-switch {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.al-filters {
+  display: flex;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .al-search {
-  width: 260px;
+  width: 240px;
 }
 
 .al-filter-select {
-  width: 160px;
+  width: 140px;
 }
 
-.al-section {
-  margin-bottom: 48px;
+.al-sort {
+  width: 130px;
+}
+
+.al-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.al-table {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.at-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c45a3c, #dbbca8);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 0.85rem;
+}
+
+.al-loading {
+  text-align: center;
+  padding: 80px 0;
+  color: #8a8578;
+  font-size: 0.9rem;
+}
+
+.al-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.al-load-more {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.al-scroll-sentinel {
+  height: 1px;
+}
+
+.al-featured {
+  margin-bottom: 32px;
 }
 
 .al-section-title {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 500;
   color: #3a3222;
   letter-spacing: 0.1em;
-  margin: 0 0 20px;
+  margin: 0 0 14px;
   padding-left: 12px;
   border-left: 3px solid #c45a3c;
 }
 
 .al-featured-scroll {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   overflow-x: auto;
-  padding: 8px 4px 16px;
-  scroll-snap-type: x mandatory;
+  padding: 4px 2px 12px;
   -webkit-overflow-scrolling: touch;
 }
 
 .al-featured-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-
-.al-featured-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  height: 5px;
 }
 
 .al-featured-scroll::-webkit-scrollbar-thumb {
@@ -216,74 +377,27 @@ onMounted(async () => {
 
 .al-featured-card {
   flex-shrink: 0;
-  width: 180px;
+  width: 150px;
   background: #fff;
-  border-radius: 12px;
-  padding: 24px 16px;
+  border-radius: 10px;
+  padding: 20px 14px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   border: 1px solid #edeae1;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  scroll-snap-align: start;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
 .al-featured-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.07);
   border-color: #dbbca8;
 }
 
-.al-featured-card .al-card-avatar {
-  width: 64px;
-  height: 64px;
-  font-size: 1.5rem;
-  margin: 0 auto 12px;
-}
-
-.al-featured-card .al-card-name {
-  font-size: 1rem;
-  margin-bottom: 4px;
-}
-
-.al-featured-card .al-card-alias {
-  font-size: 0.75rem;
-  margin-bottom: 8px;
-}
-
-.al-featured-card .al-card-meta {
-  font-size: 0.75rem;
-  color: #8a8578;
-}
-
-.al-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.al-card {
-  display: flex;
-  gap: 16px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #edeae1;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-}
-
-.al-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
-  border-color: #dbbca8;
-}
-
-.al-card-avatar {
-  width: 56px;
-  height: 56px;
-  flex-shrink: 0;
+.al-featured-avatar {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 10px;
   border-radius: 50%;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff;
@@ -291,65 +405,21 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 500;
 }
 
-.al-card-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.al-card-name {
+.al-featured-name {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: #3a3222;
-  line-height: 1.3;
+  margin-bottom: 4px;
 }
 
-.al-card-alias {
-  font-size: 0.8rem;
-  color: #8a8578;
-  line-height: 1.3;
-}
-
-.al-card-years {
-  font-size: 0.8rem;
-  color: #a09b8e;
-}
-
-.al-card-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-.al-tag {
-  display: inline-block;
+.al-featured-meta {
   font-size: 0.7rem;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: #f5f0ea;
-  color: #8a6f4c;
-  letter-spacing: 0.04em;
-  line-height: 1.5;
-}
-
-.al-tag-school {
-  background: #f0ede8;
-  color: #6b6b60;
-}
-
-.al-loading {
-  text-align: center;
-  padding: 60px 0;
   color: #8a8578;
-  font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
@@ -361,29 +431,19 @@ onMounted(async () => {
     font-size: 1.75rem;
   }
 
-  .al-filter-bar {
+  .al-filters {
     flex-direction: column;
     align-items: stretch;
   }
 
   .al-search,
-  .al-filter-select {
+  .al-filter-select,
+  .al-sort {
     width: 100%;
   }
 
-  .al-grid {
+  .al-card-grid {
     grid-template-columns: 1fr;
-  }
-
-  .al-featured-card {
-    width: 150px;
-    padding: 20px 12px;
-  }
-
-  .al-featured-card .al-card-avatar {
-    width: 52px;
-    height: 52px;
-    font-size: 1.25rem;
   }
 }
 </style>

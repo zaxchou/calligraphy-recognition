@@ -102,7 +102,7 @@ async def list_artists(
     featured: Optional[bool] = None,
     verified_only: bool = True,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = 40,
     sort: str = "created_at",
 ):
     """列出所有画家，支持筛选、分页、排序（默认仅显示已认证画家）"""
@@ -115,11 +115,19 @@ async def list_artists(
             conditions.append("verified = 1")
 
         if dynasty:
-            conditions.append("dynasty = ?")
-            params.append(dynasty)
+            dynasties = [d.strip() for d in dynasty.split(",") if d.strip()]
+            if dynasties:
+                placeholders = ",".join(["?"] * len(dynasties))
+                conditions.append(f"dynasty IN ({placeholders})")
+                params.extend(dynasties)
+
         if school:
-            conditions.append("art_school LIKE ?")
-            params.append(f"%{school}%")
+            schools = [s.strip() for s in school.split(",") if s.strip()]
+            if schools:
+                school_clauses = " OR ".join(["art_school LIKE ?"] * len(schools))
+                conditions.append(f"({school_clauses})")
+                params.extend([f"%{s}%" for s in schools])
+
         if keyword:
             conditions.append("(name LIKE ? OR alias LIKE ? OR biography LIKE ?)")
             kw = f"%{keyword}%"
@@ -131,8 +139,13 @@ async def list_artists(
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
         allowed_sorts = {"created_at", "updated_at", "birth_year", "name", "id"}
-        if sort not in allowed_sorts:
-            sort = "created_at"
+        sort_map = {"name": "name COLLATE NOCASE", "birth_year": "birth_year IS NULL, birth_year"}
+        if sort in sort_map:
+            sort_sql = sort_map[sort]
+        elif sort not in allowed_sorts:
+            sort_sql = "created_at"
+        else:
+            sort_sql = sort
 
         total = conn.execute(
             f"SELECT COUNT(*) FROM artists WHERE {where_clause}", params
@@ -140,7 +153,7 @@ async def list_artists(
 
         offset = (page - 1) * page_size
         rows = conn.execute(
-            f"SELECT * FROM artists WHERE {where_clause} ORDER BY {sort} LIMIT ? OFFSET ?",
+            f"SELECT * FROM artists WHERE {where_clause} ORDER BY {sort_sql} LIMIT ? OFFSET ?",
             (*params, page_size, offset)
         ).fetchall()
 
@@ -173,6 +186,42 @@ async def list_artist_schools():
         schools = [{"id": r["id"], "name": r["name"], "description": r["description"],
                      "dynasty": r["dynasty"], "origin": r["origin"]} for r in rows]
         return {"success": True, "schools": schools}
+    finally:
+        conn.close()
+
+
+@router.get("/letter-index")
+async def get_letter_index():
+    """返回艺术家姓名列表（前端用pinyin-pro库分组）"""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT name FROM artists WHERE verified = 1 AND name IS NOT NULL ORDER BY name"
+        ).fetchall()
+        names = [r["name"] for r in rows]
+        return {"success": True, "names": names}
+    finally:
+        conn.close()
+
+
+@router.get("/stats-summary")
+async def get_stats_summary():
+    """返回各朝代/画派计数（用于侧边栏统计标签）"""
+    conn = get_db_connection()
+    try:
+        dynasty_counts = {}
+        rows = conn.execute(
+            "SELECT dynasty, COUNT(*) as cnt FROM artists WHERE verified=1 AND dynasty IS NOT NULL AND dynasty!='' "
+            "GROUP BY dynasty ORDER BY cnt DESC"
+        ).fetchall()
+        for r in rows:
+            dynasty_counts[r["dynasty"]] = r["cnt"]
+
+        total_verified = conn.execute(
+            "SELECT COUNT(*) FROM artists WHERE verified=1"
+        ).fetchone()[0]
+
+        return {"success": True, "dynasty_counts": dynasty_counts, "total_verified": total_verified}
     finally:
         conn.close()
 
