@@ -781,8 +781,8 @@ async function fetchArtistList() {
       selectedArtist.value = 'all'
     } else if (urlArtist && artistList.value.includes(urlArtist)) {
       selectedArtist.value = urlArtist
-    } else if (artistList.value.length > 0 && !artistList.value.includes(selectedArtist.value)) {
-      selectedArtist.value = artistList.value[0]
+    } else if (artistList.value.length > 0) {
+      selectedArtist.value = 'all'
     }
   } catch (e) {
     console.error('获取作者列表失败', e)

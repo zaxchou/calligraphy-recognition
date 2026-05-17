@@ -12,7 +12,7 @@
       <header class="av-header">
         <div class="av-header-inner">
           <div class="av-header-avatar">
-            <img v-if="artist.avatar_url" :src="artist.avatar_url" class="av-avatar-img" alt="" />
+            <img v-if="artist.avatar_url && !avatarError" :src="artist.avatar_url" class="av-avatar-img" alt="" @error="avatarError = true" />
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
           </div>
           <div class="av-header-info">
@@ -90,8 +90,7 @@
             <h2 class="av-section-title">人物关系</h2>
             <div class="av-relations-grid">
               <div v-for="(rel, idx) in characterRelations" :key="idx" class="av-relation-card" @click="goToRelationArtist(rel)">
-                <el-avatar v-if="rel.image_url" :src="rel.image_url" :size="52" shape="circle" />
-                <el-avatar v-else :size="52" shape="circle" class="av-avatar-placeholder">{{ (rel.name || '?').charAt(0) }}</el-avatar>
+                <el-avatar :src="rel.image_url || ''" :size="52" shape="circle" class="av-avatar-placeholder" @error="($event.target).style.display='none'">{{ (rel.name || '?').charAt(0) }}</el-avatar>
                 <div class="av-relation-name">{{ rel.name }}</div>
                 <span class="av-relation-tag">{{ rel.relationship }}</span>
                 <p v-if="rel.description" class="av-relation-desc">{{ rel.description }}</p>
@@ -208,6 +207,7 @@ const stats = ref({})
 const expandedAnecdote = ref(-1)
 const activeToc = ref('')
 const showBackTop = ref(false)
+const avatarError = ref(false)
 
 const suggestFields = [
   { value: 'summary', label: '概述' },
