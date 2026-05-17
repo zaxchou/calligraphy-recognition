@@ -20,7 +20,13 @@ API_BASE = os.environ.get("API_BASE", "http://localhost:3000/api/v1")
 AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")
 
 if not AUTH_TOKEN:
-    print("请设置 AUTH_TOKEN 环境变量")
+    token_file = os.path.join(os.path.dirname(__file__), ".token.txt")
+    if os.path.exists(token_file):
+        with open(token_file, "r") as f:
+            AUTH_TOKEN = f.read().strip()
+
+if not AUTH_TOKEN:
+    print("请设置 AUTH_TOKEN 环境变量 或运行 get_token.py")
     print("  $env:AUTH_TOKEN='eyJ...'  (PowerShell)")
     sys.exit(1)
 
@@ -43,17 +49,10 @@ def api_request(method, path, body=None):
 
 
 def create_artist(name):
-    """创建画家，返回 artist_id"""
+    """创建画家（幂等），返回 artist_id"""
     result = api_request("POST", "/artists", {"name": name})
-    if result.get("success") and result.get("artist_id"):
-        return result["artist_id"]
-    if result.get("error"):
-        detail = result.get("detail", "")
-        if "已存在" in detail or "409" in str(result.get("status", "")):
-            # 已存在 → 通过 by-name 查找 id
-            lookup = api_request("GET", f"/artists/by-name/{urllib.parse.quote(name)}")
-            if lookup.get("success") and lookup.get("artist", {}).get("id"):
-                return lookup["artist"]["id"]
+    if result.get("success") and result.get("id"):
+        return result["id"]
     return None
 
 

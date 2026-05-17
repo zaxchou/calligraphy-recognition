@@ -249,7 +249,8 @@ async def create_artist(artist: ArtistCreate, user=Depends(get_current_user)):
             "SELECT id FROM artists WHERE name = ?", (artist.name,)
         ).fetchone()
         if existing:
-            raise HTTPException(status_code=409, detail="画家已存在")
+            conn.close()
+            return {"success": True, "id": existing["id"], "message": "画家已存在", "existed": True}
 
         now = datetime.now().isoformat()
         is_verified = 1 if user.role in ("editor", "admin", "super_admin") else 0
@@ -258,7 +259,7 @@ async def create_artist(artist: ArtistCreate, user=Depends(get_current_user)):
             "biography, background, specialties, bio_events, art_school, masterpieces, tags, "
             "featured, enabled, verified, banner_url, summary, nationality, occupation, main_achievements, "
             "representative_works_text, art_style, influence, historical_evaluation, character_relations, "
-            "anecdotes, art_chronology, published_works, gallery_images, references, created_at, updated_at) "
+            "anecdotes, art_chronology, published_works, gallery_images, [references], created_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
             "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (artist.name, artist.alias, artist.dynasty, artist.hometown, artist.avatar_url,
@@ -304,7 +305,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
             SQL_RESERVED = {"references"}
-            quoted_keys = {k: f'"{k}"' if k in SQL_RESERVED else k for k in updates}
+            quoted_keys = {k: f'[{k}]' if k in SQL_RESERVED else k for k in updates}
             set_clause = ", ".join(f"{quoted_keys[k]} = ?" for k in updates)
             conn.execute(
                 f"UPDATE artists SET {set_clause} WHERE id = ?",
@@ -523,7 +524,7 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
             SQL_RESERVED = {"references"}
-            quoted_keys = {k: f'"{k}"' if k in SQL_RESERVED else k for k in updates}
+            quoted_keys = {k: f'[{k}]' if k in SQL_RESERVED else k for k in updates}
             set_clause = ", ".join(f"{quoted_keys[k]} = ?" for k in updates)
             conn.execute(
                 f"UPDATE artists SET {set_clause} WHERE id = ?",
