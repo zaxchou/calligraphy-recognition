@@ -234,6 +234,60 @@ async def get_stats_summary():
         conn.close()
 
 
+@router.post("/upload-image")
+async def upload_artist_image(
+    file: UploadFile = File(...),
+    editor=Depends(require_editor),
+):
+    allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP、WebP、GIF 格式")
+
+    file_id = str(uuid.uuid4())
+    ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
+    filename = f"avatar_{file_id}{ext}"
+    upload_dir = settings.UPLOAD_DIR
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="文件大小超过10MB限制")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    await file.close()
+
+    url = get_static_url(f"uploads/{filename}")
+    return {"success": True, "url": url}
+
+
+@router.post("/upload-photo")
+async def upload_artist_photo(
+    file: UploadFile = File(...),
+    editor=Depends(require_editor),
+):
+    allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP、WebP、GIF 格式")
+
+    file_id = str(uuid.uuid4())
+    ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
+    filename = f"photo_{file_id}{ext}"
+    upload_dir = settings.UPLOAD_DIR
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="文件大小超过10MB限制")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    await file.close()
+
+    url = get_static_url(f"uploads/{filename}")
+    return {"success": True, "url": url}
+
+
 @router.get("/{artist_id}")
 async def get_artist(artist_id: int):
     """获取单个画家"""
@@ -608,60 +662,6 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
         conn.close()
 
 
-@router.post("/upload-image")
-async def upload_artist_image(
-    file: UploadFile = File(...),
-    editor=Depends(require_editor),
-):
-    allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"}
-    if file.content_type not in allowed:
-        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP、WebP、GIF 格式")
-
-    file_id = str(uuid.uuid4())
-    ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
-    filename = f"avatar_{file_id}{ext}"
-    upload_dir = settings.UPLOAD_DIR
-    os.makedirs(upload_dir, exist_ok=True)
-    filepath = os.path.join(upload_dir, filename)
-
-    content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="文件大小超过10MB限制")
-    with open(filepath, "wb") as f:
-        f.write(content)
-    await file.close()
-
-    url = get_static_url(f"uploads/{filename}")
-    return {"success": True, "url": url}
-
-
-@router.post("/upload-photo")
-async def upload_artist_photo(
-    file: UploadFile = File(...),
-    editor=Depends(require_editor),
-):
-    allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"}
-    if file.content_type not in allowed:
-        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP、WebP、GIF 格式")
-
-    file_id = str(uuid.uuid4())
-    ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
-    filename = f"photo_{file_id}{ext}"
-    upload_dir = settings.UPLOAD_DIR
-    os.makedirs(upload_dir, exist_ok=True)
-    filepath = os.path.join(upload_dir, filename)
-
-    content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="文件大小超过10MB限制")
-    with open(filepath, "wb") as f:
-        f.write(content)
-    await file.close()
-
-    url = get_static_url(f"uploads/{filename}")
-    return {"success": True, "url": url}
-
-
 def _fetch_baike_data(artist_name: str) -> dict:
     try:
         from app.services.baidu_crawler import fetch_artist_from_baike
@@ -737,29 +737,32 @@ def _filter_hallucinated_aliases(updates: dict, artist_name: str = ""):
 
     if "alias" in updates:
         alias_val = str(updates["alias"])
-        HALLUCINATED = (
-            "字复堂，号懊道人", "字复堂，号懊道人、",
-        )
-        for h in HALLUCINATED:
-            if alias_val == h or alias_val.startswith(h):
-                del updates["alias"]
-                break
+        if "复堂" in alias_val:
+            del updates["alias"]
 
     hometown = str(updates.get("hometown", ""))
     birth = updates.get("birth_year")
     bio = str(updates.get("biography", ""))
     summary = str(updates.get("summary", ""))
+    background = str(updates.get("background", ""))
+    specialties = str(updates.get("specialties", ""))
+    occupation = str(updates.get("occupation", ""))
+    arts = str(updates.get("art_style", ""))
+    achv = str(updates.get("main_achievements", ""))
 
     is_lishan_clone = False
     if hometown == "江苏兴化" and birth == 1686:
         is_lishan_clone = True
-    if "字复堂" in bio or "号懊道人" in bio:
-        is_lishan_clone = True
+    for field in (bio, summary, background, specialties, occupation, arts, achv):
+        if "复堂" in field or "懊道人" in field:
+            is_lishan_clone = True
+            break
 
     if is_lishan_clone:
         for key in ("hometown", "birth_year", "death_year", "biography", "summary",
                      "art_style", "main_achievements", "influence", "historical_evaluation",
-                     "occupation", "nationality", "representative_works_text", "specialties"):
+                     "occupation", "nationality", "representative_works_text", "specialties",
+                     "background"):
             updates.pop(key, None)
 
 

@@ -42,7 +42,9 @@
       <div class="al-featured-scroll">
         <div v-for="artist in featuredArtists" :key="artist.id" class="al-featured-card"
           @click="goToArtist(artist.name)">
-          <div class="al-featured-avatar">{{ artist.name.charAt(0) }}</div>
+          <div class="al-featured-avatar" :style="{ backgroundImage: artist.avatar_url ? `url(${artist.avatar_url})` : '' }">
+            <span v-if="!artist.avatar_url">{{ artist.name.charAt(0) }}</span>
+          </div>
           <div class="al-featured-name">{{ artist.name }}</div>
           <div class="al-featured-meta">{{ artist.dynasty }} · {{ artist.artwork_count || 0 }}件</div>
         </div>
@@ -421,6 +423,8 @@ onUnmounted(() => {
   margin: 0 auto 10px;
   border-radius: 50%;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
+  background-size: cover;
+  background-position: center;
   color: #fff;
   display: flex;
   align-items: center;
