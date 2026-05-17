@@ -637,6 +637,7 @@ def _merge_baike_updates(artist, baike_data: dict) -> dict:
 
 
 def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
+    result = {}
     try:
         from app.services.qwen_llm_client import call_qwen_chat
 
@@ -647,13 +648,12 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
                     hint_parts.append(f"{k}: {baike_data[k]}")
         hint_text = "\n".join(hint_parts) if hint_parts else "无已有数据"
 
-        prompt = f"""请为画家「{artist_name}」生成百科信息，用纯JSON返回（不要markdown代码块）。
+        prompt_basic = f"""请为画家「{artist_name}」生成百科信息，用纯JSON返回（不要markdown代码块）。
 
 已有部分信息作为参考：
 {hint_text}
 
-请返回以下JSON格式（字符串字段用中文填写，数组字段每个元素填完整信息）：
-
+请返回以下JSON格式（字符串字段用中文填写）：
 {{
   "alias": "字号（如：字复堂，号懊道人）",
   "dynasty": "朝代（如：清）",
@@ -668,55 +668,83 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
   "historical_evaluation": "100字历史评价",
   "occupation": "职业（如：画家、书法家）",
   "nationality": "国籍（如：中国）",
-  "representative_works_text": "代表作名称，逗号分隔（如：《松藤图》《土墙蝶花图》）",
+  "representative_works_text": "代表作名称，逗号分隔",
   "specialties": "专长词条（如：写意花鸟、泼墨）",
-  "art_chronology": [{{
-    "year": "年份（如：1711）",
-    "event": "事件标题（如：中举人）",
-    "location": "地点（如：江苏兴化）",
-    "description": "详细描述该年艺术活动"
-  }}],
-  "anecdotes": [{{
-    "title": "典故标题",
-    "content": "典故详细内容"
-  }}],
-  "character_relations": [{{
-    "name": "相关人物姓名",
-    "relationship": "关系（好友/老师/学生/同门）",
-    "description": "关系详细描述"
-  }}],
-  "published_works": [{{
-    "title": "著作名称",
-    "publisher": "出版社",
-    "year": "年份"
-  }}]
+  "anecdotes": [{{"title": "典故标题", "content": "典故详细内容"}}],
+  "character_relations": [{{"name": "人物姓名", "relationship": "关系", "description": "关系描述"}}],
+  "published_works": [{{"title": "著作名称", "publisher": "出版社", "year": "年份"}}]
 }}
 
-art_chronology 必须尽可能详尽，按年份排列画家的全部人生与艺术关键事件。年份从小到老排列，每一年一条记录。如果有生卒年，从出生年份开始每年都要尽量覆盖，不得少于15条。格式为年份+事件标题+地点+详细描述。
-anecdotes 列出尽可能多的著名轶事典故，不得少于3条。
+anecdotes 列出尽可能多的著名轶事典故，不得少于5条。
 birth_year 和 death_year 必须是整数（非字符串），未知则用 null。
 只返回JSON，不要其他文字。"""
         response = call_qwen_chat(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=4000,
+            messages=[{"role": "user", "content": prompt_basic}],
+            temperature=0.3, max_tokens=3000,
         )
         if "error" not in response:
-            result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
-            result = result.strip().lstrip("````json").lstrip("```").rstrip("```").strip()
-            start = result.find("{")
-            end = result.rfind("}")
+            content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+            parsed = _parse_json_response(content)
+            if parsed:
+                result.update(parsed)
+
+        prompt_chrono = f"""请为画家「{artist_name}」单独生成完整的艺术年谱（art_chronology）。
+
+已有信息：{hint_text}
+
+你需要穷尽你所知道的关于这位画家的全部生平与艺术事件，按年份排列。从出生年份开始，一直到去世年份，每一年至少一条记录。格式如下（纯JSON数组，不要markdown）：
+
+[{{
+  "year": "年份",
+  "event": "事件标题",
+  "location": "地点",
+  "description": "详细描述该年活动，包括创作、仕途、交游、迁徙等全部细节"
+}}]
+
+要求：
+- 必须覆盖画家的全部已知公开资料，有多少写多少，不得精简阉割
+- 按年份从小到大排列
+- 每一年至少一条，重要年份可以有2-3条
+- 每条description至少30字
+- 至少输出20条，多多益善
+
+只返回JSON数组，不要其他任何文字。"""
+        response2 = call_qwen_chat(
+            messages=[{"role": "user", "content": prompt_chrono}],
+            temperature=0.3, max_tokens=8000,
+        )
+        if "error" not in response2:
+            content2 = response2.get("choices", [{}])[0].get("message", {}).get("content", "")
+            content2 = content2.strip().lstrip("````json").lstrip("```").rstrip("```").strip()
+            start = content2.find("[")
+            end = content2.rfind("]")
             if start >= 0 and end > start:
                 try:
-                    parsed = json.loads(result[start:end + 1])
-                    json_arrays = ["art_chronology", "anecdotes", "character_relations", "published_works"]
-                    for field in json_arrays:
-                        if field in parsed and isinstance(parsed[field], list):
-                            parsed[field] = json.dumps(parsed[field], ensure_ascii=False)
-                    return parsed
+                    chrono = json.loads(content2[start:end + 1])
+                    if isinstance(chrono, list) and len(chrono) > 0:
+                        result["art_chronology"] = json.dumps(chrono, ensure_ascii=False)
                 except json.JSONDecodeError:
                     pass
+
+        json_arrays = ["anecdotes", "character_relations", "published_works"]
+        for field in json_arrays:
+            if field in result and isinstance(result[field], list):
+                result[field] = json.dumps(result[field], ensure_ascii=False)
+
     except Exception:
         pass
+    return result
+
+
+def _parse_json_response(content: str) -> dict:
+    content = content.strip().lstrip("````json").lstrip("```").rstrip("```").strip()
+    start = content.find("{")
+    end = content.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            return json.loads(content[start:end + 1])
+        except json.JSONDecodeError:
+            pass
     return {}
 
 
