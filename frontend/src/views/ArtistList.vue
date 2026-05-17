@@ -197,12 +197,14 @@ function onLetterSelect(letter) {
     if (!name) continue
     const py = pinyin(name, { toneType: 'none', type: 'array' })
     const first = (py[0]?.charAt(0) || '').toUpperCase()
-    if ((!letter || first === letter) || (letter === '#' && !/[A-Z]/.test(first))) {
+    if (first === letter || (letter === '#' && !/[A-Z]/.test(first))) {
       matching.push(name)
     }
   }
   pinyinLetterNames.value = matching
-  onFilterChange()
+  store.clear()
+  currentPage.value = 1
+  doLoad(1)
 }
 
 function onRowClick(row) {
