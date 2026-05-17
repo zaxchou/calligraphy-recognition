@@ -99,6 +99,7 @@ async def list_artists(
     dynasty: Optional[str] = None,
     school: Optional[str] = None,
     keyword: Optional[str] = None,
+    names: Optional[str] = None,
     featured: Optional[bool] = None,
     verified_only: bool = True,
     page: int = 1,
@@ -132,6 +133,12 @@ async def list_artists(
             conditions.append("(name LIKE ? OR alias LIKE ? OR biography LIKE ?)")
             kw = f"%{keyword}%"
             params.extend([kw, kw, kw])
+        if names:
+            name_list = [n.strip() for n in names.split(",") if n.strip()]
+            if name_list and len(name_list) < 500:
+                placeholders = ",".join(["?"] * len(name_list))
+                conditions.append(f"name IN ({placeholders})")
+                params.extend(name_list)
         if featured is not None:
             conditions.append("featured = ?")
             params.append(1 if featured else 0)

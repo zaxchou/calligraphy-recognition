@@ -46,6 +46,7 @@ export const useArtistStore = defineStore('artist', () => {
     if (filters.dynasty) params.dynasty = filters.dynasty
     if (filters.school) params.school = filters.school
     if (filters.keyword) params.keyword = filters.keyword
+    if (filters.names) params.names = filters.names
 
     const data = await artistsApi.list(params)
     if (page === 1) {

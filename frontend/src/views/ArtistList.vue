@@ -98,6 +98,7 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Grid, Search } from '@element-plus/icons-vue'
+import { pinyin } from 'pinyin-pro'
 import { useArtistStore } from '../stores/artistStore'
 import { artistsApi } from '../api/artists'
 import ArtistCard from '../components/artist/ArtistCard.vue'
@@ -130,13 +131,19 @@ function onViewModeChange() {
   localStorage.setItem('artistViewMode', viewMode.value)
 }
 
+const pinyinLetterNames = ref([])
+
 function buildFilters() {
-  return {
+  const filters = {
     dynasty: dynastyFilters.value.join(','),
     school: schoolFilters.value.join(','),
     keyword: keyword.value,
     sort: sortBy.value,
   }
+  if (pinyinLetterNames.value.length > 0) {
+    filters.names = pinyinLetterNames.value.join(',')
+  }
+  return filters
 }
 
 async function doLoad(page = 1) {
@@ -166,6 +173,8 @@ async function loadMore() {
 function onFilterChange() {
   store.clear()
   currentPage.value = 1
+  pinyinLetterNames.value = []
+  activeLetter.value = ''
   doLoad(1)
 }
 
@@ -183,6 +192,16 @@ function debouncedSearch() {
 
 function onLetterSelect(letter) {
   activeLetter.value = letter
+  const matching = []
+  for (const name of store.letterNames) {
+    if (!name) continue
+    const py = pinyin(name, { toneType: 'none', type: 'array' })
+    const first = (py[0]?.charAt(0) || '').toUpperCase()
+    if ((!letter || first === letter) || (letter === '#' && !/[A-Z]/.test(first))) {
+      matching.push(name)
+    }
+  }
+  pinyinLetterNames.value = matching
   onFilterChange()
 }
 
