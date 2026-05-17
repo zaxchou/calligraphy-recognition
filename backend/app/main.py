@@ -120,6 +120,14 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "data")), name="static")
 
+# 启动时清除旧的全量作品列表缓存，确保新数据被包含
+try:
+    from app.api.tubi import _clear_results_cache
+    _clear_results_cache()
+    logging.getLogger(__name__).info("已清除作品列表缓存")
+except Exception:
+    pass
+
 # 注册路由
 app.include_router(
     recognition.router,
