@@ -41,11 +41,13 @@ def api_request(method, path, body=None):
     data = json.dumps(body).encode() if body else None
     req = urllib.request.Request(url, data=data, headers=HEADERS, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=120) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
         err = e.read().decode(errors="replace")
         return {"error": True, "status": e.code, "detail": err}
+    except Exception as e:
+        return {"error": True, "status": 0, "detail": str(e)}
 
 
 def create_artist(name):
@@ -59,6 +61,15 @@ def create_artist(name):
 def ai_fill(artist_id):
     """调用 AI 补全信息"""
     return api_request("POST", f"/artists/{artist_id}/ai-fill")
+
+
+def _write_progress(filepath, current, total, ok, fail, last_name):
+    from datetime import datetime
+    now = datetime.now().strftime("%H:%M:%S")
+    pct = current / total * 100
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(f"进度: {current}/{total} ({pct:.1f}%)  成功: {ok}  失败: {fail}\n")
+        f.write(f"上次: {last_name}  时间: {now}\n")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -283,6 +294,7 @@ def main():
     total = len(artists)
     ok_count = 0
     fail_count = 0
+    progress_file = os.path.join(os.path.dirname(__file__), ".progress.txt")
 
     for i, name in enumerate(artists):
         print(f"[{i+1}/{total}] {name} ... ", end="", flush=True)
@@ -290,22 +302,29 @@ def main():
         if not artist_id:
             print("创建失败")
             fail_count += 1
+            _write_progress(progress_file, i + 1, total, ok_count, fail_count, name)
+            time.sleep(3)
             continue
 
         print(f"id={artist_id} AI补全 ... ", end="", flush=True)
         fill_result = ai_fill(artist_id)
+        if fill_result.get("error") and "time" in str(fill_result.get("detail", "")).lower():
+            print("超时重试 ... ", end="", flush=True)
+            time.sleep(2)
+            fill_result = ai_fill(artist_id)
         if fill_result.get("success"):
             msg = fill_result.get("message", "OK")
             print(msg)
             ok_count += 1
         elif fill_result.get("error"):
-            print(f"失败 {fill_result.get('detail', '')}")
+            print(f"失败 {fill_result.get('detail', '')[:60]}")
             fail_count += 1
         else:
             print("未知")
             fail_count += 1
 
-        time.sleep(0.3)  # 避免过快
+        _write_progress(progress_file, i + 1, total, ok_count, fail_count, name)
+        time.sleep(3)  # 给服务器喘息时间，避免单worker全部阻塞
 
     print()
     print(f"完成: 成功 {ok_count}, 失败 {fail_count}")
