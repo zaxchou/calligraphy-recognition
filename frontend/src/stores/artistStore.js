@@ -30,10 +30,10 @@ export const useArtistStore = defineStore('artist', () => {
       artistsApi.letterIndex(),
       artistsApi.statsSummary(),
     ])
-    if (pRes.status === 'fulfilled') periods.value = pRes.value.data.periods || []
-    if (sRes.status === 'fulfilled') schools.value = sRes.value.data.schools || []
-    if (lRes.status === 'fulfilled') letterNames.value = lRes.value.data.names || []
-    if (ssRes.status === 'fulfilled') statsSummary.value = ssRes.value.data
+    if (pRes.status === 'fulfilled' && pRes.value?.data?.periods) periods.value = pRes.value.data.periods
+    if (sRes.status === 'fulfilled' && sRes.value?.data?.schools) schools.value = sRes.value.data.schools
+    if (lRes.status === 'fulfilled' && lRes.value?.data?.names) letterNames.value = lRes.value.data.names
+    if (ssRes.status === 'fulfilled' && ssRes.value?.data) statsSummary.value = ssRes.value.data
     lastMetaTime.value = Date.now()
   }
 

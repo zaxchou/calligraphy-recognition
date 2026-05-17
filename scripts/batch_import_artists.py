@@ -63,13 +63,30 @@ def ai_fill(artist_id):
     return api_request("POST", f"/artists/{artist_id}/ai-fill")
 
 
-def _write_progress(filepath, current, total, ok, fail, last_name):
+def has_artist_data(artist_id):
+    """检查艺术家是否已有足够数据（跳过AI补全）"""
+    result = api_request("GET", f"/artists/{artist_id}")
+    if result.get("success") and result.get("artist"):
+        a = result["artist"]
+        if a.get("summary") and len(str(a["summary"])) > 20:
+            return True
+        if a.get("biography") and len(str(a["biography"])) > 50:
+            return True
+    return False
+
+
+def _write_progress(filepath, current, total, ok, fail, skip, last_name):
     from datetime import datetime
     now = datetime.now().strftime("%H:%M:%S")
     pct = current / total * 100
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write(f"进度: {current}/{total} ({pct:.1f}%)  成功: {ok}  失败: {fail}\n")
+        f.write(f"进度: {current}/{total} ({pct:.1f}%)  已填充: {ok}  跳过: {skip}  失败: {fail}\n")
         f.write(f"上次: {last_name}  时间: {now}\n")
+
+
+def _save_resume(filepath, index):
+    with open(filepath, "w") as f:
+        f.write(str(index))
 
 
 # ════════════════════════════════════════════════════════════════
@@ -294,16 +311,38 @@ def main():
     total = len(artists)
     ok_count = 0
     fail_count = 0
+    skip_count = 0
     progress_file = os.path.join(os.path.dirname(__file__), ".progress.txt")
+    resume_file = os.path.join(os.path.dirname(__file__), ".resume.txt")
+
+    start_index = 0
+    if os.path.exists(resume_file):
+        try:
+            with open(resume_file, "r") as f:
+                start_index = int(f.read().strip())
+                print(f"从第 {start_index + 1} 位继续（已跳过 {start_index} 位）\n")
+        except Exception:
+            pass
 
     for i, name in enumerate(artists):
+        if i < start_index:
+            continue
         print(f"[{i+1}/{total}] {name} ... ", end="", flush=True)
         artist_id = create_artist(name)
         if not artist_id:
             print("创建失败")
             fail_count += 1
-            _write_progress(progress_file, i + 1, total, ok_count, fail_count, name)
+            _write_progress(progress_file, i + 1, total, ok_count, fail_count, skip_count, name)
+            _save_resume(resume_file, i + 1)
             time.sleep(3)
+            continue
+
+        if has_artist_data(artist_id):
+            print(f"id={artist_id} 已有数据，跳过AI补全")
+            skip_count += 1
+            _write_progress(progress_file, i + 1, total, ok_count, fail_count, skip_count, name)
+            _save_resume(resume_file, i + 1)
+            time.sleep(0.5)
             continue
 
         print(f"id={artist_id} AI补全 ... ", end="", flush=True)
@@ -323,11 +362,12 @@ def main():
             print("未知")
             fail_count += 1
 
-        _write_progress(progress_file, i + 1, total, ok_count, fail_count, name)
+        _write_progress(progress_file, i + 1, total, ok_count, fail_count, skip_count, name)
+        _save_resume(resume_file, i + 1)
         time.sleep(3)  # 给服务器喘息时间，避免单worker全部阻塞
 
     print()
-    print(f"完成: 成功 {ok_count}, 失败 {fail_count}")
+    print(f"完成: 已填充 {ok_count}, 跳过 {skip_count}, 失败 {fail_count}")
 
     if ok_count > 0:
         print("\n请在后台编辑器中逐个检查并微调 AI 填充的内容。")
