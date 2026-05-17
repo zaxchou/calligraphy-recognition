@@ -31,6 +31,7 @@
             </div>
           </div>
           <div class="am-card-actions">
+            <el-button size="small" text @click.stop="openEdit(lib)">编辑</el-button>
             <el-button size="small" text type="danger" @click.stop="handleDelete(lib)">删除</el-button>
           </div>
         </div>
@@ -42,8 +43,8 @@
       <LibraryDetail :library-id="detailId" :embedded="true" />
     </div>
 
-    <!-- 新建对话框 -->
-    <el-dialog v-model="showCreate" title="新建作品库" width="440px" destroy-on-close>
+    <!-- 新建/编辑对话框 -->
+    <el-dialog v-model="showCreate" :title="editingLib ? '编辑作品库' : '新建作品库'" width="440px" destroy-on-close @closed="editingLib = null">
       <el-form :model="createForm" label-position="top" size="small">
         <el-form-item label="名称" required>
           <el-input v-model="createForm.name" placeholder="如：李鱓花鸟册" maxlength="100" />
@@ -66,7 +67,9 @@
       </el-form>
       <template #footer>
         <el-button size="small" @click="showCreate = false">取消</el-button>
-        <el-button size="small" type="primary" @click="handleCreate" :loading="creating">创建</el-button>
+        <el-button size="small" type="primary" @click="handleCreate" :loading="creating">
+          {{ editingLib ? '保存' : '创建' }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -84,6 +87,7 @@ const loading = ref(false)
 const libs = ref([])
 const showCreate = ref(false)
 const creating = ref(false)
+const editingLib = ref(null)
 
 const createForm = reactive({
   name: '', artist_name: '', description: '', visibility: 'private',
@@ -123,17 +127,33 @@ async function handleCreate() {
   if (!createForm.name.trim()) { ElMessage.warning('请输入名称'); return }
   creating.value = true
   try {
-    await libraryApi.create(createForm)
-    ElMessage.success('已创建')
+    if (editingLib.value) {
+      await libraryApi.update(editingLib.value.id, createForm)
+      ElMessage.success('已保存')
+    } else {
+      await libraryApi.create(createForm)
+      ElMessage.success('已创建')
+    }
     showCreate.value = false
     createForm.name = ''
     createForm.artist_name = ''
     createForm.description = ''
     createForm.visibility = 'private'
+    editingLib.value = null
     await loadLibs()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '创建失败')
+    ElMessage.error(e?.response?.data?.detail || (editingLib.value ? '保存失败' : '创建失败'))
   } finally { creating.value = false }
+}
+
+function openEdit(lib) {
+  editingLib.value = lib
+  createForm.name = lib.name || ''
+  createForm.artist_name = lib.artist_name || ''
+  createForm.description = lib.description || ''
+  createForm.visibility = lib.visibility || 'private'
+  showCreate.value = true
+  fetchArtists()
 }
 
 async function handleDelete(lib) {

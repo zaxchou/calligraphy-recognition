@@ -154,11 +154,11 @@ def run_migrations():
         ]
         existing_libs = {
             r[0] for r in conn.execute(
-                "SELECT name FROM artwork_libraries WHERE owner_id = 1"
+                "SELECT artist_name FROM artwork_libraries WHERE owner_id = 1 AND artist_name IS NOT NULL"
             ).fetchall()
         }
         for lib_name, artist_name in lib_names:
-            if lib_name not in existing_libs:
+            if artist_name not in existing_libs:
                 conn.execute(
                     "INSERT INTO artwork_libraries (name, artist_name, owner_id, visibility) VALUES (?, ?, 1, 'public')",
                     (lib_name, artist_name),
