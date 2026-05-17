@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="tubi-analysis tubi-page">
 
     <!-- 初始加载状态：防止直接访问详情页时闪现首页框架 -->
@@ -182,20 +182,23 @@ const historyHasMore = ref(true)
 // 使用 sharedCache 与 TubiHome 共享数据，避免重复 API 请求
 const fullItemList = ref([])
 async function loadFullItemList(force = false) {
-  console.log('loadFullItemList start, cached=', !!getSharedAnalyticsData())
   const cached = getSharedAnalyticsData()
   if (cached && !force) {
     fullItemList.value = cached
-    console.log('loadFullItemList from cache, items:', cached.length)
     return
   }
   try {
     const res = await tubiApi.getAllResults(0, 2000)
     if (res.success) {
-      const data = res.data || []
+      const data = (res.data || []).map(item => ({
+        ...item,
+        inscriptionPercent: item.inscription_percent,
+        paintingPercent: item.painting_percent,
+        blankPercent: item.blank_percent,
+        thumbnailUrl: item.thumbnail_url,
+      }))
       setSharedAnalyticsData(data)
       fullItemList.value = data
-      console.log('loadFullItemList done, items:', data.length)
     }
   } catch (e) {
     console.error('加载全量作品列表失败', e)
@@ -1508,7 +1511,9 @@ async function loadHistoryItem(row) {
         
         const historyImage = {
           id: data.id,
-          image_id: data.image_id, // 确保设置 image_id
+          image_id: data.image_id,
+          owner_id: data.owner_id,
+          library_id: data.library_id,
           name: data.name || '历史记录',
           url: data.url,
           thumbnailUrl: data.thumbnail_url || data.url,
@@ -2162,6 +2167,8 @@ onMounted(async () => {
         const historyImage = {
           id: data.id,
           image_id: data.image_id,
+          owner_id: data.owner_id,
+          library_id: data.library_id,
           name: data.name || '历史记录',
           url: data.url,
           thumbnailUrl: data.thumbnail_url || data.url,
@@ -2318,6 +2325,8 @@ async function navigateToAlbumItem(item) {
       const historyImage = {
         id: data.id,
         image_id: data.image_id,
+        owner_id: data.owner_id,
+        library_id: data.library_id,
         name: data.name || '历史记录',
         url: data.url,
         thumbnailUrl: data.thumbnail_url || data.url,
