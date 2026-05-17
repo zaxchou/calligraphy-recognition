@@ -30,10 +30,10 @@ export const useArtistStore = defineStore('artist', () => {
       artistsApi.letterIndex(),
       artistsApi.statsSummary(),
     ])
-    if (pRes.status === 'fulfilled' && pRes.value?.data?.periods) periods.value = pRes.value.data.periods
-    if (sRes.status === 'fulfilled' && sRes.value?.data?.schools) schools.value = sRes.value.data.schools
-    if (lRes.status === 'fulfilled' && lRes.value?.data?.names) letterNames.value = lRes.value.data.names
-    if (ssRes.status === 'fulfilled' && ssRes.value?.data) statsSummary.value = ssRes.value.data
+    if (pRes.status === 'fulfilled' && pRes.value?.periods) periods.value = pRes.value.periods
+    if (sRes.status === 'fulfilled' && sRes.value?.schools) schools.value = sRes.value.schools
+    if (lRes.status === 'fulfilled' && lRes.value?.names) letterNames.value = lRes.value.names
+    if (ssRes.status === 'fulfilled') statsSummary.value = ssRes.value
     lastMetaTime.value = Date.now()
   }
 
@@ -47,8 +47,7 @@ export const useArtistStore = defineStore('artist', () => {
     if (filters.school) params.school = filters.school
     if (filters.keyword) params.keyword = filters.keyword
 
-    const res = await artistsApi.list(params)
-    const data = res.data
+    const data = await artistsApi.list(params)
     if (page === 1) {
       list.value = data.artists || []
     } else {

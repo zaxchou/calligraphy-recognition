@@ -121,8 +121,8 @@ let debounceTimer = null
 
 async function fetchFeatured() {
   try {
-    const res = await artistsApi.list({ featured: 1, page_size: 20 })
-    featuredArtists.value = res.data.artists || []
+    const data = await artistsApi.list({ featured: 1, page_size: 20 })
+    featuredArtists.value = data.artists || []
   } catch (e) { console.error(e) }
 }
 
