@@ -287,7 +287,9 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
 
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
-            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            SQL_RESERVED = {"references"}
+            quoted_keys = {k: f'"{k}"' if k in SQL_RESERVED else k for k in updates}
+            set_clause = ", ".join(f"{quoted_keys[k]} = ?" for k in updates)
             conn.execute(
                 f"UPDATE artists SET {set_clause} WHERE id = ?",
                 (*updates.values(), artist_id)
@@ -477,7 +479,9 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
 
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
-            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            SQL_RESERVED = {"references"}
+            quoted_keys = {k: f'"{k}"' if k in SQL_RESERVED else k for k in updates}
+            set_clause = ", ".join(f"{quoted_keys[k]} = ?" for k in updates)
             conn.execute(
                 f"UPDATE artists SET {set_clause} WHERE id = ?",
                 (*updates.values(), artist_id)
@@ -517,7 +521,7 @@ def _fetch_baike_data(artist_name: str) -> dict:
         resp = requests.get(url, headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
             "Accept": "text/html",
-        }, timeout=10)
+        }, timeout=3)
         if resp.status_code == 200 and len(resp.text) > 5000:
             try:
                 from bs4 import BeautifulSoup
@@ -636,9 +640,14 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
         )
         if "error" not in response:
             result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
-            json_match = re.search(r'\{[^{}]*\}', result, re.DOTALL)
-            if json_match:
-                return json.loads(json_match.group())
+            result = result.strip().lstrip("````json").lstrip("```").rstrip("```").strip()
+            start = result.find("{")
+            end = result.rfind("}")
+            if start >= 0 and end > start:
+                try:
+                    return json.loads(result[start:end + 1])
+                except json.JSONDecodeError:
+                    pass
     except Exception:
         pass
     return {}

@@ -69,12 +69,15 @@ def fetch_artist_from_baike(name: str) -> dict:
 def _fetch_via_api(name: str, appid: Optional[str] = None) -> Optional[dict]:
     """通过百度百科开放 API 获取"""
     appid = appid or _get_appid()
-    resp = requests.get(BAIDU_BAIKE_API, params={
-        "appid": appid,
-        "bk_key": name,
-    }, timeout=10)
-    resp.raise_for_status()
-    data = resp.json()
+    try:
+        resp = requests.get(BAIDU_BAIKE_API, params={
+            "appid": appid,
+            "bk_key": name,
+        }, timeout=3)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        return None
 
     if not data or "errno" in data:
         return None
@@ -187,7 +190,7 @@ def _fetch_via_scrape(name: str) -> Optional[dict]:
     final_url = ""
     for url in urls_to_try:
         try:
-            resp = requests.get(url, headers=headers, timeout=15)
+            resp = requests.get(url, headers=headers, timeout=3)
             resp.raise_for_status()
             page_content = resp.text
             final_url = resp.url
