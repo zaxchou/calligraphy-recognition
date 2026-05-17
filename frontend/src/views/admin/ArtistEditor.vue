@@ -116,6 +116,21 @@
                   <el-avatar v-else :size="80" shape="square" style="background:#c45a3c;font-size:32px;border-radius:8px">{{ form.name?.charAt(0) || '?' }}</el-avatar>
                 </div>
               </div>
+              <div class="ae-field">
+                <label class="ae-label">本人照片</label>
+                <div class="ae-upload-row">
+                  <el-upload :show-file-list="false" :before-upload="(f) => uploadPhoto(f)" accept="image/*" style="flex-shrink:0" :disabled="uploadingPhoto">
+                    <el-button size="small" :loading="uploadingPhoto">上传照片</el-button>
+                  </el-upload>
+                </div>
+                <div v-if="form.photos.length > 0" class="ae-photo-grid">
+                  <div v-for="(p, i) in form.photos" :key="i" class="ae-photo-item">
+                    <img :src="p" class="ae-photo-img" />
+                    <el-button size="small" type="danger" circle :icon="Delete" @click="removePhoto(i)" class="ae-photo-del" />
+                  </div>
+                </div>
+                <p v-else class="ae-hint-dim" style="margin-top:4px">暂未上传本人照片，将在前端概览页头像下方显示</p>
+              </div>
             </div>
           </div>
 
@@ -351,7 +366,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, MagicStick } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, MagicStick, Delete } from '@element-plus/icons-vue'
 import api from '@/api'
 import AvatarCropper from '@/components/AvatarCropper.vue'
 
@@ -381,11 +396,11 @@ const form = reactive({
   art_style: '', main_achievements: '', influence: '', historical_evaluation: '',
   character_relations: [], anecdotes: [],
   masterpieces: [], representative_works_text: '', tags: [],
-  published_works: [], references: [], gallery_images: [],
+  published_works: [], references: [], gallery_images: [], photos: [],
   featured: 0, enabled: 1, verified: 0,
 })
 
-const JSON_ARRAYS = ['art_chronology', 'character_relations', 'anecdotes', 'masterpieces', 'tags', 'published_works', 'references', 'gallery_images']
+const JSON_ARRAYS = ['art_chronology', 'character_relations', 'anecdotes', 'masterpieces', 'tags', 'published_works', 'references', 'gallery_images', 'photos']
 
 const sections = [
   { id: 'basic', label: '基本' },
@@ -417,6 +432,7 @@ function scrollTo(id) {
 function goBack() { router.push('/admin?tab=artist-info') }
 
 const cropperRef = ref(null)
+const uploadingPhoto = ref(false)
 
 async function uploadFile(file) {
   await nextTick()
@@ -442,6 +458,33 @@ async function onAvatarCropped(blob) {
       ElMessage.error(err.detail || '上传失败')
     }
   } catch (e) { ElMessage.error('上传失败') }
+}
+
+async function uploadPhoto(file) {
+  uploadingPhoto.value = true
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const res = await fetch(`${API_BASE}/artists/upload-photo`, { method: 'POST', body: fd })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.success && data.url) {
+        form.photos.push(data.url)
+        ElMessage.success('照片已上传')
+      } else {
+        ElMessage.error(data.detail || '上传失败')
+      }
+    } else {
+      const err = await res.json().catch(() => ({}))
+      ElMessage.error(err.detail || '上传失败')
+    }
+  } catch (e) { ElMessage.error('上传失败') }
+  finally { uploadingPhoto.value = false }
+  return false
+}
+
+function removePhoto(idx) {
+  form.photos.splice(idx, 1)
 }
 
 async function searchArtworks() {
@@ -607,6 +650,11 @@ onMounted(async () => {
 .ae-gallery-item { text-align: center; }
 .ae-gallery-item-info { padding: 4px 0; }
 .ae-gallery-item-title { font-size: 11px; color: #5c5346; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 120px; }
+
+.ae-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px; }
+.ae-photo-item { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 1; }
+.ae-photo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ae-photo-del { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; }
 
 .ae-bottom-bar { display: flex; justify-content: center; padding: 24px 0; border-top: 1px solid #edeae1; margin-top: 32px; }
 

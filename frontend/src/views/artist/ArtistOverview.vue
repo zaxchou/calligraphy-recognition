@@ -14,6 +14,15 @@
           <div class="av-header-avatar">
             <img v-if="artist.avatar_url && !avatarError" :src="artist.avatar_url" class="av-avatar-img" alt="" @error="avatarError = true" />
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
+            <div v-if="artistPhotos.length > 0" class="av-photo-row">
+              <img
+                v-for="(p, i) in artistPhotos"
+                :key="i"
+                :src="p"
+                class="av-photo-thumb"
+                @click.stop="openPhotoZoom(i)"
+              />
+            </div>
           </div>
           <div class="av-header-info">
             <h1 class="av-name">{{ artist.name }}</h1>
@@ -185,6 +194,17 @@
       <el-button type="primary" :loading="submitting" @click="handleSubmitChange">提交</el-button>
     </template>
   </el-dialog>
+
+  <el-dialog v-model="photoZoomVisible" title="本人照片" width="720px" align-center @closed="photoZoomIdx = -1">
+    <div style="text-align:center">
+      <img v-if="photoZoomIdx >= 0 && artistPhotos[photoZoomIdx]" :src="artistPhotos[photoZoomIdx]" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px" />
+      <div v-if="artistPhotos.length > 1" class="av-zoom-nav">
+        <el-button size="small" :disabled="photoZoomIdx <= 0" @click="photoZoomIdx--">上一张</el-button>
+        <span>{{ photoZoomIdx + 1 }} / {{ artistPhotos.length }}</span>
+        <el-button size="small" :disabled="photoZoomIdx >= artistPhotos.length - 1" @click="photoZoomIdx++">下一张</el-button>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -208,6 +228,13 @@ const expandedAnecdote = ref(-1)
 const activeToc = ref('')
 const showBackTop = ref(false)
 const avatarError = ref(false)
+const photoZoomVisible = ref(false)
+const photoZoomIdx = ref(-1)
+
+function openPhotoZoom(idx) {
+  photoZoomIdx.value = idx
+  photoZoomVisible.value = true
+}
 
 const suggestFields = [
   { value: 'summary', label: '概述' },
@@ -286,6 +313,11 @@ const publishedWorks = computed(() => {
 const galleryImages = computed(() => {
   if (!artist.value?.gallery_images) return []
   return parseJsonField(artist.value.gallery_images)
+})
+
+const artistPhotos = computed(() => {
+  if (!artist.value?.photos) return []
+  return parseJsonField(artist.value.photos)
 })
 
 const tags = computed(() => {
@@ -529,20 +561,32 @@ watch(tocItems, (items) => {
   display: flex; gap: 24px; align-items: flex-start;
   padding: 0 32px;
 }
-.av-header-avatar { flex-shrink: 0; margin-top: 0; }
+.av-header-avatar { flex-shrink: 0; margin-top: 0; display: flex; flex-direction: column; align-items: center; gap: 0; }
 .av-avatar-img {
-  width: 200px; height: 200px; border-radius: 12px;
+  width: 180px; height: 180px; border-radius: 12px;
   object-fit: cover; display: block;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 .av-avatar-text {
   display: flex; align-items: center; justify-content: center;
-  width: 200px; height: 200px; border-radius: 12px;
+  width: 180px; height: 180px; border-radius: 12px;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 72px; font-weight: 500;
+  font-size: 66px; font-weight: 500;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
+.av-photo-row {
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+  margin-top: 10px; max-width: 180px;
+}
+.av-photo-thumb {
+  width: 56px; height: 56px; border-radius: 6px;
+  object-fit: cover; cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.3);
+  transition: border-color .15s, transform .15s;
+}
+.av-photo-thumb:hover { border-color: rgba(255,255,255,0.8); transform: scale(1.08); }
+.av-zoom-nav { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #5c5040; }
 .av-header-info { flex: 1; min-width: 0; }
 .av-name {
   font-family: 'Noto Serif SC', serif;

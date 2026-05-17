@@ -353,6 +353,7 @@ def _ensure_artist_columns():
             ("art_chronology", "TEXT DEFAULT '[]'"),
             ("published_works", "TEXT DEFAULT '[]'"),
             ("gallery_images", "TEXT DEFAULT '[]'"),
+            ("photos", "TEXT DEFAULT '[]'"),
             ("references", "TEXT DEFAULT '[]'"),
             ("verified", "INTEGER DEFAULT 0"),
         ]

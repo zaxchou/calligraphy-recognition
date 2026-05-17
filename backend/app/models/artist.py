@@ -39,6 +39,7 @@ class Artist(Base):
     art_chronology = Column(Text, default="[]", comment="艺术年谱 JSON")
     published_works = Column(Text, default="[]", comment="出版著作 JSON")
     gallery_images = Column(Text, default="[]", comment="作品图集 JSON")
+    photos = Column(Text, default="[]", comment="本人照片 JSON 数组")
     references = Column(Text, default="[]", comment="参考文献 JSON")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

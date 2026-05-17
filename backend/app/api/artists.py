@@ -89,6 +89,7 @@ class ArtistUpdate(BaseModel):
     art_chronology: Optional[str] = None
     published_works: Optional[str] = None
     gallery_images: Optional[str] = None
+    photos: Optional[str] = None
     references: Optional[str] = None
 
 
@@ -353,7 +354,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
                        "banner_url", "summary", "nationality", "occupation", "main_achievements",
                        "representative_works_text", "art_style", "influence", "historical_evaluation",
                        "character_relations", "anecdotes", "art_chronology", "published_works",
-                       "gallery_images", "references"]:
+                       "gallery_images", "photos", "references"]:
             val = getattr(artist, field, None)
             if val is not None:
                 updates[field] = val
@@ -619,6 +620,33 @@ async def upload_artist_image(
     file_id = str(uuid.uuid4())
     ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
     filename = f"avatar_{file_id}{ext}"
+    upload_dir = settings.UPLOAD_DIR
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="文件大小超过10MB限制")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    await file.close()
+
+    url = get_static_url(f"uploads/{filename}")
+    return {"success": True, "url": url}
+
+
+@router.post("/upload-photo")
+async def upload_artist_photo(
+    file: UploadFile = File(...),
+    editor=Depends(require_editor),
+):
+    allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP、WebP、GIF 格式")
+
+    file_id = str(uuid.uuid4())
+    ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
+    filename = f"photo_{file_id}{ext}"
     upload_dir = settings.UPLOAD_DIR
     os.makedirs(upload_dir, exist_ok=True)
     filepath = os.path.join(upload_dir, filename)
