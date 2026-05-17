@@ -97,32 +97,22 @@
             </div>
             <div class="ae-grid ae-grid-2">
               <div class="ae-field">
-                <label class="ae-label">封面题图 <span class="ae-hint-dim">(建议 1200×400px)</span></label>
-                <div class="ae-upload-row">
-                  <el-input v-model="form.banner_url" placeholder="https://..." />
-                  <el-upload :show-file-list="false" :before-upload="(f) => uploadFile(f, 'banner')" accept="image/*" style="flex-shrink:0">
-                    <el-button size="small">上传</el-button>
-                  </el-upload>
-                </div>
-                <div v-if="form.banner_url" class="ae-preview-banner"><img :src="form.banner_url" @error="e => e.target.style.display='none'" /></div>
-              </div>
-              <div class="ae-field">
                 <label class="ae-label">头像 <span class="ae-hint-dim">(建议 200×200px)</span></label>
                 <div class="ae-upload-row">
                   <el-input v-model="form.avatar_url" placeholder="https://..." />
-                  <el-upload :show-file-list="false" :before-upload="(f) => uploadFile(f, 'avatar')" accept="image/*" style="flex-shrink:0">
+                  <el-upload :show-file-list="false" :before-upload="(f) => uploadFile(f)" accept="image/*" style="flex-shrink:0">
                     <el-button size="small">上传</el-button>
                   </el-upload>
                 </div>
-                <div class="ae-preview-avatar" style="margin-top:8px">
+                <div style="margin-top:8px">
                   <el-avatar v-if="form.avatar_url" :src="form.avatar_url" :size="64" shape="square" />
                   <el-avatar v-else :size="64" shape="square" style="background:#c45a3c;font-size:24px">{{ form.name?.charAt(0) || '?' }}</el-avatar>
                 </div>
               </div>
-            </div>
-            <div class="ae-field">
-              <label class="ae-label">百度百科链接</label>
-              <el-input v-model="form.baidu_url" placeholder="https://baike.baidu.com/item/..." />
+              <div class="ae-field">
+                <label class="ae-label">百度百科链接</label>
+                <el-input v-model="form.baidu_url" placeholder="https://baike.baidu.com/item/..." />
+              </div>
             </div>
           </div>
 
@@ -381,7 +371,7 @@ const searchResults = ref([])
 const form = reactive({
   name: '', alias: '', dynasty: '', hometown: '', birth_year: null, death_year: null,
   nationality: '', occupation: '', art_school: '', specialties: '',
-  summary: '', background: '', banner_url: '', avatar_url: '', baidu_url: '',
+  summary: '', background: '', avatar_url: '', baidu_url: '',
   biography: '', art_chronology: [],
   art_style: '', main_achievements: '', influence: '', historical_evaluation: '',
   character_relations: [], anecdotes: [],
@@ -421,20 +411,22 @@ function scrollTo(id) {
 
 function goBack() { router.push('/admin?tab=artist-info') }
 
-async function uploadFile(file, type) {
+async function uploadFile(file) {
   const fd = new FormData()
   fd.append('file', file)
   try {
-    const res = await fetch(`${API_BASE}/tubi/upload`, { method: 'POST', body: fd })
+    const res = await fetch(`${API_BASE}/artists/upload-image`, { method: 'POST', body: fd })
     if (res.ok) {
       const data = await res.json()
       if (data.success && data.url) {
-        if (type === 'avatar') form.avatar_url = data.url
-        else form.banner_url = data.url
+        form.avatar_url = data.url
         ElMessage.success('上传成功')
+      } else {
+        ElMessage.error(data.detail || '上传失败')
       }
     } else {
-      ElMessage.error('上传失败')
+      const err = await res.json().catch(() => ({}))
+      ElMessage.error(err.detail || '上传失败')
     }
   } catch (e) { ElMessage.error('上传失败') }
   return false
@@ -583,8 +575,6 @@ onMounted(async () => {
 .ae-hint-dim { font-size: 11px; color: #b0a890; font-weight: 400; }
 
 .ae-upload-row { display: flex; gap: 8px; align-items: center; }
-.ae-preview-banner { margin-top: 8px; width: 100%; max-height: 140px; border-radius: 8px; overflow: hidden; background: #f5f3ed; }
-.ae-preview-banner img { width: 100%; height: 100%; object-fit: cover; }
 
 .ae-switch-wrap { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .ae-switch-label { font-size: 13px; color: #5c5346; }

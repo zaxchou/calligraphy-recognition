@@ -7,14 +7,17 @@
 import os
 import json
 import re
+import uuid
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
 from app.core.auth import require_admin_role, require_editor, require_permission
+from app.core.path_utils import get_static_url
+from app.core.config import settings
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 
@@ -530,6 +533,33 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
+
+
+@router.post("/upload-image")
+async def upload_artist_image(
+    file: UploadFile = File(...),
+    editor=Depends(require_editor),
+):
+    allowed = {"image/jpeg", "image/png", "image/bmp", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="只支持 JPG、PNG、BMP、WebP、GIF 格式")
+
+    file_id = str(uuid.uuid4())
+    ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
+    filename = f"avatar_{file_id}{ext}"
+    upload_dir = settings.UPLOAD_DIR
+    os.makedirs(upload_dir, exist_ok=True)
+    filepath = os.path.join(upload_dir, filename)
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="文件大小超过10MB限制")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    await file.close()
+
+    url = get_static_url(f"uploads/{filename}")
+    return {"success": True, "url": url}
 
 
 def _fetch_baike_data(artist_name: str) -> dict:

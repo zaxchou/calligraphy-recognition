@@ -9,10 +9,10 @@
     </div>
 
     <template v-else-if="artist">
-      <header class="av-header">
+      <header class="av-header" :style="headerStyle">
         <div class="av-header-inner">
           <div class="av-header-avatar">
-            <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="88" shape="square" />
+            <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="120" shape="square" class="av-avatar-img" />
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
           </div>
           <div class="av-header-info">
@@ -23,6 +23,7 @@
               <span v-if="artist.birth_year || artist.death_year" class="av-meta-item">{{ formatYears(artist.birth_year, artist.death_year) }}</span>
               <span v-if="artist.art_school" class="av-meta-item av-meta-school">{{ artist.art_school }}</span>
               <span v-if="artist.hometown" class="av-meta-item">{{ artist.hometown }}</span>
+              <span v-if="artist.occupation" class="av-meta-item">{{ artist.occupation }}</span>
             </div>
             <p v-if="artist.summary" class="av-summary">{{ artist.summary }}</p>
           </div>
@@ -235,6 +236,18 @@ const galleryImages = computed(() => {
   return parseJsonField(artist.value.gallery_images)
 })
 
+const headerStyle = computed(() => {
+  const img = galleryImages.value[0]
+  if (img?.url) {
+    return {
+      backgroundImage: `linear-gradient(135deg, rgba(44,36,22,0.88) 0%, rgba(44,36,22,0.55) 40%, rgba(44,36,22,0.35) 100%), url(${img.url})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  }
+  return {}
+})
+
 const tags = computed(() => {
   if (!artist.value?.tags) return []
   return parseJsonField(artist.value.tags)
@@ -386,22 +399,43 @@ watch(tocItems, (items) => {
 
 /* ── Header ── */
 .av-header {
-  padding: 40px 0 32px;
-  border-bottom: 1px solid #e8e3da;
+  position: relative;
+  padding: 56px 0 40px;
   margin-bottom: 0;
+  border-radius: 12px;
+  overflow: hidden;
 }
+.av-header:not([style*="backgroundImage"]) {
+  background: linear-gradient(135deg, #3a3222 0%, #6b5b4a 35%, #8a7a6a 70%);
+}
+.av-header:not([style*="backgroundImage"]) .av-name { color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.av-header:not([style*="backgroundImage"]) .av-alias { color: rgba(255,255,255,0.75); }
+.av-header:not([style*="backgroundImage"]) .av-summary { color: rgba(255,255,255,0.8); }
+.av-header:not([style*="backgroundImage"]) .av-meta-item { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); }
+.av-header:not([style*="backgroundImage"]) .av-meta-school { background: rgba(196,90,60,0.45); color: #fff; }
+.av-header[style*="backgroundImage"] {
+  color: #fff;
+}
+.av-header[style*="backgroundImage"] .av-name { color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+.av-header[style*="backgroundImage"] .av-alias { color: rgba(255,255,255,0.8); }
+.av-header[style*="backgroundImage"] .av-summary { color: rgba(255,255,255,0.85); }
+.av-header[style*="backgroundImage"] .av-meta-item { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+.av-header[style*="backgroundImage"] .av-meta-school { background: rgba(196,90,60,0.5); color: #fff; }
 .av-header-inner {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
+  position: relative; z-index: 1;
+  display: flex; gap: 28px; align-items: flex-start;
+  padding: 0 40px;
 }
 .av-header-avatar { flex-shrink: 0; margin-top: 2px; }
+.av-avatar-img { border: 3px solid rgba(255,255,255,0.25); box-shadow: 0 4px 24px rgba(0,0,0,0.2); }
 .av-avatar-text {
   display: flex; align-items: center; justify-content: center;
-  width: 88px; height: 88px; border-radius: 8px;
+  width: 120px; height: 120px; border-radius: 8px;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 36px; font-weight: 500;
+  font-size: 48px; font-weight: 500;
+  border: 3px solid rgba(255,255,255,0.25);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
 }
 .av-header-info { flex: 1; min-width: 0; }
 .av-name {
@@ -543,7 +577,8 @@ watch(tocItems, (items) => {
 @media (max-width: 1024px) { .av-toc { display: none; } }
 @media (max-width: 768px) {
   .av-page { padding: 0 16px 80px; }
-  .av-header-inner { flex-direction: column; gap: 16px; }
+  .av-header { padding: 32px 0 28px; }
+  .av-header-inner { flex-direction: column; gap: 16px; padding: 0 20px; }
   .av-header-actions { flex-direction: row; align-items: center; }
   .av-name { font-size: 26px; }
   .av-body { flex-direction: column; gap: 32px; }
