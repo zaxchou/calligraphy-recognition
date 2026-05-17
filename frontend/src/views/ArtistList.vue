@@ -79,7 +79,10 @@
         <el-table-column label="朝代" prop="dynasty" width="80" />
         <el-table-column label="生卒年" width="120">
           <template #default="{ row }">
-            {{ row.birth_year || '?' }} – {{ row.death_year || '?' }}
+            <template v-if="row.birth_year || row.death_year">
+              {{ row.birth_year || '?' }} – {{ row.death_year || '?' }}
+            </template>
+            <template v-else>生卒年不详</template>
           </template>
         </el-table-column>
         <el-table-column label="画派" prop="art_school" min-width="100" />

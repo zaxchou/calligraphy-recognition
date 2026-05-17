@@ -35,7 +35,7 @@
             <p v-if="artist.alias" class="av-alias">{{ artist.alias }}</p>
             <div class="av-meta">
               <span v-if="artist.dynasty" class="av-meta-item">{{ artist.dynasty }}</span>
-              <span v-if="artist.birth_year || artist.death_year" class="av-meta-item">{{ formatYears(artist.birth_year, artist.death_year) }}</span>
+              <span class="av-meta-item">{{ formatYears(artist.birth_year, artist.death_year) || '生卒年不详' }}</span>
               <span v-if="artist.art_school" class="av-meta-item av-meta-school">{{ artist.art_school }}</span>
               <span v-if="artist.hometown" class="av-meta-item">{{ artist.hometown }}</span>
               <span v-if="artist.occupation" class="av-meta-item">{{ artist.occupation }}</span>
@@ -43,6 +43,7 @@
             <p v-if="artist.summary" class="av-summary">{{ artist.summary }}</p>
           </div>
           <div class="av-header-actions">
+            <el-button size="small" plain @click="$router.push({ name: 'ArtistList' })">返回列表</el-button>
             <el-button size="small" plain @click="openSuggestEdit">我的修改</el-button>
           </div>
         </div>
@@ -519,6 +520,7 @@ function setupTocObserver() {
 }
 
 onMounted(async () => {
+  window.scrollTo({ top: 0, behavior: 'instant' })
   loading.value = true
   await fetchArtist()
   if (artist.value) {

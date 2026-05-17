@@ -8,7 +8,10 @@
       <div class="ac-name">{{ artist.name }}</div>
       <div v-if="artist.alias" class="ac-alias">{{ artist.alias }}</div>
       <div class="ac-years">
-        {{ artist.birth_year || '?' }}{{ artist.death_year ? ' – ' + artist.death_year : '' }}
+        <template v-if="artist.birth_year || artist.death_year">
+          {{ artist.birth_year || '?' }}{{ artist.death_year ? ' – ' + artist.death_year : '' }}
+        </template>
+        <template v-else>生卒年不详</template>
       </div>
       <div class="ac-tags">
         <span v-if="artist.dynasty" class="ac-tag ac-tag-dynasty">{{ artist.dynasty }}</span>

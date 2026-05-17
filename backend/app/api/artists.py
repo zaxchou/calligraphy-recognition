@@ -166,6 +166,10 @@ async def list_artists(
         ).fetchall()
 
         artists = [dict(row) for row in rows]
+        for a in artists:
+            a["artwork_count"] = conn.execute(
+                "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (a["name"],)
+            ).fetchone()[0]
         return {"success": True, "artists": artists, "total": total, "page": page, "page_size": page_size}
     finally:
         conn.close()

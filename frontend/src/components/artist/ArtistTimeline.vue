@@ -6,7 +6,10 @@
         <div class="at-era">{{ item.artist.dynasty || '未知' }}</div>
         <div class="at-name">{{ item.artist.name }}</div>
         <div class="at-years">
-          {{ item.artist.birth_year || '?' }} – {{ item.artist.death_year || '?' }}
+          <template v-if="item.artist.birth_year || item.artist.death_year">
+            {{ item.artist.birth_year || '?' }} – {{ item.artist.death_year || '?' }}
+          </template>
+          <template v-else>生卒年不详</template>
         </div>
         <div v-if="item.artist.alias" class="at-alias">{{ item.artist.alias }}</div>
       </div>
