@@ -1,11 +1,21 @@
 <template>
   <div class="ae-root">
     <div class="ae-sidebar">
+      <div class="ae-sidebar-top">
+        <el-button text size="small" @click="goBack" class="ae-back-btn"><el-icon><ArrowLeft /></el-icon></el-button>
+        <span class="ae-artist-name" :title="form.name || '新建'">{{ form.name || '新建' }}</span>
+      </div>
       <nav class="ae-nav">
         <a v-for="s in sections" :key="s.id" class="ae-nav-item" :class="{ active: activeSection === s.id }" @click="scrollTo(s.id)">
           {{ s.label }}
         </a>
       </nav>
+      <div class="ae-sidebar-actions">
+        <el-button size="small" @click="handleAiFill" :loading="aiLoading" class="ae-btn-ai">
+          <el-icon><MagicStick /></el-icon>AI补充
+        </el-button>
+        <el-button size="small" type="primary" @click="handleSave" :loading="saving" class="ae-btn-save">保存</el-button>
+      </div>
     </div>
 
     <div class="ae-main">
@@ -361,12 +371,6 @@
 
         <div class="ae-bottom-bar">
           <el-button @click="goBack" size="default">取消</el-button>
-          <div class="ae-bottom-actions">
-            <el-button size="default" @click="handleAiFill" :loading="aiLoading">
-              <el-icon><MagicStick /></el-icon>AI补充
-            </el-button>
-            <el-button type="primary" size="default" @click="handleSave" :loading="saving">保存修改</el-button>
-          </div>
         </div>
       </template>
     </div>
@@ -574,13 +578,19 @@ onMounted(async () => {
 <style scoped>
 .ae-root { display: flex; min-height: 100vh; background: #fafaf8; }
 
-.ae-sidebar { width: 140px; flex-shrink: 0; background: #fff; border-right: 1px solid #edeae1; padding: 16px 10px; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 10; }
-.ae-nav { display: flex; flex-direction: column; gap: 1px; }
-.ae-nav-item { padding: 8px 10px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: center; }
+.ae-sidebar { width: 130px; flex-shrink: 0; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+.ae-sidebar-top { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #edeae1; }
+.ae-back-btn { padding: 2px; min-height: auto; }
+.ae-artist-name { font-size: 12px; color: #3a3222; font-weight: 600; font-family: 'Noto Serif SC', serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.ae-nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.ae-nav-item { padding: 7px 8px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: center; }
 .ae-nav-item:hover { background: #f5f3ed; color: #3a3222; }
 .ae-nav-item.active { background: #fdf6f0; color: #c45a3c; font-weight: 500; }
+.ae-sidebar-actions { margin-top: 10px; padding-top: 10px; border-top: 1px solid #edeae1; display: flex; flex-direction: column; gap: 6px; }
+.ae-btn-ai { display: inline-flex; align-items: center; justify-content: center; }
+.ae-btn-save { display: inline-flex; align-items: center; justify-content: center; }
 
-.ae-main { flex: 1; padding: 32px 40px 120px; max-width: 960px; margin-left: 140px; }
+.ae-main { flex: 1; padding: 32px 40px 120px; max-width: 960px; margin-left: 0; }
 .ae-loading { text-align: center; padding: 100px 0; color: #b0a890; }
 .ae-section { margin-bottom: 52px; scroll-margin-top: 20px; }
 .ae-section-title { font-family: 'Noto Serif SC', serif; font-size: 19px; color: #3a3222; margin: 0 0 22px; padding-left: 12px; border-left: 3px solid #c45a3c; }
@@ -588,7 +598,7 @@ onMounted(async () => {
 .ae-grid { display: grid; gap: 16px; }
 .ae-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .ae-grid-3 { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 768px) { .ae-grid-2, .ae-grid-3 { grid-template-columns: 1fr; } .ae-sidebar { display: none; } .ae-main { margin-left: 0; padding: 20px 16px 120px; } }
+@media (max-width: 768px) { .ae-grid-2, .ae-grid-3 { grid-template-columns: 1fr; } .ae-sidebar { display: none; } .ae-main { padding: 20px 16px 120px; } }
 
 .ae-field { margin-bottom: 18px; }
 .ae-label { display: block; font-size: 13px; color: #5c5346; font-weight: 500; margin-bottom: 6px; }
@@ -621,8 +631,7 @@ onMounted(async () => {
 .ae-gallery-item-info { padding: 4px 0; }
 .ae-gallery-item-title { font-size: 11px; color: #5c5346; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 120px; }
 
-.ae-bottom-bar { display: flex; justify-content: space-between; align-items: center; padding: 24px 0; border-top: 1px solid #edeae1; margin-top: 32px; }
-.ae-bottom-actions { display: flex; gap: 10px; align-items: center; }
+.ae-bottom-bar { display: flex; justify-content: center; padding: 24px 0; border-top: 1px solid #edeae1; margin-top: 32px; }
 
 :deep(.el-input__wrapper) { display: flex; align-items: center; }
 .ae-field :deep(.el-input__inner) { line-height: normal; }
