@@ -468,13 +468,20 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
         if baike_data:
             updates = _merge_baike_updates(artist, baike_data)
 
-        if not updates or len(updates) < 3:
-            ai_data = _ai_generate_fields(artist_name, artist, baike_data)
-            if ai_data:
-                for k, v in ai_data.items():
-                    if v and not artist[k] and k not in updates:
-                        if k in ("birth_year", "death_year", "featured", "enabled", "view_count"):
-                            continue
+        ai_data = _ai_generate_fields(artist_name, artist, baike_data)
+        if ai_data:
+            for k, v in ai_data.items():
+                if not v:
+                    continue
+                if k in ("featured", "enabled", "view_count"):
+                    continue
+                existing_val = artist[k]
+                if k in ("birth_year", "death_year"):
+                    if existing_val is None and isinstance(v, (int, float)):
+                        if k not in updates or updates[k] is None:
+                            updates[k] = int(v)
+                elif not existing_val:
+                    if k not in updates or not updates[k]:
                         updates[k] = v
 
         if updates:
@@ -622,6 +629,11 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
 请返回以下JSON格式（字符串字段用中文填写，数组字段每个元素填完整信息）：
 
 {{
+  "alias": "字号（如：字复堂，号懊道人）",
+  "dynasty": "朝代（如：清）",
+  "hometown": "籍贯（如：江苏兴化）",
+  "birth_year": 出生年份（整数，如：1686，未知则填null）,
+  "death_year": 卒年（整数，如：1762，未知则填null）,
   "summary": "100字概述",
   "biography": "300字详细生平介绍",
   "art_style": "200字艺术特色，包括画风、用笔、用墨特点",
@@ -656,6 +668,7 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
 
 art_chronology 至少列出5-10个关键年份的事件，从出生到去世按年份排列。
 anecdotes 至少列出2-3个著名轶事。
+birth_year 和 death_year 必须是整数（非字符串），未知则用 null。
 只返回JSON，不要其他文字。"""
         response = call_qwen_chat(
             messages=[{"role": "user", "content": prompt}],

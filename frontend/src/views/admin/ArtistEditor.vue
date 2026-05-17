@@ -471,8 +471,7 @@ async function searchArtworks() {
   searching.value = true
   try {
     const params = new URLSearchParams({ keyword: gallerySearch.value, limit: 20 })
-    if (editing.value) params.set('artist', originalName.value)
-    const res = await fetch(`${API_BASE}/tubi/results?${params}`)
+    const res = await fetch(`${API_BASE}/tubi/search?${params}`)
     if (res.ok) {
       const data = await res.json()
       searchResults.value = (data.data || []).map(w => ({
@@ -636,4 +635,8 @@ onMounted(async () => {
 
 .ae-bottom-bar { display: flex; justify-content: flex-end; gap: 12px; padding: 24px 0; border-top: 1px solid #edeae1; margin-top: 32px; }
 .ae-btn-save-main { font-weight: 500; min-width: 120px; }
+
+:deep(.el-input__wrapper) { display: flex; align-items: center; }
+.ae-field :deep(.el-input__inner) { line-height: normal; }
+:deep(.el-button) { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
 </style>

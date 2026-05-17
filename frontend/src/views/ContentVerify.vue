@@ -695,7 +695,7 @@ const isAdmin = computed(() => authStore.isAdmin)
 const isEditor = computed(() => authStore.isEditor)
 
 const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config', 'change-requests', 'libraries']
-const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'config')
+const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'artist-info')
 const verifyPanelRef = ref(null)
 // 切换标签时同步到 URL query（用 replace 避免污染历史）
 watch(activeTab, (tab) => {
