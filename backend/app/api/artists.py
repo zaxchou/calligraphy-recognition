@@ -577,6 +577,8 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
                     if k not in updates or not updates[k]:
                         updates[k] = v
 
+        _filter_hallucinated_aliases(updates)
+
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
             SQL_RESERVED = {"references"}
@@ -700,6 +702,19 @@ def _fetch_baike_data(artist_name: str) -> dict:
     return {}
 
 
+def _filter_hallucinated_aliases(updates: dict):
+    """剔除AI幻觉产生的抄袭式alias"""
+    if "alias" in updates:
+        alias_val = str(updates["alias"])
+        HALLUCINATED = (
+            "字复堂，号懊道人", "字复堂，号懊道人、",
+        )
+        for h in HALLUCINATED:
+            if alias_val == h or alias_val.startswith(h):
+                del updates["alias"]
+                return
+
+
 def _merge_baike_updates(artist, baike_data: dict) -> dict:
     updates = {}
     field_map = {
@@ -752,13 +767,13 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
 已有部分信息作为参考：
 {hint_text}
 
-请返回以下JSON格式（字符串字段用中文填写）：
+请返回以下JSON格式（字符串字段用中文填写，**未知的填null，严禁编造**）：
 {{
-  "alias": "字号（如：字复堂，号懊道人）",
+  "alias": "字号（如：字元章，号梅花屋主；未知则填null，绝不要抄袭其他画家的字号）",
   "dynasty": "朝代（如：清）",
-  "hometown": "籍贯（如：江苏兴化）",
-  "birth_year": 出生年份（整数，如：1686，未知则填null）,
-  "death_year": 卒年（整数，如：1762，未知则填null）,
+  "hometown": "籍贯（如：江苏兴化；未知填null）",
+  "birth_year": 出生年份（整数，如：1686；未知填null）,
+  "death_year": 卒年（整数，如：1762；未知填null）,
   "summary": "100字概述",
   "biography": "300字详细生平介绍",
   "art_style": "200字艺术特色，包括画风、用笔、用墨特点",
@@ -774,6 +789,7 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
   "published_works": [{{"title": "著作名称", "publisher": "出版社", "year": "年份"}}]
 }}
 
+**重要**: alias、hometown 等信息若你确实不知道，务必填 null，绝不要抄袭示例文字或别的画家的信息。
 anecdotes 列出尽可能多的著名轶事典故，不得少于5条。
 birth_year 和 death_year 必须是整数（非字符串），未知则用 null。
 只返回JSON，不要其他文字。"""
