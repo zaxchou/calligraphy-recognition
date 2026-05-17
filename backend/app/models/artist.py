@@ -24,6 +24,7 @@ class Artist(Base):
     view_count = Column(Integer, default=0, comment="浏览量")
     featured = Column(Integer, default=0, comment="推荐标记 1推荐/0非推荐")
     enabled = Column(Integer, default=1, comment="启用状态")
+    verified = Column(Integer, default=0, comment="认证标记 1已认证/0未认证")
     banner_url = Column(String, default="", comment="封面题图URL")
     summary = Column(Text, default="", comment="概述文字")
     nationality = Column(String, default="", comment="国籍")

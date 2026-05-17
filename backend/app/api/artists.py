@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 
 from app.core.database import get_db_connection
-from app.core.auth import require_admin_role, require_editor, require_permission
+from app.core.auth import require_admin_role, require_editor, require_permission, get_current_user
 from app.core.path_utils import get_static_url
 from app.core.config import get_settings
 
@@ -100,15 +100,19 @@ async def list_artists(
     school: Optional[str] = None,
     keyword: Optional[str] = None,
     featured: Optional[bool] = None,
+    verified_only: bool = True,
     page: int = 1,
     page_size: int = 20,
     sort: str = "created_at",
 ):
-    """列出所有画家，支持筛选、分页、排序"""
+    """列出所有画家，支持筛选、分页、排序（默认仅显示已认证画家）"""
     conn = get_db_connection()
     try:
         conditions = []
         params = []
+
+        if verified_only:
+            conditions.append("verified = 1")
 
         if dynasty:
             conditions.append("dynasty = ?")
@@ -236,8 +240,8 @@ async def get_artist_by_name(name: str):
 
 
 @router.post("")
-async def create_artist(artist: ArtistCreate, editor=Depends(require_permission("content.upload"))):
-    """创建画家"""
+async def create_artist(artist: ArtistCreate, user=Depends(get_current_user)):
+    """创建画家（所有人可创建，编辑以上自动认证）"""
     conn = get_db_connection()
     try:
         # 检查是否已存在同名画家
@@ -248,18 +252,19 @@ async def create_artist(artist: ArtistCreate, editor=Depends(require_permission(
             raise HTTPException(status_code=409, detail="画家已存在")
 
         now = datetime.now().isoformat()
+        is_verified = 1 if user.role in ("editor", "admin", "super_admin") else 0
         cursor = conn.execute(
             "INSERT INTO artists (name, alias, dynasty, hometown, avatar_url, birth_year, death_year, "
             "biography, background, specialties, bio_events, art_school, masterpieces, tags, "
-            "featured, enabled, banner_url, summary, nationality, occupation, main_achievements, "
+            "featured, enabled, verified, banner_url, summary, nationality, occupation, main_achievements, "
             "representative_works_text, art_style, influence, historical_evaluation, character_relations, "
             "anecdotes, art_chronology, published_works, gallery_images, references, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
             "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (artist.name, artist.alias, artist.dynasty, artist.hometown, artist.avatar_url,
              artist.birth_year, artist.death_year, artist.biography, artist.background,
              artist.specialties, artist.bio_events, artist.art_school, artist.masterpieces,
-             artist.tags, artist.featured, artist.enabled,
+             artist.tags, artist.featured, artist.enabled, is_verified,
              artist.banner_url, artist.summary, artist.nationality, artist.occupation,
              artist.main_achievements, artist.representative_works_text, artist.art_style,
              artist.influence, artist.historical_evaluation, artist.character_relations,
@@ -287,7 +292,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
         updates = {}
         for field in ["name", "alias", "dynasty", "hometown", "avatar_url", "birth_year",
                        "death_year", "biography", "background", "specialties", "bio_events",
-                       "art_school", "masterpieces", "tags", "featured", "enabled",
+                       "art_school", "masterpieces", "tags", "featured", "enabled", "verified",
                        "banner_url", "summary", "nationality", "occupation", "main_achievements",
                        "representative_works_text", "art_style", "influence", "historical_evaluation",
                        "character_relations", "anecdotes", "art_chronology", "published_works",

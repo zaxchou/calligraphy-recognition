@@ -83,6 +83,13 @@
                 <span class="ae-switch-label">{{ form.enabled ? '已启用' : '已禁用' }}</span>
               </div>
             </div>
+            <div class="ae-field">
+              <label class="ae-label">认证画家</label>
+              <div class="ae-switch-wrap">
+                <el-switch v-model="form.verified" :active-value="1" :inactive-value="0" />
+                <span class="ae-switch-label">{{ form.verified ? '已认证（公开可见）' : '未认证（仅后台可见）' }}</span>
+              </div>
+            </div>
           </div>
 
           <!-- ===== 概述与图像 ===== -->
@@ -375,7 +382,7 @@ const form = reactive({
   character_relations: [], anecdotes: [],
   masterpieces: [], representative_works_text: '', tags: [],
   published_works: [], references: [], gallery_images: [],
-  featured: 0, enabled: 1,
+  featured: 0, enabled: 1, verified: 0,
 })
 
 const JSON_ARRAYS = ['art_chronology', 'character_relations', 'anecdotes', 'masterpieces', 'tags', 'published_works', 'references', 'gallery_images']

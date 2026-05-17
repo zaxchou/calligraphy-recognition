@@ -131,9 +131,11 @@ async def create_library(
         existing = db.query(Artist).filter(Artist.name == req.artist_name.strip()).first()
         if not existing:
             now = datetime.now().isoformat()
+            is_verified = 1 if user.role in ("editor", "admin", "super_admin") else 0
             new_artist = Artist(
                 name=req.artist_name.strip(),
                 enabled=1,
+                verified=is_verified,
                 featured=0,
                 created_at=now,
                 updated_at=now,

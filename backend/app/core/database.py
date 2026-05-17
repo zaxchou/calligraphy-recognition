@@ -354,6 +354,7 @@ def _ensure_artist_columns():
             ("published_works", "TEXT DEFAULT '[]'"),
             ("gallery_images", "TEXT DEFAULT '[]'"),
             ("references", "TEXT DEFAULT '[]'"),
+            ("verified", "INTEGER DEFAULT 0"),
         ]
         for col, col_type in new_cols:
             if col not in existing:
