@@ -487,6 +487,19 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
                     if existing_val is None and isinstance(v, (int, float)):
                         if k not in updates or updates.get(k) is None:
                             updates[k] = int(v)
+                elif k in json_array_cols:
+                    if is_empty:
+                        if k not in updates or not updates[k]:
+                            updates[k] = v
+                    else:
+                        try:
+                            new_arr = json.loads(v) if isinstance(v, str) else v
+                            old_arr = json.loads(existing_val) if isinstance(existing_val, str) else (existing_val or [])
+                            if isinstance(new_arr, list) and len(new_arr) > len(old_arr if isinstance(old_arr, list) else []):
+                                if k not in updates:
+                                    updates[k] = v
+                        except Exception:
+                            pass
                 elif is_empty:
                     if k not in updates or not updates[k]:
                         updates[k] = v
