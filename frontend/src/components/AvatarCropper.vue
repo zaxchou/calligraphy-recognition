@@ -23,8 +23,8 @@
         <span class="crop-hint">拖拽图片调整位置</span>
         <el-slider
           v-model="scale"
-          :min="0.5"
-          :max="2"
+          :min="0.1"
+          :max="5"
           :step="0.01"
           :format-tooltip="(v) => Math.round(v * 100) + '%'"
         />
@@ -92,7 +92,7 @@ function onImgLoad() {
     naturalH.value = img.naturalHeight
     const fw = frame.clientWidth
     const fh = frame.clientHeight
-    const s = Math.max(CROP_SIZE / naturalW.value, CROP_SIZE / naturalH.value, 0.6)
+    const s = Math.max(CROP_SIZE / naturalW.value, CROP_SIZE / naturalH.value, 0.2)
     scale.value = Math.round(s * 100) / 100
     offsetX.value = (fw - naturalW.value * s) / 2
     offsetY.value = (fh - naturalH.value * s) / 2
