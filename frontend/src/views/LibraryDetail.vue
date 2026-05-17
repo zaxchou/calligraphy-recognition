@@ -1,7 +1,7 @@
 <template>
   <div class="library-detail-page">
     <!-- 面包屑 + 标题 -->
-    <div class="page-header">
+    <div class="page-header" v-if="!embedded">
       <div>
         <el-breadcrumb separator="/">
           <el-breadcrumb-item :to="{ path: '/libraries' }">作品库</el-breadcrumb-item>
@@ -67,7 +67,7 @@
                 <el-icon class="is-loading"><Loading /></el-icon>
               </div>
               <div class="artwork-hover-actions" v-if="authStore.isLoggedIn">
-                <el-button size="small" circle @click.stop="openSuggestEdit(artwork)" title="建议修改">
+                <el-button size="small" circle @click.stop="openSuggestEdit(artwork)" title="我的意见">
                   <el-icon><Edit /></el-icon>
                 </el-button>
               </div>
@@ -231,17 +231,17 @@
           <el-descriptions-item label="流传" :span="2">{{ selectedArtwork.provenance || '-' }}</el-descriptions-item>
         </el-descriptions>
         <div class="drawer-actions" style="margin-top:16px">
-          <el-button type="primary" @click="showDetailDrawer = false; openSuggestEdit(selectedArtwork)">建议修改</el-button>
+          <el-button type="primary" @click="showDetailDrawer = false; openSuggestEdit(selectedArtwork)">我的意见</el-button>
           <el-button @click="$router.push(`/tubi/${selectedArtwork.image_id}`)">打开完整详情</el-button>
         </div>
       </template>
     </el-drawer>
 
-    <!-- 建议修改对话框 -->
-    <el-dialog v-model="showSuggestDialog" title="建议修改" width="560px" destroy-on-close>
+    <!-- 我的意见对话框 -->
+    <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close>
       <template v-if="suggestArtwork">
         <p style="margin-bottom:16px;color:var(--stone-gray)">
-          您正在对 <strong>{{ suggestArtwork.title || '未命名' }}</strong> 提出修改建议，提交后由库主审核。
+          您正在对 <strong>{{ suggestArtwork.title || '未命名' }}</strong> 提出修改意见，提交后由库主审核。
         </p>
         <el-form :model="suggestForm" label-position="top">
           <el-form-item label="修改字段">
@@ -264,10 +264,10 @@
             </el-select>
           </el-form-item>
           <el-form-item label="原值">
-            <el-input :model-value="suggestForm.old_value" disabled />
+            <div class="old-value-display">{{ suggestForm.old_value }}</div>
           </el-form-item>
           <el-form-item label="新值" required>
-            <el-input v-model="suggestForm.new_value" placeholder="输入修改后的值" />
+            <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="在原值基础上修改，或输入新内容" />
           </el-form-item>
           <el-form-item label="修改说明">
             <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
@@ -276,7 +276,7 @@
       </template>
       <template #footer>
         <el-button @click="showSuggestDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交修改建议</el-button>
+        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交意见</el-button>
       </template>
     </el-dialog>
 
@@ -340,7 +340,15 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const libraryId = computed(() => parseInt(route.params.id))
+const props = defineProps({
+  libraryId: { type: [Number, String], default: null },
+  embedded: { type: Boolean, default: false }
+})
+
+const libraryId = computed(() => {
+  if (props.libraryId) return parseInt(props.libraryId)
+  return parseInt(route.params.id)
+})
 
 // ── Library state ──
 const library = ref({})
@@ -412,7 +420,7 @@ async function loadLibrary() {
     }
   } catch (e) {
     ElMessage.error('加载作品库失败')
-    router.push('/libraries')
+    if (!props.embedded) router.push('/libraries')
   }
 }
 
@@ -486,7 +494,7 @@ async function handleDeleteLibrary() {
     await ElMessageBox.confirm('确定要删除此作品库吗？此操作不可撤销。', '确认删除', { type: 'warning' })
     await libraryApi.delete(libraryId.value, true)
     ElMessage.success('已删除')
-    router.push('/libraries')
+    if (!props.embedded) router.push('/libraries')
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('删除失败')
   }
@@ -569,7 +577,6 @@ const suggestForm = reactive({
 function openSuggestEdit(artwork) {
   suggestArtwork.value = artwork
   suggestForm.field_name = 'title'
-  suggestForm.new_value = ''
   suggestForm.change_summary = ''
   updateSuggestOldValue()
   showSuggestDialog.value = true
@@ -579,6 +586,7 @@ function updateSuggestOldValue() {
   if (!suggestArtwork.value) return
   const val = suggestArtwork.value[suggestForm.field_name]
   suggestForm.old_value = val !== null && val !== undefined ? String(val) : ''
+  suggestForm.new_value = suggestForm.old_value
 }
 
 // Watch field_name changes to update old_value
@@ -883,5 +891,23 @@ onMounted(async () => {
 
 .manage-badge {
   margin-left: 6px;
+}
+
+/* 我的意见对话框 */
+.old-value-display {
+  width: 100%;
+  padding: 10px 12px;
+  background: #f5f5f5;
+  border: 1px solid #e8e4dc;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  user-select: text;
+  cursor: text;
 }
 </style>

@@ -594,7 +594,8 @@
       <!-- 作品库管理 -->
       <el-tab-pane label="作品库管理" name="libraries">
         <div class="tab-content full-tab-content">
-          <LibrariesAdmin />
+          <LibraryManage v-if="adminSelectedLibraryId" :key="adminSelectedLibraryId" :library-id="adminSelectedLibraryId" />
+          <el-empty v-else description="请先在左侧选择作品库" />
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -673,7 +674,7 @@ import AdminSettings from './admin/Settings.vue'
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi } from '../api/index.js'
 import { computeDiff } from '../utils/diff'
-import LibrariesAdmin from './Libraries.vue'
+import LibraryManage from './admin/LibraryManage.vue'
 
 function escapeHtml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
