@@ -148,6 +148,12 @@ const routes = [
         meta: { title: '权限配置', requiresSuperAdmin: true },
       },
       {
+        path: 'artist/:name/edit',
+        name: 'ArtistEditor',
+        component: () => import('../views/admin/ArtistEditor.vue'),
+        meta: { title: '编辑画家', requiresAuth: true },
+      },
+      {
         path: 'settings',
         name: 'AdminSettings',
         component: () => import('../views/admin/SystemSettings.vue'),
