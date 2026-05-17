@@ -86,6 +86,9 @@
               <el-button link size="small" @click.stop="handleTriggerAnalyze(artwork)">
                 <el-icon><VideoPlay /></el-icon> AI分析
               </el-button>
+              <el-button link size="small" type="danger" @click.stop="handleDeleteArtwork(artwork)">
+                <el-icon><Delete /></el-icon> 删除
+              </el-button>
             </div>
           </div>
         </div>
@@ -332,7 +335,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay } from '@element-plus/icons-vue'
+import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi, artworkApi } from '../api'
 
@@ -630,6 +633,15 @@ async function handleTriggerAnalyze(artwork) {
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '触发分析失败')
   }
+}
+
+async function handleDeleteArtwork(artwork) {
+  try {
+    await ElMessageBox.confirm(`确定从作品库中删除「${artwork.title || artwork.filename || '未命名'}」？`, '确认删除', { type: 'warning' })
+    await artworkApi.delete(artwork.id)
+    ElMessage.success('已删除')
+    await loadArtworks()
+  } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败') }
 }
 
 function formatTime(iso) {

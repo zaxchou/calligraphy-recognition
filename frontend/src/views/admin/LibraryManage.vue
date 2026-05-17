@@ -1,11 +1,9 @@
 <template>
   <div class="am-libs">
-    <!-- 返回按钮（在二级详情页时显示） -->
     <div v-if="detailId" class="am-back-bar">
       <el-button size="small" text @click="detailId = null"><el-icon><ArrowLeft /></el-icon>返回作品库列表</el-button>
     </div>
 
-    <!-- 一级：作品库列表管理 -->
     <div v-if="!detailId" class="am-lib-list">
       <div class="am-toolbar">
         <el-button type="primary" size="small" @click="showCreate = true">新建作品库</el-button>
@@ -14,8 +12,8 @@
       <div v-if="loading" class="am-empty"><el-skeleton :rows="3" animated /></div>
       <div v-else-if="libs.length === 0" class="am-empty"><el-empty description="暂无作品库" :image-size="60" /></div>
       <div v-else class="am-lib-grid">
-        <div v-for="lib in libs" :key="lib.id" class="am-lib-card" @click="detailId = lib.id">
-          <div class="am-card-top">
+        <div v-for="lib in libs" :key="lib.id" class="am-lib-card">
+          <div class="am-card-top" @click="detailId = lib.id">
             <div class="am-card-cover">
               <el-icon :size="32" color="#c8a45c"><Folder /></el-icon>
             </div>
@@ -32,13 +30,13 @@
           </div>
           <div class="am-card-actions">
             <el-button size="small" text @click.stop="openEdit(lib)">编辑</el-button>
-            <el-button size="small" text type="danger" @click.stop="handleDelete(lib)">删除</el-button>
+            <el-button size="small" text @click.stop="openCollaborators(lib)">协作</el-button>
+            <el-button size="small" text type="danger" @click.stop="handleDelete(lib)" :disabled="lib.artwork_count > 0">{{ lib.artwork_count > 0 ? '非空' : '删除' }}</el-button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 二级：作品库详情（复用公共页面） -->
     <div v-else class="am-lib-detail">
       <LibraryDetail :library-id="detailId" :embedded="true" />
     </div>
@@ -72,6 +70,43 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 协作者管理对话框 -->
+    <el-dialog v-model="showCollab" title="协作者管理" width="500px" @closed="collabLibId = null">
+      <template v-if="collabLib">
+        <div class="collab-sect">
+          <h4>添加协作者</h4>
+          <div class="collab-row">
+            <el-input v-model="newCollabOpenid" placeholder="用户 OpenID" size="small" style="width: 180px" />
+            <el-select v-model="newCollabRole" size="small" style="width: 100px">
+              <el-option label="浏览者" value="viewer" />
+              <el-option label="编辑者" value="editor" />
+              <el-option label="维护者" value="maintainer" />
+            </el-select>
+            <el-button type="primary" size="small" @click="handleAddCollaborator">添加</el-button>
+          </div>
+        </div>
+        <div class="collab-sect">
+          <h4>当前协作者</h4>
+          <el-table v-if="collaborators.length > 0" :data="collaborators" size="small">
+            <el-table-column prop="nickname" label="昵称" />
+            <el-table-column prop="role" label="角色" width="100">
+              <template #default="{ row }">
+                <el-tag v-if="row.role === 'viewer'" size="small">浏览者</el-tag>
+                <el-tag v-else-if="row.role === 'editor'" type="warning" size="small">编辑者</el-tag>
+                <el-tag v-else-if="row.role === 'maintainer'" type="danger" size="small">维护者</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80">
+              <template #default="{ row }">
+                <el-button type="danger" link size="small" @click="handleRemoveCollaborator(row.user_id)">移除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-else description="暂无协作者" :image-size="50" />
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -96,6 +131,14 @@ const createForm = reactive({
 const artistOptions = ref([])
 const artistLoading = ref(false)
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
+// ── 协作者 ──
+const showCollab = ref(false)
+const collabLibId = ref(null)
+const collabLib = ref(null)
+const collaborators = ref([])
+const newCollabOpenid = ref('')
+const newCollabRole = ref('viewer')
 
 async function fetchArtists(keyword) {
   artistLoading.value = true
@@ -156,7 +199,48 @@ function openEdit(lib) {
   fetchArtists()
 }
 
+// ── 协作者管理 ──
+async function openCollaborators(lib) {
+  collabLibId.value = lib.id
+  collabLib.value = lib
+  showCollab.value = true
+  newCollabOpenid.value = ''
+  newCollabRole.value = 'viewer'
+  try {
+    const data = await libraryApi.getCollaborators(lib.id)
+    collaborators.value = Array.isArray(data) ? data : []
+  } catch (e) { ElMessage.error('加载协作者失败') }
+}
+
+async function handleAddCollaborator() {
+  if (!newCollabOpenid.value.trim()) { ElMessage.warning('请输入用户 OpenID'); return }
+  try {
+    await libraryApi.addCollaborator(collabLibId.value, {
+      openid: newCollabOpenid.value.trim(),
+      role: newCollabRole.value,
+    })
+    ElMessage.success('已添加')
+    newCollabOpenid.value = ''
+    const data = await libraryApi.getCollaborators(collabLibId.value)
+    collaborators.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.detail || '添加失败')
+  }
+}
+
+async function handleRemoveCollaborator(userId) {
+  try {
+    await libraryApi.removeCollaborator(collabLibId.value, userId)
+    ElMessage.success('已移除')
+    collaborators.value = collaborators.value.filter(c => c.user_id !== userId)
+  } catch (e) { ElMessage.error('移除失败') }
+}
+
 async function handleDelete(lib) {
+  if (lib.artwork_count > 0) {
+    ElMessage.warning(`作品库「${lib.name}」内有 ${lib.artwork_count} 件作品，请先清空后再删除`)
+    return
+  }
   try {
     await ElMessageBox.confirm(`确定删除「${lib.name}」？`, '确认', { type: 'warning' })
     await libraryApi.delete(lib.id, true)
@@ -177,10 +261,10 @@ onMounted(loadLibs)
 .am-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .am-lib-card {
   background: #fff; border: 1px solid #edeae1; border-radius: 8px; overflow: hidden;
-  cursor: pointer; transition: box-shadow .15s; display: flex; flex-direction: column;
+  transition: box-shadow .15s; display: flex; flex-direction: column;
 }
 .am-lib-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-.am-card-top { flex: 1; padding: 14px; }
+.am-card-top { flex: 1; padding: 14px; cursor: pointer; }
 .am-card-cover {
   height: 60px; background: #faf9f5; border-radius: 6px;
   display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
@@ -189,6 +273,10 @@ onMounted(loadLibs)
 .am-card-artist { font-size: 11px; color: #b0a890; margin-bottom: 6px; }
 .am-card-meta { display: flex; align-items: center; gap: 8px; }
 .am-card-count { font-size: 11px; color: #8c7a5c; }
-.am-card-actions { padding: 8px 14px; border-top: 1px solid #f0ebe0; display: flex; justify-content: flex-end; }
+.am-card-actions { padding: 8px 14px; border-top: 1px solid #f0ebe0; display: flex; justify-content: flex-end; gap: 4px; }
 .am-lib-detail { padding: 0; }
+/* ── 协作者 ── */
+.collab-sect { margin-bottom: 20px; }
+.collab-sect h4 { font-size: 13px; color: #5c5346; margin: 0 0 10px; }
+.collab-row { display: flex; gap: 8px; align-items: center; }
 </style>

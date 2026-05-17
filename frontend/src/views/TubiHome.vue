@@ -7,7 +7,7 @@
 
       <!-- 右侧：题跋比排行榜模块 -->
       <TubiRankingCard
-        :history-list="filteredAnalyticsData"
+        :history-list="analyticsData"
         :get-display-age="getDisplayAge"
         :loading="analyticsLoading"
         style="flex: 3.5;"
