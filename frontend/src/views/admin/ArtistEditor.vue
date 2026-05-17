@@ -578,7 +578,7 @@ onMounted(async () => {
 <style scoped>
 .ae-root { display: block; min-height: 100vh; background: #fafaf8; padding-left: 130px; }
 
-.ae-sidebar { width: 130px; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: fixed; left: 240px; top: 0; bottom: 0; display: flex; flex-direction: column; z-index: 5; }
+.ae-sidebar { width: 130px; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: fixed; left: 240px; top: 64px; bottom: 0; display: flex; flex-direction: column; z-index: 5; }
 .ae-sidebar-top { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #edeae1; }
 .ae-back-btn { padding: 2px; min-height: auto; }
 .ae-artist-name { font-size: 12px; color: #3a3222; font-weight: 600; font-family: 'Noto Serif SC', serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
@@ -587,7 +587,7 @@ onMounted(async () => {
 .ae-nav-item:hover { background: #f5f3ed; color: #3a3222; }
 .ae-nav-item.active { background: #fdf6f0; color: #c45a3c; font-weight: 500; }
 .ae-sidebar-actions { margin-top: auto; padding-top: 10px; border-top: 1px solid #edeae1; display: flex; flex-direction: column; gap: 6px; }
-.ae-sidebar-actions .el-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
+.ae-sidebar-actions .el-button { display: inline-flex; align-items: center; justify-content: center; padding-left: 0; padding-right: 0; box-sizing: border-box; overflow: hidden; }
 
 .ae-main { flex: 1; padding: 32px 40px 120px; max-width: 960px; margin-left: 0; }
 .ae-loading { text-align: center; padding: 100px 0; color: #b0a890; }
