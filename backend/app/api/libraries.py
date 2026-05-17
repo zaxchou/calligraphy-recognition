@@ -3,7 +3,7 @@
 Phase 2: 作品库产品线
 """
 import logging
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
@@ -86,6 +86,33 @@ def _library_to_response(lib: ArtworkLibrary) -> dict:
 
 # ── API Endpoints ──
 
+@router.get("/accessible-libraries")
+async def list_accessible_libraries(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """获取当前用户可操作的作品库（自己的 + 作为协作者的 + 管理员可见全部）
+    
+    - 自己是 owner 的
+    - 自己是 collaborator 的
+    - admin/super_admin/editor 可见全部
+    """
+    if user.role in ("admin", "super_admin", "editor"):
+        libs = db.query(ArtworkLibrary).order_by(ArtworkLibrary.updated_at.desc()).all()
+    else:
+        owned_ids = [lib.id for lib in db.query(ArtworkLibrary).filter(ArtworkLibrary.owner_id == user.id).all()]
+        collab_ids = [row[0] for row in db.query(LibraryCollaborator.library_id).filter(
+            LibraryCollaborator.user_id == user.id
+        ).all()]
+        all_ids = list(set(owned_ids + collab_ids))
+        if all_ids:
+            libs = db.query(ArtworkLibrary).filter(ArtworkLibrary.id.in_(all_ids)).order_by(ArtworkLibrary.updated_at.desc()).all()
+        else:
+            libs = []
+    
+    return {"libraries": [_library_to_response(lib) for lib in libs]}
+
+
 @router.post("")
 async def create_library(
     req: LibraryCreate,
@@ -96,6 +123,24 @@ async def create_library(
     """创建作品库"""
     if req.visibility not in ("public", "private"):
         raise HTTPException(status_code=400, detail="visibility 必须是 public 或 private")
+
+    # 如果填写了画家名称但数据库中不存在，自动创建画家记录
+    if req.artist_name and req.artist_name.strip():
+        from app.models.artist import Artist
+        from datetime import datetime
+        existing = db.query(Artist).filter(Artist.name == req.artist_name.strip()).first()
+        if not existing:
+            now = datetime.now().isoformat()
+            new_artist = Artist(
+                name=req.artist_name.strip(),
+                enabled=1,
+                featured=0,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(new_artist)
+            db.flush()
+            logger.info(f"自动创建画家: {req.artist_name.strip()}")
 
     lib = ArtworkLibrary(
         name=req.name,
@@ -401,12 +446,67 @@ async def remove_collaborator(
     return {"success": True}
 
 
+@router.get("/{library_id}/stats")
+async def get_library_stats(
+    library_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """获取作品库的作品统计数据"""
+    lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == library_id).first()
+    if not lib:
+        raise HTTPException(status_code=404, detail="作品库不存在")
+    
+    if lib.visibility != "public" and lib.owner_id != user.id:
+        is_collab = db.query(LibraryCollaborator).filter(
+            LibraryCollaborator.library_id == library_id,
+            LibraryCollaborator.user_id == user.id,
+        ).first() is not None
+        if not is_collab and user.role not in ("admin", "super_admin", "editor"):
+            raise HTTPException(status_code=403, detail="无权访问此作品库")
+    
+    total = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
+        TubiAnalysis.library_id == library_id
+    ).scalar() or 0
+    
+    verified = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
+        TubiAnalysis.library_id == library_id,
+        TubiAnalysis.inscription_verified == 1
+    ).scalar() or 0
+    
+    translated = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
+        TubiAnalysis.library_id == library_id,
+        TubiAnalysis.inscription_content.isnot(None),
+        TubiAnalysis.inscription_modern.isnot(None),
+        TubiAnalysis.inscription_modern != ""
+    ).scalar() or 0
+    
+    analyzed = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
+        TubiAnalysis.library_id == library_id,
+        TubiAnalysis.status == "analyzed"
+    ).scalar() or 0
+    
+    annotated = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
+        TubiAnalysis.library_id == library_id,
+        TubiAnalysis.regions.isnot(None)
+    ).scalar() or 0
+    
+    return {
+        "library_id": library_id,
+        "total": total,
+        "verified": verified,
+        "translated": translated,
+        "analyzed": analyzed,
+        "annotated": annotated,
+    }
+
+
 # ════════════════════════════════════════════════════════════════
 # Wiki 变更请求
 # ════════════════════════════════════════════════════════════════
 
 class ChangeRequestCreate(BaseModel):
-    artwork_id: int
+    artwork_id: Union[str, int]
     request_type: str  # edit_field / edit_inscription / adjust_region / add_field
     field_name: Optional[str] = None
     old_value: Optional[str] = None
@@ -426,9 +526,9 @@ async def list_all_change_requests(
     user: User = Depends(get_current_user),
 ):
     """获取所有画库的变更请求（不限 library_id）
-    权限：仅 admin/super_admin 可查看全局列表
+    权限：仅 admin/super_admin/editor 可查看全局列表
     """
-    if user.role not in ("admin", "super_admin"):
+    if user.role not in ("admin", "super_admin", "editor"):
         raise HTTPException(status_code=403, detail="无权查看全局待审核列表")
 
     query = db.query(ChangeRequest).filter(ChangeRequest.status == status)
@@ -442,6 +542,7 @@ async def list_all_change_requests(
         result.append({
             "id": cr.id,
             "artwork_id": cr.artwork_id,
+            "artwork_image_id": artwork.image_id if artwork else None,
             "artwork_title": artwork.title if artwork else None,
             "library_id": cr.library_id,
             "library_name": lib.name if lib else None,
@@ -453,6 +554,45 @@ async def list_all_change_requests(
             "submitter_id": cr.submitter_id,
             "submitter_name": submitter.nickname if submitter else None,
             "status": cr.status,
+            "created_at": cr.created_at.isoformat() if cr.created_at else None,
+            "reviewed_at": cr.reviewed_at.isoformat() if cr.reviewed_at else None,
+        })
+    return {"requests": result}
+
+
+@router.get("/requests/my")
+async def list_my_change_requests(
+    status: str = Query(None, description="筛选状态: pending/approved/rejected，不传则返回全部"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """获取当前用户的变更请求历史"""
+    query = db.query(ChangeRequest).filter(ChangeRequest.submitter_id == user.id)
+    if status:
+        query = query.filter(ChangeRequest.status == status)
+    query = query.order_by(ChangeRequest.created_at.desc()).limit(100)
+
+    result = []
+    for cr in query.all():
+        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+        lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
+        reviewer = db.query(User).filter(User.id == cr.reviewer_id).first() if cr.reviewer_id else None
+        result.append({
+            "id": cr.id,
+            "artwork_id": cr.artwork_id,
+            "artwork_image_id": artwork.image_id if artwork else None,
+            "artwork_title": artwork.title if artwork else None,
+            "library_id": cr.library_id,
+            "library_name": lib.name if lib else None,
+            "request_type": cr.request_type,
+            "field_name": cr.field_name,
+            "old_value": cr.old_value,
+            "new_value": cr.new_value,
+            "change_summary": cr.change_summary,
+            "submitter_id": cr.submitter_id,
+            "status": cr.status,
+            "review_comment": cr.review_comment,
+            "reviewer_name": reviewer.nickname if reviewer else None,
             "created_at": cr.created_at.isoformat() if cr.created_at else None,
             "reviewed_at": cr.reviewed_at.isoformat() if cr.reviewed_at else None,
         })
@@ -493,6 +633,7 @@ async def list_change_requests(
         result.append({
             "id": r.id,
             "artwork_id": r.artwork_id,
+            "artwork_image_id": artwork.image_id if artwork else None,
             "artwork_title": artwork.title if artwork else None,
             "request_type": r.request_type,
             "field_name": r.field_name,
@@ -541,17 +682,27 @@ async def submit_change_request(
     if not req.change_summary or not req.change_summary.strip():
         raise HTTPException(status_code=400, detail="请填写修改说明（change_summary）")
 
-    # 验证 artwork 存在且属于该库
-    artwork = db.query(TubiAnalysis).filter(
-        TubiAnalysis.id == req.artwork_id,
-        TubiAnalysis.library_id == library_id,
-    ).first()
+    # 验证 artwork 存在且属于该库（支持 image_id UUID 或 数字 id）
+    artwork = None
+    try:
+        int_id = int(req.artwork_id)
+        artwork = db.query(TubiAnalysis).filter(
+            TubiAnalysis.id == int_id,
+            TubiAnalysis.library_id == library_id,
+        ).first()
+    except (ValueError, TypeError):
+        pass
+    if not artwork and req.artwork_id:
+        artwork = db.query(TubiAnalysis).filter(
+            TubiAnalysis.image_id == str(req.artwork_id),
+            TubiAnalysis.library_id == library_id,
+        ).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在或不属于该库")
 
     cr = ChangeRequest(
         library_id=library_id,
-        artwork_id=req.artwork_id,
+        artwork_id=artwork.id,
         request_type=req.request_type,
         field_name=req.field_name,
         old_value=req.old_value,
@@ -613,7 +764,7 @@ async def review_change_request(
         can_review = True
     elif artwork and artwork.owner_id == user.id:
         can_review = True
-    elif user.role in ("admin", "super_admin"):
+    elif user.role in ("admin", "super_admin", "editor"):
         can_review = True
     if not can_review:
         raise HTTPException(status_code=403, detail="仅库主/maintainer/作品所有者/管理员可以审核变更请求")
@@ -631,6 +782,22 @@ async def review_change_request(
 
         # 自动应用变更到 artwork
         artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+
+        # 先创建版本快照（捕获修改前的状态），再执行数据修改
+        if artwork:
+            try:
+                create_revision(
+                    db=db,
+                    artwork_id=cr.artwork_id,
+                    operation_type="approve",
+                    change_summary=cr.change_summary or f"审核通过: {cr.field_name or cr.request_type}",
+                    approved_by=user.id,
+                    submitted_by=cr.submitter_id,
+                    change_request_id=cr.id,
+                )
+            except Exception as _rev_e:
+                logger.warning("创建版本快照失败（不影响审核）: %s", _rev_e)
+
         if artwork and cr.request_type in ("edit_field", "add_field"):
             if cr.field_name and cr.new_value is not None:
                 # 安全白名单：只允许更新特定字段
@@ -648,12 +815,12 @@ async def review_change_request(
                         try:
                             value = int(cr.new_value)
                         except (ValueError, TypeError):
-                            pass
+                            value = None
                     elif cr.field_name in ("artwork_width_cm", "artwork_height_cm"):
                         try:
                             value = float(cr.new_value)
                         except (ValueError, TypeError):
-                            pass
+                            value = None
                     setattr(artwork, cr.field_name, value)
                     db.commit()
                     logger.info(f"变更请求 {cr.id} 已批准: {cr.field_name} = {value}")
@@ -667,32 +834,35 @@ async def review_change_request(
             if cr.new_value is not None:
                 import json as _json
                 try:
-                    new_regions = _json.loads(cr.new_value) if isinstance(cr.new_value, str) else cr.new_value
-                    artwork.regions = new_regions
+                    raw_regions = _json.loads(cr.new_value) if isinstance(cr.new_value, str) else cr.new_value
+                    # 将 [{type,points}] 数组格式转为 {inscription_regions:[],painting_regions:[]} dict 格式
+                    inscription_list = []
+                    painting_list = []
+                    if isinstance(raw_regions, list):
+                        for r in raw_regions:
+                            region_type = r.get("type", "inscription")
+                            points = r.get("points", [])
+                            entry = {"type": "polygon", "points": [{"x": p["x"], "y": p["y"]} for p in points]}
+                            if region_type == "painting":
+                                painting_list.append(entry)
+                            else:
+                                inscription_list.append(entry)
+                    regions_dict = {
+                        "inscription_regions": inscription_list,
+                        "painting_regions": painting_list,
+                        "blank_regions": [],
+                        "_meta": {"user_edited": True}
+                    }
+                    artwork.regions = _json.dumps(regions_dict, ensure_ascii=False)
                     db.commit()
-                except Exception:
-                    logger.warning(f"变更请求 {cr.id}: adjust_region JSON 解析失败")
+                except Exception as e:
+                    logger.warning(f"变更请求 {cr.id}: adjust_region JSON 解析失败: {e}")
 
     else:
         cr.status = "rejected"
 
     db.commit()
     db.refresh(cr)
-
-    # 审核通过时创建版本快照
-    if req.action == "approve" and artwork:
-        try:
-            create_revision(
-                db=db,
-                artwork_id=cr.artwork_id,
-                operation_type="approve",
-                change_summary=cr.change_summary or f"审核通过: {cr.field_name or cr.request_type}",
-                approved_by=user.id,
-                submitted_by=cr.submitter_id,
-                change_request_id=cr.id,
-            )
-        except Exception as _rev_e:
-            logger.warning("创建版本快照失败（不影响审核）: %s", _rev_e)
 
     # 通知提交者
     try:
