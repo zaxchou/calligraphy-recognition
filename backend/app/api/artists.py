@@ -470,17 +470,24 @@ async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
 
         ai_data = _ai_generate_fields(artist_name, artist, baike_data)
         if ai_data:
+            json_array_cols = {"art_chronology", "anecdotes", "character_relations",
+                               "published_works", "references", "gallery_images",
+                               "bio_events", "masterpieces", "tags"}
             for k, v in ai_data.items():
                 if not v:
                     continue
                 if k in ("featured", "enabled", "view_count"):
                     continue
                 existing_val = artist[k]
+                is_empty = (
+                    existing_val is None or existing_val == "" or
+                    (k in json_array_cols and (existing_val == "[]" or existing_val == "null"))
+                )
                 if k in ("birth_year", "death_year"):
                     if existing_val is None and isinstance(v, (int, float)):
-                        if k not in updates or updates[k] is None:
+                        if k not in updates or updates.get(k) is None:
                             updates[k] = int(v)
-                elif not existing_val:
+                elif is_empty:
                     if k not in updates or not updates[k]:
                         updates[k] = v
 

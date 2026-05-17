@@ -208,20 +208,6 @@
             </div>
           </section>
 
-          <section v-if="masterpieces.length > 0" class="bk-card">
-            <h2 class="bk-card-title">代表作品</h2>
-            <div class="bk-masterpiece-grid">
-              <div v-for="item in masterpieces" :key="item.id || item.title" class="bk-masterpiece-item" @click="goToWork(item.id)">
-                <div class="bk-masterpiece-thumb">
-                  <img v-if="item.thumbnail_url || item.image_url" :src="item.thumbnail_url || item.image_url" :alt="item.title || '作品'" />
-                  <span v-else class="bk-thumb-placeholder">{{ (item.title || '?').charAt(0) }}</span>
-                </div>
-                <p class="bk-masterpiece-title">{{ item.title || item.work_name || '无题' }}</p>
-                <p v-if="item.year" class="bk-masterpiece-year">{{ item.year }}</p>
-              </div>
-            </div>
-          </section>
-
           <section v-if="publishedWorks.length > 0" class="bk-card">
             <h2 class="bk-card-title">出版著作</h2>
             <div class="bk-published-grid">
@@ -274,7 +260,6 @@ const loading = ref(true)
 const notFound = ref(false)
 const artist = ref(null)
 const stats = ref({})
-const masterpieces = ref([])
 const expandedAnecdote = ref(-1)
 
 const subNavTabs = [
@@ -421,26 +406,12 @@ async function fetchStats() {
   }
 }
 
-async function fetchMasterpieces() {
-  const name = artistName.value
-  if (!name) return
-  try {
-    const res = await fetch(`${API_BASE}/content-analysis/records?artist=${encodeURIComponent(name)}&limit=10`)
-    if (res.ok) {
-      const data = await res.json()
-      const records = data.records || data.results || data.data || []
-      masterpieces.value = records.slice(0, 6)
-    }
-  } catch (e) {
-    console.error('获取作品列表失败:', e)
-  }
-}
-
 onMounted(async () => {
   loading.value = true
   await fetchArtist()
   if (artist.value) {
-    await Promise.all([fetchStats(), fetchMasterpieces()])
+    document.title = `${artist.value.name} - 画家百科`
+    await fetchStats()
   }
   loading.value = false
 })
@@ -926,53 +897,10 @@ onMounted(async () => {
   padding-bottom: 16px;
 }
 
-.bk-masterpiece-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
-}
-.bk-masterpiece-item {
-  cursor: pointer;
-  transition: transform 0.2s;
-  text-align: center;
-}
-.bk-masterpiece-item:hover {
-  transform: translateY(-3px);
-}
-.bk-masterpiece-thumb {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f0ece4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-.bk-masterpiece-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 .bk-thumb-placeholder {
   font-family: 'Noto Serif SC', serif;
   font-size: 1.5rem;
   color: #a09b8e;
-}
-.bk-masterpiece-title {
-  font-size: 0.85rem;
-  color: #3a3222;
-  margin: 0 0 2px;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.bk-masterpiece-year {
-  font-size: 0.75rem;
-  color: #a09b8e;
-  margin: 0;
 }
 
 .bk-ref-list {
@@ -1044,10 +972,6 @@ onMounted(async () => {
   }
   .bk-relation-card {
     max-width: none;
-  }
-  .bk-masterpiece-grid {
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 12px;
   }
 }
 </style>
