@@ -40,7 +40,6 @@ class ArtistCreate(BaseModel):
     art_school: Optional[str] = ""
     masterpieces: Optional[str] = ""
     tags: Optional[str] = ""
-    baidu_url: Optional[str] = ""
     featured: Optional[int] = 0
     enabled: Optional[int] = 1
     banner_url: Optional[str] = ""
@@ -74,7 +73,6 @@ class ArtistUpdate(BaseModel):
     art_school: Optional[str] = None
     masterpieces: Optional[str] = None
     tags: Optional[str] = None
-    baidu_url: Optional[str] = None
     featured: Optional[int] = None
     enabled: Optional[int] = None
     banner_url: Optional[str] = None
@@ -243,16 +241,16 @@ async def create_artist(artist: ArtistCreate, editor=Depends(require_permission(
         now = datetime.now().isoformat()
         cursor = conn.execute(
             "INSERT INTO artists (name, alias, dynasty, hometown, avatar_url, birth_year, death_year, "
-            "biography, background, specialties, bio_events, art_school, masterpieces, tags, baidu_url, "
+            "biography, background, specialties, bio_events, art_school, masterpieces, tags, "
             "featured, enabled, banner_url, summary, nationality, occupation, main_achievements, "
             "representative_works_text, art_style, influence, historical_evaluation, character_relations, "
             "anecdotes, art_chronology, published_works, gallery_images, references, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
             "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (artist.name, artist.alias, artist.dynasty, artist.hometown, artist.avatar_url,
              artist.birth_year, artist.death_year, artist.biography, artist.background,
              artist.specialties, artist.bio_events, artist.art_school, artist.masterpieces,
-             artist.tags, artist.baidu_url, artist.featured, artist.enabled,
+             artist.tags, artist.featured, artist.enabled,
              artist.banner_url, artist.summary, artist.nationality, artist.occupation,
              artist.main_achievements, artist.representative_works_text, artist.art_style,
              artist.influence, artist.historical_evaluation, artist.character_relations,
@@ -280,7 +278,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
         updates = {}
         for field in ["name", "alias", "dynasty", "hometown", "avatar_url", "birth_year",
                        "death_year", "biography", "background", "specialties", "bio_events",
-                       "art_school", "masterpieces", "tags", "baidu_url", "featured", "enabled",
+                       "art_school", "masterpieces", "tags", "featured", "enabled",
                        "banner_url", "summary", "nationality", "occupation", "main_achievements",
                        "representative_works_text", "art_style", "influence", "historical_evaluation",
                        "character_relations", "anecdotes", "art_chronology", "published_works",
@@ -621,7 +619,6 @@ def _fetch_baike_data(artist_name: str) -> dict:
                             if parts: data["masterpieces"] = json.dumps(parts[:6], ensure_ascii=False)
                 if data.get("summary"):
                     data["biography"] = data["summary"]
-                data["baidu_url"] = url
                 data["source"] = "scrape"
                 return data
             except Exception:
@@ -638,7 +635,7 @@ def _merge_baike_updates(artist, baike_data: dict) -> dict:
         "birth_year": "birth_year", "death_year": "death_year",
         "alias": "alias", "hometown": "hometown", "dynasty": "dynasty",
         "biography": "biography", "avatar_url": "avatar_url",
-        "baidu_url": "baidu_url", "masterpieces": "masterpieces",
+        "masterpieces": "masterpieces",
         "specialties": "specialties", "art_school": "art_school",
         "summary": "summary", "occupation": "occupation",
         "main_achievements": "main_achievements", "art_style": "art_style",

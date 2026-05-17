@@ -37,7 +37,7 @@ async def submit_artist_change_request(
             safe_fields = [
                 "name", "alias", "dynasty", "hometown", "birth_year", "death_year",
                 "nationality", "occupation", "art_school", "specialties",
-                "avatar_url", "banner_url", "baidu_url", "featured",
+                "avatar_url", "banner_url", "featured",
                 "summary", "background", "biography",
                 "art_style", "main_achievements", "influence", "historical_evaluation",
                 "representative_works_text",

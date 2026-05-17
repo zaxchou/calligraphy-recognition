@@ -1,16 +1,20 @@
 <template>
-  <div class="artist-sub-page data-dashboard">
-    <div class="asp-hero">
-      <h2 class="asp-hero-title">
-        <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-back-link">{{ artistName }}</router-link>
-      </h2>
-    </div>
-    <nav class="asp-sub-nav">
-      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-nav-item">概览</router-link>
-      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="asp-nav-item">作品</router-link>
-      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="asp-nav-item">印章</router-link>
-      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="asp-nav-item">文献</router-link>
-      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="asp-nav-item active">分析</router-link>
+  <div class="av-page">
+    <header class="av-header">
+      <div class="av-header-inner">
+        <h1 class="av-name">
+          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
+          <span class="av-name-suffix">· 分析</span>
+        </h1>
+      </div>
+    </header>
+
+    <nav class="av-sub-nav">
+      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-nav-link">概览</router-link>
+      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="av-nav-link">作品</router-link>
+      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="av-nav-link">印章</router-link>
+      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="av-nav-link">文献</router-link>
+      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link active">分析</router-link>
     </nav>
 
     <div class="aa-header-actions">
@@ -527,15 +531,19 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.artist-sub-page { max-width: 1400px; margin: 0 auto; padding: 24px 20px 80px; min-height: 100vh; background: #fafaf8; }
-.asp-hero { margin-bottom: 8px; }
-.asp-hero-title { font-family: 'Noto Serif SC', serif; font-size: 22px; color: #3a3222; margin: 0; }
-.asp-back-link { color: #3a3222; text-decoration: none; }
-.asp-back-link:hover { color: #c45a3c; }
-.asp-sub-nav { display: flex; border-bottom: 1px solid #edeae1; margin-bottom: 16px; }
-.asp-nav-item { padding: 10px 20px; font-size: 14px; color: #8c7a5c; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.2s; }
-.asp-nav-item:hover { color: #c45a3c; }
-.asp-nav-item.active { color: #c45a3c; border-bottom-color: #c45a3c; font-weight: 500; }
+.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
+
+.av-header { padding: 32px 0 12px; }
+.av-header-inner { display: flex; align-items: baseline; }
+.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
+.av-name-link { color: #2c2416; text-decoration: none; }
+.av-name-link:hover { color: #c45a3c; }
+.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
+
+.av-sub-nav { display: flex; gap: 4px; padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid #e8e3da; overflow-x: auto; }
+.av-nav-link { padding: 8px 18px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
+.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
+.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
 .aa-header-actions { display: flex; justify-content: flex-end; margin-bottom: 20px; }
 .aa-header-actions .el-select { width: 140px; }
 

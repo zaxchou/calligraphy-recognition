@@ -1,19 +1,26 @@
 <template>
-  <div class="artist-sub-page">
-    <div class="asp-header">
-      <h2><router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-back-link">{{ artistName }}</router-link> 的文献</h2>
-    </div>
-    <div class="asp-sub-nav">
-      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-nav-item">概览</router-link>
-      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="asp-nav-item">作品</router-link>
-      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="asp-nav-item">印章</router-link>
-      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="asp-nav-item active">文献</router-link>
-      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="asp-nav-item">分析</router-link>
-    </div>
-    <div v-if="loading" class="asp-loading">搜索相关文献...</div>
-    <div v-else-if="literature.length === 0" class="asp-empty">
+  <div class="av-page">
+    <header class="av-header">
+      <div class="av-header-inner">
+        <h1 class="av-name">
+          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
+          <span class="av-name-suffix">· 文献</span>
+        </h1>
+      </div>
+    </header>
+
+    <nav class="av-sub-nav">
+      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-nav-link">概览</router-link>
+      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="av-nav-link">作品</router-link>
+      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="av-nav-link">印章</router-link>
+      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="av-nav-link active">文献</router-link>
+      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link">分析</router-link>
+    </nav>
+
+    <div v-if="loading" class="av-loading">搜索相关文献...</div>
+    <div v-else-if="literature.length === 0" class="av-empty">
       <p>暂无关联文献</p>
-      <p class="asp-empty-hint">文献著录功能开发中，敬请期待</p>
+      <p class="av-empty-hint">文献著录功能开发中，敬请期待</p>
     </div>
     <div v-else class="al-grid">
       <div v-for="doc in literature" :key="doc.id" class="al-card">
@@ -53,20 +60,30 @@ onMounted(fetchLiterature)
 </script>
 
 <style scoped>
-.artist-sub-page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; min-height: 100vh; background: #fafaf8; }
-.asp-header h2 { font-family: 'Noto Serif SC', serif; font-size: 22px; color: #3a3222; margin: 0 0 16px; }
-.asp-back-link { color: #3a3222; text-decoration: none; }
-.asp-sub-nav { display: flex; gap: 0; border-bottom: 1px solid #edeae1; margin-bottom: 24px; }
-.asp-nav-item { padding: 10px 20px; font-size: 14px; color: #8c7a5c; text-decoration: none; border-bottom: 2px solid transparent; }
-.asp-nav-item:hover { color: #c45a3c; }
-.asp-nav-item.active { color: #c45a3c; border-bottom-color: #c45a3c; font-weight: 500; }
-.asp-loading, .asp-empty { text-align: center; padding: 60px 0; color: #b0a890; font-size: 15px; }
-.asp-empty-hint { font-size: 13px; color: #ccc; margin-top: 8px; }
-.al-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-.al-card { display: flex; gap: 14px; background: #fff; border: 1px solid #edeae1; border-radius: 8px; padding: 16px; }
+.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
+.av-loading, .av-empty { text-align: center; padding: 80px 0; color: #8a8578; font-size: 15px; }
+.av-empty-hint { font-size: 13px; color: #c0b8a8; margin-top: 8px; }
+
+.av-header { padding: 32px 0 12px; }
+.av-header-inner { display: flex; align-items: baseline; }
+.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
+.av-name-link { color: #2c2416; text-decoration: none; }
+.av-name-link:hover { color: #c45a3c; }
+.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
+
+.av-sub-nav { display: flex; gap: 4px; padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid #e8e3da; overflow-x: auto; }
+.av-nav-link { padding: 8px 18px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
+.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
+.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
+
+.al-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.al-card { display: flex; gap: 14px; background: #fff; border: 1px solid #e8e3da; border-radius: 10px; padding: 18px; transition: all 0.2s; }
+.al-card:hover { border-color: #d0b898; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
 .al-card-icon { font-size: 28px; flex-shrink: 0; }
 .al-card-info { min-width: 0; }
-.al-card-title { font-size: 14px; font-weight: 500; color: #3a3222; margin-bottom: 4px; }
+.al-card-title { font-size: 14px; font-weight: 600; color: #2c2416; margin-bottom: 6px; font-family: 'Noto Serif SC', serif; }
 .al-card-author { font-size: 12px; color: #8a8578; }
 .al-card-source { font-size: 12px; color: #b0a890; margin-top: 2px; }
+
+@media (max-width: 768px) { .av-page { padding: 0 16px 80px; } }
 </style>

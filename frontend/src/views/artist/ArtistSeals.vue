@@ -1,17 +1,24 @@
 <template>
-  <div class="artist-sub-page">
-    <div class="asp-header">
-      <h2><router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-back-link">{{ artistName }}</router-link> 的印章</h2>
-    </div>
-    <div class="asp-sub-nav">
-      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="asp-nav-item">概览</router-link>
-      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="asp-nav-item">作品</router-link>
-      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="asp-nav-item active">印章</router-link>
-      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="asp-nav-item">文献</router-link>
-      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="asp-nav-item">分析</router-link>
-    </div>
-    <div v-if="loading" class="asp-loading">加载中...</div>
-    <div v-else-if="seals.length === 0" class="asp-empty">暂无印章数据</div>
+  <div class="av-page">
+    <header class="av-header">
+      <div class="av-header-inner">
+        <h1 class="av-name">
+          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
+          <span class="av-name-suffix">· 印章</span>
+        </h1>
+      </div>
+    </header>
+
+    <nav class="av-sub-nav">
+      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-nav-link">概览</router-link>
+      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="av-nav-link">作品</router-link>
+      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="av-nav-link active">印章</router-link>
+      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="av-nav-link">文献</router-link>
+      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link">分析</router-link>
+    </nav>
+
+    <div v-if="loading" class="av-loading">加载中...</div>
+    <div v-else-if="seals.length === 0" class="av-empty">暂无印章数据</div>
     <div v-else class="as-grid">
       <div v-for="s in seals" :key="s.id" class="as-card">
         <div v-if="s.images && s.images.length > 0" class="as-image-wrap">
@@ -33,37 +40,56 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
 const artistName = route.params.name
-const seals = ref([])
 const loading = ref(true)
+const seals = ref([])
 
 async function fetchSeals() {
   try {
-    const res = await fetch(`${API_BASE}/seals?artist=${encodeURIComponent(artistName)}&limit=100`)
-    const data = await res.json()
-    seals.value = data.seals || data.records || data.results || data.data || []
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+    const res = await fetch(`${API_BASE}/seals?artist=${encodeURIComponent(artistName)}`)
+    if (res.ok) {
+      const data = await res.json()
+      seals.value = data.seals || data.items || []
+    }
+  } catch (e) {
+    console.error('获取印章失败:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(fetchSeals)
+onMounted(() => fetchSeals())
 </script>
 
 <style scoped>
-.artist-sub-page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; min-height: 100vh; background: #fafaf8; }
-.asp-header h2 { font-family: 'Noto Serif SC', serif; font-size: 22px; color: #3a3222; margin: 0 0 16px; }
-.asp-back-link { color: #3a3222; text-decoration: none; }
-.asp-back-link:hover { color: #c45a3c; }
-.asp-sub-nav { display: flex; gap: 0; border-bottom: 1px solid #edeae1; margin-bottom: 24px; }
-.asp-nav-item { padding: 10px 20px; font-size: 14px; color: #8c7a5c; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.2s; }
-.asp-nav-item:hover { color: #c45a3c; }
-.asp-nav-item.active { color: #c45a3c; border-bottom-color: #c45a3c; font-weight: 500; }
-.asp-loading, .asp-empty { text-align: center; padding: 60px 0; color: #b0a890; font-size: 15px; }
+.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
+.av-loading, .av-empty { text-align: center; padding: 80px 0; color: #8a8578; font-size: 15px; }
+
+.av-header { padding: 32px 0 12px; }
+.av-header-inner { display: flex; align-items: baseline; }
+.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
+.av-name-link { color: #2c2416; text-decoration: none; }
+.av-name-link:hover { color: #c45a3c; }
+.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
+
+.av-sub-nav { display: flex; gap: 4px; padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid #e8e3da; overflow-x: auto; }
+.av-nav-link { padding: 8px 18px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
+.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
+.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
+
 .as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-.as-card { background: #fff; border: 1px solid #edeae1; border-radius: 8px; padding: 16px; text-align: center; }
-.as-image-wrap { display: flex; gap: 4px; justify-content: center; margin-bottom: 12px; }
-.as-image { width: 60px; height: 60px; object-fit: contain; border: 1px solid #edeae1; border-radius: 4px; }
-.as-image-placeholder { width: 80px; height: 80px; margin: 0 auto 12px; background: #f5f3ed; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #c45a3c; font-family: 'Noto Serif SC', serif; }
-.as-name { font-size: 15px; color: #3a3222; font-weight: 500; }
-.as-type { font-size: 12px; color: #b0a890; margin-top: 4px; }
+.as-card { background: #fff; border: 1px solid #e8e3da; border-radius: 10px; overflow: hidden; transition: all 0.2s; }
+.as-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.as-image-wrap { width: 100%; aspect-ratio: 1; background: #f5f0e8; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+.as-image { width: 100%; height: 100%; object-fit: contain; padding: 16px; box-sizing: border-box; }
+.as-image-placeholder { width: 100%; aspect-ratio: 1; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-size: 48px; color: #c45a3c; }
+.as-info { padding: 12px 14px; text-align: center; }
+.as-name { font-size: 14px; font-weight: 600; color: #2c2416; margin-bottom: 4px; font-family: 'Noto Serif SC', serif; }
+.as-type { font-size: 12px; color: #8a8578; }
+
+@media (max-width: 768px) {
+  .av-page { padding: 0 16px 80px; }
+  .as-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+}
 </style>

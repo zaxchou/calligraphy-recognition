@@ -12,7 +12,7 @@
       <header class="av-header">
         <div class="av-header-inner">
           <div class="av-header-avatar">
-            <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="160" shape="square" class="av-avatar-img" />
+            <img v-if="artist.avatar_url" :src="artist.avatar_url" class="av-avatar-img" alt="" />
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
           </div>
           <div class="av-header-info">
@@ -28,7 +28,6 @@
             <p v-if="artist.summary" class="av-summary">{{ artist.summary }}</p>
           </div>
           <div class="av-header-actions">
-            <a v-if="artist.baidu_url" :href="artist.baidu_url" target="_blank" class="av-baike-link"><el-button size="small" plain>百度百科 &#8599;</el-button></a>
             <el-button size="small" plain @click="openSuggestEdit">我的修改</el-button>
           </div>
         </div>
@@ -512,14 +511,17 @@ watch(tocItems, (items) => {
   padding: 0 48px;
 }
 .av-header-avatar { flex-shrink: 0; margin-top: 0; }
-.av-avatar-img { border: 3px solid rgba(255,255,255,0.3); box-shadow: 0 6px 30px rgba(0,0,0,0.25); border-radius: 10px; }
+.av-avatar-img {
+  width: 300px; height: 300px; border-radius: 16px;
+  object-fit: cover; display: block;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.25);
+}
 .av-avatar-text {
   display: flex; align-items: center; justify-content: center;
-  width: 160px; height: 160px; border-radius: 10px;
+  width: 300px; height: 300px; border-radius: 16px;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 64px; font-weight: 500;
-  border: 3px solid rgba(255,255,255,0.3);
+  font-size: 96px; font-weight: 500;
   box-shadow: 0 6px 30px rgba(0,0,0,0.25);
 }
 .av-header-info { flex: 1; min-width: 0; }
@@ -547,7 +549,6 @@ watch(tocItems, (items) => {
   flex-shrink: 0; display: flex; flex-direction: column;
   align-items: flex-end; gap: 10px; padding-top: 4px;
 }
-.av-baike-link { text-decoration: none; }
 
 .av-suggest-old {
   max-height: 160px; overflow-y: auto; font-size: 13px;
@@ -669,7 +670,7 @@ watch(tocItems, (items) => {
 @media (max-width: 1024px) { .av-toc { display: none; } }
 @media (max-width: 768px) {
   .av-page { padding: 0 16px 80px; }
-  .av-header { padding: 32px 0 28px; }
+  .av-header { padding: 40px 0 36px; }
   .av-header-inner { flex-direction: column; gap: 16px; padding: 0 20px; }
   .av-header-actions { flex-direction: row; align-items: center; }
   .av-name { font-size: 26px; }

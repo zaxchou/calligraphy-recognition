@@ -97,7 +97,7 @@
             </div>
             <div class="ae-grid ae-grid-2">
               <div class="ae-field">
-                <label class="ae-label">头像 <span class="ae-hint-dim">(建议 200×200px)</span></label>
+                <label class="ae-label">头像 <span class="ae-hint-dim">(建议 300×300px)</span></label>
                 <div class="ae-upload-row">
                   <el-input v-model="form.avatar_url" placeholder="https://..." />
                   <el-upload :show-file-list="false" :before-upload="(f) => uploadFile(f)" accept="image/*" style="flex-shrink:0">
@@ -105,13 +105,9 @@
                   </el-upload>
                 </div>
                 <div style="margin-top:8px">
-                  <el-avatar v-if="form.avatar_url" :src="form.avatar_url" :size="64" shape="square" />
-                  <el-avatar v-else :size="64" shape="square" style="background:#c45a3c;font-size:24px">{{ form.name?.charAt(0) || '?' }}</el-avatar>
+                  <img v-if="form.avatar_url" :src="form.avatar_url" style="width:80px;height:80px;border-radius:8px;object-fit:cover;display:block" />
+                  <el-avatar v-else :size="80" shape="square" style="background:#c45a3c;font-size:32px;border-radius:8px">{{ form.name?.charAt(0) || '?' }}</el-avatar>
                 </div>
-              </div>
-              <div class="ae-field">
-                <label class="ae-label">百度百科链接</label>
-                <el-input v-model="form.baidu_url" placeholder="https://baike.baidu.com/item/..." />
               </div>
             </div>
           </div>
@@ -373,7 +369,7 @@ const searchResults = ref([])
 const form = reactive({
   name: '', alias: '', dynasty: '', hometown: '', birth_year: null, death_year: null,
   nationality: '', occupation: '', art_school: '', specialties: '',
-  summary: '', background: '', avatar_url: '', baidu_url: '',
+  summary: '', background: '', avatar_url: '',
   biography: '', art_chronology: [],
   art_style: '', main_achievements: '', influence: '', historical_evaluation: '',
   character_relations: [], anecdotes: [],
