@@ -17,9 +17,10 @@ from pydantic import BaseModel
 from app.core.database import get_db_connection
 from app.core.auth import require_admin_role, require_editor, require_permission
 from app.core.path_utils import get_static_url
-from app.core.config import settings
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/artists", tags=["artists"])
+settings = get_settings()
 
 
 # ============ 数据模型 ============

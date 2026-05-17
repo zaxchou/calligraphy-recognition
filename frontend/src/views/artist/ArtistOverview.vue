@@ -9,7 +9,7 @@
     </div>
 
     <template v-else-if="artist">
-      <header class="av-header" :style="headerStyle">
+      <header class="av-header">
         <div class="av-header-inner">
           <div class="av-header-avatar">
             <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="120" shape="square" class="av-avatar-img" />
@@ -236,18 +236,6 @@ const galleryImages = computed(() => {
   return parseJsonField(artist.value.gallery_images)
 })
 
-const headerStyle = computed(() => {
-  const img = galleryImages.value[0]
-  if (img?.url) {
-    return {
-      backgroundImage: `linear-gradient(135deg, rgba(44,36,22,0.88) 0%, rgba(44,36,22,0.55) 40%, rgba(44,36,22,0.35) 100%), url(${img.url})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }
-  }
-  return {}
-})
-
 const tags = computed(() => {
   if (!artist.value?.tags) return []
   return parseJsonField(artist.value.tags)
@@ -404,23 +392,13 @@ watch(tocItems, (items) => {
   margin-bottom: 0;
   border-radius: 12px;
   overflow: hidden;
-}
-.av-header:not([style*="backgroundImage"]) {
   background: linear-gradient(135deg, #3a3222 0%, #6b5b4a 35%, #8a7a6a 70%);
 }
-.av-header:not([style*="backgroundImage"]) .av-name { color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-.av-header:not([style*="backgroundImage"]) .av-alias { color: rgba(255,255,255,0.75); }
-.av-header:not([style*="backgroundImage"]) .av-summary { color: rgba(255,255,255,0.8); }
-.av-header:not([style*="backgroundImage"]) .av-meta-item { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); }
-.av-header:not([style*="backgroundImage"]) .av-meta-school { background: rgba(196,90,60,0.45); color: #fff; }
-.av-header[style*="backgroundImage"] {
-  color: #fff;
-}
-.av-header[style*="backgroundImage"] .av-name { color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.35); }
-.av-header[style*="backgroundImage"] .av-alias { color: rgba(255,255,255,0.8); }
-.av-header[style*="backgroundImage"] .av-summary { color: rgba(255,255,255,0.85); }
-.av-header[style*="backgroundImage"] .av-meta-item { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
-.av-header[style*="backgroundImage"] .av-meta-school { background: rgba(196,90,60,0.5); color: #fff; }
+.av-header .av-name { color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+.av-header .av-alias { color: rgba(255,255,255,0.75); }
+.av-header .av-summary { color: rgba(255,255,255,0.8); }
+.av-header .av-meta-item { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); }
+.av-header .av-meta-school { background: rgba(196,90,60,0.45); color: #fff; }
 .av-header-inner {
   position: relative; z-index: 1;
   display: flex; gap: 28px; align-items: flex-start;
