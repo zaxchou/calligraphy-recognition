@@ -594,8 +594,7 @@
       <!-- 作品库管理 -->
       <el-tab-pane label="作品库管理" name="libraries">
         <div class="tab-content full-tab-content">
-          <LibraryManage v-if="adminSelectedLibraryId" :key="adminSelectedLibraryId" :library-id="adminSelectedLibraryId" />
-          <el-empty v-else description="请先在左侧选择作品库" />
+          <LibraryManage />
         </div>
       </el-tab-pane>
     </el-tabs>
