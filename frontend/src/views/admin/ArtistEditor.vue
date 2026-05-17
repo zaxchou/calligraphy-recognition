@@ -125,7 +125,7 @@
                 </div>
                 <div v-if="form.photos.length > 0" class="ae-photo-grid">
                   <div v-for="(p, i) in form.photos" :key="i" class="ae-photo-item">
-                    <img :src="p" class="ae-photo-img" />
+                    <img :src="photoThumb(p)" class="ae-photo-img" />
                     <el-button size="small" type="danger" circle :icon="Delete" @click="removePhoto(i)" class="ae-photo-del" />
                   </div>
                 </div>
@@ -469,7 +469,7 @@ async function uploadPhoto(file) {
     if (res.ok) {
       const data = await res.json()
       if (data.success && data.url) {
-        form.photos.push(data.url)
+        form.photos.push({ url: data.url, thumb_url: data.thumb_url || data.url })
         ElMessage.success('照片已上传')
       } else {
         ElMessage.error(data.detail || '上传失败')
@@ -485,6 +485,16 @@ async function uploadPhoto(file) {
 
 function removePhoto(idx) {
   form.photos.splice(idx, 1)
+}
+
+function photoThumb(p) {
+  if (typeof p === 'string') return p
+  return p.thumb_url || p.url || ''
+}
+
+function normalizePhoto(p) {
+  if (typeof p === 'string') return { url: p, thumb_url: p }
+  return p
 }
 
 async function searchArtworks() {
@@ -529,6 +539,7 @@ async function fetchArtist() {
         for (const key of Object.keys(form)) {
           if (JSON_ARRAYS.includes(key)) {
             try { form[key] = typeof a[key] === 'string' ? JSON.parse(a[key] || '[]') : (Array.isArray(a[key]) ? a[key] : []) } catch { form[key] = [] }
+            if (key === 'photos') form[key] = form[key].map(normalizePhoto)
           } else if (key === 'birth_year' || key === 'death_year') {
             form[key] = a[key] || null
           } else if (key === 'featured' || key === 'enabled') {

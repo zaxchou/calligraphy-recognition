@@ -42,8 +42,9 @@
       <div class="al-featured-scroll">
         <div v-for="artist in featuredArtists" :key="artist.id" class="al-featured-card"
           @click="goToArtist(artist.name)">
-          <div class="al-featured-avatar" :style="{ backgroundImage: artist.avatar_url ? `url(${artist.avatar_url})` : '' }">
-            <span v-if="!artist.avatar_url">{{ artist.name.charAt(0) }}</span>
+          <div class="al-featured-avatar">
+            <img v-if="artist.avatar_url" :src="artist.avatar_url" class="al-featured-avatar-img" referrerpolicy="no-referrer" />
+            <span v-else>{{ artist.name.charAt(0) }}</span>
           </div>
           <div class="al-featured-name">{{ artist.name }}</div>
           <div class="al-featured-meta">{{ artist.dynasty }} · {{ artist.artwork_count || 0 }}件</div>
@@ -67,8 +68,9 @@
         class="al-table" empty-text="没有符合条件的艺术家">
         <el-table-column label="" width="56">
           <template #default="{ row }">
-            <div class="at-avatar" :style="{ backgroundImage: row.avatar_url ? `url(${row.avatar_url})` : '' }">
-              <span v-if="!row.avatar_url">{{ row.name.charAt(0) }}</span>
+            <div class="at-avatar">
+              <img v-if="row.avatar_url" :src="row.avatar_url" class="at-avatar-img" referrerpolicy="no-referrer" />
+              <span v-else>{{ row.name.charAt(0) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -333,15 +335,17 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  overflow: hidden;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
-  background-size: cover;
-  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 0.85rem;
+}
+.at-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 
 .al-loading {
@@ -422,9 +426,8 @@ onUnmounted(() => {
   height: 50px;
   margin: 0 auto 10px;
   border-radius: 50%;
+  overflow: hidden;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
-  background-size: cover;
-  background-position: center;
   color: #fff;
   display: flex;
   align-items: center;
@@ -432,6 +435,9 @@ onUnmounted(() => {
   font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
   font-size: 1.1rem;
   font-weight: 500;
+}
+.al-featured-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 
 .al-featured-name {

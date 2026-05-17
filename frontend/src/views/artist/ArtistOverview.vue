@@ -14,14 +14,20 @@
           <div class="av-header-avatar">
             <img v-if="artist.avatar_url && !avatarError" :src="artist.avatar_url" class="av-avatar-img" alt="" @error="avatarError = true" />
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
-            <div v-if="artistPhotos.length > 0" class="av-photo-row">
-              <img
-                v-for="(p, i) in artistPhotos"
-                :key="i"
-                :src="p"
-                class="av-photo-thumb"
-                @click.stop="openPhotoZoom(i)"
-              />
+            <div v-if="artistPhotos.length > 0" class="av-photo-strip">
+              <button v-if="photoScroll > 0" class="av-photo-arrow av-photo-arrow-left" @click.stop="photoScroll = Math.max(0, photoScroll - 1)">&#8249;</button>
+              <div class="av-photo-track" ref="photoTrackRef">
+                <img
+                  v-for="(p, i) in artistPhotos"
+                  :key="i"
+                  :src="photoThumbUrl(p)"
+                  class="av-photo-thumb"
+                  :class="{ 'av-photo-active': photoZoomIdx === i }"
+                  :style="{ transform: `translateX(${-photoScroll * 36}px)` }"
+                  @click.stop="openPhotoZoom(i)"
+                />
+              </div>
+              <button v-if="photoScroll < artistPhotos.length - 4" class="av-photo-arrow av-photo-arrow-right" @click.stop="photoScroll = Math.min(artistPhotos.length - 4, photoScroll + 1)">&#8250;</button>
             </div>
           </div>
           <div class="av-header-info">
@@ -197,7 +203,7 @@
 
   <el-dialog v-model="photoZoomVisible" title="本人照片" width="720px" align-center @closed="photoZoomIdx = -1">
     <div style="text-align:center">
-      <img v-if="photoZoomIdx >= 0 && artistPhotos[photoZoomIdx]" :src="artistPhotos[photoZoomIdx]" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px" />
+      <img v-if="photoZoomIdx >= 0 && artistPhotos[photoZoomIdx]" :src="photoFullUrl(artistPhotos[photoZoomIdx])" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px" />
       <div v-if="artistPhotos.length > 1" class="av-zoom-nav">
         <el-button size="small" :disabled="photoZoomIdx <= 0" @click="photoZoomIdx--">上一张</el-button>
         <span>{{ photoZoomIdx + 1 }} / {{ artistPhotos.length }}</span>
@@ -230,10 +236,21 @@ const showBackTop = ref(false)
 const avatarError = ref(false)
 const photoZoomVisible = ref(false)
 const photoZoomIdx = ref(-1)
+const photoScroll = ref(0)
 
 function openPhotoZoom(idx) {
   photoZoomIdx.value = idx
   photoZoomVisible.value = true
+}
+
+function photoThumbUrl(p) {
+  if (typeof p === 'string') return p
+  return p.thumb_url || p.url || ''
+}
+
+function photoFullUrl(p) {
+  if (typeof p === 'string') return p
+  return p.url || ''
 }
 
 const suggestFields = [
@@ -563,29 +580,41 @@ watch(tocItems, (items) => {
 }
 .av-header-avatar { flex-shrink: 0; margin-top: 0; display: flex; flex-direction: column; align-items: center; gap: 0; }
 .av-avatar-img {
-  width: 180px; height: 180px; border-radius: 12px;
+  width: 150px; height: 150px; border-radius: 12px;
   object-fit: cover; display: block;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
 .av-avatar-text {
   display: flex; align-items: center; justify-content: center;
-  width: 180px; height: 180px; border-radius: 12px;
+  width: 150px; height: 150px; border-radius: 12px;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
   color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 66px; font-weight: 500;
+  font-size: 56px; font-weight: 500;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
 }
-.av-photo-row {
-  display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
-  margin-top: 10px; max-width: 180px;
+.av-photo-strip {
+  display: flex; align-items: center; gap: 0;
+  margin-top: 10px; width: 150px; position: relative;
+}
+.av-photo-track {
+  flex: 1; overflow: hidden; display: flex; gap: 4px;
+  width: 140px; min-width: 0;
 }
 .av-photo-thumb {
-  width: 56px; height: 56px; border-radius: 6px;
-  object-fit: cover; cursor: pointer;
+  width: 32px; height: 32px; flex-shrink: 0;
+  border-radius: 4px; object-fit: cover; cursor: pointer;
   border: 2px solid rgba(255,255,255,0.3);
-  transition: border-color .15s, transform .15s;
+  transition: border-color .15s, transform .3s;
 }
-.av-photo-thumb:hover { border-color: rgba(255,255,255,0.8); transform: scale(1.08); }
+.av-photo-thumb:hover, .av-photo-active { border-color: rgba(255,255,255,0.9); }
+.av-photo-arrow {
+  width: 18px; height: 32px; flex-shrink: 0;
+  border: none; background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; transition: background .15s;
+}
+.av-photo-arrow:hover { background: rgba(255,255,255,0.25); color: #fff; }
 .av-zoom-nav { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #5c5040; }
 .av-header-info { flex: 1; min-width: 0; }
 .av-name {

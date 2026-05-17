@@ -272,6 +272,10 @@ async def upload_artist_photo(
 
     file_id = str(uuid.uuid4())
     ext = os.path.splitext(file.filename)[1] if file.filename and "." in file.filename else ".jpg"
+    ext = ext.lower()
+    if ext == ".jpeg":
+        ext = ".jpg"
+
     filename = f"photo_{file_id}{ext}"
     upload_dir = settings.UPLOAD_DIR
     os.makedirs(upload_dir, exist_ok=True)
@@ -285,7 +289,21 @@ async def upload_artist_photo(
     await file.close()
 
     url = get_static_url(f"uploads/{filename}")
-    return {"success": True, "url": url}
+
+    thumb_url = url
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(filepath)
+        img.thumbnail((200, 200), Image.LANCZOS)
+        thumb_name = f"photo_{file_id}_thumb.jpg"
+        thumb_path = os.path.join(upload_dir, thumb_name)
+        img.save(thumb_path, "JPEG", quality=75)
+        thumb_url = get_static_url(f"uploads/{thumb_name}")
+    except Exception:
+        pass
+
+    return {"success": True, "url": url, "thumb_url": thumb_url}
 
 
 @router.get("/{artist_id}")

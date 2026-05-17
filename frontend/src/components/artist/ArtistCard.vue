@@ -1,7 +1,8 @@
 <template>
   <div class="artist-card" @click="$emit('click')">
-    <div class="ac-avatar" :style="{ backgroundImage: avatarUrl }">
-      <span v-if="!avatarUrl" class="ac-avatar-text">{{ artist.name.charAt(0) }}</span>
+    <div class="ac-avatar">
+      <img v-if="artist.avatar_url" :src="artist.avatar_url" class="ac-avatar-img" referrerpolicy="no-referrer" />
+      <span v-else class="ac-avatar-text">{{ artist.name.charAt(0) }}</span>
     </div>
     <div class="ac-info">
       <div class="ac-name">{{ artist.name }}</div>
@@ -19,20 +20,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
 const props = defineProps({
   artist: { type: Object, required: true },
 })
 
 defineEmits(['click'])
-
-const avatarUrl = computed(() => {
-  if (props.artist.avatar_url) {
-    return `url(${props.artist.avatar_url})`
-  }
-  return ''
-})
 </script>
 
 <style scoped>
@@ -66,12 +58,14 @@ const avatarUrl = computed(() => {
   height: 52px;
   flex-shrink: 0;
   border-radius: 50%;
+  overflow: hidden;
   background: linear-gradient(135deg, #c45a3c, #dbbca8);
-  background-size: cover;
-  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.ac-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 
 .ac-avatar-text {
