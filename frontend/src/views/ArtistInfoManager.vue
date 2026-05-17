@@ -2,8 +2,8 @@
   <div class="artist-info-manager">
     <div class="toolbar">
       <div class="toolbar-left">
-        <el-input v-model="searchQuery" placeholder="搜索画家姓名..." clearable size="small" style="width:200px" />
-        <el-select v-model="dynastyFilter" placeholder="筛选朝代" clearable size="small" style="width:130px">
+        <el-input v-model="searchQuery" placeholder="搜索画家姓名..." clearable size="small" style="width:200px" @input="onSearchInput" @clear="onSearchInput" />
+        <el-select v-model="dynastyFilter" placeholder="筛选朝代" clearable size="small" style="width:130px" @change="onDynastyChange">
           <el-option v-for="p in periods" :key="p" :label="p" :value="p" />
         </el-select>
       </div>
@@ -11,7 +11,7 @@
     </div>
 
     <div v-loading="loading" class="artist-list">
-      <div v-for="artist in filteredArtists" :key="artist.id" class="artist-card">
+      <div v-for="artist in artists" :key="artist.id" class="artist-card">
         <div class="artist-row">
           <div class="artist-main">
             <el-avatar v-if="artist.avatar_url" :src="artist.avatar_url" :size="36" shape="square" />
@@ -38,11 +38,16 @@
       <div v-if="!loading && artists.length === 0" class="empty-state"><el-empty description="暂无画家数据" /></div>
     </div>
 
+    <div v-if="totalArtists > pageSize" class="pagination-bar">
+      <el-pagination background layout="total, prev, pager, next" :total="totalArtists"
+        :page-size="pageSize" :current-page="currentPage" @current-change="onPageChange" />
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -62,19 +67,10 @@ const loading = ref(false)
 const searchQuery = ref('')
 const dynastyFilter = ref('')
 const periods = ref([])
-
-const filteredArtists = computed(() => {
-  let list = artists.value.slice()
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) list = list.filter(a => a.name.toLowerCase().includes(q))
-  if (dynastyFilter.value) list = list.filter(a => a.dynasty === dynastyFilter.value)
-  list.sort((a, b) => {
-    if (a.enabled && !b.enabled) return -1
-    if (!a.enabled && b.enabled) return 1
-    return a.id - b.id
-  })
-  return list
-})
+const currentPage = ref(1)
+const totalArtists = ref(0)
+const pageSize = 20
+let searchTimer = null
 
 function parseJsonArray(val) {
   if (!val) return []
@@ -83,11 +79,16 @@ function parseJsonArray(val) {
   catch { return [] }
 }
 
-async function loadArtists() {
+async function loadArtists(pageOverride = null) {
   loading.value = true
   try {
-    const data = await api.get('/artists', { params: { page_size: 200 } })
-    const raw = data.artists || data || []
+    const page = pageOverride || currentPage.value
+    const params = { page, page_size: pageSize }
+    if (searchQuery.value.trim()) params.keyword = searchQuery.value.trim()
+    if (dynastyFilter.value) params.dynasty = dynastyFilter.value
+    const data = await api.get('/artists', { params })
+    totalArtists.value = data.total || 0
+    const raw = data.artists || []
     artists.value = raw.map(a => ({
       ...a,
       bio_events: parseJsonArray(a.bio_events),
@@ -117,6 +118,21 @@ function openCreate() {
   router.push('/admin/artist/new/edit')
 }
 
+function onSearchInput() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { currentPage.value = 1; loadArtists(1) }, 300)
+}
+
+function onDynastyChange() {
+  currentPage.value = 1
+  loadArtists(1)
+}
+
+function onPageChange(page) {
+  currentPage.value = page
+  loadArtists(page)
+}
+
 function openEdit(artist) {
   router.push(`/admin/artist/${encodeURIComponent(artist.name)}/edit`)
 }
@@ -127,7 +143,7 @@ async function handleDelete(artist) {
     const data = await api.delete(`/artists/${artist.id}`)
     if (data.success) {
       ElMessage.success('画家已删除')
-      await loadArtists()
+      await loadArtists(currentPage.value)
     } else { ElMessage.error(data.detail || '删除失败') }
   } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败: ' + e.message) }
 }
@@ -137,7 +153,7 @@ async function toggleEnabled(artist) {
     const data = await api.put(`/artists/${artist.id}`, { enabled: artist.enabled ? 0 : 1 })
     if (data.success) {
       ElMessage.success(artist.enabled ? '画家已禁用' : '画家已启用')
-      await loadArtists()
+      await loadArtists(currentPage.value)
     }
   } catch (e) { ElMessage.error('操作失败: ' + e.message) }
 }
@@ -147,7 +163,7 @@ async function handleAiFill(artist) {
     const data = await api.post(`/artists/${artist.id}/ai-fill`)
     if (data.success) {
       ElMessage.success(data.message || 'AI查询完成')
-      await loadArtists()
+      await loadArtists(currentPage.value)
     } else { ElMessage.error(data.detail || data.message || 'AI查询失败') }
   } catch (e) { ElMessage.error('AI查询失败: ' + e.message) }
 }
@@ -168,6 +184,7 @@ onMounted(() => { loadArtists(); loadPeriods() })
 .artist-actions :deep(.el-button) { display: inline-flex; align-items: center; justify-content: center; }
 .artist-actions :deep(.el-button__content) { display: inline-flex; align-items: center; gap: 4px; }
 .empty-state { padding: 40px 0; }
+.pagination-bar { display: flex; justify-content: center; margin-top: 20px; }
 .form-row { display: flex; gap: 16px; flex-wrap: wrap; }
 .form-item-half { flex: 1; min-width: 160px; }
 .rename-warning { font-size: 12px; color: #e6a23c; margin-top: 4px; }
