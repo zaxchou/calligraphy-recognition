@@ -341,14 +341,16 @@
       </template>
     </div>
   </div>
+  <AvatarCropper ref="cropperRef" @cropped="onAvatarCropped" />
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Plus, MagicStick } from '@element-plus/icons-vue'
 import api from '@/api'
+import AvatarCropper from '@/components/AvatarCropper.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -411,9 +413,17 @@ function scrollTo(id) {
 
 function goBack() { router.push('/admin?tab=artist-info') }
 
+const cropperRef = ref(null)
+
 async function uploadFile(file) {
+  await nextTick()
+  cropperRef.value?.open(file)
+  return false
+}
+
+async function onAvatarCropped(blob) {
   const fd = new FormData()
-  fd.append('file', file)
+  fd.append('file', blob, 'avatar.jpg')
   try {
     const res = await fetch(`${API_BASE}/artists/upload-image`, { method: 'POST', body: fd })
     if (res.ok) {
@@ -429,7 +439,6 @@ async function uploadFile(file) {
       ElMessage.error(err.detail || '上传失败')
     }
   } catch (e) { ElMessage.error('上传失败') }
-  return false
 }
 
 async function searchArtworks() {
