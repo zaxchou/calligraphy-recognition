@@ -627,11 +627,17 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
     try:
         from app.services.qwen_llm_client import call_qwen_chat
 
-        summary_hint = baike_data.get("summary", "")[:200] if baike_data else ""
+        hint_parts = []
+        if baike_data:
+            for k in ("summary", "biography", "dynasty", "hometown", "birth_year", "death_year"):
+                if baike_data.get(k):
+                    hint_parts.append(f"{k}: {baike_data[k]}")
+        hint_text = "\n".join(hint_parts) if hint_parts else "无已有数据"
 
         prompt = f"""请为画家「{artist_name}」生成百科信息，用纯JSON返回（不要markdown代码块）。
 
-已有部分信息作为参考：{summary_hint}
+已有部分信息作为参考：
+{hint_text}
 
 请返回以下JSON格式（字符串字段用中文填写，数组字段每个元素填完整信息）：
 
@@ -673,13 +679,13 @@ def _ai_generate_fields(artist_name: str, artist, baike_data: dict) -> dict:
   }}]
 }}
 
-art_chronology 至少列出5-10个关键年份的事件，从出生到去世按年份排列。
-anecdotes 至少列出2-3个著名轶事。
+art_chronology 必须尽可能详尽，按年份排列画家的全部人生与艺术关键事件。年份从小到老排列，每一年一条记录。如果有生卒年，从出生年份开始每年都要尽量覆盖，不得少于15条。格式为年份+事件标题+地点+详细描述。
+anecdotes 列出尽可能多的著名轶事典故，不得少于3条。
 birth_year 和 death_year 必须是整数（非字符串），未知则用 null。
 只返回JSON，不要其他文字。"""
         response = call_qwen_chat(
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=2500,
+            temperature=0.3, max_tokens=4000,
         )
         if "error" not in response:
             result = response.get("choices", [{}])[0].get("message", {}).get("content", "")
