@@ -11,10 +11,10 @@
         </a>
       </nav>
       <div class="ae-sidebar-actions">
-        <el-button size="small" @click="handleAiFill" :loading="aiLoading" class="ae-btn-ai">
+        <el-button size="small" @click="handleAiFill" :loading="aiLoading">
           <el-icon><MagicStick /></el-icon>AI补充
         </el-button>
-        <el-button size="small" type="primary" @click="handleSave" :loading="saving" class="ae-btn-save">保存</el-button>
+        <el-button size="small" type="primary" @click="handleSave" :loading="saving">保存</el-button>
       </div>
     </div>
 
@@ -576,19 +576,18 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.ae-root { display: flex; min-height: 100vh; background: #fafaf8; }
+.ae-root { display: block; min-height: 100vh; background: #fafaf8; padding-left: 130px; }
 
-.ae-sidebar { width: 130px; flex-shrink: 0; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
-.ae-sidebar-top { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #edeae1; }
+.ae-sidebar { width: 130px; background: #fff; border-right: 1px solid #edeae1; padding: 12px 8px; position: fixed; left: 240px; top: 0; bottom: 0; display: flex; flex-direction: column; z-index: 5; }
+.ae-sidebar-top { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #edeae1; }
 .ae-back-btn { padding: 2px; min-height: auto; }
 .ae-artist-name { font-size: 12px; color: #3a3222; font-weight: 600; font-family: 'Noto Serif SC', serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-.ae-nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.ae-nav-item { padding: 7px 8px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: center; }
+.ae-nav { display: flex; flex-direction: column; gap: 1px; }
+.ae-nav-item { padding: 6px 8px; font-size: 12px; color: #8c7a5c; text-decoration: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; text-align: center; }
 .ae-nav-item:hover { background: #f5f3ed; color: #3a3222; }
 .ae-nav-item.active { background: #fdf6f0; color: #c45a3c; font-weight: 500; }
-.ae-sidebar-actions { margin-top: 10px; padding-top: 10px; border-top: 1px solid #edeae1; display: flex; flex-direction: column; gap: 6px; }
-.ae-btn-ai { display: inline-flex; align-items: center; justify-content: center; }
-.ae-btn-save { display: inline-flex; align-items: center; justify-content: center; }
+.ae-sidebar-actions { margin-top: auto; padding-top: 10px; border-top: 1px solid #edeae1; display: flex; flex-direction: column; gap: 6px; }
+.ae-sidebar-actions .el-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
 
 .ae-main { flex: 1; padding: 32px 40px 120px; max-width: 960px; margin-left: 0; }
 .ae-loading { text-align: center; padding: 100px 0; color: #b0a890; }
@@ -598,7 +597,7 @@ onMounted(async () => {
 .ae-grid { display: grid; gap: 16px; }
 .ae-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .ae-grid-3 { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 768px) { .ae-grid-2, .ae-grid-3 { grid-template-columns: 1fr; } .ae-sidebar { display: none; } .ae-main { padding: 20px 16px 120px; } }
+@media (max-width: 768px) { .ae-grid-2, .ae-grid-3 { grid-template-columns: 1fr; } .ae-sidebar { display: none; } .ae-root { padding-left: 0; } .ae-main { padding: 20px 16px 120px; } }
 
 .ae-field { margin-bottom: 18px; }
 .ae-label { display: block; font-size: 13px; color: #5c5346; font-weight: 500; margin-bottom: 6px; }
