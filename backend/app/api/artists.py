@@ -202,26 +202,35 @@ async def get_artist(artist_id: int):
 
 @router.get("/by-name/{name}")
 async def get_artist_by_name(name: str):
-    """按名称获取画家"""
+    """按名称获取画家（支持别名归一化：郑板桥→郑燮）"""
     conn = get_db_connection()
     try:
         row = conn.execute("SELECT * FROM artists WHERE name = ?", (name,)).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="画家不存在")
+            row = conn.execute(
+                "SELECT * FROM artists WHERE alias LIKE ? OR alias = ? LIMIT 1",
+                (f"%{name}%", name),
+            ).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="画家不存在")
 
         artist = dict(row)
+        canonical_name = artist["name"]
 
         artwork_count = conn.execute(
-            "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (name,)
+            "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (canonical_name,)
         ).fetchone()[0]
         artist["artwork_count"] = artwork_count
 
         lib_rows = conn.execute(
-            "SELECT id FROM artwork_libraries WHERE artist_name = ?", (name,)
+            "SELECT id FROM artwork_libraries WHERE artist_name = ?", (canonical_name,)
         ).fetchall()
         artist["related_libraries"] = [r["id"] for r in lib_rows]
 
-        return {"success": True, "artist": artist}
+        result = {"success": True, "artist": artist}
+        if canonical_name != name:
+            result["canonical_name"] = canonical_name
+        return result
     finally:
         conn.close()
 

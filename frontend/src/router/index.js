@@ -216,6 +216,40 @@ const router = createRouter({
   routes
 })
 
+const nameCache = new Map()
+
+router.beforeResolve(async (to, _from) => {
+  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis']
+  if (artistRoutes.includes(to.name) && to.params.name) {
+    const raw = to.params.name
+    if (nameCache.has(raw)) {
+      const canonical = nameCache.get(raw)
+      if (canonical && canonical !== raw) {
+        return { name: to.name, params: { ...to.params, name: canonical } }
+      }
+      return true
+    }
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+      const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(raw)}`)
+      if (res.ok) {
+        const data = await res.json()
+        const canonical = data.canonical_name || raw
+        nameCache.set(raw, canonical)
+        if (canonical !== raw) {
+          nameCache.set(canonical, canonical)
+          return { name: to.name, params: { ...to.params, name: canonical } }
+        }
+      } else {
+        nameCache.set(raw, null)
+      }
+    } catch (e) {
+      // network error - allow navigation, component will handle 404
+    }
+  }
+  return true
+})
+
 // 全局路由守卫：自动设置页面标题
 router.afterEach((to) => {
   const pageTitle = to.meta?.title
