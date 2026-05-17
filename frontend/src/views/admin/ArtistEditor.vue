@@ -132,30 +132,6 @@
               <label class="ae-label">生平简介</label>
               <el-input v-model="form.biography" type="textarea" :rows="8" placeholder="详细生平介绍文本，支持长文" />
             </div>
-            <div class="ae-field">
-              <label class="ae-label">生平时间线</label>
-              <div class="ae-array">
-                <p class="ae-array-hint">按年份添加画家的生平关键事件</p>
-                <div v-for="(evt, idx) in form.bio_events" :key="idx" class="ae-array-card">
-                  <div class="ae-array-card-header">
-                    <span>#{{ idx + 1 }}</span>
-                    <el-button type="danger" size="small" text @click="removeItem('bio_events', idx)">删除</el-button>
-                  </div>
-                  <div class="ae-array-card-body">
-                    <div class="ae-grid ae-grid-3">
-                      <el-input v-model="evt.year" placeholder="年份" size="small" type="number" />
-                      <el-input v-model="evt.type" placeholder="类型（入仕/罢官/创作）" size="small" />
-                      <el-input v-model="evt.title" placeholder="标题" size="small" />
-                    </div>
-                    <el-input v-model="evt.description" placeholder="详细描述" size="small" type="textarea" :rows="2" style="margin-top:6px" />
-                  </div>
-                </div>
-                <el-button size="small" @click="addItem('bio_events', {year: '', type: '', title: '', description: ''})">
-                  <el-icon><Plus /></el-icon>添加事件
-                </el-button>
-                <p v-if="form.bio_events.length === 0" class="ae-array-empty">暂未添加时间线事件</p>
-              </div>
-            </div>
           </div>
 
           <!-- ===== 艺术年谱 ===== -->
@@ -406,7 +382,7 @@ const form = reactive({
   name: '', alias: '', dynasty: '', hometown: '', birth_year: null, death_year: null,
   nationality: '', occupation: '', art_school: '', specialties: '',
   summary: '', background: '', banner_url: '', avatar_url: '', baidu_url: '',
-  biography: '', bio_events: [], art_chronology: [],
+  biography: '', art_chronology: [],
   art_style: '', main_achievements: '', influence: '', historical_evaluation: '',
   character_relations: [], anecdotes: [],
   masterpieces: [], representative_works_text: '', tags: [],
@@ -414,7 +390,7 @@ const form = reactive({
   featured: 0, enabled: 1,
 })
 
-const JSON_ARRAYS = ['bio_events', 'art_chronology', 'character_relations', 'anecdotes', 'masterpieces', 'tags', 'published_works', 'references', 'gallery_images']
+const JSON_ARRAYS = ['art_chronology', 'character_relations', 'anecdotes', 'masterpieces', 'tags', 'published_works', 'references', 'gallery_images']
 
 const sections = [
   { id: 'basic', label: '基本' },

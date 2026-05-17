@@ -138,15 +138,6 @@
           <section v-if="artist.biography" class="bk-card">
             <h2 class="bk-card-title">人物生平</h2>
             <p class="bk-text">{{ artist.biography }}</p>
-            <div v-if="timelineEvents.length > 0" class="bk-timeline">
-              <div v-for="(evt, idx) in timelineEvents" :key="idx" class="bk-timeline-item">
-                <div class="bk-timeline-dot" />
-                <div class="bk-timeline-content">
-                  <span v-if="evt.year" class="bk-timeline-year">{{ evt.year }}</span>
-                  <span class="bk-timeline-desc">{{ evt.event || evt.description || '' }}</span>
-                </div>
-              </div>
-            </div>
           </section>
 
           <section v-if="artChronology.length > 0" class="bk-card">
@@ -281,11 +272,6 @@ const heroStyle = computed(() => {
   return {
     background: 'linear-gradient(135deg, #3a3222 0%, #6b5b4a 40%, #8a7a6a 100%)',
   }
-})
-
-const timelineEvents = computed(() => {
-  if (!artist.value?.bio_events) return []
-  return parseJsonField(artist.value.bio_events)
 })
 
 const artChronology = computed(() => {
