@@ -1648,6 +1648,23 @@ async def replace_image(
         thumbnail_filename = None
     logger.info("缩略图处理完成，用时: %.3fs", time.perf_counter() - t1)
 
+    # 重新生成 DZI 瓦片（替换原图后旧瓦片失效）
+    try:
+        _dzidir = settings.DZI_DIR
+        os.makedirs(_dzidir, exist_ok=True)
+        base_name = os.path.splitext(os.path.basename(filepath))[0]
+        # 清理旧 DZI 目录
+        import shutil
+        old_tiles_dir = os.path.join(_dzidir, f"{base_name}_files")
+        old_dzi = os.path.join(_dzidir, f"{base_name}.dzi")
+        if os.path.exists(old_tiles_dir):
+            shutil.rmtree(old_tiles_dir, ignore_errors=True)
+        if os.path.exists(old_dzi):
+            os.remove(old_dzi)
+        _gen_dzi(filepath, _dzidir)
+    except Exception as e:
+        logger.warning("替换图片后 DZI 重新生成失败（不影响上传）: %s", e)
+
     # 更新数据库：只更新文件路径、尺寸、标注图清空，保留其他所有数据
     db_analysis.filename = file.filename
     db_analysis.filepath = normalize_path(filepath)

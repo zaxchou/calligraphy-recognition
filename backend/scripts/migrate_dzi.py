@@ -46,11 +46,11 @@ for r in rows:
         skipped += 1
         continue
     
-    print(f"[{aid}] Generating DZI for: {basename(fp)}...", end=" ")
+    print(f"[{aid}] Generating DZI for: {os.path.basename(fp)}...", end=" ")
     result = generate_dzi(fp, DZI_DIR)
     if result:
         generated += 1
-        print(f"OK -> {basename(result)}")
+        print(f"OK -> {os.path.basename(result)}")
     else:
         failed += 1
         print("FAILED")

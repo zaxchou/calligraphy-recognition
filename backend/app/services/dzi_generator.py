@@ -7,6 +7,9 @@ import math
 import logging
 from PIL import Image
 
+# Allow very large images (e.g. 200MB scans)
+Image.MAX_IMAGE_PIXELS = None
+
 logger = logging.getLogger(__name__)
 
 TILE_SIZE = 256
