@@ -22,6 +22,7 @@ from app.models.tubi_analysis import TubiAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
 from app.services.inscription_content_analyzer import get_period_phase
+from app.services.dzi_generator import generate_dzi as _gen_dzi
 from app.api.revisions import create_revision
 
 settings = get_settings()
@@ -724,6 +725,14 @@ async def upload_image(
             thumbnail_path = None
             thumbnail_filename = None
         logger.info("图像处理完成，用时: %.3fs", time.perf_counter() - t1)
+
+        # 生成 DZI 瓦片（异步、非阻塞）
+        try:
+            _dzidir = settings.DZI_DIR
+            os.makedirs(_dzidir, exist_ok=True)
+            _gen_dzi(filepath, _dzidir)
+        except Exception as e:
+            logger.warning("DZI 生成失败（不影响上传）: %s", e)
 
         # 如果前端没传 title 或 year，尝试从文件名解析
         # 注意：title 和 year 都要解析，因为两者都依赖文件名分割逻辑
@@ -2875,6 +2884,14 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
     else:
         thumbnail_url = image_url
 
+    # 构建 DZI URL
+    dzi_url = None
+    if image_url and image_url.startswith("/static/uploads/"):
+        img_basename = os.path.splitext(os.path.basename(image_url))[0]
+        dzi_path = os.path.join(settings.DZI_DIR, f"{img_basename}.dzi")
+        if os.path.exists(dzi_path):
+            dzi_url = f"/dzi/{img_basename}.dzi"
+
     # 解析 regions
     regions = None
     if db_analysis.regions:
@@ -2905,6 +2922,7 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
             "is_manual_annotated": bool(db_analysis.is_manual_annotated) if db_analysis.is_manual_annotated is not None else False,
             "artwork_width_cm": db_analysis.artwork_width_cm,
             "artwork_height_cm": db_analysis.artwork_height_cm,
+            "dzi_url": dzi_url,
         }
     }
 

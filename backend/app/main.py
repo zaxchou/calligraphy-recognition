@@ -118,7 +118,9 @@ app.add_middleware(
 # 挂载静态文件目录
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.STATIC_DIR, exist_ok=True)
+os.makedirs(settings.DZI_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "data")), name="static")
+app.mount("/dzi", StaticFiles(directory=settings.DZI_DIR), name="dzi")
 
 # 启动时清除旧的全量作品列表缓存，确保新数据被包含
 try:

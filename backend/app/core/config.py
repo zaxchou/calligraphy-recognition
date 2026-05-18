@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     TUBI_FAN_FAN_CLOSE_ITER: int = int(os.getenv("TUBI_FAN_FAN_CLOSE_ITER", "2"))
     TUBI_FAN_MAX_FILL_RATIO: float = float(os.getenv("TUBI_FAN_MAX_FILL_RATIO", "0.35"))
 
+    TUBI_FAN_RADIUS_OFFSET: int = int(os.getenv("TUBI_FAN_RADIUS_OFFSET", "0"))
+
+    # DZI (Deep Zoom Image) 配置
+    DZI_DIR: str = os.path.join(DATA_DIR, "dzi")
     TUBI_INS_ROI_PAD_RATIO: float = float(os.getenv("TUBI_INS_ROI_PAD_RATIO", "0.08"))
     TUBI_INS_OTSU_MULT: float = float(os.getenv("TUBI_INS_OTSU_MULT", "0.80"))
     TUBI_INS_ADAPTIVE_BLOCK: int = int(os.getenv("TUBI_INS_ADAPTIVE_BLOCK", "21"))

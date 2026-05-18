@@ -26,8 +26,8 @@
           </div>
         </template>
         <div class="original-image-wrapper">
-          <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url)" title="点击放大查看" />
-          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url)" title="放大查看"><ZoomIn /></el-icon>
+          <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url, currentImage.dzi_url)" title="点击放大查看" />
+          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url, currentImage.dzi_url)" title="放大查看"><ZoomIn /></el-icon>
         </div>
 
         <!-- 册页导航 -->
@@ -81,13 +81,13 @@
             <el-icon><Edit /></el-icon><span class="btn-label">编辑</span>
           </el-button>
           <el-button v-if="authStore.isLoggedIn" plain size="small" class="btn-action" @click="openSuggestEdit">
-            <el-icon><EditPen /></el-icon><span class="btn-label">建议修改</span>
+            <el-icon><EditPen /></el-icon><span class="btn-label">我的意见</span>
           </el-button>
           <el-button plain size="small" class="btn-action" @click="openRevisions">
             <el-icon><Clock /></el-icon><span class="btn-label">版本历史</span>
           </el-button>
-          <el-button plain size="small" class="btn-action" @click="$emit('back')" :icon="HomeFilled">
-            <span class="btn-label">返回</span>
+          <el-button plain size="small" class="btn-action" @click="$emit('back')">
+            <el-icon><HomeFilled /></el-icon><span class="btn-label">返回</span>
           </el-button>
         </div>
       </div>
@@ -429,15 +429,22 @@
     </div>
 
     <!-- 原图放大查看对话框 -->
+    <TubiDeepZoomDialog
+      v-if="currentPreviewDzi"
+      v-model="imagePreviewVisible"
+      :image-url="currentPreviewImage"
+      :dzi-url="currentPreviewDzi"
+    />
     <TubiImageZoomDialog
+      v-else
       v-model="imagePreviewVisible"
       :image-url="currentPreviewImage"
     />
 
-    <!-- 建议修改对话框 -->
-    <el-dialog v-model="showSuggestDialog" title="建议修改" width="560px" destroy-on-close>
+    <!-- 我的意见对话框 -->
+    <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close @closed="suggestDialogClosed">
       <p style="margin-bottom:16px;color:var(--stone-gray)">
-        您正在对 <strong>{{ currentImage.title || '未命名' }}</strong> 提出修改建议，提交后由管理员审核。
+        您正在对 <strong>{{ currentImage.title || '未命名' }}</strong> 提出修改意见，提交后由管理员审核。
       </p>
       <el-form :model="suggestForm" label-position="top">
         <el-form-item label="修改字段">
@@ -448,21 +455,37 @@
             <el-option label="时期" value="period" />
             <el-option label="备注" value="notes" />
             <el-option label="题跋内容" value="inscription_content" />
+            <el-option label="标注图" value="annotation_regions" />
           </el-select>
         </el-form-item>
         <el-form-item label="原值">
-          <el-input :model-value="suggestForm.old_value" disabled />
+          <div class="old-value-display">{{ suggestForm.old_value }}</div>
         </el-form-item>
-        <el-form-item label="新值" required>
-          <el-input v-model="suggestForm.new_value" placeholder="输入修改后的值" />
-        </el-form-item>
-        <el-form-item label="修改说明" required>
-          <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
-        </el-form-item>
+        <template v-if="suggestForm.field_name === 'annotation_regions'">
+          <el-form-item label="修改标注">
+            <div style="font-size:13px;color:#666;margin-bottom:12px;">
+              点击下方按钮，在标注编辑器中修改题跋区域。修改完成后点击"提交审阅"即可。
+            </div>
+            <el-button type="primary" @click="openAnnotatorSuggest">
+              <el-icon><EditPen /></el-icon> 打开标注编辑器
+            </el-button>
+            <div v-if="suggestAnnotationSaved" style="margin-top:10px;color:#67c23a;font-size:13px;">
+              <el-icon><CircleCheckFilled /></el-icon> 标注意见已提交
+            </div>
+          </el-form-item>
+        </template>
+        <template v-else>
+          <el-form-item label="新值" required>
+            <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="在原值基础上修改，或输入新内容" />
+          </el-form-item>
+          <el-form-item label="修改说明" required>
+            <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="showSuggestDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交修改建议</el-button>
+        <el-button v-if="suggestForm.field_name !== 'annotation_regions'" type="primary" @click="handleSubmitChange" :loading="submitting">提交意见</el-button>
       </template>
     </el-dialog>
 
@@ -502,13 +525,14 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart, ZoomIn
+  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
 import { sealsApi } from '../api'
 import api from '../api'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
+import TubiDeepZoomDialog from '../components/tubi/TubiDeepZoomDialog.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -519,7 +543,7 @@ function canEditItem(item) {
   return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
 }
 
-// 建议修改
+// 我的意见
 const showSuggestDialog = ref(false)
 const suggestForm = reactive({
   field_name: 'title',
@@ -528,14 +552,68 @@ const suggestForm = reactive({
   change_summary: ''
 })
 const submitting = ref(false)
+const suggestAnnotationSaved = ref(false)
+
+function getSuggestFieldValue(fieldName) {
+  if (!props.currentImage) return ''
+  if (fieldName === 'inscription_content') {
+    return props.currentImage.inscriptionContent || ''
+  }
+  if (fieldName === 'annotation_regions') {
+    return '标注图（请在标注编辑器中查看）'
+  }
+  const val = props.currentImage[fieldName]
+  return val !== null && val !== undefined ? String(val) : ''
+}
+
+function updateSuggestOldValue() {
+  suggestForm.old_value = getSuggestFieldValue(suggestForm.field_name)
+  suggestForm.new_value = suggestForm.old_value
+}
+
+watch(() => suggestForm.field_name, updateSuggestOldValue)
+
+const ANNOTATE_SUGGEST_FLAG = 'suggest_annotation_done_'
 
 function openSuggestEdit() {
   if (!props.currentImage) return
+  if (!props.currentImage.library_id) {
+    ElMessage.warning('该作品未关联作品库，无法提交意见')
+    return
+  }
+  // 检查先前打开的标注审阅是否已保存
+  const id = props.currentImage.id || props.currentImage.image_id
+  suggestAnnotationSaved.value = !!localStorage.getItem(ANNOTATE_SUGGEST_FLAG + id)
   suggestForm.field_name = 'title'
-  suggestForm.old_value = props.currentImage.title || ''
-  suggestForm.new_value = ''
+  suggestForm.old_value = getSuggestFieldValue('title')
+  suggestForm.new_value = suggestForm.old_value
   suggestForm.change_summary = ''
   showSuggestDialog.value = true
+}
+
+function openAnnotatorSuggest() {
+  if (!props.currentImage) return
+  const imageId = props.currentImage.image_id || props.currentImage.id
+  if (!imageId) {
+    ElMessage.warning('无法获取作品ID')
+    return
+  }
+  const libId = props.currentImage.library_id
+  const artworkDbId = props.currentImage.id || props.currentImage.db_id
+  const role = authStore.userInfo?.role || 'guest'
+  // 同时存入 sessionStorage 和 URL 参数（sessionStorage 在部分浏览器跨 window.open 不可靠）
+  sessionStorage.setItem('suggest_library_id', String(libId))
+  sessionStorage.setItem('suggest_artwork_id', String(artworkDbId))
+  window.open(`/#/annotate/${imageId}?mode=suggest&role=${role}&lib=${libId}&artwork=${artworkDbId}`, '_blank')
+}
+
+function suggestDialogClosed() {
+  // 关闭对话框时检查标注保存标志
+  const id = props.currentImage?.id || props.currentImage?.image_id
+  if (id && localStorage.getItem(ANNOTATE_SUGGEST_FLAG + id)) {
+    suggestAnnotationSaved.value = true
+    localStorage.removeItem(ANNOTATE_SUGGEST_FLAG + id)
+  }
 }
 
 async function handleSubmitChange() {
@@ -547,17 +625,23 @@ async function handleSubmitChange() {
     ElMessage.warning('请填写修改说明')
     return
   }
+  const libId = props.currentImage.library_id
+  if (!libId) {
+    ElMessage.error('该作品未关联作品库，无法提交意见。请刷新页面后重试')
+    return
+  }
   submitting.value = true
   try {
     const data = {
+      artwork_id: props.currentImage.id || props.currentImage.db_id,
       field_name: suggestForm.field_name,
       old_value: suggestForm.old_value,
       new_value: suggestForm.new_value,
       change_summary: suggestForm.change_summary,
       request_type: suggestForm.field_name === 'inscription_content' ? 'edit_inscription' : 'edit_field'
     }
-    await api.post(`/libraries/${props.currentImage.library_id}/requests`, data)
-    ElMessage.success('修改建议已提交')
+    await api.post(`/libraries/${libId}/requests`, data)
+    ElMessage.success('意见已提交')
     showSuggestDialog.value = false
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '提交失败')
@@ -732,9 +816,11 @@ let pieChartUpdateRaf = 0
 // ── 原图预览缩放 ──────────────────────────────
 const imagePreviewVisible = ref(false)
 const currentPreviewImage = ref('')
+const currentPreviewDzi = ref('')
 
-function openImagePreview(imageUrl) {
+function openImagePreview(imageUrl, dziUrl) {
   currentPreviewImage.value = imageUrl
+  currentPreviewDzi.value = dziUrl || ''
   imagePreviewVisible.value = true
 }
 
@@ -1234,6 +1320,24 @@ defineExpose({
   border-top: 1px solid #ede9de;
 }
 
+/* 我的意见对话框 */
+.old-value-display {
+  width: 100%;
+  padding: 10px 12px;
+  background: #f5f5f5;
+  border: 1px solid #e8e4dc;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  user-select: text;
+  cursor: text;
+}
+
 /* 版本历史对话框 */
 .rev-header {
   display: flex;
@@ -1253,13 +1357,22 @@ defineExpose({
 }
 
 .btn-action {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
   font-size: 12px !important;
   box-shadow: none !important;
 }
 :deep(.btn-action .el-button__content) {
   font-size: 12px;
   justify-content: center;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+:deep(.btn-action .el-button__content .el-icon) {
+  flex-shrink: 0;
+  font-size: 14px;
 }
 /* 作品信息表格 */
 .image-info-header {
