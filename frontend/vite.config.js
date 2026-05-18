@@ -21,6 +21,10 @@ export default defineConfig({
       '/static': {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true
+      },
+      '/dzi': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true
       }
     },
     // 确保 .mjs 文件正确服务

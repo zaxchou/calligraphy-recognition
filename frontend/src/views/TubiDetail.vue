@@ -428,17 +428,12 @@
       </el-card>
     </div>
 
-    <!-- 原图放大查看对话框 -->
+    <!-- 深度缩放查看器（覆盖整个浏览器窗口） -->
     <TubiDeepZoomDialog
-      v-if="currentPreviewDzi"
-      v-model="imagePreviewVisible"
+      v-if="imagePreviewVisible"
       :image-url="currentPreviewImage"
       :dzi-url="currentPreviewDzi"
-    />
-    <TubiImageZoomDialog
-      v-else
-      v-model="imagePreviewVisible"
-      :image-url="currentPreviewImage"
+      @close="imagePreviewVisible = false"
     />
 
     <!-- 我的意见对话框 -->
@@ -531,7 +526,6 @@ import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
 import { sealsApi } from '../api'
 import api from '../api'
-import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
 import TubiDeepZoomDialog from '../components/tubi/TubiDeepZoomDialog.vue'
 import { useAuthStore } from '../stores/authStore'
 
@@ -820,7 +814,13 @@ const currentPreviewDzi = ref('')
 
 function openImagePreview(imageUrl, dziUrl) {
   currentPreviewImage.value = imageUrl
-  currentPreviewDzi.value = dziUrl || ''
+  if (dziUrl) {
+    currentPreviewDzi.value = dziUrl
+  } else {
+    const match = imageUrl.match(/([^/]+)\.\w+$/)
+    const baseName = match ? match[1] : ''
+    currentPreviewDzi.value = baseName ? '/dzi/' + baseName + '.dzi' : ''
+  }
   imagePreviewVisible.value = true
 }
 

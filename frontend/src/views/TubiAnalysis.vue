@@ -1535,6 +1535,7 @@ async function loadHistoryItem(row) {
           inscriptionModern: data.inscription_modern || '',
           sealContent: data.seal_content || '',
           contentAnalysis: data.content_analysis || null,
+          dzi_url: data.dzi_url,
           artwork_width_cm: data.artwork_width_cm,
           artwork_height_cm: data.artwork_height_cm,
           tags: data.tags,
@@ -2190,6 +2191,7 @@ onMounted(async () => {
           inscriptionModern: data.inscription_modern || '',
           sealContent: data.seal_content || '',
           contentAnalysis: data.content_analysis || null,
+          dzi_url: data.dzi_url,
           artwork_width_cm: data.artwork_width_cm,
           artwork_height_cm: data.artwork_height_cm,
           tags: data.tags,
@@ -2348,6 +2350,7 @@ async function navigateToAlbumItem(item) {
         inscriptionModern: data.inscription_modern || '',
         sealContent: data.seal_content || '',
         contentAnalysis: data.content_analysis || null,
+        dzi_url: data.dzi_url,
         artwork_width_cm: data.artwork_width_cm,
         artwork_height_cm: data.artwork_height_cm
       }
@@ -2368,6 +2371,39 @@ watch(currentImage, (newVal) => {
     loadAlbumNavigation()
   }
 }, { immediate: true })
+
+// 监听路由参数变化：列表内点击详情时重新加载完整数据（含 dzi_url 等）
+watch(() => route.params.id, async (newId, oldId) => {
+  if (!newId || !oldId || String(newId) === String(oldId)) return
+  try {
+    const response = await tubiApi.getAnalysisResult(newId)
+    if (response.success) {
+      const data = response.data
+      const analysisNoteText = data.analysis_note || ''
+      const inscriptionContent = data.inscription_content || extractInscriptionContent(analysisNoteText)
+      currentImage.value = {
+        ...currentImage.value,
+        id: data.id,
+        image_id: data.image_id,
+        url: data.url,
+        thumbnailUrl: data.thumbnail_url || data.url,
+        width: data.width,
+        height: data.height,
+        dzi_url: data.dzi_url,
+        inscriptionPercent: data.inscription_percent,
+        paintingPercent: data.painting_percent,
+        blankPercent: data.blank_percent,
+        regions: parseRegions(data.regions),
+        annotatedImageUrl: data.annotated_image_url,
+        inscriptionContent: inscriptionContent,
+        sealContent: data.seal_content || '',
+        contentAnalysis: data.content_analysis || null,
+      }
+    }
+  } catch (e) {
+    // 静默处理，已有列表数据兜底
+  }
+})
 </script>
 
 <style src="../tubi/TubiAnalysis.css" scoped></style>
