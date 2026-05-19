@@ -365,6 +365,13 @@ def run_migrations():
             logger.info("Migration: migrated %d old seal images to seal_images table", migrated)
         conn.commit()
 
+        # ── tubi_analyses 加 work_type 列 ──
+        ta_cols = {row[1] for row in conn.execute("PRAGMA table_info(tubi_analyses)").fetchall()}
+        if "work_type" not in ta_cols:
+            conn.execute("ALTER TABLE tubi_analyses ADD COLUMN work_type TEXT DEFAULT '画作'")
+            logger.info("Migration: added tubi_analyses.work_type column (default '画作')")
+            conn.commit()
+
         # ── artist_stats_cache 表 ──
         conn.execute("""
             CREATE TABLE IF NOT EXISTS artist_stats_cache (

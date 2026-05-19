@@ -23,12 +23,22 @@
           <el-form-item label="画作标题" class="form-item-half">
             <el-input v-model="form.title" placeholder="请输入画作标题" />
           </el-form-item>
+          <el-form-item label="作品类型" class="form-item-half">
+            <el-select v-model="form.workType" style="width: 100%">
+              <el-option label="画作" value="画作" />
+              <el-option label="书法" value="书法" />
+            </el-select>
+          </el-form-item>
+        </div>
+        <div class="form-row">
           <el-form-item label="作者姓名" class="form-item-half">
             <el-select v-model="form.artistChoice" placeholder="请选择作者" style="width: 100%" @change="onArtistChange">
               <el-option label="李鱓" value="李鱓" />
               <el-option label="郑燮" value="郑燮" />
               <el-option label="其他" value="other" />
             </el-select>
+          </el-form-item>
+          <el-form-item label=" " class="form-item-half">
           </el-form-item>
         </div>
         <div v-if="form.artistChoice === 'other'" class="form-row">
@@ -205,7 +215,8 @@ const form = reactive({
   sealContent: '',
   inscriptionPercent: 0,
   paintingPercent: 0,
-  blankPercent: 0
+  blankPercent: 0,
+  workType: '画作'
 })
 
 // 印章标签模式
@@ -348,6 +359,7 @@ function open(item) {
   form.inscriptionPercent = item.inscriptionPercent || item.inscription_percent || 0
   form.paintingPercent = item.paintingPercent || item.painting_percent || 0
   form.blankPercent = item.blankPercent || item.blank_percent || 0
+  form.workType = item.workType || item.work_type || '画作'
 
   // 解析印章标签
   sealTags.value = parseSealContent(form.sealContent)
@@ -400,7 +412,8 @@ async function handleSave() {
       seal_content: sealTagsToString(),
       inscription_percent: parseFloat(form.inscriptionPercent) || 0,
       painting_percent: parseFloat(form.paintingPercent) || 0,
-      blank_percent: parseFloat(form.blankPercent) || 0
+      blank_percent: parseFloat(form.blankPercent) || 0,
+      work_type: form.workType
     })
 
     if (response.success) {
@@ -419,7 +432,8 @@ async function handleSave() {
           sealContent: sealTagsToString(),
           inscriptionPercent: parseFloat(form.inscriptionPercent) || 0,
           paintingPercent: parseFloat(form.paintingPercent) || 0,
-          blankPercent: parseFloat(form.blankPercent) || 0
+          blankPercent: parseFloat(form.blankPercent) || 0,
+          workType: form.workType
         }
       })
     } else {

@@ -395,6 +395,7 @@ class ImageInfoRequest(BaseModel):
     inscription_percent: Optional[float] = None
     painting_percent: Optional[float] = None
     blank_percent: Optional[float] = None
+    work_type: Optional[str] = None
 
 
 def draw_annotated_image(original_path: str, regions: dict, output_path: str):
@@ -610,6 +611,7 @@ async def upload_image(
     period: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     library_id: Optional[int] = Form(None),
+    work_type: Optional[str] = Form("画作"),
     db: Session = Depends(get_db),
     editor=Depends(require_permission("content.upload"))
 ):
@@ -787,7 +789,8 @@ async def upload_image(
             owner_id=editor.id,
             library_id=library_id,
             visibility="public",
-            status="uploaded"
+            status="uploaded",
+            work_type=work_type
         )
         db.add(db_analysis)
         db.commit()
@@ -1517,6 +1520,8 @@ async def update_image_info(
         db_analysis.painting_percent = request.painting_percent
     if request.blank_percent is not None:
         db_analysis.blank_percent = request.blank_percent
+    if request.work_type is not None:
+        db_analysis.work_type = request.work_type
 
     # 自动重新计算分期（period_phase）
     db_analysis.period_phase = get_period_phase(db_analysis.year, db_analysis.artist)
@@ -1699,12 +1704,13 @@ async def get_all_results(
     sort_by: Optional[str] = Query(default=None, description="排序字段"),
     sort_dir: Optional[str] = Query(default="desc", description="排序方向: asc, desc"),
     library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
+    work_type: Optional[str] = Query(default=None, description="作品类型: 画作/书法"),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_optional_user),
 ):
     """获取所有分析结果列表"""
     # 自定义排序或筛选时跳过缓存
-    use_cache = not artist and not sort_by and not library_id and limit >= 500
+    use_cache = not artist and not sort_by and not library_id and not work_type and limit >= 500
     if use_cache:
         cached = _get_results_cache()
         if cached:
@@ -1715,6 +1721,8 @@ async def get_all_results(
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
         query = query.filter(TubiAnalysis.artist.in_(aliases))
+    if work_type:
+        query = query.filter(TubiAnalysis.work_type == work_type)
 
     # 可见性过滤：私有作品仅 owner/admin 可见
     if user and user.role in ("admin", "super_admin"):
@@ -1784,6 +1792,7 @@ async def get_all_results(
             "artist": analysis.artist,
             "year": analysis.year,
             "period": analysis.period,
+            "work_type": analysis.work_type or '画作',
             "inscription_percent": analysis.inscription_percent,
             "painting_percent": analysis.painting_percent,
             "blank_percent": analysis.blank_percent,
@@ -1843,7 +1852,7 @@ async def get_all_results(
     response = {
         "success": True,
         "data": results,
-        "total": db.query(TubiAnalysis).count()
+        "total": query.count()
     }
     # Phase 1: 已登录用户附加私有数据
     if user:
@@ -1993,6 +2002,7 @@ async def search_images(
                 "artist": analysis.artist,
                 "year": analysis.year,
                 "period": analysis.period,
+                "work_type": analysis.work_type or '画作',
                 "notes": analysis.notes,
                 "image_width": analysis.image_width,
                 "image_height": analysis.image_height,

@@ -17,9 +17,15 @@
       <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link">分析</router-link>
     </nav>
 
+    <!-- 分类 + 工具栏 -->
     <div class="aw-toolbar">
       <div class="aw-toolbar-left">
-        <el-input v-model="searchQuery" placeholder="搜索标题、题跋..." size="small" style="width:200px" clearable @keyup.enter="onSearch">
+        <div class="aw-type-tabs">
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '' }" @click="setWorkType('')">全部</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '画作' }" @click="setWorkType('画作')">画作</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '书法' }" @click="setWorkType('书法')">书法</span>
+        </div>
+        <el-input v-model="searchQuery" placeholder="搜索标题、题跋..." size="small" style="width:180px" clearable @keyup.enter="onSearch">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
         <el-button size="small" type="primary" @click="onSearch">搜索</el-button>
@@ -55,22 +61,44 @@
     <div v-if="loading" class="av-loading">加载中...</div>
     <div v-else-if="works.length === 0" class="av-empty">暂无作品数据</div>
     <template v-else>
+      <!-- 图库模式（照搬 TubiGallery 样式） -->
       <div v-show="viewMode === 'grid'" class="aw-grid">
         <div v-for="w in works" :key="w.id || w.db_id" class="aw-card" @click="goToWork(w)">
-          <div class="aw-thumb">
-            <img v-if="w.thumbnail_url || w.url" :src="w.thumbnail_url || w.url" :alt="w.title" loading="lazy" />
-            <span v-else class="aw-placeholder">{{ (w.title || '?').charAt(0) }}</span>
+          <div class="aw-image-wrapper">
+            <img v-if="w.thumbnail_url || w.url" :src="w.thumbnail_url || w.url" :alt="w.title" class="aw-image" loading="lazy" />
+            <div v-else class="aw-image-placeholder"><el-icon size="24"><Picture /></el-icon></div>
+            <!-- 处理状态标识 -->
+            <div v-if="w.status && w.status !== 'analyzed'" class="aw-status-badge" :class="'status-' + w.status">
+              <el-icon v-if="w.status === 'queued'" size="10"><Clock /></el-icon>
+              <el-icon v-else-if="w.status === 'analyzing'" size="10" class="is-loading"><Loading /></el-icon>
+              <el-icon v-else-if="w.status === 'error'" size="10"><Close /></el-icon>
+              <el-icon v-else size="10"><Clock /></el-icon>
+              <span>{{ w.status === 'queued' ? '排队中' : w.status === 'analyzing' ? '分析中' : w.status === 'error' ? '失败' : w.status }}</span>
+            </div>
+            <!-- 作业类型标识 -->
+            <div v-if="w.work_type === '书法'" class="aw-type-badge">
+              <span>书法</span>
+            </div>
+            <!-- 面积统计（右下角） -->
+            <div v-if="w.inscription_percent !== undefined || w.painting_percent > 0" class="aw-labels">
+              <span v-if="w.inscription_percent !== undefined" class="aw-label stat-danger">{{ w.inscription_percent?.toFixed(1) }}%题跋</span>
+              <span v-if="w.painting_percent > 0" class="aw-label stat-primary">{{ w.painting_percent?.toFixed(1) }}%绘画</span>
+            </div>
           </div>
           <div class="aw-info">
-            <div class="aw-title">{{ w.title || w.work_name || '未命名' }}</div>
-            <div class="aw-year">{{ w.year || w.inscription_year || '年份不详' }}</div>
-            <div v-if="w.inscription_percent !== undefined" class="aw-meta">
-              <span>题跋{{ w.inscription_percent }}%</span>
+            <div class="aw-title">{{ w.title || '未命名' }}</div>
+            <div class="aw-meta">
+              <span v-if="w.year" class="meta-col">{{ w.year }}年</span>
+              <span v-if="w.artist" class="meta-col">{{ w.artist }}</span>
+            </div>
+            <div class="aw-tags" v-if="getTags(w).length > 0">
+              <span v-for="tag in getTags(w).slice(0, 3)" :key="tag" class="info-tag">{{ tag }}</span>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- 列表模式（保持不变） -->
       <div v-show="viewMode === 'list'" class="aw-table-wrap">
         <div class="aw-table">
           <div class="aw-table-header">
@@ -137,7 +165,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled } from '@element-plus/icons-vue'
+import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,6 +181,7 @@ const loading = ref(true)
 const searchQuery = ref('')
 const activeSort = ref('year')
 const sortDir = ref('desc')
+const workTypeFilter = ref('')
 
 const sortOptions = [
   { key: 'year', label: '年代' },
@@ -163,6 +192,24 @@ const sortOptions = [
 ]
 
 const SORT_FIELD_MAP = { year: 'year', inscription: 'inscription_percent', painting: 'painting_percent', blank: 'blank_percent', created: 'created_at' }
+
+function getTags(w) {
+  let tags = []
+  if (w.computed_tags && Array.isArray(w.computed_tags)) tags = tags.concat(w.computed_tags)
+  if (w.tags) {
+    try {
+      const parsed = JSON.parse(w.tags)
+      if (Array.isArray(parsed)) tags = tags.concat(parsed)
+    } catch {}
+  }
+  return [...new Set(tags)]
+}
+
+function setWorkType(type) {
+  workTypeFilter.value = type
+  currentPage.value = 1
+  loadWorks()
+}
 
 function onSort(key) {
   if (activeSort.value === key) sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
@@ -186,6 +233,7 @@ async function loadWorks() {
     const params = new URLSearchParams({ skip, limit: pageSize })
     params.set('artist', artistName)
     if (searchQuery.value) params.set('keyword', searchQuery.value)
+    if (workTypeFilter.value) params.set('work_type', workTypeFilter.value)
     const sf = SORT_FIELD_MAP[activeSort.value]
     if (sf) { params.set('sort_by', sf); params.set('sort_dir', sortDir.value) }
     const res = await fetch(`${API_BASE}/tubi/results?${params}`)
@@ -214,6 +262,12 @@ onMounted(() => { loadWorks() })
 .av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
 .av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
 
+/* ─── 分类 Tab ─── */
+.aw-type-tabs { display: flex; gap: 4px; }
+.aw-type-tab { padding: 5px 14px; font-size: 13px; color: #8c7a5c; cursor: pointer; border-radius: 6px; transition: all 0.15s; user-select: none; }
+.aw-type-tab:hover { background: #f5f0e8; color: #3a3222; }
+.aw-type-tab.active { background: #c45a3c; color: #fff; font-weight: 500; }
+
 .aw-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
 .aw-toolbar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .aw-total { font-size: 13px; color: #8a8578; }
@@ -225,18 +279,42 @@ onMounted(() => { loadWorks() })
 .aw-sort-item:hover { color: #3a3222; background: #edeae1; }
 .aw-sort-item.active { color: #c45a3c; background: #fdf6f0; font-weight: 500; }
 
-.aw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
-.aw-card { background: #fff; border: 1px solid #e8e3da; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all 0.2s; }
-.aw-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); border-color: #dbbca8; }
-.aw-thumb { width: 100%; aspect-ratio: 3/4; background: #f5f3ed; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.aw-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.aw-placeholder { font-size: 32px; color: #c0b8a8; font-family: 'Noto Serif SC', serif; }
-.aw-info { padding: 10px 12px; }
-.aw-title { font-size: 13px; color: #3a3222; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-.aw-year { font-size: 12px; color: #b0a890; margin-bottom: 4px; }
-.aw-meta { font-size: 11px; color: #8a8578; }
-.aw-meta span { background: #f5f3ed; padding: 2px 6px; border-radius: 3px; }
+/* ─── 图库模式（TubiGallery 风格） ─── */
+.aw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.aw-card { background: #fff; border: 1px solid #e8e3da; border-radius: 8px; overflow: hidden; cursor: pointer; transition: all 0.2s; }
+.aw-card:hover { border-color: #c45a3c; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transform: translateY(-2px); }
+.aw-image-wrapper { position: relative; width: 100%; aspect-ratio: 3/4; background: #f5f3ed; }
+.aw-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+.aw-image-placeholder { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #c45a3c; }
 
+/* 状态角标 */
+.aw-status-badge { position: absolute; top: 4px; left: 4px; display: flex; align-items: center; gap: 3px; padding: 2px 6px; background: rgba(0,0,0,0.7); color: #fff; border-radius: 3px; font-size: 10px; }
+.aw-status-badge.status-queued { background: rgba(184,164,126,0.9); }
+.aw-status-badge.status-analyzing { background: rgba(84,122,140,0.9); }
+.aw-status-badge.status-error { background: rgba(181,51,51,0.9); }
+.aw-status-badge .is-loading { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* 类型标识（书法） */
+.aw-type-badge { position: absolute; top: 4px; right: 4px; z-index: 2; }
+.aw-type-badge span { display: inline-block; padding: 1px 5px; background: #5a7a8c; color: #fff; border-radius: 3px; font-size: 9px; font-weight: 500; }
+
+/* 面积标签 */
+.aw-labels { position: absolute; bottom: 4px; right: 4px; display: flex; gap: 3px; }
+.aw-label { padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 500; }
+.aw-label.stat-danger { background: #c45a3c; color: #fff; }
+.aw-label.stat-primary { background: #5a8c7a; color: #fff; }
+
+.aw-info { padding: 6px 8px 8px; }
+.aw-title { font-size: 12px; font-weight: 600; color: #2c2416; font-family: 'Noto Serif SC', serif; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aw-meta { font-size: 10px; color: #8a8578; margin-bottom: 4px; display: flex; gap: 3px; width: 100%; }
+.meta-col { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.meta-col:first-child { text-align: left; }
+.meta-col:last-child { text-align: right; }
+.aw-tags { display: flex; flex-wrap: wrap; gap: 3px; max-height: 36px; overflow: hidden; }
+.info-tag { padding: 1px 5px; background: #f5f3ed; color: #3a3222; border-radius: 3px; font-size: 9px; white-space: nowrap; }
+
+/* ─── 列表模式 ─── */
 .aw-table-wrap { border: 1px solid #e8e3da; border-radius: 10px; overflow: hidden; background: #fff; }
 .aw-table { width: 100%; }
 .aw-table-header, .aw-table-row { display: flex; align-items: center; padding: 0 12px; }
@@ -266,10 +344,11 @@ onMounted(() => { loadWorks() })
 
 @media (max-width: 768px) {
   .av-page { padding: 0 16px 80px; }
-  .aw-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .aw-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
   .aw-toolbar { flex-direction: column; align-items: stretch; }
   .aw-toolbar-left { flex-wrap: wrap; }
   .aw-tcol-author, .aw-tcol-year, .aw-tcol-date { display: none; }
   .aw-tcol-inscription, .aw-tcol-painting, .aw-tcol-blank { width: 50px; }
+  .aw-type-tabs { order: -1; }
 }
 </style>

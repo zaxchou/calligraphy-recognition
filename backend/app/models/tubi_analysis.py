@@ -104,3 +104,6 @@ class TubiAnalysis(Base):
     free_tags = Column(Text, nullable=True, default=None, comment="自由标签（逗号分隔）")
     inscription_author = Column(String(200), nullable=True, default=None, comment="款识作者")
     inscription_date = Column(String(100), nullable=True, default=None, comment="款识日期")
+
+    # ── 作品类型 ───────────────────────────────────────────
+    work_type = Column(String(20), nullable=True, default='画作', comment="作品类型：画作/书法")
