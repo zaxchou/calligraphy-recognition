@@ -73,6 +73,7 @@ const loading = ref(true)
 let debounceTimer = null
 
 const pinyinLetterNames = ref([])
+const pinyinSearchNames = ref([])
 const featuredArtists = ref([])
 
 async function fetchFeatured() {
@@ -89,8 +90,12 @@ function buildFilters() {
     keyword: keyword.value,
     sort: sortBy.value,
   }
-  if (pinyinLetterNames.value.length > 0) {
-    filters.names = pinyinLetterNames.value.join(',')
+  if (pinyinLetterNames.value.length > 0 || pinyinSearchNames.value.length > 0) {
+    const names = new Set([
+      ...pinyinLetterNames.value,
+      ...pinyinSearchNames.value,
+    ])
+    filters.names = [...names].join(',')
   }
   return filters
 }
@@ -106,16 +111,39 @@ async function doLoad() {
   }
 }
 
+function debouncedSearch() {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    handlePinyinSearch()
+  }, 300)
+}
+
+function handlePinyinSearch() {
+  pinyinSearchNames.value = []
+  const kw = keyword.value.trim().toLowerCase()
+  if (kw && /^[a-z]+$/.test(kw)) {
+    const matching = []
+    for (const name of store.letterNames) {
+      if (!name) continue
+      const py = pinyin(name, { toneType: 'none', type: 'array' })
+      const initials = py.map(p => (p[0] || '').toLowerCase()).join('')
+      if (initials.includes(kw) || name.toLowerCase().includes(kw)) {
+        matching.push(name)
+      }
+    }
+    if (matching.length > 0) {
+      pinyinSearchNames.value = matching
+    }
+  }
+  onFilterChange()
+}
+
 function onFilterChange() {
   store.clear()
   pinyinLetterNames.value = []
+  pinyinSearchNames.value = []
   activeLetter.value = ''
   doLoad()
-}
-
-function debouncedSearch() {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(onFilterChange, 300)
 }
 
 function onLetterSelect(letter) {
