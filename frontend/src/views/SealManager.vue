@@ -530,8 +530,8 @@ onMounted(async () => {
 
 .seal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
   min-height: 200px;
 }
 
@@ -539,7 +539,7 @@ onMounted(async () => {
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-  padding: 10px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -572,8 +572,8 @@ onMounted(async () => {
 }
 
 .seal-thumb-wrapper {
-  max-width: 80px;
-  max-height: 80px;
+  max-width: 64px;
+  max-height: 64px;
   border-radius: 6px;
   overflow: hidden;
   border: 1px solid #f0ede6;
@@ -583,8 +583,8 @@ onMounted(async () => {
 }
 
 .seal-thumb {
-  max-width: 80px;
-  max-height: 80px;
+  max-width: 64px;
+  max-height: 64px;
   object-fit: contain;
 }
 
@@ -606,7 +606,7 @@ onMounted(async () => {
 }
 
 .seal-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #333;
   margin-bottom: 2px;

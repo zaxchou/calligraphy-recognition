@@ -127,20 +127,20 @@ onMounted(() => fetchSeals())
 .as-search-clear:hover { color: #8a8578; }
 .as-count { font-size: 13px; color: #8a8578; white-space: nowrap; }
 
-.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-.as-card { background: #fff; border: 1px solid #e8e3da; border-radius: 10px; overflow: hidden; transition: all 0.2s; cursor: pointer; }
+.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.as-card { background: #fff; border: 1px solid #e8e3da; border-radius: 8px; overflow: hidden; transition: all 0.2s; cursor: pointer; }
 .as-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
 .as-image-wrap { width: 100%; aspect-ratio: 1; background: #f5f0e8; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-.as-image { width: 100%; height: 100%; object-fit: contain; padding: 16px; box-sizing: border-box; }
-.as-image-placeholder { width: 100%; aspect-ratio: 1; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-size: 48px; color: #c45a3c; }
-.as-badge { position: absolute; top: 6px; right: 6px; background: rgba(196, 90, 60, 0.88); color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 4px; z-index: 1; }
-.as-info { padding: 12px 14px; text-align: center; }
-.as-name { font-size: 14px; font-weight: 600; color: #2c2416; margin-bottom: 4px; font-family: 'Noto Serif SC', serif; }
-.as-type { font-size: 12px; color: #8a8578; }
-.as-source { font-size: 11px; color: #b0a88e; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-image { width: 100%; height: 100%; object-fit: contain; padding: 8px; box-sizing: border-box; }
+.as-image-placeholder { width: 100%; aspect-ratio: 1; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-size: 36px; color: #c45a3c; }
+.as-badge { position: absolute; top: 4px; right: 4px; background: rgba(196, 90, 60, 0.88); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 3px; z-index: 1; }
+.as-info { padding: 8px 10px; text-align: center; }
+.as-name { font-size: 12px; font-weight: 600; color: #2c2416; margin-bottom: 2px; font-family: 'Noto Serif SC', serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-type { font-size: 11px; color: #8a8578; }
+.as-source { font-size: 10px; color: #b0a88e; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 768px) {
   .av-page { padding: 0 16px 80px; }
-  .as-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .as-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
 }
 </style>
