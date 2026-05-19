@@ -381,9 +381,16 @@ class VerifyResponse(BaseModel):
     theme_tags: Optional[str] = None
 
 
+class ArtistInfo(BaseModel):
+    name: str
+    birth_year: Optional[int] = None
+    dynasty: str = ""
+    artwork_count: int = 0
+
 class ArtistsResponse(BaseModel):
     success: bool
-    artists: List[str]  # ["李鱓", "郑燮", "潘天寿", ...]
+    artists: List[str] = []  # 兼容旧版
+    artists_info: List[ArtistInfo] = []  # 新：含朝代/生年/作品数
 
 
 # ============ API 端点 ============
@@ -391,18 +398,64 @@ class ArtistsResponse(BaseModel):
 @router.get("/artists", response_model=ArtistsResponse)
 async def get_artists():
     """
-    获取数据库中所有去重作者列表
+    获取数据库中所有去重作者列表（含朝代/生年/作品数）
     """
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # 主列表：从 tubi_analyses 统计
     cur.execute("""
-        SELECT DISTINCT artist
-        FROM tubi_analyses
-        WHERE artist IS NOT NULL AND artist != ''
-        ORDER BY artist
+        SELECT ta.artist,
+               a.birth_year,
+               COUNT(*) as cnt
+        FROM tubi_analyses ta
+        LEFT JOIN artists a ON a.name = ta.artist
+        WHERE ta.artist IS NOT NULL AND ta.artist != ''
+        GROUP BY ta.artist
+        ORDER BY ta.artist
     """)
-    artists = [row[0] for row in cur.fetchall()]
-    return {"success": True, "artists": artists}
+    rows = cur.fetchall()
+
+    artists_info = []
+    for name, birth_year, cnt in rows:
+        artists_info.append(ArtistInfo(
+            name=name,
+            birth_year=birth_year,
+            dynasty=_dynasty_from_year(birth_year),
+            artwork_count=cnt,
+        ))
+
+    artists = [a.name for a in artists_info]
+    return {"success": True, "artists": artists, "artists_info": artists_info}
+
+
+def _dynasty_from_year(birth_year) -> str:
+    """根据生年推断朝代"""
+    if birth_year is None:
+        return "年代不详"
+    if birth_year < 0:
+        return "先秦"
+    if birth_year <= 220:
+        return "秦汉"
+    if birth_year <= 589:
+        return "魏晋南北朝"
+    if birth_year <= 907:
+        return "隋唐"
+    if birth_year <= 960:
+        return "五代十国"
+    if birth_year <= 1234:
+        return "辽金"
+    if birth_year <= 1279:
+        return "宋"
+    if birth_year <= 1368:
+        return "元"
+    if birth_year <= 1644:
+        return "明"
+    if birth_year <= 1911:
+        return "清"
+    if birth_year <= 1949:
+        return "近现代"
+    return "当代"
 
 
 @router.get("/stats", response_model=StatsResponse)
@@ -989,6 +1042,7 @@ async def get_records(
     verified_only: bool = Query(default=False, description="仅已校验"),
     keyword: Optional[str] = Query(default=None, description="搜索关键词（作品名/年份/题跋文字）"),
     annotated_status: Optional[str] = Query(default=None, description="标注状态筛选: all/unannotated/annotated"),
+    library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
     limit: int = Query(default=50, le=500),
     offset: int = Query(default=0),
 ):
@@ -1004,6 +1058,10 @@ async def get_records(
     where_clauses = [
         artist_where,
     ]
+
+    if library_id is not None:
+        where_clauses.append("library_id = ?")
+        params.append(library_id)
 
     if period:
         where_clauses.append("period_phase = ?")
@@ -1885,6 +1943,7 @@ async def translate_batch_stream(
     editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称"),
     force_retranslate: bool = Query(default=False, description="强制重新翻译已翻译记录"),
+    library_id: Optional[int] = Query(None, description="按作品库筛选"),
 ):
     """
     批量翻译（SSE流式）：对已校对但未翻译的记录进行翻译，实时推送进度
@@ -1900,26 +1959,35 @@ async def translate_batch_stream(
         conn = get_db_connection()
         cur = conn.cursor()
 
+        # 构建查询条件
+        where_parts = [artist_where]
+        params = list(artist_params)
+        if library_id is not None:
+            where_parts.append("library_id = ?")
+            params.append(library_id)
+
+        where_sql = " AND ".join(where_parts)
+
         # 获取待翻译记录（已校验但未翻译）
         if force_retranslate:
             cur.execute(f"""
                 SELECT id, inscription_content
                 FROM tubi_analyses
-                WHERE {artist_where}
+                WHERE {where_sql}
                   AND inscription_content IS NOT NULL
                   AND LENGTH(inscription_content) > 0
                   AND inscription_verified = 1
-            """, artist_params)
+            """, params)
         else:
             cur.execute(f"""
                 SELECT id, inscription_content
                 FROM tubi_analyses
-                WHERE {artist_where}
+                WHERE {where_sql}
                   AND inscription_content IS NOT NULL
                   AND LENGTH(inscription_content) > 0
                   AND inscription_verified = 1
                   AND (inscription_modern IS NULL OR LENGTH(inscription_modern) = 0)
-            """, artist_params)
+            """, params)
 
         rows = cur.fetchall()
         total = len(rows)
@@ -2254,6 +2322,7 @@ async def batch_reanalyze(
     editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式：跳过已处理的记录（已有 v4_confidence + rules_version ≥ 5.5）"),
+    library_id: Optional[int] = Query(None, description="按作品库筛选"),
 ):
     """
     统一分析引擎（规则 + 低可信度自动 DeepSeek 修正）。
@@ -2287,7 +2356,10 @@ async def batch_reanalyze(
     where_clauses = []
     params = []
 
-    if artist and artist != "all":
+    if library_id is not None:
+        where_clauses.append("library_id = ?")
+        params.append(library_id)
+    elif artist and artist != "all":
         where_clauses.append("artist = ?")
         params.append(artist)
 
@@ -2600,6 +2672,7 @@ async def batch_reanalyze_stream(
     editor=Depends(require_editor),
     artist: str = Query(default="all", description="画家名称，all 表示全部"),
     incremental: bool = Query(default=False, description="增量模式"),
+    library_id: Optional[int] = Query(None, description="按作品库筛选"),
 ):
     """
     批量重跑 SSE 流式版本：实时推送每条记录的进度。
@@ -2629,7 +2702,10 @@ async def batch_reanalyze_stream(
 
         where_clauses = []
         params = []
-        if artist and artist != "all":
+        if library_id is not None:
+            where_clauses.append("library_id = ?")
+            params.append(library_id)
+        elif artist and artist != "all":
             where_clauses.append("artist = ?")
             params.append(artist)
         if incremental:

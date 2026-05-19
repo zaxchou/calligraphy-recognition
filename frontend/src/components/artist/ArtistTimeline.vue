@@ -1,24 +1,47 @@
 <template>
-  <div class="at-timeline">
-    <div v-for="item in timelineItems" :key="item.artist.id" class="at-item">
-      <div class="at-dot" />
-      <div class="at-card" @click="$emit('select', item.artist.name)">
-        <div class="at-era">{{ item.artist.dynasty || '未知' }}</div>
-        <div class="at-name">{{ item.artist.name }}</div>
-        <div class="at-years">
-          <template v-if="item.artist.birth_year || item.artist.death_year">
-            {{ item.artist.birth_year || '?' }} – {{ item.artist.death_year || '?' }}
-          </template>
-          <template v-else>生卒年不详</template>
+  <div class="dt-timeline">
+    <div v-for="group in dynastyGroups" :key="group.key" class="dt-section">
+      <div class="dt-era-header" @click="toggleExpanded(group.key)">
+        <div class="dt-era-left">
+          <span class="dt-era-name">{{ group.label }}</span>
+          <span class="dt-era-range">{{ group.range }}</span>
         </div>
-        <div v-if="item.artist.alias" class="at-alias">{{ item.artist.alias }}</div>
+        <div class="dt-era-counts">
+          <span class="dt-era-count">{{ group.artworkCount }} 件</span>
+          <span class="dt-era-divider">/</span>
+          <span class="dt-era-count">{{ group.count }} 位</span>
+        </div>
+        <el-icon class="dt-expand-icon" :class="{ expanded: isExpanded(group.key, group.count) }">
+          <ArrowDown />
+        </el-icon>
+      </div>
+
+      <div v-show="isExpanded(group.key, group.count)" class="dt-era-body">
+        <div v-for="py in group.pyGroups" :key="py.letter" class="dt-py-group">
+          <div class="dt-py-letter">{{ py.letter }}</div>
+          <div class="dt-py-names">
+            <button
+              v-for="artist in py.artists"
+              :key="artist.id"
+              class="dt-artist-btn"
+              @click="$emit('select', artist.name)"
+            >
+              <span class="dt-artist-name">{{ artist.name }}</span>
+              <span v-if="artist.alias" class="dt-artist-alias">({{ artist.alias }})</span>
+              <span class="dt-artist-count" v-if="artist.artwork_count">{{ artist.artwork_count }}件</span>
+            </button>
+          </div>
+        </div>
+        <div v-if="group.pyGroups.length === 0" class="dt-empty">暂无艺术家</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { ArrowDown } from '@element-plus/icons-vue'
+import { pinyin } from 'pinyin-pro'
 
 const props = defineProps({
   artists: { type: Array, default: () => [] },
@@ -26,89 +49,244 @@ const props = defineProps({
 
 defineEmits(['select'])
 
-const timelineItems = computed(() => {
-  return [...props.artists]
-    .sort((a, b) => {
-      const ay = a.birth_year || 9999
-      const by = b.birth_year || 9999
-      return ay - by
-    })
-    .map(a => ({ artist: a }))
+const DYNASTY_ORDER = [
+  { key: '先秦', label: '先秦', range: '前221年以前', norm: /先.?秦/ },
+  { key: '秦汉', label: '秦汉', range: '前221-220', norm: /秦|汉|两汉|西汉|东汉/ },
+  { key: '魏晋南北朝', label: '魏晋南北朝', range: '220-589', norm: /三.?国|晋|北魏|东晋|西晋|南朝|北朝|陈|隋/ },
+  { key: '隋唐', label: '隋唐', range: '581-907', norm: /唐/ },
+  { key: '五代十国', label: '五代十国', range: '907-960', norm: /五代|南唐|后梁|前蜀|后蜀/ },
+  { key: '辽金', label: '辽金', range: '916-1234', norm: /辽|金/ },
+  { key: '宋', label: '宋', range: '960-1279', norm: /宋|北宋|南宋/ },
+  { key: '元', label: '元', range: '1271-1368', norm: /元/ },
+  { key: '明', label: '明', range: '1368-1644', norm: /明/ },
+  { key: '清', label: '清', range: '1644-1911', norm: /清/ },
+  { key: '近现代', label: '近现代', range: '1911-1949', norm: /民.?国|现代|近.?现|晚.?清/ },
+  { key: '当代', label: '当代', range: '1949至今', norm: /当代|现今/ },
+]
+
+function normalizeDynasty(raw) {
+  if (!raw) return '年代不详'
+  for (const d of DYNASTY_ORDER) {
+    if (d.norm.test(raw)) return d.key
+  }
+  return '年代不详'
+}
+
+function getPinyinFirst(name) {
+  if (!name) return '#'
+  const py = pinyin(name, { toneType: 'none', type: 'array' })
+  const first = py[0]?.charAt(0) || ''
+  return /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#'
+}
+
+const expandedMap = ref({})
+
+watch(() => props.artists, () => {
+  expandedMap.value = {}
+}, { deep: true })
+
+function toggleExpanded(key) {
+  expandedMap.value = { ...expandedMap.value, [key]: !expandedMap.value[key] }
+}
+
+function isExpanded(key, count) {
+  if (expandedMap.value[key] !== undefined) return expandedMap.value[key]
+  return count <= 30
+}
+
+const dynastyGroups = computed(() => {
+  const map = {}
+  for (const d of DYNASTY_ORDER) {
+    map[d.key] = { ...d, artists: [], artworkCount: 0, count: 0 }
+  }
+  map['年代不详'] = { key: '年代不详', label: '年代不详', range: '', artists: [], artworkCount: 0, count: 0 }
+
+  for (const artist of props.artists) {
+    const raw = artist.dynasty || ''
+    const key = normalizeDynasty(raw)
+    const target = map[key] || map['年代不详']
+    target.artists.push(artist)
+    target.count++
+    target.artworkCount += artist.artwork_count || 0
+  }
+
+  const result = []
+  for (const d of DYNASTY_ORDER) {
+    const group = map[d.key]
+    if (group.artists.length === 0) continue
+    const pyMap = {}
+    for (const a of group.artists) {
+      const letter = getPinyinFirst(a.name)
+      if (!pyMap[letter]) pyMap[letter] = []
+      pyMap[letter].push(a)
+    }
+    const pyOrder = 'ABCDEFGHJKLMNOPQRSTWXYZ'.split('')
+    group.pyGroups = []
+    for (const l of pyOrder) {
+      if (pyMap[l]) {
+        pyMap[l].sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+        group.pyGroups.push({ letter: l, artists: pyMap[l] })
+      }
+    }
+    if (pyMap['#']) {
+      pyMap['#'].sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+      group.pyGroups.push({ letter: '#', artists: pyMap['#'] })
+    }
+    result.push(group)
+  }
+
+  const unknown = map['年代不详']
+  if (unknown.artists.length > 0) {
+    unknown.pyGroups = []
+    unknown.artists.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+    unknown.pyGroups.push({ letter: '?', artists: unknown.artists })
+    result.push(unknown)
+  }
+
+  return result
 })
 </script>
 
 <style scoped>
-.at-timeline {
-  position: relative;
-  padding-left: 60px;
+.dt-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-.at-timeline::before {
-  content: '';
-  position: absolute;
-  left: 27px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, #dbbca8, #c45a3c, #dbbca8);
-  border-radius: 1px;
+.dt-section {
+  border-bottom: 1px solid #edeae1;
 }
 
-.at-item {
-  position: relative;
-  margin-bottom: 16px;
-}
-
-.at-dot {
-  position: absolute;
-  left: -36px;
-  top: 20px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #c45a3c;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 2px #dbbca8;
-  z-index: 1;
-}
-
-.at-card {
-  background: #fff;
-  border: 1px solid #edeae1;
-  border-radius: 8px;
-  padding: 12px 16px;
+.dt-era-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 0;
   cursor: pointer;
-  transition: all 0.2s ease;
+  gap: 12px;
+  user-select: none;
 }
 
-.at-card:hover {
-  border-color: #dbbca8;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+.dt-era-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 200px;
 }
 
-.at-era {
-  font-size: 0.7rem;
-  color: #c45a3c;
-  letter-spacing: 0.1em;
-  margin-bottom: 4px;
-}
-
-.at-name {
-  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
-  font-size: 1rem;
-  font-weight: 500;
+.dt-era-name {
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: #3a3222;
 }
 
-.at-years {
+.dt-era-range {
   font-size: 0.75rem;
   color: #a09b8e;
-  margin-top: 2px;
 }
 
-.at-alias {
+.dt-era-counts {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 0.85rem;
+}
+
+.dt-era-count {
+  color: #c45a3c;
+  font-weight: 600;
+}
+
+.dt-era-divider {
+  color: #ccc;
+}
+
+.dt-expand-icon {
+  font-size: 14px;
+  color: #aaa;
+  transition: transform 0.25s;
+}
+.dt-expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.dt-era-body {
+  padding: 0 0 16px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dt-py-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.dt-py-letter {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #c45a3c;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.dt-py-names {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.dt-artist-btn {
+  background: #faf8f4;
+  border: 1px solid #e8e4da;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #5a4a38;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.dt-artist-btn:hover {
+  border-color: #c45a3c;
+  background: #fff;
+  color: #c45a3c;
+}
+
+.dt-artist-name {
+  font-weight: 500;
+}
+
+.dt-artist-alias {
   font-size: 0.72rem;
-  color: #8a8578;
-  margin-top: 2px;
+  color: #a09b8e;
+}
+
+.dt-artist-count {
+  font-size: 0.65rem;
+  color: #b0a090;
+  margin-left: 2px;
+}
+
+.dt-empty {
+  color: #ccc;
+  font-size: 0.85rem;
+  padding: 8px 0;
 }
 </style>
