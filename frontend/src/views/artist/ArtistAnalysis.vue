@@ -65,6 +65,19 @@
       <div v-else class="summary-empty"><span>点击上方按钮，基于当前统计数据生成结构化学术报告</span></div>
     </el-card>
 
+    <!-- 数据概览 + 排行榜 -->
+    <div class="dashboard-row">
+      <ArtistStatsCard ref="artistStatsCardRef" @artist-change="onStatsArtistChange" style="flex: 6.5;" />
+      <TubiRankingCard
+        :history-list="rankingList"
+        :get-display-age="getDisplayAge"
+        :loading="rankingLoading"
+        style="flex: 3.5;"
+        @item-click="onRankingItemClick"
+        @more="onRankingMore"
+      />
+    </div>
+
     <el-skeleton v-if="loading" :rows="8" animated />
     <div v-else>
       <div class="aa-charts-row aa-three-col">
@@ -200,6 +213,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
+import ArtistStatsCard from '@/tubi/ArtistStatsCard.vue'
+import TubiRankingCard from '@/components/tubi/TubiRankingCard.vue'
+import { tubiApi } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -209,6 +225,9 @@ const artistName = route.params.name
 const selectedArtist = ref(artistName)
 const artistList = ref([])
 const loading = ref(false)
+const artistStatsCardRef = ref(null)
+const rankingList = ref([])
+const rankingLoading = ref(false)
 const statsData = ref({})
 const correlationData = ref({})
 const sizeStats = ref(null)
@@ -524,14 +543,60 @@ async function loadMoreThemePaintings() {
   finally { themeDialogLoadingMore.value = false }
 }
 
+// ── 排行榜相关 ──
+function getDisplayAge(item) {
+  if (!item || !item.year || !selectedArtist.value) return null
+  const birthYear = { '李鱓': 1686, '郑燮': 1693 }[selectedArtist.value]
+  if (!birthYear) return null
+  const age = parseInt(item.year) - birthYear
+  return age >= 0 ? age : null
+}
+
+function onStatsArtistChange(artist) {
+  selectedArtist.value = artist
+  fetchRankingData()
+}
+
+function onRankingItemClick(item) {
+  const id = item.id || item.db_id
+  if (id) window.open(`/#/tubi/${id}`, '_blank')
+}
+
+function onRankingMore() {
+  router.push({ name: 'TubiList' })
+}
+
+async function fetchRankingData() {
+  rankingLoading.value = true
+  try {
+    const res = await tubiApi.getAllResults(0, 2000)
+    if (res.success) {
+      const data = (res.data || []).map(item => ({
+        ...item,
+        inscriptionPercent: item.inscription_percent,
+        paintingPercent: item.painting_percent,
+        thumbnailUrl: item.thumbnail_url,
+      }))
+      rankingList.value = data.filter(item => item.artist === selectedArtist.value)
+    }
+  } catch (e) {
+    console.error('加载排行榜数据失败', e)
+  } finally {
+    rankingLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchArtistList()
-  if (selectedArtist.value) { loadStats(); loadCachedSummary() }
+  if (selectedArtist.value) { loadStats(); loadCachedSummary(); fetchRankingData() }
 })
 </script>
 
 <style scoped>
 .av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
+
+.dashboard-row { display: flex; gap: 20px; margin-bottom: 24px; }
+@media (max-width: 900px) { .dashboard-row { flex-direction: column; } }
 
 .av-header { padding: 32px 0 12px; }
 .av-header-inner { display: flex; align-items: baseline; }
