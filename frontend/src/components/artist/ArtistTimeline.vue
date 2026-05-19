@@ -81,8 +81,27 @@ function getPinyinFirst(name) {
 
 const expandedMap = ref({})
 
+function autoExpand() {
+  const map = {}
+  for (const artist of props.artists) {
+    const key = normalizeDynasty(artist.dynasty || '')
+    map[key] = true
+  }
+  // If filtering reduces to just a few dynasties, expand those; otherwise keep collapsed
+  const keys = Object.keys(map)
+  if (props.artists.length > 0) {
+    if (keys.length <= 6) {
+      expandedMap.value = map
+    } else {
+      expandedMap.value = {}
+    }
+  } else {
+    expandedMap.value = {}
+  }
+}
+
 watch(() => props.artists, () => {
-  expandedMap.value = {}
+  autoExpand()
 }, { deep: true })
 
 function toggleExpanded(key) {
