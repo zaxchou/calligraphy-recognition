@@ -64,21 +64,14 @@ export const recognitionApi = {
     const formData = new FormData()
     formData.append('file', file)
     return api.post('/recognize', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      timeout: 120000 // AI识别可能需要较长时间
+      timeout: 120000
     })
   },
   search(file, topK = 5) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('top_k', topK)
-    return api.post('/search', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    return api.post('/search', formData)
   },
   getHistory(page = 1, pageSize = 10) {
     return api.get('/recognition/history', {
@@ -118,9 +111,6 @@ export const tubiApi = {
       formData.append(k, String(v))
     })
     return api.post('/tubi/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
       timeout: 300000,
       onUploadProgress: evt => {
         if (!onProgress) return
@@ -136,11 +126,7 @@ export const tubiApi = {
     files.forEach(file => {
       formData.append('files', file)
     })
-    return api.post('/tubi/upload-multiple', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    return api.post('/tubi/upload-multiple', formData)
   },
   autoAnalyze(imageId) {
     return api.post(`/tubi/auto-analyze/${imageId}`, {}, {
@@ -204,11 +190,7 @@ export const tubiApi = {
   replaceImage(imageId, file) {
     const formData = new FormData()
     formData.append('file', file)
-    return api.post(`/tubi/image/${imageId}/replace-image`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
+    return api.post(`/tubi/image/${imageId}/replace-image`, formData)
   },
   getWordCloud(params = {}) {
     return api.get('/tubi/wordcloud', { params })
@@ -311,9 +293,7 @@ export const sealsApi = {
     const formData = new FormData()
     formData.append('file', file)
     if (description) formData.append('description', description)
-    return api.post(`/seals/${sealId}/images`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    return api.post(`/seals/${sealId}/images`, formData)
   },
   updateImage(sealId, imageId, data) {
     return api.put(`/seals/${sealId}/images/${imageId}`, data)
@@ -416,7 +396,6 @@ export const artworkApi = {
       formData.append(k, String(v))
     })
     return api.post(`/libraries/${libraryId}/artworks`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 300000,
       onUploadProgress: evt => {
         if (!onProgress) return
