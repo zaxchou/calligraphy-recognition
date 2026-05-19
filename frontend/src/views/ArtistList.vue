@@ -84,13 +84,14 @@ async function fetchFeatured() {
 }
 
 function buildFilters() {
+  const isPinyinMatch = pinyinSearchNames.value.length > 0
   const filters = {
     dynasty: dynastyFilters.value.join(','),
     school: schoolFilters.value.join(','),
-    keyword: keyword.value,
+    keyword: isPinyinMatch ? '' : keyword.value,
     sort: sortBy.value,
   }
-  if (pinyinLetterNames.value.length > 0 || pinyinSearchNames.value.length > 0) {
+  if (pinyinLetterNames.value.length > 0 || isPinyinMatch) {
     const names = new Set([
       ...pinyinLetterNames.value,
       ...pinyinSearchNames.value,
@@ -133,6 +134,9 @@ function handlePinyinSearch() {
     }
     if (matching.length > 0) {
       pinyinSearchNames.value = matching
+      store.clear()
+      doLoad()
+      return
     }
   }
   onFilterChange()
