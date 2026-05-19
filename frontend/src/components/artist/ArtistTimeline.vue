@@ -45,6 +45,7 @@ import { pinyin } from 'pinyin-pro'
 
 const props = defineProps({
   artists: { type: Array, default: () => [] },
+  autoExpand: { type: Boolean, default: false },
 })
 
 defineEmits(['select'])
@@ -81,28 +82,22 @@ function getPinyinFirst(name) {
 
 const expandedMap = ref({})
 
-function autoExpand() {
-  const map = {}
-  for (const artist of props.artists) {
-    const key = normalizeDynasty(artist.dynasty || '')
-    map[key] = true
-  }
-  // If filtering reduces to just a few dynasties, expand those; otherwise keep collapsed
-  const keys = Object.keys(map)
-  if (props.artists.length > 0) {
-    if (keys.length <= 6) {
-      expandedMap.value = map
-    } else {
-      expandedMap.value = {}
+function updateExpanded() {
+  if (props.autoExpand) {
+    const map = {}
+    for (const artist of props.artists) {
+      const key = normalizeDynasty(artist.dynasty || '')
+      map[key] = true
     }
+    expandedMap.value = map
   } else {
     expandedMap.value = {}
   }
 }
 
-watch(() => props.artists, () => {
-  autoExpand()
-}, { deep: true })
+watch(() => [props.artists, props.autoExpand], () => {
+  updateExpanded()
+}, { deep: true, immediate: true })
 
 function toggleExpanded(key) {
   expandedMap.value = { ...expandedMap.value, [key]: !expandedMap.value[key] }

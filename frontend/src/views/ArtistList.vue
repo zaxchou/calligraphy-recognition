@@ -46,13 +46,13 @@
         </div>
       </section>
 
-      <ArtistTimeline :artists="store.list" @select="goToArtist" />
+      <ArtistTimeline :artists="store.list" :auto-expand="isFilterActive" @select="goToArtist" />
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { pinyin } from 'pinyin-pro'
@@ -132,6 +132,13 @@ function onLetterSelect(letter) {
   pinyinLetterNames.value = matching
   doLoad()
 }
+
+const isFilterActive = computed(() => {
+  return !!keyword.value
+    || dynastyFilters.value.length > 0
+    || schoolFilters.value.length > 0
+    || !!activeLetter.value
+})
 
 function goToArtist(name) {
   router.push(`/artist/${encodeURIComponent(name)}`)
