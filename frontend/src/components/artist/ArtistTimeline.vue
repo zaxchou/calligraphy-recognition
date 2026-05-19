@@ -91,7 +91,7 @@ function toggleExpanded(key) {
 
 function isExpanded(key, count) {
   if (expandedMap.value[key] !== undefined) return expandedMap.value[key]
-  return count <= 30
+  return false
 }
 
 const dynastyGroups = computed(() => {

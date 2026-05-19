@@ -62,6 +62,24 @@ export const useArtistStore = defineStore('artist', () => {
     return data
   }
 
+  async function fetchAll(filters = {}) {
+    const params = {
+      page: 1,
+      page_size: 2000,
+      sort: filters.sort || 'created_at',
+    }
+    if (filters.dynasty) params.dynasty = filters.dynasty
+    if (filters.school) params.school = filters.school
+    if (filters.keyword) params.keyword = filters.keyword
+    if (filters.names) params.names = filters.names
+
+    const data = await artistsApi.list(params)
+    list.value = data.artists || []
+    total.value = data.total || 0
+    lastFetchTime.value = Date.now()
+    return data
+  }
+
   function clear() {
     list.value = []
     total.value = 0
@@ -71,5 +89,5 @@ export const useArtistStore = defineStore('artist', () => {
   const hasMore = computed(() => list.value.length < total.value)
 
   return { list, total, periods, schools, letterNames, statsSummary, lastFetchTime,
-           isStale, isMetaStale, loadMeta, fetchPage, clear, hasMore }
+           isStale, isMetaStale, loadMeta, fetchPage, fetchAll, clear, hasMore }
 })
