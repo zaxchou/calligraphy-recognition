@@ -103,6 +103,20 @@
             <input type="file" ref="uploadInput" accept="image/*" style="display: none;" @change="handleUpload" />
           </el-form-item>
         </template>
+        <template v-else>
+          <el-form-item label="印章图片">
+            <div class="seal-images-edit">
+              <div v-if="pendingFile" class="seal-img-item">
+                <img :src="pendingPreviewUrl" class="seal-img-preview" />
+                <el-button type="danger" :icon="Delete" circle size="small" class="seal-img-delete" @click="pendingFile = null" />
+              </div>
+              <div class="seal-img-upload" @click="triggerUpload">
+                <el-icon :size="24"><Plus /></el-icon>
+              </div>
+            </div>
+            <input type="file" ref="uploadInput" accept="image/*" style="display: none;" @change="handleUpload" />
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="showEditDialog = false">取消</el-button>
@@ -172,6 +186,8 @@ const editForm = ref({
   images: []
 })
 const uploadInput = ref(null)
+const pendingFile = ref(null)
+const pendingPreviewUrl = ref('')
 
 const showArtworksDialog = ref(false)
 const artworksSealName = ref('')
@@ -254,6 +270,13 @@ async function handleSave() {
       if (res.success) {
         ElMessage.success('印章创建成功')
         showEditDialog.value = false
+        if (pendingFile.value && res.id) {
+          try {
+            await sealsApi.uploadImage(res.id, pendingFile.value, '')
+          } catch (_) {}
+          pendingFile.value = null
+          pendingPreviewUrl.value = ''
+        }
         await loadSeals()
       } else {
         ElMessage.error(res.message || '创建失败')
@@ -364,7 +387,13 @@ function triggerUpload() {
 
 async function handleUpload(event) {
   const file = event.target.files?.[0]
-  if (!file || !editingSeal.value) return
+  if (!file) return
+  if (!editingSeal.value) {
+    pendingFile.value = file
+    pendingPreviewUrl.value = URL.createObjectURL(file)
+    if (uploadInput.value) uploadInput.value.value = ''
+    return
+  }
   try {
     const res = await sealsApi.uploadImage(editingSeal.value.id, file, '')
     if (res.success) {
@@ -452,6 +481,8 @@ watch(showCreateDialog, (val) => {
   if (val) {
     editingSeal.value = null
     editForm.value = { name: '', artist_name: '', seal_type: '名章', description: '', source: '', images: [] }
+    pendingFile.value = null
+    pendingPreviewUrl.value = ''
     showEditDialog.value = true
     showCreateDialog.value = false
   }
