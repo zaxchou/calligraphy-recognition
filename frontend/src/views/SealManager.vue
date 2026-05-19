@@ -215,9 +215,9 @@ function openEdit(seal) {
     description: seal.description || '',
     source: seal.source || '',
     images: (seal.images || []).map(img => ({
-      id: img.id,
-      path: img.path,
-      description: img.description || '',
+      id: img.id || null,
+      path: typeof img === 'string' ? img : (img.path || ''),
+      description: typeof img === 'string' ? '' : (img.description || ''),
       sort_order: img.sort_order || 0
     }))
   }
@@ -438,8 +438,10 @@ function goToArtwork(art) {
 
 function getImageUrl(path) {
   if (!path) return ''
-  if (path.startsWith('http')) return path
-  return `${API_BASE.replace('/api/v1', '')}${path}`
+  const p = typeof path === 'string' ? path : (path.path || '')
+  if (!p) return ''
+  if (p.startsWith('http')) return p
+  return `${API_BASE.replace('/api/v1', '')}${p}`
 }
 
 function onImageError(e) {

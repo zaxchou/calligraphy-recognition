@@ -58,7 +58,7 @@ const currentImage = computed(() => {
   const img = images.value[index.value]
   if (!img) return ''
   const path = img.path || img
-  if (!path) return ''
+  if (!path || typeof path !== 'string') return ''
   if (path.startsWith('http')) return path
   return `${API_BASE.replace('/api/v1', '')}${path}`
 })
