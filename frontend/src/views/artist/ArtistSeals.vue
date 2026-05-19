@@ -127,7 +127,7 @@ onMounted(() => fetchSeals())
 .as-search-clear:hover { color: #8a8578; }
 .as-count { font-size: 13px; color: #8a8578; white-space: nowrap; }
 
-.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
 .as-card { background: #fff; border: 1px solid #e8e3da; border-radius: 8px; overflow: hidden; transition: all 0.2s; cursor: pointer; }
 .as-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
 .as-image-wrap { width: 100%; aspect-ratio: 1; background: #f5f0e8; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
@@ -141,6 +141,6 @@ onMounted(() => fetchSeals())
 
 @media (max-width: 768px) {
   .av-page { padding: 0 16px 80px; }
-  .as-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+  .as-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
 }
 </style>
