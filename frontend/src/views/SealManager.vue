@@ -539,7 +539,7 @@ onMounted(async () => {
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-  padding: 8px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -568,13 +568,13 @@ onMounted(async () => {
   width: 100%;
   display: flex;
   justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .seal-thumb-wrapper {
   max-width: 64px;
   max-height: 64px;
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
   border: 1px solid #f0ede6;
   display: flex;
@@ -602,7 +602,7 @@ onMounted(async () => {
 .seal-info {
   text-align: center;
   width: 100%;
-  margin-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .seal-name {
