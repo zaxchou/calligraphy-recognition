@@ -106,9 +106,9 @@
         <template v-else>
           <el-form-item label="印章图片">
             <div class="seal-images-edit">
-              <div v-if="pendingFile" class="seal-img-item">
-                <img :src="pendingPreviewUrl" class="seal-img-preview" />
-                <el-button type="danger" :icon="Delete" circle size="small" class="seal-img-delete" @click="pendingFile = null" />
+              <div v-for="(pf, idx) in pendingFiles" :key="'pf-'+idx" class="seal-img-item">
+                <img :src="pf.previewUrl" class="seal-img-preview" />
+                <el-button type="danger" :icon="Delete" circle size="small" class="seal-img-delete" @click="removePendingFile(idx)" />
               </div>
               <div class="seal-img-upload" @click="triggerUpload">
                 <el-icon :size="24"><Plus /></el-icon>
@@ -186,8 +186,7 @@ const editForm = ref({
   images: []
 })
 const uploadInput = ref(null)
-const pendingFile = ref(null)
-const pendingPreviewUrl = ref('')
+const pendingFiles = ref([])
 
 const showArtworksDialog = ref(false)
 const artworksSealName = ref('')
@@ -270,12 +269,14 @@ async function handleSave() {
       if (res.success) {
         ElMessage.success('印章创建成功')
         showEditDialog.value = false
-        if (pendingFile.value && res.id) {
-          try {
-            await sealsApi.uploadImage(res.id, pendingFile.value, '')
-          } catch (_) {}
-          pendingFile.value = null
-          pendingPreviewUrl.value = ''
+        if (pendingFiles.value.length > 0 && res.id) {
+          for (const pf of pendingFiles.value) {
+            try {
+              await sealsApi.uploadImage(res.id, pf.file, '')
+            } catch (_) {}
+            URL.revokeObjectURL(pf.previewUrl)
+          }
+          pendingFiles.value = []
         }
         await loadSeals()
       } else {
@@ -389,8 +390,10 @@ async function handleUpload(event) {
   const file = event.target.files?.[0]
   if (!file) return
   if (!editingSeal.value) {
-    pendingFile.value = file
-    pendingPreviewUrl.value = URL.createObjectURL(file)
+    pendingFiles.value.push({
+      file,
+      previewUrl: URL.createObjectURL(file)
+    })
     if (uploadInput.value) uploadInput.value.value = ''
     return
   }
@@ -477,12 +480,17 @@ function onImageError(e) {
   e.target.style.display = 'none'
 }
 
+function removePendingFile(idx) {
+  const pf = pendingFiles.value[idx]
+  if (pf) URL.revokeObjectURL(pf.previewUrl)
+  pendingFiles.value.splice(idx, 1)
+}
+
 watch(showCreateDialog, (val) => {
   if (val) {
     editingSeal.value = null
     editForm.value = { name: '', artist_name: '', seal_type: '名章', description: '', source: '', images: [] }
-    pendingFile.value = null
-    pendingPreviewUrl.value = ''
+    pendingFiles.value = []
     showEditDialog.value = true
     showCreateDialog.value = false
   }
