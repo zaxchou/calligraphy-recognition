@@ -14,7 +14,6 @@ from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
 from pydantic import BaseModel
-
 from app.core.database import get_db_connection
 from app.core.auth import require_admin_role
 

@@ -1,79 +1,87 @@
 # ============================================================
-#  墨林百科 - 一键启动 (Windows PowerShell)
-#  启动: FastAPI 后端 (3000) + Vite 前端 (8080)
+#   Molin Wiki - One-Click Launch (Windows PowerShell)
+#   每个服务独立窗口，关窗即停，端口 3002 永无冲突
 # ============================================================
 
+param(
+    [switch]$SkipQdrant,
+    [switch]$SkipRedis,
+    [switch]$SkipCelery,
+    [switch]$SkipTubi
+)
+
 $ErrorActionPreference = "Stop"
-
-$BACKEND_DIR = "$PSScriptRoot\backend"
-$FRONTEND_DIR = "$PSScriptRoot\frontend"
-$BACKEND_PORT = 3000
-$FRONTEND_PORT = 8080
+$ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
+$BACKEND_DIR = "$ROOT\backend"
+$FRONTEND_DIR = "$ROOT\frontend"
+$PORT = 3002
 
 Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  墨林百科 - 一键启动" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ("=" * 50) -ForegroundColor Cyan
+Write-Host "  Molin Wiki - Quick Start" -ForegroundColor Cyan
+Write-Host "  All services open in separate windows" -ForegroundColor Cyan
+Write-Host ("=" * 50) -ForegroundColor Cyan
 Write-Host ""
 
-# ---------- 1. 后端 ----------
-Write-Host "[1/2] 启动 FastAPI 后端 (port $BACKEND_PORT)..." -ForegroundColor Yellow
-
-# 杀掉占用端口的旧进程
-$oldPid = (Get-NetTCPConnection -LocalPort $BACKEND_PORT -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess
-if ($oldPid) {
-    Write-Host "  关闭旧进程 PID $oldPid..."
-    Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
-    Start-Sleep 2
+# Redis
+if (-not $SkipRedis) {
+    Write-Host "[0/5] Starting Redis..." -ForegroundColor Yellow
+    $redisExe = "$BACKEND_DIR\redis_bin\redis-server.exe"
+    if (Test-Path $redisExe) {
+        Start-Process -FilePath $redisExe -ArgumentList "$BACKEND_DIR\redis_bin\redis.windows.conf" -WindowStyle Normal
+        Write-Host "  OK - Redis window opened" -ForegroundColor Green
+    } else { Write-Host "  SKIP - Redis not installed" -ForegroundColor DarkGray }
 }
 
+# Qdrant
+if (-not $SkipQdrant) {
+    Write-Host "[1/5] Starting Qdrant..." -ForegroundColor Yellow
+    $qdrantExe = "$BACKEND_DIR\qdrant_bin\qdrant.exe"
+    if (Test-Path $qdrantExe) {
+        Start-Process -FilePath $qdrantExe -WorkingDirectory "$BACKEND_DIR\qdrant_bin" -WindowStyle Normal
+        Write-Host "  OK - Qdrant window opened" -ForegroundColor Green
+    } else { Write-Host "  SKIP - Qdrant not installed" -ForegroundColor DarkGray }
+}
+
+# Celery
+if (-not $SkipCelery) {
+    Write-Host "[2/5] Starting Celery Worker..." -ForegroundColor Yellow
+    Push-Location $BACKEND_DIR
+    Start-Process -FilePath "python" -ArgumentList "-m","celery","-A","app.core.celery_app","worker","--loglevel=info","--pool=solo","-n","worker1@%h" -WindowStyle Normal
+    Pop-Location
+    Write-Host "  OK - Celery window opened" -ForegroundColor Green
+}
+
+# Backend (port 3002 - avoids zombie PID on 3000/3001)
+Write-Host "[3/5] Starting FastAPI Backend (port $PORT)..." -ForegroundColor Yellow
 Push-Location $BACKEND_DIR
-try {
-    Start-Process -NoNewWindow -FilePath "python" -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$BACKEND_PORT","--workers","2" -RedirectStandardOutput "$BACKEND_DIR\fastapi.log" -RedirectStandardError "$BACKEND_DIR\fastapi_error.log"
-    Write-Host "  后端已启动，日志: $BACKEND_DIR\fastapi.log" -ForegroundColor Green
-} finally {
+Start-Process -FilePath "python" -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$PORT","--workers","2" -WindowStyle Normal
+Pop-Location
+Write-Host "  OK - Backend window opened" -ForegroundColor Green
+
+# Tubi Worker
+if (-not $SkipTubi) {
+    Write-Host "[4/5] Starting Tubi Worker..." -ForegroundColor Yellow
+    Push-Location $BACKEND_DIR
+    Start-Process -FilePath "python" -ArgumentList "tubi_worker.py" -WindowStyle Normal
     Pop-Location
+    Write-Host "  OK - Tubi window opened" -ForegroundColor Green
 }
 
-Start-Sleep 3
-
-# 验证后端
-try {
-    $resp = Invoke-WebRequest -Uri "http://localhost:$BACKEND_PORT/docs" -UseBasicParsing -TimeoutSec 5
-    Write-Host "  后端验证: OK (http://localhost:$BACKEND_PORT/docs)" -ForegroundColor Green
-} catch {
-    Write-Host "  后端可能还在启动中，稍等..." -ForegroundColor DarkYellow
-}
-
-Write-Host ""
-
-# ---------- 2. 前端 ----------
-Write-Host "[2/2] 启动 Vite 前端 (port $FRONTEND_PORT)..." -ForegroundColor Yellow
-
-$oldFrontPid = (Get-NetTCPConnection -LocalPort $FRONTEND_PORT -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess
-if ($oldFrontPid) {
-    Write-Host "  关闭旧进程 PID $oldFrontPid..."
-    Stop-Process -Id $oldFrontPid -Force -ErrorAction SilentlyContinue
-    Start-Sleep 2
-}
-
+# Frontend (port 8080)
+Write-Host "[5/5] Starting Vite Frontend (port 8080)..." -ForegroundColor Yellow
 Push-Location $FRONTEND_DIR
-try {
-    Start-Process -NoNewWindow -FilePath "npm" -ArgumentList "run","dev" -RedirectStandardOutput "$FRONTEND_DIR\vite.log" -RedirectStandardError "$FRONTEND_DIR\vite_error.log"
-    Write-Host "  前端已启动，日志: $FRONTEND_DIR\vite.log" -ForegroundColor Green
-} finally {
-    Pop-Location
-}
-
-Start-Sleep 3
+Start-Process -FilePath "cmd.exe" -ArgumentList "/k","npm run dev" -WindowStyle Normal
+Pop-Location
+Write-Host "  OK - Frontend window opened" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  全部服务已启动!" -ForegroundColor Green
+Write-Host ("=" * 50) -ForegroundColor Cyan
+Write-Host "  All services started!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  前端:       http://localhost:$FRONTEND_PORT" -ForegroundColor White
-Write-Host "  后端 API:   http://localhost:$BACKEND_PORT" -ForegroundColor White
-Write-Host "  API 文档:   http://localhost:$BACKEND_PORT/docs" -ForegroundColor White
+Write-Host "  Frontend:   http://localhost:8080" -ForegroundColor White
+Write-Host "  Backend:    http://localhost:$PORT" -ForegroundColor White
+Write-Host "  API Docs:   http://localhost:$PORT/docs" -ForegroundColor White
 Write-Host ""
-Write-Host "  停止: 关闭这两个 PowerShell 窗口" -ForegroundColor DarkGray
-Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Close each window to stop, or use Task Manager." -ForegroundColor DarkGray
+Write-Host ("=" * 50) -ForegroundColor Cyan
