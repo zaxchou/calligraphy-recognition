@@ -30,7 +30,24 @@
 
     <div v-if="loading" class="al-loading">加载中...</div>
 
-    <ArtistTimeline v-else :artists="store.list" @select="goToArtist" />
+    <template v-else>
+      <section v-if="featuredArtists.length > 0" class="al-featured">
+        <h2 class="al-section-title">推荐画家</h2>
+        <div class="al-featured-scroll">
+          <div v-for="artist in featuredArtists" :key="artist.id" class="al-featured-card"
+            @click="goToArtist(artist.name)">
+            <div class="al-featured-avatar">
+              <img v-if="artist.avatar_url" :src="artist.avatar_url" class="al-featured-avatar-img" referrerpolicy="no-referrer" />
+              <span v-else>{{ artist.name.charAt(0) }}</span>
+            </div>
+            <div class="al-featured-name">{{ artist.name }}</div>
+            <div class="al-featured-meta">{{ artist.dynasty }} · {{ artist.artwork_count || 0 }}件</div>
+          </div>
+        </div>
+      </section>
+
+      <ArtistTimeline :artists="store.list" @select="goToArtist" />
+    </template>
   </div>
 </template>
 
@@ -42,6 +59,7 @@ import { pinyin } from 'pinyin-pro'
 import { useArtistStore } from '../stores/artistStore'
 import ArtistTimeline from '../components/artist/ArtistTimeline.vue'
 import PinyinNav from '../components/artist/PinyinNav.vue'
+import { artistsApi } from '../api/artists'
 
 const router = useRouter()
 const store = useArtistStore()
@@ -55,6 +73,14 @@ const loading = ref(true)
 let debounceTimer = null
 
 const pinyinLetterNames = ref([])
+const featuredArtists = ref([])
+
+async function fetchFeatured() {
+  try {
+    const data = await artistsApi.list({ featured: 1, page_size: 20 })
+    featuredArtists.value = data.artists || []
+  } catch (e) { console.error(e) }
+}
 
 function buildFilters() {
   const filters = {
@@ -113,7 +139,7 @@ function goToArtist(name) {
 
 onMounted(async () => {
   await store.loadMeta()
-  doLoad()
+  await Promise.all([doLoad(), fetchFeatured()])
 })
 </script>
 
@@ -180,6 +206,90 @@ onMounted(async () => {
   padding: 80px 0;
   color: #8a8578;
   font-size: 0.9rem;
+}
+
+.al-featured {
+  margin-bottom: 32px;
+}
+
+.al-section-title {
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #3a3222;
+  letter-spacing: 0.1em;
+  margin: 0 0 14px;
+  padding-left: 12px;
+  border-left: 3px solid #c45a3c;
+}
+
+.al-featured-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.al-featured-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.al-featured-scroll::-webkit-scrollbar-thumb {
+  background: #d6d2c8;
+  border-radius: 3px;
+}
+
+.al-featured-card {
+  flex-shrink: 0;
+  width: 150px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px solid #edeae1;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.al-featured-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.07);
+  border-color: #dbbca8;
+}
+
+.al-featured-avatar {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #c45a3c, #dbbca8);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.al-featured-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+.al-featured-name {
+  font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #3a3222;
+  margin-bottom: 4px;
+}
+
+.al-featured-meta {
+  font-size: 0.7rem;
+  color: #8a8578;
 }
 
 @media (max-width: 768px) {
