@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from 'vue'
 import { ZoomIn, ZoomOut, Refresh, RefreshRight, Close } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -173,7 +173,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
 })
 
-document.addEventListener('keydown', onKeydown)
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+})
 </script>
 
 <style scoped>

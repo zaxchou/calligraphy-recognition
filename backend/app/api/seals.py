@@ -331,6 +331,8 @@ async def update_seal(seal_id: int, seal: SealUpdate):
                                 "UPDATE tubi_analyses SET seal_content = ? WHERE id = ?",
                                 (new_content, row_obj["id"])
                             )
+                        _delete_seal_image_files(conn, seal_id)
+                        conn.execute("DELETE FROM seal_images WHERE seal_id = ?", (seal_id,))
                         conn.execute("DELETE FROM seals WHERE id = ?", (seal_id,))
                         conn.commit()
                         return {"success": True, "message": "印章已合并", "merged": True}
