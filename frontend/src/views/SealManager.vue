@@ -1,6 +1,5 @@
 <template>
   <div class="seal-manager">
-    <!-- 工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
         <el-button v-if="!batchMode" type="primary" plain size="small" @click="showCreateDialog = true">
@@ -26,13 +25,12 @@
       </div>
     </div>
 
-    <!-- 卡片网格 -->
     <div v-loading="loading" class="seal-grid">
       <div v-for="seal in seals" :key="seal.id" class="seal-card" :class="{ 'seal-card-selected': batchMode && selectedIds.includes(seal.id) }">
         <el-checkbox v-if="batchMode" :model-value="selectedIds.includes(seal.id)" @change="toggleSelect(seal.id)" class="seal-checkbox" />
         <div class="seal-images">
           <div v-if="seal.images && seal.images.length > 0" class="seal-thumb-wrapper">
-            <img :src="getImageUrl(seal.images[0])" class="seal-thumb" @error="onImageError" />
+            <img :src="getImageUrl(seal.images[0].path || seal.images[0])" class="seal-thumb" @error="onImageError" />
           </div>
           <div v-else class="seal-thumb-placeholder">
             <el-icon :size="28"><Stamp /></el-icon>
@@ -64,8 +62,7 @@
       </div>
     </div>
 
-    <!-- 创建/编辑弹窗 -->
-    <el-dialog v-model="showEditDialog" :title="editingSeal ? '编辑印章' : '新增印章'" width="520px" class="claude-dialog">
+    <el-dialog v-model="showEditDialog" :title="editingSeal ? '编辑印章' : '新增印章'" width="560px" class="claude-dialog">
       <el-form :model="editForm" label-position="top" class="modern-form">
         <el-form-item label="印章名称" required>
           <el-input v-model="editForm.name" placeholder="请输入印章名称" />
@@ -87,14 +84,17 @@
         <el-form-item label="描述">
           <el-input v-model="editForm.description" type="textarea" :rows="2" placeholder="印章描述（可选）" />
         </el-form-item>
+        <el-form-item label="来源出处">
+          <el-input v-model="editForm.source" type="textarea" :rows="2" placeholder="如：上海博物馆编《中国书画家印鉴款识》（文物出版社，1987.12）" />
+        </el-form-item>
 
-        <!-- 图片管理（仅编辑模式） -->
         <template v-if="editingSeal">
           <el-form-item label="印章图片">
             <div class="seal-images-edit">
-              <div v-for="(img, idx) in editForm.images" :key="idx" class="seal-img-item">
-                <img :src="getImageUrl(img)" class="seal-img-preview" />
-                <el-button type="danger" :icon="Delete" circle size="small" class="seal-img-delete" @click="removeImage(idx)" />
+              <div v-for="(img, idx) in editForm.images" :key="img.id || idx" class="seal-img-item">
+                <img :src="getImageUrl(img.path || img)" class="seal-img-preview" />
+                <el-button type="danger" :icon="Delete" circle size="small" class="seal-img-delete" @click="removeImage(img, idx)" />
+                <el-input v-model="img.description" size="small" placeholder="版本说明，如：早年使用" class="seal-img-desc" @change="saveImageDesc(img)" />
               </div>
               <div class="seal-img-upload" @click="triggerUpload">
                 <el-icon :size="24"><Plus /></el-icon>
@@ -110,7 +110,6 @@
       </template>
     </el-dialog>
 
-    <!-- 关联作品弹窗 -->
     <el-dialog v-model="showArtworksDialog" :title="`使用「${artworksSealName}」的作品（${artworks.length}幅）`" width="640px" class="claude-dialog">
       <div v-loading="artworksLoading" class="artworks-list">
         <div v-for="art in artworks" :key="art.id" class="artwork-item" @click="goToArtwork(art)">
@@ -143,27 +142,24 @@ import { sealsApi } from '../api'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
-  artist: { type: String, default: '' }
+  artist: { type: String, default: '' },
+  libraryId: { type: Number, default: null }
 })
 
 const router = useRouter()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-// 状态
 const seals = ref([])
 const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const extracting = ref(false)
 
-// 批量操作
 const batchMode = ref(false)
 const selectedIds = ref([])
 
-// 作者列表
 const artistList = ref([])
 
-// 编辑弹窗
 const showEditDialog = ref(false)
 const showCreateDialog = ref(false)
 const editingSeal = ref(null)
@@ -172,22 +168,22 @@ const editForm = ref({
   artist_name: '',
   seal_type: '名章',
   description: '',
+  source: '',
   images: []
 })
 const uploadInput = ref(null)
 
-// 作品弹窗
 const showArtworksDialog = ref(false)
 const artworksSealName = ref('')
 const artworks = ref([])
 const artworksLoading = ref(false)
 
-// 加载印章列表
 async function loadSeals() {
   loading.value = true
   try {
     const params = { limit: 200 }
     if (props.artist && props.artist !== 'all') params.artist = props.artist
+    if (props.libraryId) params.library_id = props.libraryId
     const res = await sealsApi.list(params)
     if (res.success) {
       seals.value = res.seals
@@ -200,7 +196,6 @@ async function loadSeals() {
   }
 }
 
-// 加载作者列表
 async function loadArtists() {
   try {
     const res = await fetch(`${API_BASE}/content-analysis/artists`)
@@ -211,7 +206,6 @@ async function loadArtists() {
   }
 }
 
-// 打开编辑
 function openEdit(seal) {
   editingSeal.value = seal
   editForm.value = {
@@ -219,12 +213,17 @@ function openEdit(seal) {
     artist_name: seal.artist_name || '',
     seal_type: seal.seal_type || '名章',
     description: seal.description || '',
-    images: seal.images || []
+    source: seal.source || '',
+    images: (seal.images || []).map(img => ({
+      id: img.id,
+      path: img.path,
+      description: img.description || '',
+      sort_order: img.sort_order || 0
+    }))
   }
   showEditDialog.value = true
 }
 
-// 保存
 async function handleSave() {
   if (!editForm.value.name?.trim()) {
     ElMessage.warning('请输入印章名称')
@@ -236,7 +235,8 @@ async function handleSave() {
     name: editForm.value.name.trim(),
     artist_name: editForm.value.artist_name || null,
     seal_type: editForm.value.seal_type || '名章',
-    description: editForm.value.description || ''
+    description: editForm.value.description || '',
+    source: editForm.value.source || ''
   }
 
   try {
@@ -261,14 +261,12 @@ async function handleSave() {
     }
   } catch (error) {
     if (error.response?.status === 409) {
-      // 重名冲突
       try {
         await ElMessageBox.confirm(
           `印章名「${payload.name}」已存在，是否合并？合并后当前印章将被删除，所有作品中的旧名会替换为新名。`,
           '印章名冲突',
           { confirmButtonText: '合并', cancelButtonText: '取消', type: 'warning' }
         )
-        // 用户选择合并
         payload.merge_on_conflict = true
         const mergeRes = await sealsApi.update(editingSeal.value.id, payload)
         if (mergeRes.success) {
@@ -289,7 +287,6 @@ async function handleSave() {
   }
 }
 
-// 删除
 async function handleDelete(seal) {
   try {
     await ElMessageBox.confirm(
@@ -309,7 +306,6 @@ async function handleDelete(seal) {
   }
 }
 
-// 从作品提取
 async function handleExtract() {
   extracting.value = true
   try {
@@ -325,7 +321,6 @@ async function handleExtract() {
   }
 }
 
-// 批量操作
 function toggleSelect(id) {
   const idx = selectedIds.value.indexOf(id)
   if (idx >= 0) {
@@ -363,7 +358,6 @@ async function handleBatchDelete() {
   }
 }
 
-// 图片上传
 function triggerUpload() {
   uploadInput.value?.click()
 }
@@ -372,9 +366,14 @@ async function handleUpload(event) {
   const file = event.target.files?.[0]
   if (!file || !editingSeal.value) return
   try {
-    const res = await sealsApi.uploadImage(editingSeal.value.id, file)
+    const res = await sealsApi.uploadImage(editingSeal.value.id, file, '')
     if (res.success) {
-      editForm.value.images = res.images || []
+      editForm.value.images = (res.images || []).map(img => ({
+        id: img.id,
+        path: img.path,
+        description: img.description || '',
+        sort_order: img.sort_order || 0
+      }))
       ElMessage.success('图片上传成功')
     }
   } catch (e) {
@@ -384,12 +383,31 @@ async function handleUpload(event) {
   }
 }
 
-async function removeImage(idx) {
-  if (!editingSeal.value) return
+async function saveImageDesc(img) {
+  if (!editingSeal.value || !img.id) return
   try {
-    const res = await sealsApi.deleteImage(editingSeal.value.id, idx)
+    await sealsApi.updateImage(editingSeal.value.id, img.id, { description: img.description || '' })
+  } catch (e) {
+    console.error('保存图片描述失败', e)
+  }
+}
+
+async function removeImage(img, idx) {
+  if (!editingSeal.value) return
+  const imgId = img.id
+  if (!imgId) {
+    editForm.value.images.splice(idx, 1)
+    return
+  }
+  try {
+    const res = await sealsApi.deleteImage(editingSeal.value.id, imgId)
     if (res.success) {
-      editForm.value.images = res.images || []
+      editForm.value.images = (res.images || []).map(i => ({
+        id: i.id,
+        path: i.path,
+        description: i.description || '',
+        sort_order: i.sort_order || 0
+      }))
       ElMessage.success('图片已删除')
     }
   } catch (e) {
@@ -397,7 +415,6 @@ async function removeImage(idx) {
   }
 }
 
-// 关联作品
 async function openArtworks(seal) {
   artworksSealName.value = seal.name
   showArtworksDialog.value = true
@@ -419,7 +436,6 @@ function goToArtwork(art) {
   window.open(route.href, '_blank')
 }
 
-// 图片URL处理
 function getImageUrl(path) {
   if (!path) return ''
   if (path.startsWith('http')) return path
@@ -430,17 +446,15 @@ function onImageError(e) {
   e.target.style.display = 'none'
 }
 
-// 监听 showCreateDialog
 watch(showCreateDialog, (val) => {
   if (val) {
     editingSeal.value = null
-    editForm.value = { name: '', artist_name: '', seal_type: '名章', description: '', images: [] }
+    editForm.value = { name: '', artist_name: '', seal_type: '名章', description: '', source: '', images: [] }
     showEditDialog.value = true
     showCreateDialog.value = false
   }
 })
 
-// 监听顶部作者过滤变化
 watch(() => props.artist, () => { loadSeals() })
 
 onMounted(async () => {
@@ -589,7 +603,6 @@ onMounted(async () => {
   align-items: center;
 }
 
-/* 编辑弹窗图片管理 */
 .seal-images-edit {
   display: flex;
   flex-wrap: wrap;
@@ -598,13 +611,15 @@ onMounted(async () => {
 
 .seal-img-item {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .seal-img-preview {
-  width: 100%;
-  height: 100%;
+  width: 90px;
+  height: 90px;
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid #e8e5de;
@@ -618,9 +633,17 @@ onMounted(async () => {
   height: 22px;
 }
 
+.seal-img-desc {
+  font-size: 11px;
+}
+
+.seal-img-desc :deep(.el-input__wrapper) {
+  padding: 2px 6px;
+}
+
 .seal-img-upload {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   border: 2px dashed #d0ccc2;
   border-radius: 6px;
   display: flex;
@@ -636,7 +659,6 @@ onMounted(async () => {
   color: #c96442;
 }
 
-/* 作品列表 */
 .artworks-list {
   max-height: 400px;
   overflow-y: auto;

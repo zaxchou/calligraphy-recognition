@@ -30,6 +30,7 @@ def get_db():
 def run_migrations():
     """在应用启动时执行必要的数据库迁移。幂等——可安全重复执行。"""
     import sqlite3
+    import json
     from app.core.config import get_settings
     settings = get_settings()
     db_path = settings.DATABASE_URL.replace("sqlite:///", "")
@@ -314,6 +315,48 @@ def run_migrations():
         conn.execute("CREATE INDEX IF NOT EXISTS ix_artist_cr_artist_id ON artist_change_requests(artist_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS ix_artist_cr_status ON artist_change_requests(status)")
         logger.info("Migration: ensured artist_change_requests table exists")
+        conn.commit()
+
+        # ── seal_images 表 + seals.source 列 ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS seal_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seal_id INTEGER NOT NULL REFERENCES seals(id) ON DELETE CASCADE,
+                path TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_seal_images_seal_id ON seal_images(seal_id)")
+        logger.info("Migration: ensured seal_images table exists")
+
+        seal_cols = {row[1] for row in conn.execute("PRAGMA table_info(seals)").fetchall()}
+        if "source" not in seal_cols:
+            conn.execute("ALTER TABLE seals ADD COLUMN source TEXT DEFAULT ''")
+            logger.info("Migration: added seals.source column")
+
+        # 旧数据迁移：将 seals.images JSON 数组迁移到 seal_images 表
+        old_seals = conn.execute(
+            "SELECT id, images FROM seals WHERE images IS NOT NULL AND images != '' AND images != '[]'"
+        ).fetchall()
+        migrated = 0
+        for seal_id, images_json in old_seals:
+            try:
+                img_list = json.loads(images_json)
+                if isinstance(img_list, list) and len(img_list) > 0:
+                    for i, path in enumerate(img_list):
+                        if isinstance(path, str) and path.strip():
+                            conn.execute(
+                                "INSERT INTO seal_images (seal_id, path, sort_order) VALUES (?, ?, ?)",
+                                (seal_id, path, i)
+                            )
+                            migrated += 1
+                    conn.execute("UPDATE seals SET images = '[]' WHERE id = ?", (seal_id,))
+            except (json.JSONDecodeError, TypeError):
+                pass
+        if migrated:
+            logger.info("Migration: migrated %d old seal images to seal_images table", migrated)
         conn.commit()
 
         # ── artist_stats_cache 表 ──

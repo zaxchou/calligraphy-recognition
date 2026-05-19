@@ -180,9 +180,10 @@ export const tubiApi = {
       notes: yearData.notes
     })
   },
-  getAllResults(skip = 0, limit = 500, artist = null, sortBy = null, sortDir = 'desc') {
+  getAllResults(skip = 0, limit = 500, artist = null, libraryId = null, sortBy = null, sortDir = 'desc') {
     const params = { skip, limit }
     if (artist && artist !== 'all') params.artist = artist
+    if (libraryId) params.library_id = libraryId
     if (sortBy) {
       params.sort_by = sortBy
       params.sort_dir = sortDir
@@ -217,9 +218,10 @@ export const tubiApi = {
   },
 
   // ── 册页管理 API ───────────────────────────────────────────────────────────
-  getAlbums(artist = null) {
+  getAlbums(artist = null, libraryId = null) {
     const params = {}
     if (artist && artist !== 'all') params.artist = artist
+    if (libraryId) params.library_id = libraryId
     return api.get('/tubi/albums', { params })
   },
   getAlbum(albumName) {
@@ -248,9 +250,10 @@ export const tubiApi = {
   },
 
   // ── 标签管理 API ───────────────────────────────────────────────────────────
-  getTags(artist = null) {
+  getTags(artist = null, libraryId = null) {
     const params = {}
     if (artist && artist !== 'all') params.artist = artist
+    if (libraryId) params.library_id = libraryId
     return api.get('/tubi/tags', { params })
   },
   getTagItems(tagName) {
@@ -304,15 +307,19 @@ export const sealsApi = {
   artworks(sealId) {
     return api.get(`/seals/${sealId}/artworks`)
   },
-  uploadImage(sealId, file) {
+  uploadImage(sealId, file, description = '') {
     const formData = new FormData()
     formData.append('file', file)
-    return api.post(`/seals/${sealId}/upload-image`, formData, {
+    if (description) formData.append('description', description)
+    return api.post(`/seals/${sealId}/images`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
-  deleteImage(sealId, imageIndex) {
-    return api.delete(`/seals/${sealId}/images/${imageIndex}`)
+  updateImage(sealId, imageId, data) {
+    return api.put(`/seals/${sealId}/images/${imageId}`, data)
+  },
+  deleteImage(sealId, imageId) {
+    return api.delete(`/seals/${sealId}/images/${imageId}`)
   },
   extract() {
     return api.post('/seals/extract')
@@ -383,6 +390,11 @@ export const libraryApi = {
   // 变更请求
   getAllChangeRequests(status = 'pending') {
     return api.get('/libraries/requests/all', { params: { status } })
+  },
+  getMyChangeRequests(status) {
+    const params = {}
+    if (status) params.status = status
+    return api.get('/libraries/requests/my', { params })
   },
   getChangeRequests(libraryId, status = 'pending') {
     return api.get(`/libraries/${libraryId}/requests`, { params: { status } })
