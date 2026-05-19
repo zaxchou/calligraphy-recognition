@@ -315,15 +315,13 @@
                 <h4><el-icon><Collection /></el-icon> 钤印</h4>
                 <div v-if="currentImage.sealContent" class="seal-content">
                   <div class="seal-tags-display">
-                    <el-popover v-for="(seal, idx) in detailSealTags" :key="idx" :width="120" placement="top" :disabled="!detailSealImageMap[seal.name]" trigger="hover">
-                      <template #reference>
-                        <span class="seal-display-tag" :class="{ 'has-image': detailSealImageMap[seal.name] }">
-                          {{ seal.name }}
-                          <span v-if="seal.seal_type" class="seal-display-type">{{ seal.seal_type }}</span>
-                        </span>
-                      </template>
-                      <img v-if="detailSealImageMap[seal.name]" :src="detailSealImageMap[seal.name]" style="width: 100px; height: 100px; object-fit: contain;" />
-                    </el-popover>
+                    <span v-for="(seal, idx) in detailSealTags" :key="idx"
+                      class="seal-display-tag"
+                      :class="{ 'has-image': detailSealImageMap[seal.name] }"
+                      @click="openSealLightbox(seal.name)">
+                      {{ seal.name }}
+                      <span v-if="seal.seal_type" class="seal-display-type">{{ seal.seal_type }}</span>
+                    </span>
                   </div>
                 </div>
                 <div v-else class="seal-empty"><p>暂无钤印内容</p></div>
@@ -436,6 +434,14 @@
       @close="imagePreviewVisible = false"
     />
 
+    <!-- 印章 Lightbox（OpenSeadragon 缩放/翻页） -->
+    <SealLightbox
+      v-if="sealLightboxVisible"
+      :visible="sealLightboxVisible"
+      :seal="selectedSealForLightbox"
+      @close="sealLightboxVisible = false"
+    />
+
     <!-- 我的意见对话框 -->
     <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close @closed="suggestDialogClosed">
       <p style="margin-bottom:16px;color:var(--stone-gray)">
@@ -527,6 +533,7 @@ import { getDisplayAge } from '../tubi/utils'
 import { sealsApi } from '../api'
 import api from '../api'
 import TubiDeepZoomDialog from '../components/tubi/TubiDeepZoomDialog.vue'
+import SealLightbox from '../components/seal/SealLightbox.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -686,6 +693,16 @@ const sealLibraryCache = ref([])
 const detailSealImageMap = ref({})
 const detailSealTypeMap = ref({})
 
+const sealLightboxVisible = ref(false)
+const selectedSealForLightbox = ref({ name: '', images: [] })
+
+function openSealLightbox(name) {
+  const found = sealLibraryCache.value.find(s => s.name === name)
+  if (!found) return
+  selectedSealForLightbox.value = found
+  sealLightboxVisible.value = true
+}
+
 const detailSealTags = computed(() => {
   const content = props.currentImage?.sealContent || ''
   if (!content) return []
@@ -697,17 +714,14 @@ const detailSealTags = computed(() => {
 })
 
 async function loadSealLibraryForDetail() {
-  if (!props.currentImage?.sealContent) return  // 无印章内容不请求
+  if (!props.currentImage?.sealContent) return
   try {
     const res = await sealsApi.list({ limit: 200 })
     if (res.success) {
       sealLibraryCache.value = res.seals || []
       const imgMap = {}, typeMap = {}
       for (const s of sealLibraryCache.value) {
-        if (s.images && s.images.length > 0) {
-          const img = s.images[0]
-          imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
-        }
+        imgMap[s.name] = !!(s.images && s.images.length > 0)
         if (s.seal_type) typeMap[s.name] = s.seal_type
       }
       detailSealImageMap.value = imgMap
