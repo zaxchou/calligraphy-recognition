@@ -85,7 +85,10 @@ function initViewer() {
   viewerReady.value = false
   viewer = OSD({
     element: el,
-    tileSources: currentImageUrl.value,
+    tileSources: {
+      type: 'image',
+      url: currentImageUrl.value,
+    },
     prefixUrl: '/openseadragon-images/',
     showNavigator: true,
     navigatorPosition: 'BOTTOM_RIGHT',
