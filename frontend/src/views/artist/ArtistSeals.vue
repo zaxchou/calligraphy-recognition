@@ -33,7 +33,7 @@
       <div v-for="s in filteredSeals" :key="s.id" class="as-card" @click="openLightbox(s)">
         <div v-if="s.images && s.images.length > 0" class="as-image-wrap">
           <div v-if="s.images.length > 1" class="as-badge">{{ s.images.length }}图</div>
-          <img :src="getImageUrl(s.images[0].path || s.images[0])" class="as-image" :alt="s.name" />
+          <img :src="getImageUrl(s.images[0].thumb_url || s.images[0].path || s.images[0])" class="as-image" :alt="s.name" />
         </div>
         <div v-else class="as-image-placeholder">印</div>
         <div class="as-info">

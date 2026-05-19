@@ -21,6 +21,26 @@ from app.core.auth import require_admin_role
 router = APIRouter(prefix="/seals", tags=["seals"])
 
 SEAL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "seals")
+SEAL_THUMB_DIR = os.path.join(SEAL_DIR, "thumbs")
+
+# 日志
+import logging
+logger = logging.getLogger(__name__)
+
+
+def _create_seal_thumbnail(image_path: str, thumb_path: str, max_size: int = 200):
+    """生成印章缩略图，保持宽高比，最长边不超过 max_size"""
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(image_path) as img:
+            img = ImageOps.exif_transpose(img)
+            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+            img.save(thumb_path, "JPEG", quality=85, optimize=True)
+    except Exception as e:
+        logger.warning(f"印章缩略图生成失败: {e}")
 
 
 # ============ 辅助函数 ============
@@ -55,21 +75,27 @@ def _replace_seal_in_content(content: str, old_name: str, new_name: str) -> str:
 
 def _get_seal_images(conn, seal_id: int) -> list:
     rows = conn.execute(
-        "SELECT id, path, description, sort_order FROM seal_images WHERE seal_id = ? ORDER BY sort_order, id",
+        "SELECT id, path, thumbnail_path, description, sort_order FROM seal_images WHERE seal_id = ? ORDER BY sort_order, id",
         (seal_id,)
     ).fetchall()
-    return [{"id": r["id"], "path": r["path"], "description": r["description"] or "", "sort_order": r["sort_order"]} for r in rows]
+    return [{
+        "id": r["id"],
+        "path": r["path"],
+        "thumb_url": r["thumbnail_path"] if r["thumbnail_path"] else r["path"],
+        "description": r["description"] or "",
+        "sort_order": r["sort_order"]
+    } for r in rows]
 
 
 def _delete_seal_image_files(conn, seal_id: int):
-    rows = conn.execute("SELECT path FROM seal_images WHERE seal_id = ?", (seal_id,)).fetchall()
+    rows = conn.execute("SELECT path, thumbnail_path FROM seal_images WHERE seal_id = ?", (seal_id,)).fetchall()
+    base = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     for r in rows:
-        full_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            r["path"].lstrip("/")
-        )
-        if os.path.exists(full_path):
-            os.remove(full_path)
+        for p in [r["path"], r["thumbnail_path"]]:
+            if p:
+                full_path = os.path.join(base, p.lstrip("/"))
+                if os.path.exists(full_path):
+                    os.remove(full_path)
 
 
 # ============ 数据模型 ============
@@ -419,12 +445,18 @@ async def upload_seal_image(seal_id: int, file: UploadFile = File(...), descript
             f.write(content)
 
         img_url = f"/static/seals/{filename}"
+
+        thumb_filename = f"thumb_{filename.rsplit('.', 1)[0]}.jpg"
+        thumb_path = os.path.join(SEAL_THUMB_DIR, thumb_filename)
+        _create_seal_thumbnail(filepath, thumb_path)
+        thumb_url = f"/static/seals/thumbs/{thumb_filename}" if os.path.exists(thumb_path) else ""
+
         next_order = conn.execute(
             "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM seal_images WHERE seal_id = ?", (seal_id,)
         ).fetchone()[0]
         conn.execute(
-            "INSERT INTO seal_images (seal_id, path, description, sort_order) VALUES (?, ?, ?, ?)",
-            (seal_id, img_url, description, next_order)
+            "INSERT INTO seal_images (seal_id, path, thumbnail_path, description, sort_order) VALUES (?, ?, ?, ?, ?)",
+            (seal_id, img_url, thumb_url, description, next_order)
         )
         conn.execute(
             "UPDATE seals SET updated_at = ? WHERE id = ?",
@@ -483,12 +515,12 @@ async def delete_seal_image(seal_id: int, image_id: int):
         if not img:
             raise HTTPException(status_code=404, detail="图片不存在")
 
-        full_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            img["path"].lstrip("/")
-        )
-        if os.path.exists(full_path):
-            os.remove(full_path)
+        base = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        for p in [img["path"], img["thumbnail_path"]]:
+            if p:
+                full_path = os.path.join(base, p.lstrip("/"))
+                if os.path.exists(full_path):
+                    os.remove(full_path)
 
         conn.execute("DELETE FROM seal_images WHERE id = ?", (image_id,))
         conn.execute(

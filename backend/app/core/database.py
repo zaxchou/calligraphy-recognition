@@ -331,6 +331,12 @@ def run_migrations():
         conn.execute("CREATE INDEX IF NOT EXISTS ix_seal_images_seal_id ON seal_images(seal_id)")
         logger.info("Migration: ensured seal_images table exists")
 
+        # 迁移：seal_images 加 thumbnail_path 列
+        si_cols = {row[1] for row in conn.execute("PRAGMA table_info(seal_images)").fetchall()}
+        if "thumbnail_path" not in si_cols:
+            conn.execute("ALTER TABLE seal_images ADD COLUMN thumbnail_path TEXT DEFAULT ''")
+            logger.info("Migration: added seal_images.thumbnail_path column")
+
         seal_cols = {row[1] for row in conn.execute("PRAGMA table_info(seals)").fetchall()}
         if "source" not in seal_cols:
             conn.execute("ALTER TABLE seals ADD COLUMN source TEXT DEFAULT ''")

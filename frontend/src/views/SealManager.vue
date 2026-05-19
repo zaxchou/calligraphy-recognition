@@ -30,7 +30,7 @@
         <el-checkbox v-if="batchMode" :model-value="selectedIds.includes(seal.id)" @change="toggleSelect(seal.id)" class="seal-checkbox" />
         <div class="seal-images">
           <div v-if="seal.images && seal.images.length > 0" class="seal-thumb-wrapper">
-            <img :src="getImageUrl(seal.images[0].path || seal.images[0])" class="seal-thumb" @error="onImageError" />
+            <img :src="getImageUrl(seal.images[0].thumb_url || seal.images[0].path || seal.images[0])" class="seal-thumb" @error="onImageError" />
           </div>
           <div v-else class="seal-thumb-placeholder">
             <el-icon :size="28"><Stamp /></el-icon>
