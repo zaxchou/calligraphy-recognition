@@ -290,6 +290,15 @@ def process_one(conn, image_id: str):
 
         # ── OCR 文字识别（用 inscription_mask 过滤）──
         inscription_content = None
+        
+        # 从遮罩计算题跋面积占比（排行榜数据源）
+        inscription_percent = 0.0
+        if inscription_mask is not None:
+            total_px = float(width * height) if width > 0 and height > 0 else 0.0
+            if total_px > 0:
+                insc_px = float(cv2.countNonZero(inscription_mask))
+                inscription_percent = round(insc_px / total_px * 100.0, 2)
+        
         try:
             if filepath and os.path.exists(filepath):
                 ocr_router = OCRRouter()
@@ -307,6 +316,9 @@ def process_one(conn, image_id: str):
             print(f"[tubi_worker] OCR failed: {e}")
 
         # ── 落库：只持久化需要的数据 ──
+        # 题跋面积占比（排行榜数据源）
+        db_analysis.inscription_percent = inscription_percent
+        
         # 只有未校对时才覆盖 inscription_content
         if inscription_content is not None and not db_analysis.inscription_verified:
             db_analysis.inscription_content = inscription_content
