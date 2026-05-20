@@ -657,6 +657,20 @@ async def delete_artwork(
     db.delete(artwork)
     db.commit()
 
+    # 删除磁盘文件
+    for p in (artwork.filepath, artwork.thumbnail_path):
+        if p:
+            try:
+                abs_path = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                    p.lstrip("/").lstrip("\\"),
+                )
+                if os.path.isfile(abs_path):
+                    os.remove(abs_path)
+                    logger.info(f"已删除文件: {abs_path}")
+            except Exception as e:
+                logger.warning(f"删除文件失败 {p}: {e}")
+
     # 更新作品数量
     if library_id:
         _update_artwork_count(library_id, db)
