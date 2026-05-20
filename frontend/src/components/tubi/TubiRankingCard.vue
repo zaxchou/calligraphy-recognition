@@ -353,18 +353,18 @@ function handleMore() {
 }
 
 .ranking-row-medal.gold {
-  background: var(--tubi-medal-gold);
-  color: var(--pure-white);
+  background: #8a6e20;
+  color: #fff;
 }
 
 .ranking-row-medal.silver {
-  background: var(--tubi-medal-silver);
-  color: var(--pure-white);
+  background: #6b6b6b;
+  color: #fff;
 }
 
 .ranking-row-medal.bronze {
-  background: var(--tubi-medal-bronze);
-  color: var(--pure-white);
+  background: #7a5530;
+  color: #fff;
 }
 
 .ranking-row-thumb {
