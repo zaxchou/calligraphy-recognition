@@ -1,6 +1,6 @@
 # ============================================================
 #   Molin Wiki - One-Click Launch (Windows PowerShell)
-#   每个服务独立窗口，关窗即停，端口 3002 永无冲突
+#   每个服务独立窗口，关窗即停，端口 3000 永无冲突
 # ============================================================
 
 param(
@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 $ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BACKEND_DIR = "$ROOT\backend"
 $FRONTEND_DIR = "$ROOT\frontend"
-$PORT = 3002
+$PORT = 3000
 
 Write-Host ""
 Write-Host ("=" * 50) -ForegroundColor Cyan
@@ -52,7 +52,7 @@ if (-not $SkipCelery) {
     Write-Host "  OK - Celery window opened" -ForegroundColor Green
 }
 
-# Backend (port 3002 - avoids zombie PID on 3000/3001)
+# Backend (port 3000)
 Write-Host "[3/5] Starting FastAPI Backend (port $PORT)..." -ForegroundColor Yellow
 Push-Location $BACKEND_DIR
 Start-Process -FilePath "python" -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$PORT","--workers","2" -WindowStyle Normal

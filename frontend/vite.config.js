@@ -15,15 +15,15 @@ export default defineConfig({
     port: 8080,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3003',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true
       },
       '/static': {
-        target: 'http://127.0.0.1:3003',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true
       },
       '/dzi': {
-        target: 'http://127.0.0.1:3003',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true
       }
     },
