@@ -421,8 +421,8 @@
       </template>
     </el-dialog>
 
-    <!-- AI分析模式弹窗 -->
-    <el-dialog v-model="showAiAnalyzeDialog" title="批量AI图像分析" width="420px">
+    <!-- AI识图模式弹窗 -->
+    <el-dialog v-model="showAiAnalyzeDialog" title="批量AI识图" width="420px">
       <div class="translate-mode-options">
         <div class="mode-option" @click="startBatchAiAnalyze('analyze_text_only')">
           <div class="mode-icon"><el-icon><MagicStick /></el-icon></div>
@@ -435,16 +435,16 @@
         <div class="mode-option" @click="startBatchAiAnalyze('analyze')">
           <div class="mode-icon warning"><el-icon><MagicStick /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">完整图示分析</div>
-            <div class="mode-desc">区域检测+文字识别+标注图生成，处理所有作品</div>
+            <div class="mode-title">完整识图分析</div>
+            <div class="mode-desc">区域检测+文字识别，处理所有作品</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
       </div>
     </el-dialog>
 
-    <!-- AI分析进度弹窗 -->
-    <el-dialog v-model="showAiAnalyzeProgress" title="AI分析进度" width="420px" :close-on-click-modal="false" :show-close="false">
+    <!-- AI识图进度弹窗 -->
+    <el-dialog v-model="showAiAnalyzeProgress" title="AI识图进度" width="420px" :close-on-click-modal="false" :show-close="false">
       <div class="progress-body">
         <div class="progress-info">
           <span class="progress-label">正在分析：</span>
@@ -452,8 +452,8 @@
         </div>
         <el-progress :percentage="aiAnalyzeProgress.percent" :stroke-width="8" />
         <div class="progress-status">
-          <span v-if="aiAnalyzeProgress.status === 'analyzing'" class="status-text">分析中，请稍候...</span>
-          <span v-else-if="aiAnalyzeProgress.status === 'done'" class="status-text done">分析完成！</span>
+          <span v-if="aiAnalyzeProgress.status === 'analyzing'" class="status-text">识图中，请稍候...</span>
+          <span v-else-if="aiAnalyzeProgress.status === 'done'" class="status-text done">识图完成！</span>
         </div>
       </div>
       <template #footer>
@@ -511,7 +511,7 @@ const order = ref('desc')
 const showUploadArea = ref(false)
 
 // ── Batch operations ──
-const switchingLibraryId = ref('')
+const switchingLibraryId = ref(null)
 const accessibleLibs = ref([])
 const showTranslateModeDialog = ref(false)
 const showTranslateProgress = ref(false)
@@ -774,7 +774,7 @@ function startAiPolling(imageIds) {
         aiAnalyzeCancelFn = null
         aiAnalyzeProgress.value = { current: done, total, status: 'done', percent: 100 }
         aiAnalyzing.value = false
-        ElMessage.success(`AI分析完成：成功 ${done} 幅${errored > 0 ? `，失败 ${errored} 幅` : ''}`)
+        ElMessage.success(`AI识图完成：成功 ${done} 幅${errored > 0 ? `，失败 ${errored} 幅` : ''}`)
         loadArtworks()
       }
     } catch { /* ignore poll errors */ }
