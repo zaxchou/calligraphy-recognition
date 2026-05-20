@@ -352,8 +352,9 @@ async function loadSealLibrary() {
       const imgMap = {}, typeMap = {}
       for (const s of sealLibrary.value) {
         if (s.images && s.images.length > 0) {
-          const img = s.images[0]
-          imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
+          const raw = s.images[0]
+          const img = typeof raw === 'string' ? raw : (raw?.path || '')
+          imgMap[s.name] = img ? (img.startsWith('http') ? img : `${location.origin}${img}`) : ''
         }
         if (s.seal_type) typeMap[s.name] = s.seal_type
       }
