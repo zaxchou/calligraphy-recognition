@@ -416,65 +416,66 @@ def process_one(conn, image_id: str):
             except Exception as e:
                 print(f"[V9 OCR] failed: {e}")
 
-            annotated_filename = f"annotated_{image_id}.jpg"
-            annotated_path = f"{ANNOTATED_DIR}/{annotated_filename}"
+            # ── 标注图生成暂时禁用（手动标注，AI标注图不成熟）──
             annotated_image_path = None
-            if not is_text_only:
-                try:
-                    # 只画题跋（红色叠加），不画绘画和留白（仅非仅文字模式）
-                    if inscription_mask is not None:
-                        img_bgr = cv2.imread(filepath, cv2.IMREAD_COLOR)
-                        if img_bgr is None:
-                            raise RuntimeError("annotated_image_read_failed")
-
-                        # 绘画区域 - 蓝色叠加（BGR: B高R低 = 蓝色）
-                        painting_regions = regions.get("painting_regions", []) or []
-                        if painting_regions:
-                            painting_mask = regions_to_mask(painting_regions, img_bgr.shape[1], img_bgr.shape[0])
-                            if cv2.countNonZero(painting_mask) > 0:
-                                blue = np.zeros_like(img_bgr)
-                                blue[:, :, 0] = 220    # B
-                                blue[:, :, 1] = 100    # G
-                                blue[:, :, 2] = 50     # R
-                                paint_blend = cv2.addWeighted(img_bgr, 0.50, blue, 0.50, 0.0)
-                                cv2.copyTo(paint_blend, painting_mask, img_bgr)
-
-                        # 题跋区域 - 红色叠加（BGR: R高B低 = 红色）
-                        if cv2.countNonZero(inscription_mask) > 0:
-                            red = np.zeros_like(img_bgr)
-                            red[:, :, 0] = 60     # B
-                            red[:, :, 1] = 60     # G
-                            red[:, :, 2] = 220    # R
-                            ins_blend = cv2.addWeighted(img_bgr, 0.50, red, 0.50, 0.0)
-                            cv2.copyTo(ins_blend, inscription_mask, img_bgr)
-
-                        # ── 在标注图上绘制 OCR 检测框（亮红色边框）─────────────────────
-                        if ocr_items_for_draw:
-                            PAD_BASE = 0.12
-                            for item in ocr_items_for_draw:
-                                bbox = item["bbox"]
-                                bw = bbox[2] - bbox[0]
-                                bh = bbox[3] - bbox[1]
-                                pad_x = max(2, int(bw * PAD_BASE))
-                                pad_y = max(2, int(bh * PAD_BASE))
-                                rx1 = max(0, bbox[0] - pad_x); ry1 = max(0, bbox[1] - pad_y)
-                                rx2 = min(width, bbox[2] + pad_x); ry2 = min(height, bbox[3] + pad_y)
-                                # 亮红色边框（主路=绿色系，补路=不同颜色）
-                                if item.get("from_crop"):
-                                    crop_name = item.get("crop_name", "")
-                                    ocr_color = {"右半": (50, 130, 255), "右三": (200, 0, 255), "左三": (0, 200, 255)}.get(crop_name, (255, 100, 100))
-                                else:
-                                    ocr_color = (0, 255, 0)   # 亮绿（主路）
-                                cv2.rectangle(img_bgr, (rx1, ry1), (rx2, ry2), ocr_color, 2)
-
-                        cv2.imwrite(annotated_path, img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-                        annotated_image_path = normalize_path(annotated_path)
-                    else:
-                        annotated_result = draw_annotated_image(filepath, regions, annotated_path)
-                        if annotated_result:
-                            annotated_image_path = normalize_path(annotated_result)
-                except Exception:
-                    annotated_image_path = None
+            # annotated_filename = f"annotated_{image_id}.jpg"
+            # annotated_path = f"{ANNOTATED_DIR}/{annotated_filename}"
+            # annotated_image_path = None
+            # if not is_text_only:
+            #     try:
+            #         # 只画题跋（红色叠加），不画绘画和留白（仅非仅文字模式）
+            #         if inscription_mask is not None:
+            #             img_bgr = cv2.imread(filepath, cv2.IMREAD_COLOR)
+            #             if img_bgr is None:
+            #                 raise RuntimeError("annotated_image_read_failed")
+            #
+            #             # 绘画区域 - 蓝色叠加（BGR: B高R低 = 蓝色）
+            #             painting_regions = regions.get("painting_regions", []) or []
+            #             if painting_regions:
+            #                 painting_mask = regions_to_mask(painting_regions, img_bgr.shape[1], img_bgr.shape[0])
+            #                 if cv2.countNonZero(painting_mask) > 0:
+            #                     blue = np.zeros_like(img_bgr)
+            #                     blue[:, :, 0] = 220    # B
+            #                     blue[:, :, 1] = 100    # G
+            #                     blue[:, :, 2] = 50     # R
+            #                     paint_blend = cv2.addWeighted(img_bgr, 0.50, blue, 0.50, 0.0)
+            #                     cv2.copyTo(paint_blend, painting_mask, img_bgr)
+            #
+            #             # 题跋区域 - 红色叠加（BGR: R高B低 = 红色）
+            #             if cv2.countNonZero(inscription_mask) > 0:
+            #                 red = np.zeros_like(img_bgr)
+            #                 red[:, :, 0] = 60     # B
+            #                 red[:, :, 1] = 60     # G
+            #                 red[:, :, 2] = 220    # R
+            #                 ins_blend = cv2.addWeighted(img_bgr, 0.50, red, 0.50, 0.0)
+            #                 cv2.copyTo(ins_blend, inscription_mask, img_bgr)
+            #
+            #             # ── 在标注图上绘制 OCR 检测框 ──
+            #             if ocr_items_for_draw:
+            #                 PAD_BASE = 0.12
+            #                 for item in ocr_items_for_draw:
+            #                     bbox = item["bbox"]
+            #                     bw = bbox[2] - bbox[0]
+            #                     bh = bbox[3] - bbox[1]
+            #                     pad_x = max(2, int(bw * PAD_BASE))
+            #                     pad_y = max(2, int(bh * PAD_BASE))
+            #                     rx1 = max(0, bbox[0] - pad_x); ry1 = max(0, bbox[1] - pad_y)
+            #                     rx2 = min(width, bbox[2] + pad_x); ry2 = min(height, bbox[3] + pad_y)
+            #                     if item.get("from_crop"):
+            #                         crop_name = item.get("crop_name", "")
+            #                         ocr_color = {"右半": (50, 130, 255), "右三": (200, 0, 255), "左三": (0, 200, 255)}.get(crop_name, (255, 100, 100))
+            #                     else:
+            #                         ocr_color = (0, 255, 0)   # 亮绿（主路）
+            #                     cv2.rectangle(img_bgr, (rx1, ry1), (rx2, ry2), ocr_color, 2)
+            #
+            #             cv2.imwrite(annotated_path, img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            #             annotated_image_path = normalize_path(annotated_path)
+            #         else:
+            #             annotated_result = draw_annotated_image(filepath, regions, annotated_path)
+            #             if annotated_result:
+            #                 annotated_image_path = normalize_path(annotated_result)
+            #     except Exception:
+            #         annotated_image_path = None
 
             # 保护手动编辑的 regions 不被覆盖
             try:
@@ -502,12 +503,12 @@ def process_one(conn, image_id: str):
 
             db_analysis.regions = regions
             if not is_text_only:
-                # 仅非仅文字模式时保存面积统计和标注图
+                # 仅非仅文字模式时保存面积统计，标注图已禁用
                 db_analysis.inscription_percent = area_stats.get("inscription_percent", 0.0)
                 db_analysis.painting_percent = area_stats.get("painting_percent", 0.0)
                 db_analysis.blank_percent = area_stats.get("blank_percent", 0.0)
-                if annotated_image_path:
-                    db_analysis.annotated_image_path = annotated_image_path
+                # if annotated_image_path:
+                #     db_analysis.annotated_image_path = annotated_image_path
             db_analysis.position_analysis = position_analysis
             db_analysis.analysis_note = result.get("analysis_note", "")
             # 只有未校对时才覆盖 inscription_content，已校对的保留用户手动录入的文本

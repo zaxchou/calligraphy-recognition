@@ -66,17 +66,20 @@
             <span class="artwork-count">共 {{ totalArtworks }} 件</span>
           </div>
           <div class="toolbar-right">
-            <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋">
-              <el-icon><Bottom /></el-icon>翻译
-            </el-button>
-            <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="解析文字">
-              <el-icon><Refresh /></el-icon>文字分析
-            </el-button>
-            <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" title="AI图像分析">
-              <el-icon><MagicStick /></el-icon>AI分析
-            </el-button>
             <el-button size="small" @click="showUploadArea = !showUploadArea" :disabled="!canEdit" :class="{ 'is-active': showUploadArea }">
               <el-icon><Upload /></el-icon>{{ showUploadArea ? '收起上传' : '上传作品' }}
+            </el-button>
+            <span class="flow-arrow">→</span>
+            <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" title="从图片中检测题跋区域、OCR提取文字">
+              <el-icon><MagicStick /></el-icon>AI识图
+            </el-button>
+            <span class="flow-arrow">→</span>
+            <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="对题跋文字进行主题分类与情感分析">
+              <el-icon><Refresh /></el-icon>文字分析
+            </el-button>
+            <span class="flow-arrow">→</span>
+            <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋文字">
+              <el-icon><Bottom /></el-icon>翻译
             </el-button>
           </div>
         </div>
@@ -1053,6 +1056,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.flow-arrow {
+  color: #c8a45c;
+  font-size: 16px;
+  font-weight: 300;
+  user-select: none;
+  margin: 0 2px;
 }
 
 .artwork-count {
