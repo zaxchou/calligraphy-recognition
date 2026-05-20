@@ -210,7 +210,8 @@ import { Loading, Plus, Edit, Delete, PriceTag } from '@element-plus/icons-vue'
 import { tubiApi } from '../api'
 
 const props = defineProps({
-  artist: { type: String, default: 'all' }
+  artist: { type: String, default: 'all' },
+  libraryId: { type: Number, default: null }
 })
 
 const loading = ref(false)
@@ -256,8 +257,8 @@ async function loadData() {
   loading.value = true
   try {
     const [tagsRes, allResultsRes] = await Promise.all([
-      tubiApi.getTags(props.artist),
-      tubiApi.getAllResults(0, 1000, props.artist),
+      tubiApi.getTags(props.artist, props.libraryId),
+      tubiApi.getAllResults(0, 1000, props.artist, props.libraryId),
     ])
     if (tagsRes.success) tags.value = tagsRes.data
     if (allResultsRes.success) allRecords.value = allResultsRes.data

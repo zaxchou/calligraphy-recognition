@@ -113,6 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
         avatar_url: resp.avatar_url || '',
         phone: resp.phone || '',
         role: resp.role || 'reader',
+        score: resp.score || 0,
       }
       localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
     } catch (e) {

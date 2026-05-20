@@ -217,7 +217,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 
 const props = defineProps({
-  artist: { type: String, default: 'all' }
+  artist: { type: String, default: 'all' },
+  libraryId: { type: Number, default: null }
 })
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -308,6 +309,7 @@ async function loadData() {
     const artistParam = selectedArtist.value === 'all' ? '' : selectedArtist.value
     const params = new URLSearchParams()
     if (artistParam) params.set('artist', artistParam)
+    if (props.libraryId) params.set('library_id', String(props.libraryId))
     const queryStr = params.toString() ? `?${params.toString()}` : ''
     const res = await fetch(`${API_BASE}/tubi/dimensions${queryStr}`)
     const data = await res.json()

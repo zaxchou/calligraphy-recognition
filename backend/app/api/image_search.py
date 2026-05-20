@@ -52,10 +52,18 @@ class StatsResponse(BaseModel):
     total_indexed: int
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 @router.get("/stats", response_model=StatsResponse)
 async def get_stats():
-    engine = get_search_engine()
-    return StatsResponse(total_indexed=engine.total_indexed)
+    try:
+        engine = get_search_engine()
+        return StatsResponse(total_indexed=engine.total_indexed)
+    except Exception as e:
+        logger.warning("获取图像搜索统计失败: %s", e)
+        return StatsResponse(total_indexed=0)
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -94,9 +102,13 @@ async def search_similar(
 async def find_duplicates(
     threshold: float = Query(default=0.995, ge=0.80, le=1.0),
 ):
-    engine = get_search_engine()
-    pairs = engine.find_duplicates(threshold=threshold)
-    return pairs
+    try:
+        engine = get_search_engine()
+        pairs = engine.find_duplicates(threshold=threshold)
+        return pairs
+    except Exception as e:
+        logger.warning("查重失败: %s", e)
+        return []
 
 
 @router.post("/rebuild-index", response_model=RebuildResponse)

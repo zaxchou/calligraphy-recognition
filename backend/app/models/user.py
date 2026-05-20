@@ -20,6 +20,7 @@ class User(Base):
     subscription_expires_at = Column(DateTime, nullable=True, comment="订阅到期时间")
     storage_used_bytes = Column(Integer, default=0, comment="已用存储(bytes)")
     ai_calls_this_month = Column(Integer, default=0, comment="本月AI调用数")
+    score = Column(Integer, default=0, comment="贡献积分")
     nickname_changed_at = Column(DateTime(timezone=True), nullable=True, comment="昵称最后修改时间（限每年一次）")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

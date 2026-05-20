@@ -439,7 +439,8 @@ async def upload_seal_image(seal_id: int, file: UploadFile = File(...), descript
         os.makedirs(SEAL_DIR, exist_ok=True)
 
         ext = os.path.splitext(file.filename or "image.jpg")[1] or ".jpg"
-        filename = f"seal_{seal_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}{ext}"
+        import random
+        filename = f"seal_{seal_id}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}_{random.randint(1000,9999)}{ext}"
         filepath = os.path.join(SEAL_DIR, filename)
         with open(filepath, "wb") as f:
             content = await file.read()

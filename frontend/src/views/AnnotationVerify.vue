@@ -102,7 +102,8 @@ import { ElMessage } from 'element-plus'
 import { Search, Close, Loading, Picture, Check } from '@element-plus/icons-vue'
 
 const props = defineProps({
-  artist: { type: String, default: 'all' }
+  artist: { type: String, default: 'all' },
+  libraryId: { type: Number, default: null }
 })
 
 const router = useRouter()
@@ -155,6 +156,10 @@ async function fetchRecords(reset = true) {
     
     if (props.artist && props.artist !== 'all') {
       params.set('artist', props.artist)
+    }
+    
+    if (props.libraryId) {
+      params.set('library_id', String(props.libraryId))
     }
     
     if (filterStatus.value) {

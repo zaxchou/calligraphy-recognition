@@ -195,7 +195,7 @@ async function loadArtistList() {
 }
 
 async function loadRules() {
-  if (!selectedArtist.value) return
+  if (!selectedArtist.value || selectedArtist.value === 'all') return
   loading.value = true
   error.value = ''
   try {

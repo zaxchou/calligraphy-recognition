@@ -13,7 +13,6 @@ from app.models.notification import Notification
 from app.models.change_request import ChangeRequest
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.artwork_library import ArtworkLibrary
-from app.models.work_revision import WorkRevision
 
 logger = logging.getLogger(__name__)
 

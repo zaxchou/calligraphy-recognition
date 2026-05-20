@@ -487,6 +487,7 @@ async def get_profile(
         "email": user.email,
         "phone": user.phone,
         "role": user.role,
+        "score": user.score or 0,
         "has_password": bool(user.password_hash),
         "nickname_changed_at": user.nickname_changed_at.isoformat() if user.nickname_changed_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,

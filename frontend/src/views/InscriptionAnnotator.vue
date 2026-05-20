@@ -1,5 +1,19 @@
 <template>
   <div class="annotator-page">
+    <!-- 意见提交模式提示 -->
+    <div v-if="isSuggestMode" class="suggest-banner">
+      <el-icon style="margin-right:8px;"><EditPen /></el-icon>
+      意见提交模式
+      <span v-if="!isSuggestAdmin" style="margin-left:8px;color:#856404;">— 保存草稿到本地，完成后点「提交审阅」</span>
+      <span v-else style="margin-left:8px;color:#856404;">— 管理员直接保存将写入数据库</span>
+      <el-button v-if="hasDraft && !isSuggestAdmin" size="small" text style="margin-left:12px;color:#856404;" @click="restoreDraft">
+        恢复上次草稿
+      </el-button>
+    </div>
+    <div v-if="isReviewMode" class="review-banner">
+      <el-icon style="margin-right:8px;"><View /></el-icon>
+      审核预览模式 — 此标注图为变更请求中的新值，仅供查看
+    </div>
     <!-- 主工作区 -->
     <div class="annotator-workspace">
       <!-- 左侧图片标注区 -->
@@ -149,11 +163,20 @@
             </el-button>
           </div>
           <div class="action-buttons">
-            <el-button size="small" @click="undoLast" :disabled="history.length === 0">撤销</el-button>
-            <el-button size="small" @click="clearAll" :disabled="polygons.length === 0">清空</el-button>
-            <el-button type="primary" size="small" @click="saveRegions" :loading="saving">
-              保存标注
-            </el-button>
+            <template v-if="isReviewMode">
+              <el-button size="small" @click="goBack">返回</el-button>
+              <el-tag type="info" effect="plain">只读预览</el-tag>
+            </template>
+            <template v-else>
+              <el-button size="small" @click="undoLast" :disabled="history.length === 0">撤销</el-button>
+              <el-button size="small" @click="clearAll" :disabled="polygons.length === 0">清空</el-button>
+              <el-button type="primary" size="small" @click="saveRegions" :loading="saving">
+                {{ isSuggestMode && !isSuggestAdmin ? '保存草稿' : '保存标注' }}
+              </el-button>
+              <el-button v-if="isSuggestMode" type="warning" size="small" @click="submitForReview" :loading="submittingReview">
+                提交审阅
+              </el-button>
+            </template>
           </div>
         </div>
         <!-- 图片信息 -->
@@ -267,12 +290,20 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Delete, Search, ZoomIn, ZoomOut, FullScreen } from '@element-plus/icons-vue'
+import { ArrowLeft, Delete, Search, ZoomIn, ZoomOut, FullScreen, EditPen, View } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 
 // === 状态 ===
+const isSuggestMode = computed(() => route.query.mode === 'suggest')
+const isReviewMode = computed(() => route.query.mode === 'review')
+const isSuggestAdmin = computed(() => route.query.role === 'admin' || route.query.role === 'super_admin' || route.query.role === 'editor')
+const submittingReview = ref(false)
+const initialRegionsSnapshot = ref('[]')
+const DRAFT_KEY = computed(() => `annotator_draft_${route.params.id}`)
+const hasDraft = ref(false)
+
 const imageUrl = ref('')
 const imgNaturalW = ref(800)
 const imgNaturalH = ref(600)
@@ -476,6 +507,8 @@ function polygonArea(idx) {
 
 // === SVG 事件处理 ===
 function onSvgClick(e) {
+  // 审核预览模式：禁止修改
+  if (isReviewMode.value) return
   // 如果正在拖拽，不处理
   if (isDragging) return
   // 如果点击的是已完成多边形或顶点，不添加新点
@@ -736,28 +769,42 @@ async function saveRegions() {
     return
   }
 
+  const regions = polygons.value.map(poly => {
+    const points = poly.points || poly
+    return {
+      type: poly.type || 'inscription',
+      points: points.map(p => ({ x: p.x, y: p.y }))
+    }
+  })
+
+  // suggest模式 + 普通用户 → 保存为本地草稿
+  if (isSuggestMode.value && !isSuggestAdmin.value) {
+    try {
+      localStorage.setItem(DRAFT_KEY.value, JSON.stringify(regions))
+      hasDraft.value = true
+      ElMessage.success('草稿已保存到本地')
+    } catch (e) {
+      ElMessage.error('草稿保存失败: ' + e.message)
+    }
+    return
+  }
+
+  // 管理员/非suggest模式 → 直接写入数据库
   saving.value = true
   try {
-    // 保留多边形顶点数据发送给后端，确保精确形状
-    const regions = polygons.value.map(poly => {
-      const points = poly.points || poly
-      return {
-        type: poly.type || 'inscription',
-        points: points.map(p => ({ x: p.x, y: p.y }))
-      }
-    })
-
     const res = await fetch(`/api/v1/tubi/${route.params.id}/regions`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
       body: JSON.stringify({ regions })
     })
 
     if (!res.ok) throw new Error(await res.text())
-    const data = await res.json()
+
+    // 清除本地草稿
+    localStorage.removeItem(DRAFT_KEY.value)
+    hasDraft.value = false
 
     ElMessage.success('标注已保存')
-    // 跳转到作品详情页
     const targetId = recordData.value?.image_id || recordData.value?.id
     if (targetId) {
       router.push(`/tubi/${targetId}`)
@@ -766,6 +813,87 @@ async function saveRegions() {
     ElMessage.error('保存失败：' + err.message)
   } finally {
     saving.value = false
+  }
+}
+
+// 恢复本地草稿
+function restoreDraft() {
+  try {
+    const draft = localStorage.getItem(DRAFT_KEY.value)
+    if (!draft) {
+      ElMessage.info('没有找到本地草稿')
+      return
+    }
+    const regions = JSON.parse(draft)
+    polygons.value = regions
+    history.value = []
+    selectedPolyIdx.value = -1
+    currentPoly.value = []
+    ElMessage.success('已恢复上次保存的草稿')
+  } catch (e) {
+    ElMessage.error('草稿恢复失败: ' + e.message)
+  }
+}
+
+// 意见提交模式：提交标注修改为 change_request
+async function submitForReview() {
+  if (polygons.value.length === 0) {
+    ElMessage.warning('请至少标注一个区域')
+    return
+  }
+  submittingReview.value = true
+  try {
+    const regions = polygons.value.map(poly => {
+      const points = poly.points || poly
+      return {
+        type: poly.type || 'inscription',
+        points: points.map(p => ({ x: p.x, y: p.y }))
+      }
+    })
+    const newValue = JSON.stringify(regions)
+    const oldValue = initialRegionsSnapshot.value || '[]'
+
+    // 从 URL 参数或 sessionStorage 读取信息
+    let libId = route.query.lib
+    let artworkId = route.query.artwork
+    if (!libId) libId = sessionStorage.getItem('suggest_library_id')
+    if (!artworkId) artworkId = sessionStorage.getItem('suggest_artwork_id') || route.params.id
+    if (!libId) {
+      ElMessage.error('缺少作品库信息，请从作品详情页进入')
+      return
+    }
+
+    const res = await fetch(`/api/v1/libraries/${libId}/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
+      body: JSON.stringify({
+        artwork_id: artworkId,
+        request_type: 'adjust_region',
+        field_name: 'annotation_regions',
+        old_value: oldValue,
+        new_value: newValue,
+        change_summary: '标注区域意见'
+      })
+    })
+
+    if (!res.ok) {
+      const errData = await res.json()
+      throw new Error(errData.detail || '提交失败')
+    }
+
+    // 设置标志，供 TubiDetail 检测
+    const imageId = route.params.id
+    localStorage.setItem('suggest_annotation_done_' + imageId, '1')
+    // 清除本地草稿
+    localStorage.removeItem(DRAFT_KEY.value)
+
+    ElMessage.success('标注意见已提交审阅！')
+    // 提示后关闭窗口
+    setTimeout(() => window.close(), 2000)
+  } catch (err) {
+    ElMessage.error('提交失败：' + err.message)
+  } finally {
+    submittingReview.value = false
   }
 }
 
@@ -850,6 +978,38 @@ async function loadRecord() {
       })
     }
     polygons.value = allRegions
+    // 防御性处理：如果 regions 是数组格式（数据异常），尝试直接提取区域
+    if (Array.isArray(data.data.regions)) {
+      const extracted = data.data.regions
+        .filter(function (r) { return r && r.type && r.points })
+        .map(function (r) { return { type: r.type, points: r.points } })
+      if (extracted.length > 0) {
+        polygons.value = extracted
+      }
+    }
+    // 审核预览模式：从 URL 参数读取新标注区域覆盖
+    if (isReviewMode.value) {
+      const encodedRegions = route.query.regions
+      if (encodedRegions) {
+        try {
+          const parsedRegions = JSON.parse(decodeURIComponent(encodedRegions))
+          if (Array.isArray(parsedRegions) && parsedRegions.length > 0) {
+            polygons.value = parsedRegions
+          }
+        } catch (_) {}
+      }
+    }
+    // 意见提交模式：记录初始状态用于 old_value
+    if (isSuggestMode.value) {
+      initialRegionsSnapshot.value = JSON.stringify(allRegions)
+    }
+    // 恢复本地草稿提示
+    if (isSuggestMode.value && !isSuggestAdmin.value) {
+      const draft = localStorage.getItem(DRAFT_KEY.value)
+      if (draft) {
+        hasDraft.value = true
+      }
+    }
   } catch (err) {
     ElMessage.error('加载记录失败：' + err.message)
   }
@@ -1361,5 +1521,28 @@ onBeforeUnmount(() => {
   border: 1.5px solid rgba(255, 255, 255, 0.6);
   border-radius: 50%;
   pointer-events: none;
+}
+
+.suggest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  background: #fff3cd;
+  color: #856404;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid #ffc107;
+}
+.review-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  background: #d9edf7;
+  color: #31708f;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid #bce8f1;
 }
 </style>

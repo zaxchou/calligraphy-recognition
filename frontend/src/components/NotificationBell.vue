@@ -33,18 +33,19 @@
             :key="item.id"
             class="notification-item"
             :class="{ unread: !item.is_read }"
-            @click="handleMarkRead(item)"
+            @click="handleClickItem(item)"
           >
             <div class="notification-item-header">
               <span class="notification-item-title">{{ item.title }}</span>
               <el-tag
-                :type="tagType(item.notification_type)"
+                :type="tagType(item.type)"
                 size="small"
                 effect="plain"
               >
-                {{ tagLabel(item.notification_type) }}
+                {{ tagLabel(item.type) }}
               </el-tag>
             </div>
+            <div v-if="item.body" class="notification-item-body">{{ item.body }}</div>
             <div class="notification-item-time">{{ formatTime(item.created_at) }}</div>
           </div>
         </div>
@@ -55,18 +56,20 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Bell } from '@element-plus/icons-vue'
 import { notificationApi } from '../api'
 
+const router = useRouter()
 const unreadCount = ref(0)
 const notifications = ref([])
 const loading = ref(false)
 let pollTimer = null
 
 const typeMap = {
-  approved: { label: '通过', type: 'success' },
-  rejected: { label: '驳回', type: 'danger' },
-  pending: { label: '待审核', type: 'warning' },
+  cr_approved: { label: '通过', type: 'success' },
+  cr_rejected: { label: '驳回', type: 'danger' },
+  cr_pending: { label: '待审核', type: 'warning' },
 }
 
 function tagType(notificationType) {
@@ -113,6 +116,13 @@ async function handleMarkRead(item) {
     await fetchUnreadCount()
   } catch {
     // ignore
+  }
+}
+
+function handleClickItem(item) {
+  handleMarkRead(item)
+  if (item.type === 'cr_pending' || item.type === 'cr_approved' || item.type === 'cr_rejected') {
+    router.push('/admin?tab=change-requests')
   }
 }
 
@@ -223,6 +233,16 @@ onUnmounted(stopPolling)
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
+}
+
+.notification-item-body {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notification-item-title {

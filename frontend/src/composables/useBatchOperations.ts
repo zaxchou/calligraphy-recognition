@@ -13,10 +13,11 @@ export interface UseBatchOperationsOptions {
   apiBase: string
   fetchRecords: () => Promise<void>
   getArtist: () => string
+  getLibraryId?: () => number | null
 }
 
 export function useBatchOperations(options: UseBatchOperationsOptions) {
-  const { apiBase, fetchRecords, getArtist } = options
+  const { apiBase, fetchRecords, getArtist, getLibraryId } = options
 
   // 批量分析状态
   const analyzing = ref(false)
@@ -35,7 +36,10 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
   const { streamSSE: streamTranslateSSE, cancel: cancelTranslateStream } = useSSEStream()
 
   // 批量重跑结果展示 —— 持久化到 localStorage，页面刷新不丢失
-  const getCacheKey = () => `batch-reanalyze-result_${getArtist()}`
+  const getCacheKey = () => {
+    const libId = getLibraryId ? getLibraryId() : null
+    return libId ? `batch-reanalyze-result_lib${libId}` : `batch-reanalyze-result_${getArtist()}`
+  }
   const _loadCached = () => { try { const v = localStorage.getItem(getCacheKey()); return v ? JSON.parse(v) : null } catch { return null } }
   const batchResultData = ref<any>(_loadCached())
 
@@ -71,9 +75,14 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
 
     try {
       const artist = getArtist()
+      const libraryId = getLibraryId ? getLibraryId() : null
       const incremental = mode === 'incremental'
+      const params = new URLSearchParams()
+      if (artist && artist !== 'all') params.set('artist', artist)
+      if (libraryId) params.set('library_id', String(libraryId))
+      params.set('incremental', String(incremental))
       const response = await fetch(
-        `${apiBase}/content-analysis/batch-reanalyze/stream?artist=${encodeURIComponent(artist)}&incremental=${incremental}`,
+        `${apiBase}/content-analysis/batch-reanalyze/stream?${params.toString()}`,
         { method: 'POST' }
       )
 
@@ -130,8 +139,13 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
 
     try {
       const artist = getArtist()
+      const libraryId = getLibraryId ? getLibraryId() : null
+      const params = new URLSearchParams()
+      if (artist && artist !== 'all') params.set('artist', artist)
+      if (libraryId) params.set('library_id', String(libraryId))
+      params.set('force_retranslate', String(forceRetranslate))
       const response = await fetch(
-        `${apiBase}/content-analysis/translate/batch/stream?artist=${encodeURIComponent(artist)}&force_retranslate=${forceRetranslate}`,
+        `${apiBase}/content-analysis/translate/batch/stream?${params.toString()}`,
         { method: 'POST' }
       )
 

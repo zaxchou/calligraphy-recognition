@@ -364,7 +364,8 @@ import { Loading, Plus, View, Delete, Collection, Picture, Top, Bottom, Search, 
 import { tubiApi } from '../api'
 
 const props = defineProps({
-  artist: { type: String, default: 'all' }
+  artist: { type: String, default: 'all' },
+  libraryId: { type: Number, default: null }
 })
 
 const loading = ref(false)
@@ -487,8 +488,8 @@ async function loadData() {
   loading.value = true
   try {
     const [albumsRes, allResultsRes] = await Promise.all([
-      tubiApi.getAlbums(props.artist),
-      tubiApi.getAllResults(0, 1000, props.artist),
+      tubiApi.getAlbums(props.artist, props.libraryId),
+      tubiApi.getAllResults(0, 1000, props.artist, props.libraryId),
     ])
     if (albumsRes.success && allResultsRes.success) {
       allRecords.value = allResultsRes.data
