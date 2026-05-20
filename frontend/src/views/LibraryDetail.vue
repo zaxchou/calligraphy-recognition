@@ -74,16 +74,16 @@
               <el-icon><MagicStick /></el-icon>AI识图
             </el-button>
             <span class="flow-arrow">→</span>
+            <el-button plain size="small" @click="goVerifyPage" title="人工校对题跋文字后系统自动提取画材标签">
+              <el-icon><EditPen /></el-icon>校对
+            </el-button>
+            <span class="flow-arrow">→</span>
             <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="对题跋文字进行主题分类与情感分析">
               <el-icon><Refresh /></el-icon>文字分析
             </el-button>
             <span class="flow-arrow">→</span>
             <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋文字">
               <el-icon><Bottom /></el-icon>翻译
-            </el-button>
-            <span class="flow-arrow">→</span>
-            <el-button plain size="small" @click="showProofreadTip = true" title="人工校对题跋文字后系统自动提取画材标签" :disabled="!totalArtworks">
-              <el-icon><EditPen /></el-icon>校对
             </el-button>
           </div>
         </div>
@@ -428,26 +428,6 @@
       </template>
     </el-dialog>
 
-    <!-- 校对引导弹窗 -->
-    <el-dialog v-model="showProofreadTip" title="题跋校对" width="420px">
-      <div style="padding:8px 0;">
-        <p style="margin:0 0 12px;color:#555;line-height:1.7;">
-          在AI识图提取题跋文字后，建议先进行<strong>人工校对</strong>，校对后的文字将用于：
-        </p>
-        <ul style="margin:0 0 16px;padding-left:20px;color:#555;line-height:2;">
-          <li>自动提取<strong>画材标签</strong>（纸本/绢本/设色等）</li>
-          <li>主题分类与情感分析（文字分析）</li>
-          <li>题跋翻译</li>
-        </ul>
-        <p style="margin:0 0 4px;color:#888;font-size:13px;">
-          前往 <el-button text size="small" @click="goVerifyPage"><strong>题跋校对页面 →</strong></el-button>
-        </p>
-        <p style="margin:0;color:#888;font-size:13px;">
-          或点击作品卡片上的 <el-tag size="small" round>校对</el-tag> 按钮逐幅操作
-        </p>
-      </div>
-    </el-dialog>
-
     <!-- AI识图弹窗 -->
     <el-dialog v-model="showAiAnalyzeDialog" title="批量AI识图" width="400px">
       <div class="translate-mode-options">
@@ -555,7 +535,6 @@ const showAiAnalyzeDialog = ref(false)
 const showAiAnalyzeProgress = ref(false)
 const aiAnalyzing = ref(false)
 const aiAnalyzeProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
-const showProofreadTip = ref(false)
 const editDialogRef = ref(null)
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -654,7 +633,6 @@ function openEdit(artwork) {
 }
 
 function goVerifyPage() {
-  showProofreadTip.value = false
   router.push({ name: 'Admin', query: { tab: 'verify' } })
 }
 
