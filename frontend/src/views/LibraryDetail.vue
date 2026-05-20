@@ -466,7 +466,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete, Close, Bottom, Right, Refresh, RefreshRight, EditPen, Crop, MagicStick } from '@element-plus/icons-vue'
@@ -963,6 +963,12 @@ onMounted(async () => {
   await loadLibrary()
   await loadArtworks()
   fetchAccessibleLibs()
+})
+
+onUnmounted(() => {
+  if (aiAnalyzeCancelFn) { aiAnalyzeCancelFn(); aiAnalyzeCancelFn = null }
+  if (translateCancelFn) { translateCancelFn(); translateCancelFn = null }
+  if (analyzeCancelFn) { analyzeCancelFn(); analyzeCancelFn = null }
 })
 </script>
 
