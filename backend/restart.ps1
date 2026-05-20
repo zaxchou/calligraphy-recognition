@@ -20,9 +20,10 @@ if ($pids) {
 }
 
 Write-Host "[2/3] 检查端口..." -ForegroundColor Yellow
-$portCheck = netstat -ano | Select-String ":8001" -ErrorAction SilentlyContinue
-if ($portCheck) { Write-Host "  端口 8001 已被释放" -ForegroundColor Green }
+$port = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { "8001" }
+$portCheck = netstat -ano | Select-String ":$port " -ErrorAction SilentlyContinue
+if ($portCheck) { Write-Host "  端口 $port 将被释放" -ForegroundColor Green }
 
-Write-Host "[3/3] 启动后端 (http://localhost:8001)..." -ForegroundColor Yellow
+Write-Host "[3/3] 启动后端..." -ForegroundColor Yellow
 $env:PYTHONPATH = $backendDir
 python "$backendDir\app\main.py"
