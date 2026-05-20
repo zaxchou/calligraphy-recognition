@@ -311,9 +311,9 @@ def process_one(conn, image_id: str):
         if inscription_content is not None and not db_analysis.inscription_verified:
             db_analysis.inscription_content = inscription_content
 
-        # 画材标签（从 title 提取，不再依赖 AI 点评）
+        # 画材标签（从 title + inscription_content 提取）
         try:
-            material_tags_list = extract_material_tags(db_analysis.title or "", "")
+            material_tags_list = extract_material_tags(db_analysis.title or "", inscription_content or "")
             if material_tags_list:
                 db_analysis.material_tags = ",".join(material_tags_list)
             else:

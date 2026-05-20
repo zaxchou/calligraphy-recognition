@@ -885,9 +885,9 @@ def jieba_tokenize(text: str) -> List[str]:
 
 
 
-def extract_material_tags(title: str, analysis_note: str) -> List[str]:
-    """从作品标题和AI分析内容中提取画材标签，返回去重列表。"""
-    combined = (title or "") + " " + (analysis_note or "")
+def extract_material_tags(title: str, inscription_content: str) -> List[str]:
+    """从作品标题和题跋文字中提取画材标签，返回去重列表。"""
+    combined = (title or "") + " " + (inscription_content or "")
     if not combined.strip():
         return []
     
@@ -901,27 +901,24 @@ def extract_material_tags(title: str, analysis_note: str) -> List[str]:
         # 单字特殊处理
         if keyword in GENERIC_SINGLE_CHARS and len(keyword) == 1:
             if keyword == "石":
-                # "石"字：需要检查是否是"湖石/怪石/奇石"等（仅在标题中）
                 if keyword in (title or ""):
                     idx = (title or "").find(keyword)
                     if idx > 0 and title[idx - 1] in "湖怪奇":
                         tags.append(tag)
                         seen.add(tag)
             elif keyword == "鸟":
-                # "鸟"字：需要 analysis_note 中确实提到鸟相关内容，不只是标题
                 bird_keywords = ["鸟", "雀", "燕", "鹦鹉", "鹭", "鹤", "鸽", "鸡", "鸭", "鹅", "鹌鹑", "喜鹊", "鹰", "黄鹂"]
-                has_bird = any(k in (analysis_note or "") for k in bird_keywords)
+                has_bird = any(k in (inscription_content or "") for k in bird_keywords)
                 if has_bird:
                     tags.append(tag)
                     seen.add(tag)
             else:
-                # 其他单字（月、云、雪）：在标题中匹配
                 if keyword in (title or ""):
                     tags.append(tag)
                     seen.add(tag)
             continue
         
-        # 多字关键词：在标题+分析内容中匹配
+        # 多字关键词：在标题+题跋内容中匹配
         if keyword in combined:
             tags.append(tag)
             seen.add(tag)
