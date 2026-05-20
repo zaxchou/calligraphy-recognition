@@ -961,6 +961,16 @@ function formatTime(iso) {
 }
 
 // ── Watch tab change to load data ──
+watch(libraryId, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    loadLibrary()
+    loadArtworks()
+    fetchAccessibleLibs()
+    switchingLibraryId.value = newId
+    activeTab.value = 'artworks'
+  }
+})
+
 watch(manageTab, (tab) => {
   if (tab === 'collaborators') loadCollaborators()
   if (tab === 'pending') loadPendingRequests()
