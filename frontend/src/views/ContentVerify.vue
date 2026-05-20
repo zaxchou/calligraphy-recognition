@@ -693,7 +693,6 @@ const adminAccessibleLibraries = inject('adminAccessibleLibraries', ref([]))
 const adminSelectedLibraryId = inject('adminSelectedLibraryId', ref(null))
 const adminLibStats = inject('adminLibStats', null)
 const adminBatchState = inject('adminBatchState', null)
-const adminBatchTrigger = inject('adminBatchTrigger', null)
 
 // 监听侧边栏作品库切换 → 同步
 watch(adminSelectedLibraryId, (newLibId) => {
@@ -709,16 +708,8 @@ watch(adminSelectedLibraryId, (newLibId) => {
   }
 })
 
-// 监听侧边栏批量操作触发
-watch(adminBatchTrigger, (type) => {
-  if (!type) return
-  if (type === 'translate') {
-    showTranslateModeDialog.value = true
-  } else if (type === 'reanalyze') {
-    openBatchReanalyze()
-  }
-  adminBatchTrigger.value = null // 重置
-})
+// 监听侧边栏批量操作触发（已迁移至作品库详情页）
+// watch(adminBatchTrigger, ...) 已移除
 
 // ── 状态 ──
 const records = ref([])
