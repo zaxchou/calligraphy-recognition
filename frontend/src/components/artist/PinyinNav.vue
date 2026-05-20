@@ -81,6 +81,12 @@ const groups = computed(() => {
   color: #fff;
 }
 
+.pn-active:hover {
+  background: #b54a2d;
+  border-color: #b54a2d;
+  color: #fff;
+}
+
 .pn-count {
   font-size: 0.6rem;
   margin-left: 2px;

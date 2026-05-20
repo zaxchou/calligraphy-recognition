@@ -151,6 +151,12 @@ function onFilterChange() {
 }
 
 function onLetterSelect(letter) {
+  if (activeLetter.value === letter) {
+    activeLetter.value = ''
+    pinyinLetterNames.value = []
+    doLoad()
+    return
+  }
   activeLetter.value = letter
   const matching = []
   for (const name of store.letterNames) {
