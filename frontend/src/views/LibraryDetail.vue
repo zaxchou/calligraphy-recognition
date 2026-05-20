@@ -18,11 +18,6 @@
           {{ library.description || '' }}
         </p>
       </div>
-      <div class="page-actions">
-        <el-button v-if="!showUploadArea" type="primary" @click="showUploadArea = true" :disabled="!canEdit">
-          <el-icon><Upload /></el-icon> {{ totalArtworks > 0 ? '继续上传' : '上传作品' }}
-        </el-button>
-      </div>
     </div>
 
     <!-- 文件名格式提示 -->
@@ -50,9 +45,14 @@
     <!-- Tab 切换 -->
     <el-tabs v-model="activeTab" class="detail-tabs">
       <el-tab-pane label="作品列表" name="artworks">
-        <!-- 排序筛选 -->
-        <div class="toolbar">
+        <!-- 统一工具栏 -->
+        <div class="toolbar unified-toolbar">
           <div class="toolbar-left">
+            <el-select v-model="switchingLibraryId" size="small" style="width: 180px" @change="onSwitchLibrary">
+              <el-option label="📚 当前作品库" value="" disabled />
+              <el-option v-for="lib in accessibleLibs" :key="lib.id" :label="lib.name" :value="lib.id" />
+            </el-select>
+            <span class="toolbar-sep">|</span>
             <el-select v-model="sortBy" size="small" style="width: 140px" @change="loadArtworks">
               <el-option label="上传时间" value="created_at" />
               <el-option label="画家" value="artist" />
@@ -62,27 +62,23 @@
               {{ order === 'desc' ? '↓ 降序' : '↑ 升序' }}
             </el-button>
           </div>
-          <div class="toolbar-right">
-            <span class="artwork-count">共 {{ totalArtworks }} 件作品</span>
+          <div class="toolbar-center">
+            <span class="artwork-count">共 {{ totalArtworks }} 件</span>
           </div>
-        </div>
-
-        <!-- 批量操作工具栏 -->
-        <div class="toolbar batch-toolbar">
-          <el-select v-model="switchingLibraryId" size="small" style="width: 180px" @change="onSwitchLibrary">
-            <el-option label="📚 当前作品库" value="" disabled />
-            <el-option v-for="lib in accessibleLibs" :key="lib.id" :label="lib.name" :value="lib.id" />
-          </el-select>
-          <span class="toolbar-sep">|</span>
-          <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋">
-            <el-icon><Bottom /></el-icon>翻译
-          </el-button>
-          <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="解析文字">
-            <el-icon><Refresh /></el-icon>文字分析
-          </el-button>
-          <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" title="AI图像分析">
-            <el-icon><MagicStick /></el-icon>AI分析
-          </el-button>
+          <div class="toolbar-right">
+            <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋">
+              <el-icon><Bottom /></el-icon>翻译
+            </el-button>
+            <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="解析文字">
+              <el-icon><Refresh /></el-icon>文字分析
+            </el-button>
+            <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" title="AI图像分析">
+              <el-icon><MagicStick /></el-icon>AI分析
+            </el-button>
+            <el-button size="small" @click="showUploadArea = !showUploadArea" :disabled="!canEdit" :class="{ 'is-active': showUploadArea }">
+              <el-icon><Upload /></el-icon>{{ showUploadArea ? '收起上传' : '上传作品' }}
+            </el-button>
+          </div>
         </div>
 
         <div v-if="artworkLoading" class="loading-wrap">
@@ -1025,30 +1021,44 @@ onUnmounted(() => {
   margin-top: var(--space-sm);
 }
 
-.page-actions {
-  display: flex;
-  gap: var(--space-md);
-  padding-top: var(--space-xl);
-}
-
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-lg);
   flex-wrap: wrap;
-  gap: var(--space-md);
+  gap: var(--space-sm);
+}
+
+.unified-toolbar {
+  padding: 10px 14px;
+  background: #fafaf7;
+  border: 1px solid #e8e3da;
+  border-radius: 10px;
+  min-height: 38px;
 }
 
 .toolbar-left {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
+}
+
+.toolbar-center {
+  flex: 1;
+  text-align: center;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .artwork-count {
   font-size: 13px;
   color: var(--stone-gray);
+  white-space: nowrap;
 }
 
 .loading-wrap {
@@ -1231,8 +1241,7 @@ onUnmounted(() => {
 /* ── 新增样式 ── */
 .filename-tip { margin-bottom: 16px; }
 .filename-tip code { background: #fdf6f0; color: #c45a3c; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
-.batch-toolbar { margin-top: 0; gap: 8px; }
-.toolbar-sep { color: #d8d4c8; user-select: none; }
+.toolbar-sep { color: #ccc; user-select: none; margin: 0 2px; }
 .inline-upload-area { background: #fff; border: 1px solid #e8e3da; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 .upload-area-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .upload-area-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
@@ -1277,6 +1286,12 @@ onUnmounted(() => {
 
 .manage-badge {
   margin-left: 6px;
+}
+
+.unified-toolbar .el-button.is-active {
+  background: #fdf6f0;
+  border-color: #c45a3c;
+  color: #c45a3c;
 }
 
 /* 我的意见对话框 */
