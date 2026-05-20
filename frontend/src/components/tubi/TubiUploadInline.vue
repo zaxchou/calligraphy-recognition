@@ -87,7 +87,8 @@ async function startBatchUpload() {
       try {
         let result
         if (props.libraryId) {
-          result = await artworkApi.upload(props.libraryId, item.rawFile, {})
+          const data = await artworkApi.upload(props.libraryId, item.rawFile, {})
+          result = { success: true, data }
         } else {
           result = await tubiApi.uploadImage(item.rawFile, {})
         }
@@ -114,7 +115,8 @@ async function retryUploadItem(item) {
   try {
     let result
     if (props.libraryId) {
-      result = await artworkApi.upload(props.libraryId, item.rawFile, {})
+      const data = await artworkApi.upload(props.libraryId, item.rawFile, {})
+      result = { success: true, data }
     } else {
       result = await tubiApi.uploadImage(item.rawFile, {})
     }

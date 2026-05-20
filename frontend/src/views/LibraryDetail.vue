@@ -428,7 +428,6 @@ import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, Vid
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi, artworkApi } from '../api'
 import TubiUploadInline from '@/components/tubi/TubiUploadInline.vue'
-import { useBatchOperations } from '@/composables/useBatchOperations'
 import { useSSEStream } from '@/composables/useSSEStream'
 
 const route = useRoute()
@@ -480,8 +479,8 @@ const analyzing = ref(false)
 const analyzeProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-let translateAbortController = null
-let analyzeAbortController = null
+let translateCancelFn = null
+let analyzeCancelFn = null
 
 // ── Edit form ──
 const editForm = reactive({
@@ -597,7 +596,8 @@ async function startBatchTranslate(mode) {
     params.set('library_id', String(libraryId.value))
     params.set('force_retranslate', String(forceRetranslate))
     const response = await fetch(`${API_BASE}/content-analysis/translate/batch/stream?${params.toString()}`, { method: 'POST' })
-    const { streamSSE } = useSSEStream()
+    const { streamSSE, cancel } = useSSEStream()
+    translateCancelFn = cancel
     await streamSSE(response, {
       onEvent: (event) => {
         if (event.type === 'start') {
@@ -621,7 +621,7 @@ async function startBatchTranslate(mode) {
 }
 
 function cancelBatchTranslate() {
-  if (translateAbortController) translateAbortController.abort()
+  if (translateCancelFn) { translateCancelFn(); translateCancelFn = null }
   batchTranslating.value = false
   showTranslateProgress.value = false
 }
@@ -639,7 +639,8 @@ async function startBatchAnalyze(mode) {
     params.set('library_id', String(libraryId.value))
     params.set('incremental', String(incremental))
     const response = await fetch(`${API_BASE}/content-analysis/batch-reanalyze/stream?${params.toString()}`, { method: 'POST' })
-    const { streamSSE } = useSSEStream()
+    const { streamSSE, cancel } = useSSEStream()
+    analyzeCancelFn = cancel
     await streamSSE(response, {
       onEvent: (event) => {
         if (event.type === 'total') {
@@ -663,7 +664,7 @@ async function startBatchAnalyze(mode) {
 }
 
 function cancelBatchAnalyze() {
-  if (analyzeAbortController) analyzeAbortController.abort()
+  if (analyzeCancelFn) { analyzeCancelFn(); analyzeCancelFn = null }
   analyzing.value = false
   showAnalyzeProgress.value = false
 }

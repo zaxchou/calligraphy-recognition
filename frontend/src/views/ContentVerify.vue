@@ -630,7 +630,7 @@
 import { ref, onMounted, watch, computed, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { Bottom, Refresh, RefreshRight, Right, Upload, CopyDocument, WarningFilled } from '@element-plus/icons-vue'
+import { Bottom, Refresh, RefreshRight, Right, CopyDocument, WarningFilled } from '@element-plus/icons-vue'
 import { useBatchOperations } from '../composables/useBatchOperations'
 import { useSSEStream } from '../composables/useSSEStream'
 
@@ -671,7 +671,7 @@ const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 const isEditor = computed(() => authStore.isEditor)
 
-const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'upload', 'image-search', 'dashboard', 'users', 'config', 'change-requests', 'libraries']
+const VALID_TABS = ['verify', 'album', 'tag', 'strip', 'dimensions', 'annotation', 'artist-info', 'artist-rules', 'seal', 'image-search', 'dashboard', 'users', 'config', 'change-requests', 'libraries']
 const activeTab = ref(VALID_TABS.includes(route.query.tab) ? route.query.tab : 'artist-info')
 const verifyPanelRef = ref(null)
 // 切换标签时同步到 URL query（用 replace 避免污染历史）
