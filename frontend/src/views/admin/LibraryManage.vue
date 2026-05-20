@@ -1,7 +1,7 @@
 <template>
   <div class="am-libs">
     <div v-if="detailId" class="am-back-bar">
-      <el-button size="small" text @click="detailId = null"><el-icon><ArrowLeft /></el-icon>返回作品库列表</el-button>
+      <el-button size="small" text @click="backToList"><el-icon><ArrowLeft /></el-icon>返回作品库列表</el-button>
     </div>
 
     <div v-if="!detailId" class="am-lib-list">
@@ -112,11 +112,14 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Folder } from '@element-plus/icons-vue'
 import { libraryApi } from '../../api/index.js'
 import LibraryDetail from '../LibraryDetail.vue'
 
+const route = useRoute()
+const router = useRouter()
 const detailId = ref(null)
 const loading = ref(false)
 const libs = ref([])
@@ -249,7 +252,22 @@ async function handleDelete(lib) {
   } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败') }
 }
 
-onMounted(loadLibs)
+onMounted(() => {
+  loadLibs()
+  const urlDetailId = route.query.detail_id
+  if (urlDetailId) detailId.value = parseInt(urlDetailId) || null
+})
+
+watch(() => route.query.detail_id, (id) => {
+  if (!id) { detailId.value = null; return }
+  const n = parseInt(id)
+  if (n && n !== detailId.value) detailId.value = n
+})
+
+function backToList() {
+  detailId.value = null
+  router.replace({ query: { ...route.query, detail_id: undefined } })
+}
 </script>
 
 <style scoped>

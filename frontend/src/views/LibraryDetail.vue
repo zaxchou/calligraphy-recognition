@@ -626,6 +626,9 @@ async function fetchAccessibleLibs() {
     })
     const data = await res.json()
     accessibleLibs.value = data.libraries || []
+    if (!switchingLibraryId.value && libraryId.value) {
+      switchingLibraryId.value = libraryId.value
+    }
   } catch (e) {
     console.error('获取作品库列表失败', e)
   }
@@ -633,7 +636,11 @@ async function fetchAccessibleLibs() {
 
 function onSwitchLibrary(newLibId) {
   if (newLibId && newLibId !== libraryId.value) {
-    router.push(`/libraries/${newLibId}`)
+    if (props.embedded) {
+      router.replace({ query: { ...route.query, detail_id: String(newLibId) } })
+    } else {
+      router.push(`/libraries/${newLibId}`)
+    }
   }
 }
 
