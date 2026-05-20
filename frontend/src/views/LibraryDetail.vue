@@ -143,8 +143,8 @@
               <el-button link size="small" @click.stop="openProofread(artwork)">
                 <el-icon><EditPen /></el-icon> 校对
               </el-button>
-              <el-button link size="small" @click.stop="openAnnotate(artwork)">
-                <el-icon><Crop /></el-icon> 标注
+              <el-button link size="small" @click.stop="openEdit(artwork)">
+                <el-icon><Edit /></el-icon> 编辑
               </el-button>
               <el-button link size="small" @click.stop="handleTriggerAnalyze(artwork)">
                 <el-icon><VideoPlay /></el-icon> AI分析
@@ -488,6 +488,8 @@
         <el-button plain @click="showAiAnalyzeProgress = false" :disabled="aiAnalyzeProgress.status !== 'done'">关闭</el-button>
       </template>
     </el-dialog>
+
+    <TubiEditDialog ref="editDialogRef" @saved="loadArtworks" />
   </div>
 </template>
 
@@ -499,6 +501,7 @@ import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, Vid
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi, artworkApi, tubiApi } from '../api'
 import TubiUploadInline from '@/components/tubi/TubiUploadInline.vue'
+import TubiEditDialog from '@/components/tubi/TubiEditDialog.vue'
 import { useSSEStream } from '@/composables/useSSEStream'
 
 const route = useRoute()
@@ -553,6 +556,7 @@ const showAiAnalyzeProgress = ref(false)
 const aiAnalyzing = ref(false)
 const aiAnalyzeProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
 const showProofreadTip = ref(false)
+const editDialogRef = ref(null)
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 let translateCancelFn = null
@@ -643,6 +647,10 @@ function openAnnotate(artwork) {
     const resolved = router.resolve({ name: 'InscriptionAnnotator', params: { id: imageId } })
     window.open(resolved.href, '_blank')
   }
+}
+
+function openEdit(artwork) {
+  editDialogRef.value?.open(artwork)
 }
 
 function goVerifyPage() {
