@@ -196,6 +196,65 @@ def _get_thumbnail_url(thumbnail_path: Optional[str]) -> Optional[str]:
     return get_static_url(_strip_data_prefix(thumbnail_path))
 
 
+def _parse_filename_meta(filename: str, explicit_title=None, explicit_artist=None,
+                         explicit_year=None, explicit_period=None) -> dict:
+    """
+    从文件名中提取元数据：朝代_作者_作品名_年份
+    
+    已显式传参的字段优先级更高（不会覆盖用户手动填写的值）。
+    返回 dict with keys: title, artist, year, period
+    """
+    # 去扩展名
+    name = os.path.splitext(filename)[0] if filename else ""
+    parts = [p.strip() for p in name.split("_") if p.strip()]
+    if len(parts) < 2:
+        return {"title": None, "artist": None, "year": None, "period": None}
+
+    # 已知朝代列表（用于消歧义）
+    KNOWN_PERIODS = {
+        "唐", "五代", "宋", "北宋", "南宋", "元", "明", "清", "近现代",
+        "魏晋", "南北朝", "隋", "辽", "金", "元末明初", "民国",
+    }
+
+    result = {"title": None, "artist": None, "year": None, "period": None}
+
+    # 最后一段可能是年份
+    last = parts[-1]
+    year_candidate = None
+    if last.isdigit() and 1 <= int(last) <= 2100:
+        year_candidate = int(last)
+        # 如果年份已被显式传参，不覆盖
+        if explicit_year is None:
+            result["year"] = year_candidate
+        parts = parts[:-1]  # 去掉年份
+
+    if len(parts) == 0:
+        return result
+
+    # 第一段可能是朝代
+    if parts[0] in KNOWN_PERIODS:
+        if explicit_period is None:
+            result["period"] = parts[0]
+        parts = parts[1:]
+
+    if len(parts) == 0:
+        return result
+
+    # 第二段（如果是两段以上）可能是作者，最后一段是作品名
+    # 规则：如果有 ≥2 段剩余，第1段是作者，其余段拼成作品名
+    if len(parts) >= 2:
+        if explicit_artist is None:
+            result["artist"] = parts[0]
+        if explicit_title is None:
+            result["title"] = "_".join(parts[1:])
+    elif len(parts) == 1:
+        # 只有一段，可能是作品名
+        if explicit_title is None:
+            result["title"] = parts[0]
+
+    return result
+
+
 def _check_library_write_access(lib: ArtworkLibrary, user: User, db: Session) -> None:
     """检查用户是否有库的写入权限（owner 或 editor/maintainer 协作者）"""
     if lib.owner_id == user.id:
@@ -328,6 +387,13 @@ async def upload_artwork(
         create_thumbnail_simple(filepath, thumbnail_path)
     except Exception as e:
         logger.warning(f"获取图片尺寸/缩略图失败: {e}")
+
+    # 文件名拆解：朝代_作者_作品名_年份（未显式传参时自动提取）
+    parsed = _parse_filename_meta(file.filename, title, artist, year, period)
+    title = parsed["title"] or title
+    artist = parsed["artist"] or artist
+    year = parsed["year"] or year
+    period = parsed["period"] or period
 
     # 创建数据库记录
     artwork = TubiAnalysis(
