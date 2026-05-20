@@ -6,36 +6,6 @@
         <span class="sidebar-title">管理</span>
       </div>
 
-      <!-- 紧凑控制面板（作品库选择 + 统计 + 操作）→ 仅作品库权限可见 -->
-      <div v-if="hasLibraryAccess" class="sidebar-panel">
-        <!-- 作品库选择 -->
-        <select class="sb-select" v-model="selectedLibraryId" @change="onLibraryChange">
-          <option value="" disabled>作品库</option>
-          <option v-for="lib in accessibleLibraries" :key="lib.id" :value="lib.id">
-            {{ lib.name }}{{ lib.artist_name ? '-' + lib.artist_name : '' }}
-          </option>
-        </select>
-
-        <!-- 统计 -->
-        <div class="sb-stats" v-if="libStats.total > 0">
-          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.verified }}</span><span class="sb-stat-lbl">校对</span></div>
-          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.translated }}</span><span class="sb-stat-lbl">翻译</span></div>
-          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.analyzed }}</span><span class="sb-stat-lbl">分析</span></div>
-          <div class="sb-stat"><span class="sb-stat-num">{{ libStats.annotated }}</span><span class="sb-stat-lbl">标注</span></div>
-        </div>
-        <div class="sb-total" v-if="libStats.total > 0">共 {{ libStats.total }} 幅</div>
-
-        <!-- 操作按钮 -->
-        <div class="sb-actions">
-          <button class="sb-btn" :disabled="batchState.translating || !selectedLibraryId" @click="triggerBatch('translate')">
-            翻译题跋
-          </button>
-          <button class="sb-btn" :disabled="batchState.analyzing || !selectedLibraryId" @click="triggerBatch('reanalyze')">
-            解析文字
-          </button>
-        </div>
-      </div>
-
       <nav class="sidebar-nav">
         <template v-for="group in menuGroups" :key="group.category">
           <div v-if="group.items.length > 0" class="nav-group">
@@ -77,11 +47,6 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-// 作品库权限：admin/super_admin/editor 可见
-const hasLibraryAccess = computed(() => {
-  const role = authStore.role
-  return role === 'super_admin' || role === 'admin' || role === 'editor'
-})
 
 const ALL_CATEGORIES = ['内容', '元数据', '知识', '工具', '系统']
 const expandedGroups = ref(new Set(ALL_CATEGORIES))
@@ -93,14 +58,10 @@ const activeTab = computed(() => route.query?.tab || 'verify')
 const accessibleLibraries = ref([])
 const selectedLibraryId = ref(null)
 const libStats = reactive({ verified: 0, total: 0, translated: 0, analyzed: 0, annotated: 0 })
-const batchState = reactive({ translating: false, analyzing: false })
-const batchTrigger = ref(null)  // ContentVerify 会 watch 这个来触发批量操作
 
 provide('adminAccessibleLibraries', accessibleLibraries)
 provide('adminSelectedLibraryId', selectedLibraryId)
 provide('adminLibStats', libStats)
-provide('adminBatchState', batchState)
-provide('adminBatchTrigger', batchTrigger)
 
 // ── 菜单定义 ──
 const MENU_DEF = [
@@ -109,7 +70,6 @@ const MENU_DEF = [
     items: [
       { key: 'verify', label: '题跋校对', link: '/admin?tab=verify', perm: 'content.verify' },
       { key: 'annotation', label: '标注图', link: '/admin?tab=annotation', perm: 'content.annotate' },
-      { key: 'upload', label: '作品上传', link: '/admin?tab=upload', perm: 'content.upload' },
       { key: 'change-requests', label: '变更审核', link: '/admin?tab=change-requests', perm: 'content.verify' },
       { key: 'libraries', label: '作品库', link: '/admin?tab=libraries', perm: 'content.upload' },
     ],
@@ -190,11 +150,6 @@ async function loadAccessibleLibraries() {
   } catch (e) { console.error('获取作品库列表失败', e) }
 }
 
-function onLibraryChange() {
-  router.replace({ query: { ...route.query, lib_id: selectedLibraryId.value } })
-  loadLibStats()
-}
-
 async function loadLibStats() {
   if (!selectedLibraryId.value) return
   try {
@@ -207,11 +162,6 @@ async function loadLibStats() {
     const data = await res.json()
     Object.assign(libStats, data)
   } catch (e) { console.error('获取作品库统计失败', e) }
-}
-
-// ── 批量操作触发 ──
-function triggerBatch(type) {
-  batchTrigger.value = type
 }
 
 // ── 权限 ──

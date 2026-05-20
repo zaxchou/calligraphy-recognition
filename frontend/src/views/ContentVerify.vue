@@ -692,7 +692,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const adminAccessibleLibraries = inject('adminAccessibleLibraries', ref([]))
 const adminSelectedLibraryId = inject('adminSelectedLibraryId', ref(null))
 const adminLibStats = inject('adminLibStats', null)
-const adminBatchState = inject('adminBatchState', null)
 
 // 监听侧边栏作品库切换 → 同步
 watch(adminSelectedLibraryId, (newLibId) => {
@@ -777,14 +776,6 @@ const {
   showBatchResultDialog,
   closeBatchResultDialog,
 } = useBatchOperations({ apiBase: API_BASE, fetchRecords, getArtist: () => '', getLibraryId: () => selectedLibraryId.value })
-
-// 同步批量操作的 loading 状态到侧边栏
-watch([analyzing, batchTranslating], () => {
-  if (adminBatchState) {
-    adminBatchState.analyzing = analyzing.value
-    adminBatchState.translating = batchTranslating.value
-  }
-})
 
 // 始终弹出模式选择窗口（含上次结果链接）
 function openBatchReanalyze() {

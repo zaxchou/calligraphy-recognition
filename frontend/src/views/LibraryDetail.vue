@@ -69,15 +69,19 @@
 
         <!-- 批量操作工具栏 -->
         <div class="toolbar batch-toolbar">
-          <el-select v-model="selectedArtist" size="small" style="width: 140px" @change="onArtistChange">
-            <el-option label="全部作者" value="all" />
-            <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
+          <el-select v-model="switchingLibraryId" size="small" style="width: 180px" @change="onSwitchLibrary">
+            <el-option label="📚 当前作品库" value="" disabled />
+            <el-option v-for="lib in accessibleLibs" :key="lib.id" :label="lib.name" :value="lib.id" />
           </el-select>
-          <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating">
+          <span class="toolbar-sep">|</span>
+          <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋">
             <el-icon><Bottom /></el-icon>翻译
           </el-button>
-          <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing">
-            <el-icon><Refresh /></el-icon>批量重跑
+          <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="解析文字">
+            <el-icon><Refresh /></el-icon>文字分析
+          </el-button>
+          <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" title="AI图像分析">
+            <el-icon><MagicStick /></el-icon>AI分析
           </el-button>
         </div>
 
@@ -417,6 +421,47 @@
         <el-button plain @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- AI分析模式弹窗 -->
+    <el-dialog v-model="showAiAnalyzeDialog" title="批量AI图像分析" width="420px">
+      <div class="translate-mode-options">
+        <div class="mode-option" @click="startBatchAiAnalyze('analyze_text_only')">
+          <div class="mode-icon"><el-icon><MagicStick /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">轻量文本分析</div>
+            <div class="mode-desc">对未分析的作品进行文字识别与翻译</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+        <div class="mode-option" @click="startBatchAiAnalyze('analyze')">
+          <div class="mode-icon warning"><el-icon><MagicStick /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">完整图示分析</div>
+            <div class="mode-desc">区域检测+文字识别+标注图生成，处理所有作品</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- AI分析进度弹窗 -->
+    <el-dialog v-model="showAiAnalyzeProgress" title="AI分析进度" width="420px" :close-on-click-modal="false" :show-close="false">
+      <div class="progress-body">
+        <div class="progress-info">
+          <span class="progress-label">正在分析：</span>
+          <span class="progress-value">{{ aiAnalyzeProgress.current }} / {{ aiAnalyzeProgress.total }}</span>
+        </div>
+        <el-progress :percentage="aiAnalyzeProgress.percent" :stroke-width="8" />
+        <div class="progress-status">
+          <span v-if="aiAnalyzeProgress.status === 'analyzing'" class="status-text">分析中，请稍候...</span>
+          <span v-else-if="aiAnalyzeProgress.status === 'done'" class="status-text done">分析完成！</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button plain @click="cancelBatchAiAnalyze" :disabled="aiAnalyzeProgress.status === 'done'">取消</el-button>
+        <el-button plain @click="showAiAnalyzeProgress = false" :disabled="aiAnalyzeProgress.status !== 'done'">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -424,9 +469,9 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete, Close, Bottom, Right, Refresh, RefreshRight, EditPen, Crop } from '@element-plus/icons-vue'
+import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete, Close, Bottom, Right, Refresh, RefreshRight, EditPen, Crop, MagicStick } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
-import { libraryApi, artworkApi } from '../api'
+import { libraryApi, artworkApi, tubiApi } from '../api'
 import TubiUploadInline from '@/components/tubi/TubiUploadInline.vue'
 import { useSSEStream } from '@/composables/useSSEStream'
 
@@ -467,8 +512,8 @@ const order = ref('desc')
 const showUploadArea = ref(false)
 
 // ── Batch operations ──
-const selectedArtist = ref('all')
-const artistList = ref([])
+const switchingLibraryId = ref('')
+const accessibleLibs = ref([])
 const showTranslateModeDialog = ref(false)
 const showTranslateProgress = ref(false)
 const batchTranslating = ref(false)
@@ -477,10 +522,15 @@ const showAnalyzeModeDialog = ref(false)
 const showAnalyzeProgress = ref(false)
 const analyzing = ref(false)
 const analyzeProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
+const showAiAnalyzeDialog = ref(false)
+const showAiAnalyzeProgress = ref(false)
+const aiAnalyzing = ref(false)
+const aiAnalyzeProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 let translateCancelFn = null
 let analyzeCancelFn = null
+let aiAnalyzeCancelFn = null
 
 // ── Edit form ──
 const editForm = reactive({
@@ -568,19 +618,23 @@ function openAnnotate(artwork) {
   }
 }
 
-// ── Artist filter ──
-async function fetchArtistList() {
+// ── Library switcher ──
+async function fetchAccessibleLibs() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
+    const res = await fetch(`${API_BASE}/libraries/accessible-libraries`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}` }
+    })
     const data = await res.json()
-    artistList.value = data.artists || []
+    accessibleLibs.value = data.libraries || []
   } catch (e) {
-    console.error('获取作者列表失败', e)
+    console.error('获取作品库列表失败', e)
   }
 }
 
-function onArtistChange() {
-  loadArtworks()
+function onSwitchLibrary(newLibId) {
+  if (newLibId && newLibId !== libraryId.value) {
+    router.push(`/libraries/${newLibId}`)
+  }
 }
 
 // ── Batch translate ──
@@ -592,7 +646,6 @@ async function startBatchTranslate(mode) {
   translateProgress.value = { current: 0, total: 0, status: '', percent: 0 }
   try {
     const params = new URLSearchParams()
-    if (selectedArtist.value && selectedArtist.value !== 'all') params.set('artist', selectedArtist.value)
     params.set('library_id', String(libraryId.value))
     params.set('force_retranslate', String(forceRetranslate))
     const response = await fetch(`${API_BASE}/content-analysis/translate/batch/stream?${params.toString()}`, { method: 'POST' })
@@ -635,7 +688,6 @@ async function startBatchAnalyze(mode) {
   analyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
   try {
     const params = new URLSearchParams()
-    if (selectedArtist.value && selectedArtist.value !== 'all') params.set('artist', selectedArtist.value)
     params.set('library_id', String(libraryId.value))
     params.set('incremental', String(incremental))
     const response = await fetch(`${API_BASE}/content-analysis/batch-reanalyze/stream?${params.toString()}`, { method: 'POST' })
@@ -667,6 +719,67 @@ function cancelBatchAnalyze() {
   if (analyzeCancelFn) { analyzeCancelFn(); analyzeCancelFn = null }
   analyzing.value = false
   showAnalyzeProgress.value = false
+}
+
+// ── Batch AI analyze ──
+async function startBatchAiAnalyze(mode) {
+  showAiAnalyzeDialog.value = false
+  aiAnalyzing.value = true
+  showAiAnalyzeProgress.value = true
+  aiAnalyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
+  try {
+    const imageIds = artworks.value
+      .filter(a => a.image_id)
+      .map(a => a.image_id)
+    if (imageIds.length === 0) {
+      ElMessage.warning('库内没有可分析的作品')
+      aiAnalyzing.value = false
+      showAiAnalyzeProgress.value = false
+      return
+    }
+    aiAnalyzeProgress.value.total = imageIds.length
+    const r = await tubiApi.batchAutoAnalyze(imageIds, mode)
+    if (!r.success) {
+      ElMessage.error(r.detail || '触发分析失败')
+      aiAnalyzing.value = false
+      showAiAnalyzeProgress.value = false
+      return
+    }
+    aiAnalyzeCancelFn = startAiPolling(imageIds)
+  } catch (e) {
+    ElMessage.error('触发分析失败')
+    aiAnalyzing.value = false
+    showAiAnalyzeProgress.value = false
+  }
+}
+
+function startAiPolling(imageIds) {
+  const timer = setInterval(async () => {
+    try {
+      const r = await tubiApi.batchGetStatus(imageIds)
+      if (!r.success) return
+      const done = r.data.filter(x => x.status === 'analyzed').length
+      const errored = r.data.filter(x => x.status === 'error').length
+      const total = r.data.length
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0
+      aiAnalyzeProgress.value = { current: done, total, status: 'analyzing', percent: pct }
+      if (done + errored >= total) {
+        clearInterval(timer)
+        aiAnalyzeCancelFn = null
+        aiAnalyzeProgress.value = { current: done, total, status: 'done', percent: 100 }
+        aiAnalyzing.value = false
+        ElMessage.success(`AI分析完成：成功 ${done} 幅${errored > 0 ? `，失败 ${errored} 幅` : ''}`)
+        loadArtworks()
+      }
+    } catch { /* ignore poll errors */ }
+  }, 5000)
+  return () => { clearInterval(timer); aiAnalyzeCancelFn = null }
+}
+
+function cancelBatchAiAnalyze() {
+  if (aiAnalyzeCancelFn) { aiAnalyzeCancelFn(); aiAnalyzeCancelFn = null }
+  aiAnalyzing.value = false
+  showAiAnalyzeProgress.value = false
 }
 
 async function handleUpdateLibrary() {
@@ -849,7 +962,7 @@ watch(manageTab, (tab) => {
 onMounted(async () => {
   await loadLibrary()
   await loadArtworks()
-  fetchArtistList()
+  fetchAccessibleLibs()
 })
 </script>
 
@@ -1096,6 +1209,7 @@ onMounted(async () => {
 .filename-tip { margin-bottom: 16px; }
 .filename-tip code { background: #fdf6f0; color: #c45a3c; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
 .batch-toolbar { margin-top: 0; gap: 8px; }
+.toolbar-sep { color: #d8d4c8; user-select: none; }
 .inline-upload-area { background: #fff; border: 1px solid #e8e3da; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 .upload-area-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .upload-area-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
