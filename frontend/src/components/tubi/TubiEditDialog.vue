@@ -27,6 +27,7 @@
             <el-select v-model="form.workType" style="width: 100%">
               <el-option label="画作" value="画作" />
               <el-option label="书法" value="书法" />
+              <el-option label="篆刻" value="篆刻" />
             </el-select>
           </el-form-item>
         </div>

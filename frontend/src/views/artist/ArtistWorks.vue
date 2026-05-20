@@ -24,6 +24,7 @@
           <span class="aw-type-tab" :class="{ active: workTypeFilter === '' }" @click="setWorkType('')">全部</span>
           <span class="aw-type-tab" :class="{ active: workTypeFilter === '画作' }" @click="setWorkType('画作')">画作</span>
           <span class="aw-type-tab" :class="{ active: workTypeFilter === '书法' }" @click="setWorkType('书法')">书法</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '篆刻' }" @click="setWorkType('篆刻')">篆刻</span>
         </div>
         <el-input v-model="searchQuery" placeholder="搜索标题、题跋..." size="small" style="width:180px" clearable @keyup.enter="onSearch">
           <template #prefix><el-icon><Search /></el-icon></template>
@@ -75,9 +76,12 @@
               <el-icon v-else size="10"><Clock /></el-icon>
               <span>{{ w.status === 'queued' ? '排队中' : w.status === 'analyzing' ? '分析中' : w.status === 'error' ? '失败' : w.status }}</span>
             </div>
-            <!-- 作业类型标识 -->
+            <!-- 类型标识 -->
             <div v-if="w.work_type === '书法'" class="aw-type-badge">
               <span>书法</span>
+            </div>
+            <div v-if="w.work_type === '篆刻'" class="aw-type-badge seal-type">
+              <span>篆刻</span>
             </div>
             <!-- 面积统计（右下角） -->
             <div v-if="w.inscription_percent !== undefined || w.painting_percent > 0" class="aw-labels">
@@ -298,6 +302,7 @@ onMounted(() => { loadWorks() })
 /* 类型标识（书法） */
 .aw-type-badge { position: absolute; top: 4px; right: 4px; z-index: 2; }
 .aw-type-badge span { display: inline-block; padding: 1px 5px; background: #5a7a8c; color: #fff; border-radius: 3px; font-size: 9px; font-weight: 500; }
+.aw-type-badge.seal-type span { background: #8b6f8e; }
 
 /* 面积标签 */
 .aw-labels { position: absolute; bottom: 4px; right: 4px; display: flex; gap: 3px; }
