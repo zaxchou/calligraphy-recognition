@@ -19,10 +19,32 @@
         </p>
       </div>
       <div class="page-actions">
-        <el-button type="primary" @click="showUploadDialog = true" :disabled="!canEdit">
-          <el-icon><Upload /></el-icon> 上传作品
+        <el-button v-if="!showUploadArea" type="primary" @click="showUploadArea = true" :disabled="!canEdit">
+          <el-icon><Upload /></el-icon> {{ totalArtworks > 0 ? '继续上传' : '上传作品' }}
         </el-button>
       </div>
+    </div>
+
+    <!-- 文件名格式提示 -->
+    <el-alert v-if="showUploadArea" type="info" :closable="false" show-icon class="filename-tip">
+      <template #title>
+        推荐文件名格式：<code>清_李鱓_兰竹图_1750.jpg</code>
+        按下划线分割：朝代_作者_作品名_年份，系统将自动提取元数据
+      </template>
+    </el-alert>
+
+    <!-- 批量上传区域 -->
+    <div v-if="showUploadArea" class="inline-upload-area">
+      <div class="upload-area-header">
+        <h3>批量上传作品</h3>
+        <el-button size="small" text @click="showUploadArea = false">
+          <el-icon><Close /></el-icon> 收起
+        </el-button>
+      </div>
+      <TubiUploadInline
+        :library-id="libraryId"
+        @refresh="onUploadRefresh"
+      />
     </div>
 
     <!-- Tab 切换 -->
@@ -45,12 +67,26 @@
           </div>
         </div>
 
+        <!-- 批量操作工具栏 -->
+        <div class="toolbar batch-toolbar">
+          <el-select v-model="selectedArtist" size="small" style="width: 140px" @change="onArtistChange">
+            <el-option label="全部作者" value="all" />
+            <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
+          </el-select>
+          <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating">
+            <el-icon><Bottom /></el-icon>翻译
+          </el-button>
+          <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing">
+            <el-icon><Refresh /></el-icon>批量重跑
+          </el-button>
+        </div>
+
         <div v-if="artworkLoading" class="loading-wrap">
           <el-skeleton :rows="3" animated />
         </div>
 
         <el-empty v-else-if="artworks.length === 0" description="库内还没有作品">
-          <el-button type="primary" @click="showUploadDialog = true" :disabled="!canEdit">上传作品</el-button>
+          <el-button type="primary" @click="showUploadArea = true" :disabled="!canEdit">上传作品</el-button>
         </el-empty>
 
         <!-- 作品网格 -->
@@ -78,11 +114,28 @@
                 <span v-if="artwork.artist">{{ artwork.artist }}</span>
                 <span v-if="artwork.year">({{ artwork.year }})</span>
               </p>
-              <el-tag v-if="artwork.status === 'analyzed'" type="success" size="small">已分析</el-tag>
-              <el-tag v-else-if="artwork.status === 'analyzing'" type="warning" size="small">分析中</el-tag>
-              <el-tag v-else type="info" size="small">待分析</el-tag>
+              <div class="artwork-status-tags">
+                <el-tooltip :content="artwork.inscription_modern ? '翻译已完成' : '待翻译'" placement="top">
+                  <span class="status-dot" :class="artwork.inscription_modern ? 'done' : 'pending'">译</span>
+                </el-tooltip>
+                <el-tooltip :content="artwork.content_analysis ? '文字分析已完成' : '待文字分析'" placement="top">
+                  <span class="status-dot" :class="artwork.content_analysis ? 'done' : 'pending'">析</span>
+                </el-tooltip>
+                <el-tooltip :content="artwork.inscription_verified ? '题跋已校对' : '题跋待校对'" placement="top">
+                  <span class="status-dot" :class="artwork.inscription_verified ? 'done' : 'pending'">校</span>
+                </el-tooltip>
+                <el-tooltip :content="artwork.is_manual_annotated ? '标注已完成' : '标注待定'" placement="top">
+                  <span class="status-dot" :class="artwork.is_manual_annotated ? 'done' : 'pending'">注</span>
+                </el-tooltip>
+              </div>
             </div>
             <div class="artwork-card-footer" v-if="canEdit">
+              <el-button link size="small" @click.stop="openProofread(artwork)">
+                <el-icon><EditPen /></el-icon> 校对
+              </el-button>
+              <el-button link size="small" @click.stop="openAnnotate(artwork)">
+                <el-icon><Crop /></el-icon> 标注
+              </el-button>
               <el-button link size="small" @click.stop="handleTriggerAnalyze(artwork)">
                 <el-icon><VideoPlay /></el-icon> AI分析
               </el-button>
@@ -283,49 +336,85 @@
       </template>
     </el-dialog>
 
-    <!-- 上传作品对话框 -->
-    <el-dialog v-model="showUploadDialog" title="上传作品" width="560px" destroy-on-close>
-      <el-form :model="uploadForm" label-position="top">
-        <el-form-item label="选择图片" required>
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :limit="1"
-            accept="image/jpeg,image/png,image/bmp,image/webp"
-            :on-change="handleFileChange"
-            :file-list="uploadFileList"
-          >
-            <el-button type="primary"><el-icon><Upload /></el-icon> 选择文件</el-button>
-            <template #tip>
-              <div class="upload-tip">支持 JPG/PNG/BMP/WebP，最大 50MB</div>
-            </template>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="作品标题">
-          <el-input v-model="uploadForm.title" placeholder="如：兰竹图" />
-        </el-form-item>
-        <el-form-item label="画家">
-          <el-input v-model="uploadForm.artist" placeholder="如：李鱓" />
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="创作年份">
-              <el-input-number v-model="uploadForm.year" :min="1000" :max="2100" placeholder="年份" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="画材">
-              <el-input v-model="uploadForm.material" placeholder="纸本/绢本" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="备注">
-          <el-input v-model="uploadForm.notes" type="textarea" :rows="2" />
-        </el-form-item>
-      </el-form>
+    <!-- 批量翻译选项弹窗 -->
+    <el-dialog v-model="showTranslateModeDialog" title="批量翻译选项" width="420px">
+      <div class="translate-mode-options">
+        <div class="mode-option" @click="startBatchTranslate('untranslated')">
+          <div class="mode-icon"><el-icon><Bottom /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">仅翻译未翻译的</div>
+            <div class="mode-desc">跳过已有翻译的记录</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+        <div class="mode-option" @click="startBatchTranslate('all')">
+          <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">重新翻译全部</div>
+            <div class="mode-desc">覆盖已有翻译</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 批量重跑选项弹窗 -->
+    <el-dialog v-model="showAnalyzeModeDialog" title="解析文字" width="420px">
+      <div class="translate-mode-options">
+        <div class="mode-option" @click="startBatchAnalyze('incremental')">
+          <div class="mode-icon"><el-icon><Refresh /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">增量重跑</div>
+            <div class="mode-desc">仅处理未分析/已过期的作品</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+        <div class="mode-option" @click="startBatchAnalyze('full')">
+          <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">全部重跑</div>
+            <div class="mode-desc">重新分析所有作品（覆盖已有结果）</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 翻译进度弹窗 -->
+    <el-dialog v-model="showTranslateProgress" title="批量翻译进度" width="420px" :close-on-click-modal="false" :show-close="false">
+      <div class="progress-body">
+        <div class="progress-info">
+          <span class="progress-label">正在翻译：</span>
+          <span class="progress-value">{{ translateProgress.current }} / {{ translateProgress.total }}</span>
+        </div>
+        <el-progress :percentage="translateProgress.percent" :stroke-width="8" />
+        <div class="progress-status">
+          <span v-if="translateProgress.status === 'translating'" class="status-text">翻译中，请稍候...</span>
+          <span v-else-if="translateProgress.status === 'done'" class="status-text done">翻译完成！</span>
+        </div>
+      </div>
       <template #footer>
-        <el-button @click="showUploadDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleUpload" :loading="uploading">上传</el-button>
+        <el-button plain @click="cancelBatchTranslate" :disabled="translateProgress.status === 'done'">取消</el-button>
+        <el-button plain @click="showTranslateProgress = false" :disabled="translateProgress.status !== 'done'">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 批量分析进度弹窗 -->
+    <el-dialog v-model="showAnalyzeProgress" title="批量重新分析进度" width="420px" :close-on-click-modal="false" :show-close="false">
+      <div class="progress-body">
+        <div class="progress-info">
+          <span class="progress-label">正在分析：</span>
+          <span class="progress-value">{{ analyzeProgress.current }} / {{ analyzeProgress.total }}</span>
+        </div>
+        <el-progress :percentage="analyzeProgress.percent" :stroke-width="8" />
+        <div class="progress-status">
+          <span v-if="analyzeProgress.status === 'analyzing'" class="status-text">分析中，请稍候...</span>
+          <span v-else-if="analyzeProgress.status === 'done'" class="status-text done">分析完成！</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button plain @click="cancelBatchAnalyze" :disabled="analyzeProgress.status === 'done'">取消</el-button>
+        <el-button plain @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -335,9 +424,12 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete } from '@element-plus/icons-vue'
+import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete, Close, Bottom, Right, Refresh, RefreshRight, EditPen, Crop } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi, artworkApi } from '../api'
+import TubiUploadInline from '@/components/tubi/TubiUploadInline.vue'
+import { useBatchOperations } from '@/composables/useBatchOperations'
+import { useSSEStream } from '@/composables/useSSEStream'
 
 const route = useRoute()
 const router = useRouter()
@@ -373,18 +465,23 @@ const sortBy = ref('created_at')
 const order = ref('desc')
 
 // ── Upload ──
-const showUploadDialog = ref(false)
-const uploading = ref(false)
-const uploadFileList = ref([])
-const uploadFile = ref(null)
+const showUploadArea = ref(false)
 
-const uploadForm = reactive({
-  title: '',
-  artist: library.value.artist_name || '',
-  year: null,
-  material: '',
-  notes: '',
-})
+// ── Batch operations ──
+const selectedArtist = ref('all')
+const artistList = ref([])
+const showTranslateModeDialog = ref(false)
+const showTranslateProgress = ref(false)
+const batchTranslating = ref(false)
+const translateProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
+const showAnalyzeModeDialog = ref(false)
+const showAnalyzeProgress = ref(false)
+const analyzing = ref(false)
+const analyzeProgress = ref({ current: 0, total: 0, status: '', percent: 0 })
+
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+let translateAbortController = null
+let analyzeAbortController = null
 
 // ── Edit form ──
 const editForm = reactive({
@@ -450,33 +547,125 @@ function toggleOrder() {
   loadArtworks()
 }
 
-function handleFileChange(file) {
-  uploadFile.value = file.raw
+// ── Upload callbacks ──
+function onUploadRefresh() {
+  loadArtworks()
+  loadLibrary()
 }
 
-async function handleUpload() {
-  if (!uploadFile.value) {
-    ElMessage.warning('请选择图片文件')
-    return
+// ── Proofread / Annotate links ──
+function openProofread(artwork) {
+  const imageId = artwork.image_id || artwork.id
+  if (imageId) {
+    router.push({ name: 'Admin', query: { tab: 'verify', image_id: imageId } })
   }
-  uploading.value = true
+}
+
+function openAnnotate(artwork) {
+  const imageId = artwork.image_id || artwork.id
+  if (imageId) {
+    const resolved = router.resolve({ name: 'InscriptionAnnotator', params: { id: imageId } })
+    window.open(resolved.href, '_blank')
+  }
+}
+
+// ── Artist filter ──
+async function fetchArtistList() {
   try {
-    const fields = { ...uploadForm }
-    Object.keys(fields).forEach(k => {
-      if (fields[k] === null || fields[k] === undefined || fields[k] === '') delete fields[k]
-    })
-    await artworkApi.upload(libraryId.value, uploadFile.value, fields)
-    ElMessage.success('上传成功')
-    showUploadDialog.value = false
-    uploadFile.value = null
-    uploadFileList.value = []
-    Object.assign(uploadForm, { title: '', artist: library.value.artist_name || '', year: null, material: '', notes: '' })
-    await Promise.all([loadLibrary(), loadArtworks()])
+    const res = await fetch(`${API_BASE}/content-analysis/artists`)
+    const data = await res.json()
+    artistList.value = data.artists || []
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '上传失败')
-  } finally {
-    uploading.value = false
+    console.error('获取作者列表失败', e)
   }
+}
+
+function onArtistChange() {
+  loadArtworks()
+}
+
+// ── Batch translate ──
+async function startBatchTranslate(mode) {
+  const forceRetranslate = mode === 'all'
+  showTranslateModeDialog.value = false
+  batchTranslating.value = true
+  showTranslateProgress.value = true
+  translateProgress.value = { current: 0, total: 0, status: '', percent: 0 }
+  try {
+    const params = new URLSearchParams()
+    if (selectedArtist.value && selectedArtist.value !== 'all') params.set('artist', selectedArtist.value)
+    params.set('library_id', String(libraryId.value))
+    params.set('force_retranslate', String(forceRetranslate))
+    const response = await fetch(`${API_BASE}/content-analysis/translate/batch/stream?${params.toString()}`, { method: 'POST' })
+    const { streamSSE } = useSSEStream()
+    await streamSSE(response, {
+      onEvent: (event) => {
+        if (event.type === 'start') {
+          translateProgress.value = { current: 0, total: event.total, status: 'translating', percent: 0 }
+        } else if (event.type === 'progress' || event.type === 'record_done') {
+          const pct = Math.round((event.current / event.total) * 100)
+          translateProgress.value = { current: event.current, total: event.total, status: 'translating', percent: pct }
+        } else if (event.type === 'done') {
+          translateProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
+          ElMessage.success(`批量翻译完成：成功 ${event.translated} 条，失败 ${event.failed} 条`)
+          loadArtworks()
+        }
+      },
+      onError: (err) => { ElMessage.error('批量翻译失败: ' + err.message) },
+      onComplete: () => { batchTranslating.value = false },
+    })
+  } catch (e) {
+    ElMessage.error('批量翻译失败')
+    batchTranslating.value = false
+  }
+}
+
+function cancelBatchTranslate() {
+  if (translateAbortController) translateAbortController.abort()
+  batchTranslating.value = false
+  showTranslateProgress.value = false
+}
+
+// ── Batch analyze ──
+async function startBatchAnalyze(mode) {
+  const incremental = mode === 'incremental'
+  showAnalyzeModeDialog.value = false
+  analyzing.value = true
+  showAnalyzeProgress.value = true
+  analyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
+  try {
+    const params = new URLSearchParams()
+    if (selectedArtist.value && selectedArtist.value !== 'all') params.set('artist', selectedArtist.value)
+    params.set('library_id', String(libraryId.value))
+    params.set('incremental', String(incremental))
+    const response = await fetch(`${API_BASE}/content-analysis/batch-reanalyze/stream?${params.toString()}`, { method: 'POST' })
+    const { streamSSE } = useSSEStream()
+    await streamSSE(response, {
+      onEvent: (event) => {
+        if (event.type === 'total') {
+          analyzeProgress.value = { current: 0, total: event.total, status: 'analyzing', percent: 0 }
+        } else if (event.type === 'progress') {
+          const pct = Math.round((event.current / event.total) * 100)
+          analyzeProgress.value = { current: event.current, total: event.total, status: 'analyzing', percent: pct }
+        } else if (event.type === 'complete') {
+          analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
+          ElMessage.success(`分析完成：更新 ${event.updated} 条，错误 ${event.errors} 条`)
+          loadArtworks()
+        }
+      },
+      onError: (err) => { ElMessage.error('批量重跑失败: ' + err.message) },
+      onComplete: () => { analyzing.value = false },
+    })
+  } catch (e) {
+    ElMessage.error('批量重跑失败')
+    analyzing.value = false
+  }
+}
+
+function cancelBatchAnalyze() {
+  if (analyzeAbortController) analyzeAbortController.abort()
+  analyzing.value = false
+  showAnalyzeProgress.value = false
 }
 
 async function handleUpdateLibrary() {
@@ -659,6 +848,7 @@ watch(manageTab, (tab) => {
 onMounted(async () => {
   await loadLibrary()
   await loadArtworks()
+  fetchArtistList()
 })
 </script>
 
@@ -900,6 +1090,52 @@ onMounted(async () => {
   color: var(--stone-gray);
   margin-top: 4px;
 }
+
+/* ── 新增样式 ── */
+.filename-tip { margin-bottom: 16px; }
+.filename-tip code { background: #fdf6f0; color: #c45a3c; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+.batch-toolbar { margin-top: 0; gap: 8px; }
+.inline-upload-area { background: #fff; border: 1px solid #e8e3da; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.upload-area-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.upload-area-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+
+/* 状态标记点 */
+.artwork-status-tags { display: flex; gap: 4px; margin-top: 4px; }
+.status-dot {
+  width: 18px; height: 18px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: #fff;
+  flex-shrink: 0; cursor: default;
+}
+.status-dot.done { background: #5a8c7a; }
+.status-dot.pending { background: #d0ccc0; }
+
+/* 模式选择弹窗样式 */
+.translate-mode-options { display: flex; flex-direction: column; gap: 8px; }
+.mode-option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border: 1px solid #e8e3da; border-radius: 8px;
+  cursor: pointer; transition: all 0.15s;
+}
+.mode-option:hover { border-color: #c45a3c; background: #fdf6f0; }
+.mode-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: #f0ebe0; display: flex; align-items: center; justify-content: center;
+  color: #5c5040; font-size: 16px; flex-shrink: 0;
+}
+.mode-icon.warning { background: #fef0e8; color: #c45a3c; }
+.mode-info { flex: 1; min-width: 0; }
+.mode-title { font-size: 14px; font-weight: 600; color: #2c2416; }
+.mode-desc { font-size: 12px; color: #8a8578; margin-top: 2px; }
+.mode-arrow { color: #c0b8a8; flex-shrink: 0; }
+
+.progress-body { padding: 8px 0; }
+.progress-info { display: flex; gap: 8px; margin-bottom: 12px; }
+.progress-label { color: #8a8578; font-size: 13px; }
+.progress-value { font-weight: 600; color: #2c2416; font-size: 13px; }
+.progress-status { margin-top: 12px; }
+.status-text { font-size: 13px; color: #8a8578; }
+.status-text.done { color: #5a8c7a; font-weight: 500; }
 
 .manage-badge {
   margin-left: 6px;

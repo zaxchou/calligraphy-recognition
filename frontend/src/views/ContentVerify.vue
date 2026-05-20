@@ -6,12 +6,6 @@
         <h1 class="page-title">管理后台</h1>
         <p class="page-subtitle"></p>
       </div>
-      <div class="header-center">
-        <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
-          <el-option label="全部作者" value="all" />
-          <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
-        </el-select>
-      </div>
       <div class="header-right">
         <div class="stats-tags">
           <span class="stat-tag">
@@ -31,12 +25,6 @@
             <span class="stat-value">{{ annotatedCount }}</span>
           </span>
         </div>
-        <el-button plain size="small" class="btn-edit" @click="showTranslateModeDialog = true" :loading="batchTranslating">
-          <el-icon><Bottom /></el-icon>翻译
-        </el-button>
-        <el-button plain size="small" class="btn-edit" @click="openBatchReanalyze" :loading="analyzing">
-          <el-icon><Refresh /></el-icon>批量重跑
-        </el-button>
       </div>
     </div>
 
@@ -421,16 +409,6 @@
         </div>
       </el-tab-pane>
 
-      <!-- 作品上传 -->
-      <el-tab-pane label="作品上传" name="upload">
-        <div class="tab-content full-tab-content upload-tab-content">
-          <TubiUploadInline
-            @uploaded="onUploaded"
-            @refresh="fetchRecords"
-          />
-        </div>
-      </el-tab-pane>
-
       <!-- 系统概览（仅管理员可见） -->
       <el-tab-pane v-if="isAdmin" label="系统概览" name="dashboard">
         <div class="tab-content full-tab-content">
@@ -665,7 +643,6 @@ import AnnotationVerify from './AnnotationVerify.vue'
 import ArtistInfoManager from './ArtistInfoManager.vue'
 import ArtistRulesManager from './ArtistRulesManager.vue'
 import SealManager from './SealManager.vue'
-import TubiUploadInline from '../components/tubi/TubiUploadInline.vue'
 import ImageSearchPanel from '../components/tubi/ImageSearchPanel.vue'
 import AdminDashboard from './admin/Dashboard.vue'
 import AdminUsers from './admin/Users.vue'
@@ -1238,12 +1215,6 @@ function onTitleUpdated({ id, image_id, title }) {
     records.value[idx].title = title
     ElMessage.success('作品名已更新')
   }
-}
-
-// 上传完成回调
-function onUploaded(count) {
-  fetchRecords()
-  ElMessage.success(`已上传 ${count} 张作品`)
 }
 
 function onImageSearchItemClick(recordId) {

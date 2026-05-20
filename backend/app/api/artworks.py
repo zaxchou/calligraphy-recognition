@@ -168,6 +168,9 @@ def _artwork_to_dict(a: TubiAnalysis) -> dict:
         "free_tags": a.free_tags,
         "inscription_author": a.inscription_author,
         "inscription_date": a.inscription_date,
+        "seal_verified": a.seal_verified,
+        "is_manual_annotated": a.is_manual_annotated,
+        "work_type": a.work_type,
         "created_at": _ts(a.created_at),
         "updated_at": _ts(a.updated_at),
     }
