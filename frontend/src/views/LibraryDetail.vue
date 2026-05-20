@@ -105,23 +105,11 @@
           >
             <div class="artwork-thumb" @click="openArtworkDetail(artwork)">
               <img v-if="artwork.thumbnail_url" :src="artwork.thumbnail_url" :alt="artwork.title" />
-              <el-icon v-else :size="48"><Picture /></el-icon>
+              <el-icon v-else :size="40"><Picture /></el-icon>
               <div class="artwork-status-badge" v-if="artwork.status === 'analyzing'">
                 <el-icon class="is-loading"><Loading /></el-icon>
               </div>
-              <div class="artwork-hover-actions" v-if="authStore.isLoggedIn">
-                <el-button size="small" circle @click.stop="openSuggestEdit(artwork)" title="我的意见">
-                  <el-icon><Edit /></el-icon>
-                </el-button>
-              </div>
-            </div>
-            <div class="artwork-info" @click="openArtworkDetail(artwork)">
-              <h4 class="artwork-title">{{ artwork.title || artwork.filename || '未命名' }}</h4>
-              <p class="artwork-meta">
-                <span v-if="artwork.artist">{{ artwork.artist }}</span>
-                <span v-if="artwork.year">({{ artwork.year }})</span>
-              </p>
-              <div class="artwork-status-tags">
+              <div class="artwork-status-dots">
                 <el-tooltip :content="artwork.inscription_modern ? '翻译已完成' : '待翻译'" placement="top">
                   <span class="status-dot" :class="artwork.inscription_modern ? 'done' : 'pending'">译</span>
                 </el-tooltip>
@@ -139,19 +127,19 @@
                 </el-tooltip>
               </div>
             </div>
+            <div class="artwork-info" @click="openArtworkDetail(artwork)">
+              <h4 class="artwork-title">{{ artwork.title || artwork.filename || '未命名' }}</h4>
+              <p class="artwork-meta">
+                <span v-if="artwork.artist">{{ artwork.artist }}</span>
+                <span v-if="artwork.year">({{ artwork.year }})</span>
+              </p>
+            </div>
             <div class="artwork-card-footer" v-if="canEdit">
-              <el-button link size="small" @click.stop="openProofread(artwork)">
-                <el-icon><EditPen /></el-icon> 校对
-              </el-button>
-              <el-button link size="small" @click.stop="openEdit(artwork)">
-                <el-icon><Edit /></el-icon> 编辑
-              </el-button>
-              <el-button link size="small" @click.stop="handleTriggerAnalyze(artwork)">
-                <el-icon><VideoPlay /></el-icon> AI分析
-              </el-button>
-              <el-button link size="small" type="danger" @click.stop="handleDeleteArtwork(artwork)">
-                <el-icon><Delete /></el-icon> 删除
-              </el-button>
+              <button class="card-btn" @click.stop="openProofread(artwork)" title="校对题跋"><el-icon><EditPen /></el-icon></button>
+              <button class="card-btn" @click.stop="openEdit(artwork)" title="编辑作品"><el-icon><Edit /></el-icon></button>
+              <button class="card-btn" @click.stop="handleTriggerAnalyze(artwork)" title="AI分析"><el-icon><VideoPlay /></el-icon></button>
+              <button class="card-btn card-btn-danger" @click.stop="handleDeleteArtwork(artwork)" title="删除"><el-icon><Delete /></el-icon></button>
+              <button class="card-btn card-btn-suggest" v-if="!canEdit" @click.stop="openSuggestEdit(artwork)" title="我的意见"><el-icon><Edit /></el-icon></button>
             </div>
           </div>
         </div>
@@ -1097,26 +1085,25 @@ onUnmounted(() => {
 
 .artwork-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-lg);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .artwork-card {
   background: var(--pure-white);
   border: 1px solid var(--border-cream);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   transition: all var(--transition-normal);
 }
 
 .artwork-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
 }
 
 .artwork-thumb {
-  height: 200px;
+  height: 160px;
   background: var(--parchment);
   display: flex;
   align-items: center;
@@ -1133,37 +1120,89 @@ onUnmounted(() => {
 
 .artwork-status-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.6);
+  top: 6px;
+  left: 6px;
+  background: rgba(0,0,0,0.55);
   color: white;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 12px;
 }
 
+/* 状态点叠加在缩略图右上角 */
+.artwork-status-dots {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 3px;
+}
+
+.artwork-status-dots .status-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.artwork-status-dots .status-dot.done { background: #5a8c7a; }
+.artwork-status-dots .status-dot.pending { background: rgba(0,0,0,0.35); }
+
 .artwork-info {
-  padding: var(--space-md);
+  padding: 8px 10px 6px;
 }
 
 .artwork-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--near-black);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .artwork-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--stone-gray);
-  margin-bottom: var(--space-sm);
 }
+
+/* 卡片底部操作按钮 */
+.artwork-card-footer {
+  display: flex;
+  border-top: 1px solid #f0ede6;
+  padding: 2px;
+}
+
+.card-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #7a7568;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.12s;
+}
+
+.card-btn:hover { background: #f5f2eb; color: #5c5040; }
+.card-btn-danger:hover { background: #fef0e8; color: #c45a3c; }
+.card-btn-suggest { color: #b0a898; }
 
 .pagination-wrap {
   margin-top: var(--space-2xl);
@@ -1275,17 +1314,6 @@ onUnmounted(() => {
 .inline-upload-area { background: #fff; border: 1px solid #e8e3da; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 .upload-area-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .upload-area-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
-
-/* 状态标记点 */
-.artwork-status-tags { display: flex; gap: 4px; margin-top: 4px; }
-.status-dot {
-  width: 18px; height: 18px; border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 600; color: #fff;
-  flex-shrink: 0; cursor: default;
-}
-.status-dot.done { background: #5a8c7a; }
-.status-dot.pending { background: #d0ccc0; }
 
 /* 模式选择弹窗样式 */
 .translate-mode-options { display: flex; flex-direction: column; gap: 8px; }
