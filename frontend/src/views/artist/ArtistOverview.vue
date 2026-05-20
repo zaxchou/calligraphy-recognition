@@ -16,7 +16,7 @@
             <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
             <div v-if="artistPhotos.length > 0" class="av-photo-strip">
               <button v-if="photoScroll > 0" class="av-photo-arrow av-photo-arrow-left" @click.stop="photoScroll = Math.max(0, photoScroll - 1)">&#8249;</button>
-              <div class="av-photo-track" ref="photoTrackRef">
+              <div class="av-photo-track">
                 <img
                   v-for="(p, i) in artistPhotos"
                   :key="i"
@@ -106,7 +106,7 @@
             <h2 class="av-section-title">人物关系</h2>
             <div class="av-relations-grid">
               <div v-for="(rel, idx) in characterRelations" :key="idx" class="av-relation-card" @click="goToRelationArtist(rel)">
-                <el-avatar :src="rel.image_url || ''" :size="52" shape="circle" class="av-avatar-placeholder" @error="($event.target).style.display='none'">{{ (rel.name || '?').charAt(0) }}</el-avatar>
+                <el-avatar :src="rel.image_url || ''" :size="52" shape="circle" class="av-avatar-placeholder" @error="e => e.target.style.display = 'none'">{{ (rel.name || '?').charAt(0) }}</el-avatar>
                 <div class="av-relation-name">{{ rel.name }}</div>
                 <span class="av-relation-tag">{{ rel.relationship }}</span>
                 <p v-if="rel.description" class="av-relation-desc">{{ rel.description }}</p>
@@ -338,11 +338,6 @@ const artistPhotos = computed(() => {
   return parseJsonField(artist.value.photos)
 })
 
-const tags = computed(() => {
-  if (!artist.value?.tags) return []
-  return parseJsonField(artist.value.tags)
-})
-
 const references = computed(() => {
   if (!artist.value?.references) return []
   return parseJsonField(artist.value.references)
@@ -389,7 +384,10 @@ function scrollToSection(id) {
 }
 
 function goToWork(id) {
-  if (id) window.open(`/#/tubi/${id}`, '_blank')
+  if (id) {
+    const resolved = router.resolve({ name: 'TubiAnalysis', params: { id } })
+    window.open(resolved.href, '_blank')
+  }
 }
 
 function goToRelationArtist(rel) {

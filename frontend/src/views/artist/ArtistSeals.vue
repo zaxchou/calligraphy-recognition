@@ -56,6 +56,7 @@ import SealLightbox from '@/components/seal/SealLightbox.vue'
 
 const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+const STATIC_ORIGIN = window.location.origin
 
 const artistName = route.params.name
 const loading = ref(true)
@@ -76,7 +77,7 @@ function getImageUrl(path) {
   const p = typeof path === 'string' ? path : (path.path || '')
   if (!p) return ''
   if (p.startsWith('http')) return p
-  return `${API_BASE.replace('/api/v1', '')}${p}`
+  return `${STATIC_ORIGIN}${p}`
 }
 
 function openLightbox(seal) {

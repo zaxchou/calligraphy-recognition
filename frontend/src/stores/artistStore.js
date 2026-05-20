@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { artistsApi } from '../api/artists'
+import { pinyin } from 'pinyin-pro'
 
 const CACHE_TTL = 5 * 60 * 1000
 
@@ -88,6 +89,25 @@ export const useArtistStore = defineStore('artist', () => {
 
   const hasMore = computed(() => list.value.length < total.value)
 
-  return { list, total, periods, schools, letterNames, statsSummary, lastFetchTime,
+  const letterGroups = computed(() => {
+    const map = {}
+    for (const name of letterNames.value) {
+      if (!name) continue
+      const py = pinyin(name, { toneType: 'none', type: 'array' })
+      const first = py[0]?.charAt(0) || ''
+      const letter = /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#'
+      if (!map[letter]) map[letter] = 0
+      map[letter]++
+    }
+    const order = 'ABCDEFGHJKLMNOPQRSTWXYZ'.split('')
+    const result = []
+    for (const l of order) {
+      if (map[l]) result.push({ letter: l, count: map[l] })
+    }
+    if (map['#']) result.push({ letter: '#', count: map['#'] })
+    return result
+  })
+
+  return { list, total, periods, schools, letterNames, letterGroups, statsSummary, lastFetchTime,
            isStale, isMetaStale, loadMeta, fetchPage, fetchAll, clear, hasMore }
 })

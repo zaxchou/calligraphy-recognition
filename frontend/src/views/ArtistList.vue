@@ -25,7 +25,7 @@
         </el-select>
       </div>
 
-      <PinyinNav :names="store.letterNames" :active-letter="activeLetter" @select="onLetterSelect" />
+      <PinyinNav :groups="store.letterGroups" :active-letter="activeLetter" @select="onLetterSelect" />
     </div>
 
     <div v-if="loading" class="al-loading">加载中...</div>
@@ -52,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { pinyin } from 'pinyin-pro'
@@ -185,6 +185,10 @@ function goToArtist(name) {
 onMounted(async () => {
   await store.loadMeta()
   await Promise.all([doLoad(), fetchFeatured()])
+})
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
 })
 </script>
 

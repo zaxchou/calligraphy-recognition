@@ -167,7 +167,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
 
@@ -175,7 +175,7 @@ const route = useRoute()
 const router = useRouter()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-const artistName = route.params.name
+const artistName = computed(() => route.params.name)
 const viewMode = ref('grid')
 const works = ref([])
 const totalCount = ref(0)
@@ -204,7 +204,9 @@ function getTags(w) {
     try {
       const parsed = JSON.parse(w.tags)
       if (Array.isArray(parsed)) tags = tags.concat(parsed)
-    } catch {}
+    } catch {
+      console.warn('[ArtistWorks] tags JSON parse failed:', w.tags)
+    }
   }
   return [...new Set(tags)]
 }
@@ -226,9 +228,18 @@ function clearSearch() { searchQuery.value = ''; currentPage.value = 1; loadWork
 
 function goToWork(w) {
   const id = w.id || w.db_id
-  if (id) window.open(`/#/tubi/${id}`, '_blank')
+  if (id) {
+    const resolved = router.resolve({ name: 'TubiAnalysis', params: { id } })
+    window.open(resolved.href, '_blank')
+  }
 }
-function onImgError(e) { e.target.style.display = 'none' }
+function onImgError(e) {
+  e.target.style.display = 'none'
+  const placeholder = e.target.nextElementSibling
+  if (placeholder && placeholder.classList.contains('aw-thumb-na')) {
+    placeholder.style.display = 'flex'
+  }
+}
 
 async function loadWorks() {
   loading.value = true

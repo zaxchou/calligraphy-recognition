@@ -103,7 +103,7 @@ function toggleExpanded(key) {
   expandedMap.value = { ...expandedMap.value, [key]: !expandedMap.value[key] }
 }
 
-function isExpanded(key, count) {
+function isExpanded(key) {
   if (expandedMap.value[key] !== undefined) return expandedMap.value[key]
   return false
 }

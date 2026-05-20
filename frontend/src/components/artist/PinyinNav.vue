@@ -14,34 +14,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { pinyin } from 'pinyin-pro'
-
-const props = defineProps({
-  names: { type: Array, default: () => [] },
+defineProps({
+  groups: { type: Array, default: () => [] },
   activeLetter: { type: String, default: '' },
 })
 
 defineEmits(['select'])
-
-const groups = computed(() => {
-  const map = {}
-  for (const name of props.names) {
-    if (!name) continue
-    const py = pinyin(name, { toneType: 'none', type: 'array' })
-    const first = py[0]?.charAt(0) || ''
-    const letter = /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#'
-    if (!map[letter]) map[letter] = 0
-    map[letter]++
-  }
-  const order = 'ABCDEFGHJKLMNOPQRSTWXYZ'.split('')
-  const result = []
-  for (const l of order) {
-    if (map[l]) result.push({ letter: l, count: map[l] })
-  }
-  if (map['#']) result.push({ letter: '#', count: map['#'] })
-  return result
-})
 </script>
 
 <style scoped>

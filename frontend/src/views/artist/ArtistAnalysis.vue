@@ -280,7 +280,16 @@ function sentimentTagType(p) { return { positive: 'success', negative: 'danger',
 function invRateClass(rate) { return rate > 0.6 ? 'aa-rate-high' : rate > 0.3 ? 'aa-rate-mid' : 'aa-rate-low' }
 function renderMarkdown(text) {
   if (!text) return ''
-  return text.replace(/^>\s*(.+)$/gm, '<blockquote>$1</blockquote>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')
+  let safe = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  safe = safe
+    .replace(/^>\s*(.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br/>')
+  return '<p>' + safe + '</p>'
 }
 
 function onArtistChange() {
@@ -507,7 +516,10 @@ async function openThemeDialog(themeName) {
   finally { themeDialogLoading.value = false }
 }
 
-function openPaintingDetail(row) { window.open(`/#/tubi/${row.id}`, '_blank') }
+function openPaintingDetail(row) {
+  const resolved = router.resolve({ name: 'TubiAnalysis', params: { id: row.id } })
+  window.open(resolved.href, '_blank')
+}
 
 async function openSentimentDialog(polarity, polarityName) {
   sentimentDialogVisible.value = true; sentimentDialogLoading.value = true
@@ -572,7 +584,10 @@ async function fetchArtistBirthYear() {
 
 function onRankingItemClick(item) {
   const id = item.id || item.db_id
-  if (id) window.open(`/#/tubi/${id}`, '_blank')
+  if (id) {
+    const resolved = router.resolve({ name: 'TubiAnalysis', params: { id } })
+    window.open(resolved.href, '_blank')
+  }
 }
 
 function onRankingMore() {
