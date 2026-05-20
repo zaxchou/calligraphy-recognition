@@ -179,7 +179,7 @@ const isFilterActive = computed(() => {
 })
 
 function goToArtist(name) {
-  router.push(`/artist/${encodeURIComponent(name)}`)
+  router.push({ name: 'ArtistOverview', params: { name } })
 }
 
 onMounted(async () => {

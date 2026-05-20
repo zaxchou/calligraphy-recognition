@@ -208,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
@@ -216,6 +216,7 @@ import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
 import ArtistStatsCard from '@/tubi/ArtistStatsCard.vue'
 import TubiRankingCard from '@/components/tubi/TubiRankingCard.vue'
 import { tubiApi } from '@/api'
+import { artistsApi } from '@/api/artists'
 
 const route = useRoute()
 const router = useRouter()
@@ -228,6 +229,7 @@ const loading = ref(false)
 const artistStatsCardRef = ref(null)
 const rankingList = ref([])
 const rankingLoading = ref(false)
+const birthYear = ref(null)
 const statsData = ref({})
 const correlationData = ref({})
 const sizeStats = ref(null)
@@ -242,6 +244,7 @@ const themeChartRef = ref(null); const sentimentChartRef = ref(null); const char
 const themePieChartRef = ref(null); const sentimentPieChartRef = ref(null); const periodPieChartRef = ref(null)
 const materialChartRef = ref(null); const sizeChartRef = ref(null)
 const areaDistChartRef = ref(null); const areaSizeChartRef = ref(null)
+const ALL_CHART_REFS = [themeChartRef, sentimentChartRef, charCountChartRef, themePieChartRef, sentimentPieChartRef, periodPieChartRef, materialChartRef, sizeChartRef, areaDistChartRef, areaSizeChartRef]
 
 // dialogs
 const themeDialogVisible = ref(false); const themeDialogLoading = ref(false); const themeDialogLoadingMore = ref(false)
@@ -545,16 +548,26 @@ async function loadMoreThemePaintings() {
 
 // ── 排行榜相关 ──
 function getDisplayAge(item) {
-  if (!item || !item.year || !selectedArtist.value) return null
-  const birthYear = { '李鱓': 1686, '郑燮': 1693 }[selectedArtist.value]
-  if (!birthYear) return null
-  const age = parseInt(item.year) - birthYear
+  if (!item || !item.year || !birthYear.value) return null
+  const age = parseInt(item.year) - birthYear.value
   return age >= 0 ? age : null
 }
 
 function onStatsArtistChange(artist) {
   selectedArtist.value = artist
+  fetchArtistBirthYear()
   fetchRankingData()
+}
+
+async function fetchArtistBirthYear() {
+  try {
+    const res = await artistsApi.getByName(selectedArtist.value)
+    if (res.success && res.data) {
+      birthYear.value = res.data.birth_year || null
+    }
+  } catch (e) {
+    console.error('获取艺术家生年失败', e)
+  }
 }
 
 function onRankingItemClick(item) {
@@ -588,8 +601,24 @@ async function fetchRankingData() {
 
 onMounted(async () => {
   await fetchArtistList()
-  if (selectedArtist.value) { loadStats(); loadCachedSummary(); fetchRankingData() }
+  if (selectedArtist.value) { loadStats(); loadCachedSummary(); fetchRankingData(); fetchArtistBirthYear() }
+  window.addEventListener('resize', handleChartResize)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleChartResize)
+  for (const ref of ALL_CHART_REFS) {
+    const instance = ref.value ? echarts.getInstanceByDom(ref.value) : null
+    if (instance) instance.dispose()
+  }
+})
+
+function handleChartResize() {
+  for (const ref of ALL_CHART_REFS) {
+    const instance = ref.value ? echarts.getInstanceByDom(ref.value) : null
+    if (instance) instance.resize()
+  }
+}
 </script>
 
 <style scoped>
