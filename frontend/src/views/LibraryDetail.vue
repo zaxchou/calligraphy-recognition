@@ -130,6 +130,9 @@
                 <el-tooltip :content="artwork.is_manual_annotated ? '标注已完成' : '标注待定'" placement="top">
                   <span class="status-dot" :class="artwork.is_manual_annotated ? 'done' : 'pending'">注</span>
                 </el-tooltip>
+                <el-tooltip :content="artwork.status === 'analyzed' ? 'AI识图已完成' : 'AI识图待定'" placement="top">
+                  <span class="status-dot" :class="artwork.status === 'analyzed' ? 'done' : 'pending'">识</span>
+                </el-tooltip>
               </div>
             </div>
             <div class="artwork-card-footer" v-if="canEdit">
@@ -421,22 +424,22 @@
       </template>
     </el-dialog>
 
-    <!-- AI识图模式弹窗 -->
-    <el-dialog v-model="showAiAnalyzeDialog" title="批量AI识图" width="420px">
+    <!-- AI识图弹窗 -->
+    <el-dialog v-model="showAiAnalyzeDialog" title="批量AI识图" width="400px">
       <div class="translate-mode-options">
         <div class="mode-option" @click="startBatchAiAnalyze('analyze_text_only')">
           <div class="mode-icon"><el-icon><MagicStick /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">轻量文本分析</div>
-            <div class="mode-desc">对未分析的作品进行文字识别与翻译</div>
+            <div class="mode-title">开始识图</div>
+            <div class="mode-desc">OCR提取题跋文字 + 识别画材标签（未分析的作品）</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
-        <div class="mode-option" @click="startBatchAiAnalyze('analyze')">
-          <div class="mode-icon warning"><el-icon><MagicStick /></el-icon></div>
+        <div class="mode-option warn" @click="startBatchAiAnalyze('analyze')">
+          <div class="mode-icon warning"><el-icon><Refresh /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">完整识图分析</div>
-            <div class="mode-desc">区域检测+文字识别，处理所有作品</div>
+            <div class="mode-title">全部重新识图</div>
+            <div class="mode-desc">覆盖已有结果，对库内所有作品重新分析</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
