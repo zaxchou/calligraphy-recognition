@@ -246,7 +246,7 @@ async function loadWorks() {
   try {
     const skip = (currentPage.value - 1) * pageSize
     const params = new URLSearchParams({ skip, limit: pageSize })
-    params.set('artist', artistName)
+    params.set('artist', artistName.value)
     if (searchQuery.value) params.set('keyword', searchQuery.value)
     if (workTypeFilter.value) params.set('work_type', workTypeFilter.value)
     const sf = SORT_FIELD_MAP[activeSort.value]
