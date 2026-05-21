@@ -31,7 +31,7 @@
                   <span class="nav-item-label">{{ item.label }}</span>
                 </router-link>
                 <!-- 作品库列表 + 子菜单 -->
-                <div v-for="lib in filteredLibraries" :key="'lib-'+lib.id" class="nav-library">
+                <div v-for="lib in filteredLibraries" :key="'lib-'+lib.id" class="nav-library" :class="{ 'lib-active': isLibraryActive(lib) }">
                   <div class="nav-lib-row">
                     <span class="nav-lib-arrow" :class="{ open: expandedLibraries.has(lib.id) }" @click.stop="toggleLibrary(lib.id)">▸</span>
                     <router-link
@@ -129,6 +129,16 @@ const libStats = reactive({ verified: 0, total: 0, translated: 0, analyzed: 0, a
 provide('adminAccessibleLibraries', accessibleLibraries)
 provide('adminSelectedLibraryId', selectedLibraryId)
 provide('adminLibStats', libStats)
+
+function isLibraryActive(lib) {
+  if (activeTab.value === 'libraries' && route.query.detail_id == lib.id && !route.query.panel) return true
+  if (activeTab.value === 'libraries' && route.query.detail_id == lib.id && route.query.panel) return true
+  if (route.name === 'ArtistEditor' && route.params.name === lib.artist_name) return true
+  if (activeTab.value === 'verify' && route.query.artist === lib.artist_name) return true
+  if (activeTab.value === 'annotation' && route.query.artist === lib.artist_name) return true
+  if (activeTab.value === 'artist-rules' && route.query.artist === lib.artist_name) return true
+  return false
+}
 
 // ── 菜单定义 ──
 const MENU_DEF = [
@@ -381,13 +391,18 @@ watch(() => route.name, () => {
 .nav-search-clear:hover { color: #c45a3c; }
 
 /* ── 作品库树形菜单 ── */
-.nav-library { display: flex; flex-direction: column; }
+.nav-library {
+  display: flex; flex-direction: column;
+  padding: 3px 6px 3px 6px; margin: 1px 0 2px;
+  border-radius: 5px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
 
 .nav-lib-row {
   display: flex; align-items: center; gap: 2px;
-  padding: 2px 8px 2px 8px;
-  transition: background 0.12s;
+  padding: 1px 2px;
   border-radius: 4px;
+  transition: background 0.12s;
 }
 .nav-lib-row:hover { background: #f0ebe0; }
 
@@ -402,30 +417,48 @@ watch(() => route.name, () => {
 
 .nav-lib-link {
   flex: 1; display: flex; align-items: center;
-  padding: 4px 0; color: #4a4438; font-size: 12px; font-weight: 500;
+  padding: 4px 0; color: #4a4438; font-size: 13px; font-weight: 500;
   text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color 0.15s;
 }
 .nav-lib-link:hover { color: #c45a3c; }
 .nav-lib-link.active { color: #c45a3c; font-weight: 600; }
 
+/* 当前活跃作品库的整块样式 */
+.lib-active {
+  background: #f4efe3;
+  box-shadow: inset 2px 0 0 #c45a3c;
+}
+
 .nav-lib-items {
   display: flex; flex-direction: column;
-  margin-left: 10px; padding-left: 8px;
+  margin-left: 16px; padding-left: 10px;
   border-left: 1px solid #e8e4d8;
-  margin-bottom: 2px;
 }
 
 .nav-item-sub {
   display: flex; align-items: center;
-  padding: 4px 6px 4px 4px;
+  padding: 5px 6px 5px 6px;
   color: #6b6356; font-size: 12px; text-decoration: none;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  border-radius: 3px; transition: background 0.12s, color 0.12s;
+  border-radius: 4px; transition: background 0.12s, color 0.12s;
   margin: 1px 0;
+  position: relative;
 }
 .nav-item-sub:hover { background: #f0ebe0; color: #3a3222; }
-.nav-item-sub.active { background: #c45a3c10; color: #c45a3c; font-weight: 500; }
+.nav-item-sub.active {
+  background: #c45a3c12;
+  color: #c45a3c;
+  font-weight: 600;
+}
+.nav-item-sub.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 14px;
+  border-radius: 0 2px 2px 0;
+  background: #c45a3c;
+}
 
 /* ── 主内容区 ── */
 .admin-main {
