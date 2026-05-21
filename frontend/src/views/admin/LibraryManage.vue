@@ -418,7 +418,7 @@ async function fetchLibraryInfo(id) {
   try {
     const lib = libs.value.find(l => l.id === id)
     if (lib) { libraryInfo.value = lib; return }
-    const data = await libraryApi.get(id)
+    const data = await libraryApi.getDetail(id)
     libraryInfo.value = data
   } catch (e) { console.error('获取库信息失败', e) }
 }
