@@ -787,8 +787,11 @@ defineExpose({ nextRecord, jumpToRecordById })
 .seal-tag-type { font-size: 10px; color: #999; margin-left: 2px; }
 .clear-seals-btn { margin-left: auto; }
 .seal-tag { position: relative; overflow: visible; }
-.seal-tag .seal-preview-popup { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; }
-.seal-tag:hover .seal-preview-popup { display: block; }
+.seal-tag .seal-preview-popup,
+.seal-library-item .seal-preview-popup { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; }
+.seal-tag:hover .seal-preview-popup,
+.seal-library-item:hover .seal-preview-popup { display: block; }
+.seal-library-item { position: relative; overflow: visible; }
 .seal-preview-img { width: 96px; height: 96px; object-fit: contain; }
 .seal-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .seal-library { border: 1px solid #ebe8e0; border-radius: 8px; padding: 8px; background: #fdfcf9; }

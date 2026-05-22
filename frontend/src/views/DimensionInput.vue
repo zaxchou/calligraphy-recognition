@@ -472,15 +472,13 @@ async function saveSingle(id) {
 
 // 保存册页整组尺寸
 async function saveAlbumDimension(albumName) {
-  // 用户输入：第一个是高，第二个是宽（placeholder显示）
-  // 变量名：albumHeights存高，albumWidths存宽
   const h = albumHeights.value[albumName]
   const w = albumWidths.value[albumName]
-  if (h === '' || w === '' || h == null || w == null) return
-
+  if (!h && !w) return
+  if (!h || !w) { ElMessage.warning('请同时填写高和宽'); return }
   const height = parseFloat(h)
   const width = parseFloat(w)
-  if (isNaN(height) || isNaN(width)) return
+  if (isNaN(height) || isNaN(width)) { ElMessage.warning('请输入有效数字'); return }
 
   try {
     const res = await fetch(`${API_BASE}/tubi/dimensions/album/batch`, {
