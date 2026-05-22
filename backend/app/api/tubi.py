@@ -1379,6 +1379,25 @@ async def batch_get_status(request: BatchStatusRequest, db: Session = Depends(ge
     return {"success": True, "data": results}
 
 
+@router.post("/batch-cancel")
+async def batch_cancel(request: BatchStatusRequest, db: Session = Depends(get_db)):
+    """取消批量 AI 识图队列"""
+    cancelled = 0
+    for image_id in request.image_ids:
+        # 取消 jobs
+        job = db.query(TubiJob).filter(TubiJob.image_id == image_id, TubiJob.status.in_(["queued", "processing"])).first()
+        if job:
+            job.status = "done"
+            job.last_error = "cancelled by user"
+            cancelled += 1
+        # 重置 analysis 状态
+        analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id, TubiAnalysis.status.in_(["queued", "analyzing"])).first()
+        if analysis:
+            analysis.status = "uploaded"
+    db.commit()
+    return {"success": True, "cancelled": cancelled}
+
+
 @router.get("/analyze-status/{image_id}")
 async def get_analyze_status(image_id: str, db: Session = Depends(get_db)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()

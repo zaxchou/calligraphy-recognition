@@ -146,6 +146,9 @@ export const tubiApi = {
       timeout: 30000
     })
   },
+  batchCancel(imageIds) {
+    return api.post('/tubi/batch-cancel', { image_ids: imageIds })
+  },
   getQueueInfo(imageId) {
     return api.get(`/tubi/queue-info/${imageId}`)
   },

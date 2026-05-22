@@ -529,6 +529,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 let translateCancelFn = null
 let analyzeCancelFn = null
 let aiAnalyzeCancelFn = null
+const aiAnalyzeImageIds = ref([])  // 保存当前批次的 image_ids，用于取消
 
 // ── Edit form ──
 const editForm = reactive({
@@ -755,6 +756,7 @@ async function startBatchAiAnalyze(mode) {
       showAiAnalyzeProgress.value = false
       return
     }
+    aiAnalyzeImageIds.value = imageIds
     aiAnalyzeProgress.value.total = imageIds.length
     const r = await tubiApi.batchAutoAnalyze(imageIds, mode)
     if (!r.success) {
@@ -794,10 +796,15 @@ function startAiPolling(imageIds) {
   return () => { clearInterval(timer); aiAnalyzeCancelFn = null }
 }
 
-function cancelBatchAiAnalyze() {
+async function cancelBatchAiAnalyze() {
   if (aiAnalyzeCancelFn) { aiAnalyzeCancelFn(); aiAnalyzeCancelFn = null }
   aiAnalyzing.value = false
   showAiAnalyzeProgress.value = false
+  // 调用后端真正取消队列中的任务
+  if (aiAnalyzeImageIds.value.length > 0) {
+    try { await tubiApi.batchCancel(aiAnalyzeImageIds.value) } catch {}
+    aiAnalyzeImageIds.value = []
+  }
 }
 
 async function handleUpdateLibrary() {
