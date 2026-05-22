@@ -1313,6 +1313,7 @@ async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), edito
 
     # AI 分析模式：正常入队
     results = []
+    skipped_analyzed = 0
     for image_id in image_ids:
         db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
         if not db_analysis:
@@ -1320,6 +1321,10 @@ async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), edito
             continue
         if db_analysis.status in ("analyzing", "queued"):
             results.append({"id": image_id, "status": db_analysis.status, "via": "already_queued"})
+            continue
+        # 增量模式：跳过已完成分析的作品
+        if mode == "incremental" and db_analysis.status == "analyzed":
+            skipped_analyzed += 1
             continue
 
         db_analysis.status = "queued"
@@ -1346,7 +1351,7 @@ async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), edito
 
         results.append({"id": image_id, "status": "queued", "via": via})
 
-    return {"success": True, "data": results}
+    return {"success": True, "data": results, "skipped_analyzed": skipped_analyzed}
 
 
 class BatchStatusRequest(BaseModel):
