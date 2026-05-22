@@ -747,11 +747,13 @@ async function startBatchAiAnalyze(mode) {
   showAiAnalyzeProgress.value = true
   aiAnalyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
   try {
-    const imageIds = artworks.value
-      .filter(a => a.image_id)
-      .map(a => a.image_id)
+    // 增量模式：只包含未分析的作品；全量模式：全部
+    const allIds = artworks.value.filter(a => a.image_id)
+    const imageIds = mode === 'incremental'
+      ? allIds.filter(a => a.status !== 'analyzed').map(a => a.image_id)
+      : allIds.map(a => a.image_id)
     if (imageIds.length === 0) {
-      ElMessage.warning('库内没有可分析的作品')
+      ElMessage.warning(mode === 'incremental' ? '没有未分析的作品' : '库内没有可分析的作品')
       aiAnalyzing.value = false
       showAiAnalyzeProgress.value = false
       return

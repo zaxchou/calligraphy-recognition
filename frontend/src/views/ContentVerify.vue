@@ -437,6 +437,15 @@ watch(() => route.query.artist, (newArtist) => {
   }
 })
 
+// URL → lib_id 同步（侧边栏切换作品库时刷新）
+watch(() => route.query.lib_id, (newLibId) => {
+  const id = Array.isArray(newLibId) ? parseInt(newLibId[0]) : parseInt(newLibId)
+  if (id && id !== selectedLibraryId.value) {
+    selectedLibraryId.value = id
+    fetchRecords()
+  }
+})
+
 function onArtistChange() {
   router.replace({ query: { ...route.query, artist: selectedArtist.value } })
   fetchRecords()

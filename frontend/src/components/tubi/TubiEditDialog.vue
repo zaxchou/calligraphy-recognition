@@ -33,9 +33,8 @@
         </div>
         <div class="form-row">
           <el-form-item label="作者姓名" class="form-item-half">
-            <el-select v-model="form.artistChoice" placeholder="请选择作者" style="width: 100%" @change="onArtistChange">
-              <el-option label="李鱓" value="李鱓" />
-              <el-option label="郑燮" value="郑燮" />
+            <el-select v-model="form.artistChoice" placeholder="请选择作者" style="width: 100%" filterable @change="onArtistChange">
+              <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
               <el-option label="其他" value="other" />
             </el-select>
           </el-form-item>
@@ -185,10 +184,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { ArrowDown, Stamp } from '@element-plus/icons-vue'
 import { tubiApi, sealsApi } from '../../api'
+import api from '../../api'
 import { ARTISTS } from '../../tubi/constants'
 import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
 import { useAuthStore } from '../../stores/authStore'
@@ -196,6 +196,14 @@ import { useAuthStore } from '../../stores/authStore'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const authStore = useAuthStore()
+
+const artistList = ref([])
+async function fetchArtistList() {
+  try {
+    const data = await api.get('/content-analysis/artists')
+    artistList.value = data.artists || []
+  } catch (e) { /* ignore */ }
+}
 
 const emit = defineEmits(['saved', 'deleted', 'replaced'])
 
@@ -344,12 +352,15 @@ function open(item) {
   form.owner_id = item.owner_id
   form.title = item.title || ''
   const existingArtist = item.artist || ''
-  if (existingArtist === '李鱓' || existingArtist === '郑燮') {
+  if (artistList.value.includes(existingArtist)) {
     form.artistChoice = existingArtist
     form.artistCustom = ''
-  } else {
+  } else if (existingArtist) {
     form.artistChoice = 'other'
     form.artistCustom = existingArtist
+  } else {
+    form.artistChoice = ''
+    form.artistCustom = ''
   }
   form.year = item.year || ''
   form.age = getDisplayAge(item) ?? ''
@@ -513,6 +524,8 @@ async function handleReplaceImage(event) {
 }
 
 defineExpose({ open })
+
+onMounted(() => { fetchArtistList() })
 </script>
 
 <style scoped>
