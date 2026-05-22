@@ -341,6 +341,7 @@ const editCurrentImage = () => {
 // 编辑弹窗事件处理
 function onEditSaved({ id, updates }) {
   loadHistory()
+  refreshAnalyticsKey.value++
   if (currentImage.value?.id === id) {
     currentImage.value.title = updates.title
     currentImage.value.artist = updates.artist
@@ -365,6 +366,7 @@ function onEditDeleted(id) {
   if (idx > -1) {
     historyList.value.splice(idx, 1)
   }
+  refreshAnalyticsKey.value++
   const sessionIdx = uploadedImages.value.findIndex(img => img.id === id)
   if (sessionIdx > -1) {
     uploadedImages.value.splice(sessionIdx, 1)

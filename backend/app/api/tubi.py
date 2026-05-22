@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form, Request, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form, Request, Query, Response
 from fastapi.responses import JSONResponse
 import json
 from typing import List, Optional
@@ -149,9 +149,13 @@ _PROJECT_BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 _RESULTS_CACHE_FILE = os.path.join(_PROJECT_BASE, "data", "cache", "tubi_results_all.json")
 
 def _get_results_cache():
-    """读取全量作品列表缓存，不存在返回 None"""
+    """读取全量作品列表缓存，不存在或超过 TTL 返回 None"""
     try:
         if os.path.exists(_RESULTS_CACHE_FILE):
+            mtime = os.path.getmtime(_RESULTS_CACHE_FILE)
+            if time.time() - mtime > 300:  # 5 分钟 TTL
+                os.remove(_RESULTS_CACHE_FILE)
+                return None
             with open(_RESULTS_CACHE_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
     except Exception:
@@ -1528,6 +1532,14 @@ async def update_image_info(
 
     db.commit()
     db.refresh(db_analysis)
+    _clear_results_cache()
+    _clear_stats_cache()
+    try:
+        from app.api.artists import invalidate_stats_cache
+        if db_analysis.artist:
+            invalidate_stats_cache(db_analysis.artist)
+    except Exception:
+        pass
 
     return {
         "success": True,
@@ -1707,8 +1719,12 @@ async def get_all_results(
     work_type: Optional[str] = Query(default=None, description="作品类型: 画作/书法"),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_optional_user),
+    response: Response = None,
 ):
     """获取所有分析结果列表"""
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     # 自定义排序或筛选时跳过缓存
     use_cache = not artist and not sort_by and not library_id and not work_type and limit >= 500
     if use_cache:
