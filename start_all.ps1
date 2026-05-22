@@ -59,13 +59,9 @@ Start-Process -FilePath "python" -ArgumentList "-m","uvicorn","app.main:app","--
 Pop-Location
 Write-Host "  OK - Backend window opened" -ForegroundColor Green
 
-# Tubi Worker
+# Tubi Worker（已嵌入 FastAPI，不再需要独立进程）
 if (-not $SkipTubi) {
-    Write-Host "[4/5] Starting Tubi Worker..." -ForegroundColor Yellow
-    Push-Location $BACKEND_DIR
-    Start-Process -FilePath "python" -ArgumentList "tubi_worker.py" -WindowStyle Normal
-    Pop-Location
-    Write-Host "  OK - Tubi window opened" -ForegroundColor Green
+    Write-Host "[4/5] Tubi Worker: embedded in FastAPI (no separate process)" -ForegroundColor DarkGray
 }
 
 # Frontend (port 8080)
