@@ -325,8 +325,8 @@ async function loadSealLibrary() {
       const typeMap = {}
       for (const s of sealLibrary.value) {
         if (s.images && s.images.length > 0) {
-          const img = s.images[0]
-          imgMap[s.name] = img.startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
+          const img = typeof s.images[0] === 'string' ? s.images[0] : (s.images[0].thumb_url || s.images[0].path)
+          imgMap[s.name] = (img || '').startsWith('http') ? img : `${API_BASE.replace('/api/v1', '')}${img}`
         }
         if (s.seal_type) {
           typeMap[s.name] = s.seal_type
@@ -348,7 +348,7 @@ const artist = computed(() => {
 })
 
 function open(item) {
-  form.id = item.id
+  form.id = item.image_id || item.id
   form.owner_id = item.owner_id
   form.title = item.title || ''
   const existingArtist = item.artist || ''
