@@ -218,70 +218,13 @@ def process_one(conn, image_id: str):
                 db_analysis.image_height = height
             db.commit()
 
-        # ===== 统一识图流程：VL区域检测 + OCR + 画材标签 =====
-        # CV 已禁用（USE_CV_FIRST_PIPELINE=false），直接用 VL 做区域检测
-        print(f"[tubi_worker] VL区域检测: {image_id}")
-        regions = {}
+        # ===== 直接 OCR（跳过区域检测）=====
+        print(f"[tubi_worker] OCR: {image_id}")
         inscription_mask = None
 
-        result = analyze_with_timeout(filepath, width, height)
-        if not result or not result.get("success", False):
-            error_msg = result.get("error", "分析失败") if result else "分析失败"
-            db_analysis.status = "error"
-            db.commit()
-            return
-        regions = result.get("regions", {})
-
-        # 遮罩生成（用于 OCR 题跋区域过滤）
-        try:
-            paint_seed = regions_to_mask(regions.get("painting_regions", []) or [], width, height)
-            insc_seed = regions_to_mask(regions.get("inscription_regions", []) or [], width, height)
-            if cv2.countNonZero(paint_seed) > 0 and cv2.countNonZero(insc_seed) > 0:
-                paint_norm = cv2.subtract(paint_seed, insc_seed)
-                norm_regions = mask_to_regions(paint_norm)
-                if norm_regions:
-                    regions["painting_regions"] = norm_regions
-        except Exception:
-            pass
-
-        auto = compute_tubi_params(filepath, width, height, regions)
-        insc_auto = (auto or {}).get("insc") or {}
-        try:
-            refined_insc = detect_inscription_grid_density(
-                image_path=filepath,
-                inscription_regions=regions.get("inscription_regions", []) or [],
-                image_width=width,
-                image_height=height,
-                expand_x_ratio=float(insc_auto.get("expand_x_ratio", 0.22)),
-                expand_x_min=int(insc_auto.get("expand_x_min", 48)),
-                expand_y_ratio=float(insc_auto.get("expand_y_ratio", 0.10)),
-                density_thresh_core=float(insc_auto.get("density_thresh_core", 0.055)),
-                density_thresh_expand=float(insc_auto.get("density_thresh_expand", 0.120)),
-                return_mask=True,
-            )
-            if refined_insc.get("ok"):
-                inscription_mask = refined_insc.get("mask")
-        except Exception:
-            pass
-
-        if inscription_mask is None:
-            try:
-                inscription_seed_mask = regions_to_mask(regions.get("inscription_regions", []) or [], width, height)
-                if cv2.countNonZero(inscription_seed_mask) > 0:
-                    inscription_mask = inscription_seed_mask
-            except Exception:
-                pass
-
-        # ── OCR 文字识别（用 inscription_mask 过滤）──
+        # ── OCR 文字识别（全图，不筛选区域）──
         inscription_content = None
-
-        # 从遮罩计算题跋面积占比（排行榜数据源）
         inscription_percent = 0.0
-        if inscription_mask is not None:
-            total_px = float(width * height) if width > 0 and height > 0 else 0.0
-            if total_px > 0:
-                insc_px = float(cv2.countNonZero(inscription_mask))
-                inscription_percent = round(insc_px / total_px * 100.0, 2)
 
         try:
             if filepath and os.path.exists(filepath):
@@ -289,13 +232,9 @@ def process_one(conn, image_id: str):
                 ocr_result = ocr_router.process(filepath, width, height)
                 if ocr_result.get("success"):
                     all_items = ocr_result.get("ocr_items", [])
-                    filtered_items = _filter_ocr_by_mask(all_items, inscription_mask, width, height) if inscription_mask is not None else all_items
-                    content_parts = []
-                    for item in filtered_items:
-                        tag = f"[{item.get('crop_name', '')}]" if item.get("from_crop") else ""
-                        content_parts.append(f"{tag}{item['text']}")
+                    content_parts = [item["text"] for item in all_items]
                     inscription_content = " | ".join(content_parts) if content_parts else None
-                    print(f"[tubi_worker] OCR: {len(all_items)} 条 -> 题跋区域 {len(filtered_items)} 条")
+                    print(f"[tubi_worker] OCR: {len(all_items)} 条")
         except Exception as e:
             print(f"[tubi_worker] OCR failed: {e}")
 
