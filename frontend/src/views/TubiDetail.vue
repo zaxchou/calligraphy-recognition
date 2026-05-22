@@ -732,6 +732,12 @@ async function loadSealLibraryForDetail() {
 
 onMounted(() => { loadSealLibraryForDetail() })
 
+watch(() => props.currentImage, (img) => {
+  if (img && img.sealContent && !sealLibraryCache.value.length) {
+    loadSealLibraryForDetail()
+  }
+})
+
 const props = defineProps({
   currentImage: { type: Object, required: true },
   analysis: {
