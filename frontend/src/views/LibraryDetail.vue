@@ -419,11 +419,11 @@
     <!-- AI识图弹窗 -->
     <el-dialog v-model="showAiAnalyzeDialog" title="批量AI识图" width="400px">
       <div class="translate-mode-options">
-        <div class="mode-option" @click="startBatchAiAnalyze('analyze_text_only')">
+        <div class="mode-option" @click="startBatchAiAnalyze('incremental')">
           <div class="mode-icon"><el-icon><MagicStick /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">开始识图</div>
-            <div class="mode-desc">OCR提取题跋文字 + 识别画材标签（未分析的作品）</div>
+            <div class="mode-title">增量识图</div>
+            <div class="mode-desc">只对未分析的作品进行AI识图</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
