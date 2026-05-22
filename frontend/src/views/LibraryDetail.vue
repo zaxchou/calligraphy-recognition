@@ -122,8 +122,8 @@
                 <el-tooltip :content="artwork.is_manual_annotated ? '标注已完成' : '标注待定'" placement="top">
                   <span class="status-dot" :class="artwork.is_manual_annotated ? 'done' : 'pending'">注</span>
                 </el-tooltip>
-                <el-tooltip :content="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis)) ? 'AI识图已完成' : 'AI识图待定'" placement="top">
-                  <span class="status-dot" :class="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis)) ? 'done' : 'pending'">识</span>
+                <el-tooltip :content="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis || artwork.analysis_note)) ? 'AI识图已完成' : 'AI识图待定'" placement="top">
+                  <span class="status-dot" :class="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis || artwork.analysis_note)) ? 'done' : 'pending'">识</span>
                 </el-tooltip>
               </div>
             </div>
