@@ -334,7 +334,7 @@ def process_one(conn, image_id: str):
             print(f"[tubi_worker] 提取画材标签失败: {e}")
             db_analysis.material_tags = None
 
-        db_analysis.status = "analyzed"
+        db_analysis.status = "analyzed" if (inscription_content or db_analysis.inscription_content) else "no_text"
         if db_job:
             db_job.status = "done"
             db_job.last_error = None
