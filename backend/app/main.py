@@ -327,6 +327,33 @@ import time as _time
 
 _worker_running = False
 
+def _recover_stale_jobs(logger):
+    """启动时恢复：把卡在 processing 超过 2 分钟的任务重置为 queued"""
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        from datetime import datetime as _dt, timedelta as _td
+        cutoff = (_dt.now() - _td(minutes=2)).strftime("%Y-%m-%d %H:%M:%S")
+        # Reset stuck jobs
+        stuck_jobs = db.execute(
+            __import__("sqlalchemy").text(
+                "UPDATE tubi_jobs SET status='queued', last_error='recovered' WHERE status='processing' AND updated_at < :cutoff"
+            ), {"cutoff": cutoff}
+        )
+        # Reset stuck analyses
+        stuck_analyses = db.execute(
+            __import__("sqlalchemy").text(
+                "UPDATE tubi_analyses SET status='uploaded' WHERE status='analyzing' AND updated_at < :cutoff"
+            ), {"cutoff": cutoff}
+        )
+        db.commit()
+        if stuck_jobs.rowcount or stuck_analyses.rowcount:
+            logger.info(f"恢复卡住任务: {stuck_jobs.rowcount} jobs + {stuck_analyses.rowcount} analyses")
+    except Exception as e:
+        logger.warning(f"恢复任务失败: {e}")
+    finally:
+        db.close()
+
 def _embedded_worker_loop():
     """DB 轮询模式：直接查 tubi_jobs 表，不需要 Redis"""
     global _worker_running
@@ -338,6 +365,9 @@ def _embedded_worker_loop():
 
     logger = logging.getLogger("embedded_worker")
     logger.info("嵌入式 Worker 已启动（DB 轮询模式）")
+
+    # 启动时恢复：把卡在 processing 超过 2 分钟的任务重置为 queued
+    _recover_stale_jobs(logger)
 
     while _worker_running:
         db = SessionLocal()
