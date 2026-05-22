@@ -274,8 +274,8 @@ export const sealsApi = {
   get(sealId) {
     return api.get(`/seals/${sealId}`)
   },
-  getByName(name) {
-    return api.get(`/seals/by-name/${encodeURIComponent(name)}`)
+  getByName(name, params = {}) {
+    return api.get(`/seals/by-name/${encodeURIComponent(name)}`, { params })
   },
   create(data) {
     return api.post('/seals', data)

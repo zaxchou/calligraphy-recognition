@@ -152,14 +152,20 @@ async def list_seals(
         if seal_type:
             query += " AND seal_type = ?"
             params.append(seal_type)
-        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
-        params.extend([limit, skip])
 
         rows = conn.execute(query, params).fetchall()
 
-        all_contents = conn.execute(
-            "SELECT seal_content FROM tubi_analyses WHERE seal_content IS NOT NULL AND seal_content != ''"
-        ).fetchall()
+        # usage_count：指定 artist 时只统计该作者作品，否则全局
+        if artist and artist != "all":
+            all_contents = conn.execute(
+                "SELECT seal_content FROM tubi_analyses "
+                "WHERE artist LIKE ? AND seal_content IS NOT NULL AND seal_content != ''",
+                (f"%{artist}%",)
+            ).fetchall()
+        else:
+            all_contents = conn.execute(
+                "SELECT seal_content FROM tubi_analyses WHERE seal_content IS NOT NULL AND seal_content != ''"
+            ).fetchall()
         content_sets = []
         for c in all_contents:
             raw = c["seal_content"] or ""
@@ -178,17 +184,37 @@ async def list_seals(
 
         seals.sort(key=lambda s: s["usage_count"], reverse=True)
 
-        count_query = "SELECT COUNT(*) FROM seals WHERE 1=1"
-        count_params = []
-        if artist and artist != "all":
-            count_query += " AND artist_name LIKE ?"
-            count_params.append(f"%{artist}%")
-        if seal_type:
-            count_query += " AND seal_type = ?"
-            count_params.append(seal_type)
-        total = conn.execute(count_query, count_params).fetchone()[0]
+        total = len(seals)
+        paginated = seals[skip:skip + limit]
 
-        return {"success": True, "seals": seals, "total": total}
+        return {"success": True, "seals": paginated, "total": total}
+    finally:
+        conn.close()
+
+
+@router.get("/by-name/{name}")
+async def get_seal_by_name(
+    name: str,
+    artist: Optional[str] = None,
+):
+    conn = get_db_connection()
+    try:
+        query = "SELECT * FROM seals WHERE name = ?"
+        params = [name]
+        if artist and artist != "all":
+            query += " AND artist_name LIKE ?"
+            params.append(f"%{artist}%")
+
+        seal = conn.execute(query, params).fetchone()
+        if not seal:
+            # 不带 artist 再试一次
+            seal = conn.execute("SELECT * FROM seals WHERE name = ?", [name]).fetchone()
+        if not seal:
+            raise HTTPException(status_code=404, detail=f"印章 '{name}' 不存在")
+
+        seal = dict(seal)
+        seal["images"] = _get_seal_images(conn, seal["id"])
+        return {"success": True, "seal": seal}
     finally:
         conn.close()
 

@@ -697,10 +697,30 @@ const sealLightboxVisible = ref(false)
 const selectedSealForLightbox = ref({ name: '', images: [] })
 
 function openSealLightbox(name) {
-  const found = sealLibraryCache.value.find(s => s.name === name)
-  if (!found) return
+  let found = sealLibraryCache.value.find(s => s.name === name)
+  if (!found) {
+    loadSealByName(name)
+    return
+  }
   selectedSealForLightbox.value = found
   sealLightboxVisible.value = true
+}
+
+async function loadSealByName(name) {
+  try {
+    const artist = props.currentImage?.artist || ''
+    const res = await sealsApi.getByName(name, { artist })
+    if (res.success && res.seal) {
+      const s = res.seal
+      sealLibraryCache.value.push(s)
+      detailSealImageMap.value[s.name] = !!(s.images && s.images.length > 0)
+      if (s.seal_type) detailSealTypeMap.value[s.name] = s.seal_type
+      selectedSealForLightbox.value = s
+      sealLightboxVisible.value = true
+      return
+    }
+  } catch (e) { /* 静默 */ }
+  ElMessage.info(`「${name}」暂无印章图库记录，可前往印章管理添加`)
 }
 
 const detailSealTags = computed(() => {
@@ -716,7 +736,8 @@ const detailSealTags = computed(() => {
 async function loadSealLibraryForDetail() {
   if (!props.currentImage?.sealContent) return
   try {
-    const res = await sealsApi.list({ limit: 200 })
+    const artist = props.currentImage.artist || ''
+    const res = await sealsApi.list({ limit: 500, artist })
     if (res.success) {
       sealLibraryCache.value = res.seals || []
       const imgMap = {}, typeMap = {}
