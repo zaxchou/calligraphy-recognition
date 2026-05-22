@@ -229,7 +229,7 @@ function clearSearch() { searchQuery.value = ''; currentPage.value = 1; loadWork
 function goToWork(w) {
   const id = w.id || w.db_id
   if (id) {
-    const resolved = router.resolve({ name: 'TubiAnalysis', params: { id } })
+    const resolved = router.resolve({ name: 'TubiDetail', params: { id } })
     window.open(resolved.href, '_blank')
   }
 }

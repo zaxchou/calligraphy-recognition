@@ -77,13 +77,22 @@ def _get_seal_images(conn, seal_id: int) -> list:
         "SELECT id, path, thumbnail_path, description, sort_order FROM seal_images WHERE seal_id = ? ORDER BY sort_order, id",
         (seal_id,)
     ).fetchall()
-    return [{
-        "id": r["id"],
-        "path": r["path"],
-        "thumb_url": r["thumbnail_path"] if r["thumbnail_path"] else r["path"],
-        "description": r["description"] or "",
-        "sort_order": r["sort_order"]
-    } for r in rows]
+    result = []
+    for r in rows:
+        path = r["path"]
+        if path:
+            fname = os.path.basename(path)
+            full = os.path.join(SEAL_DIR, fname)
+            if not os.path.exists(full):
+                continue
+        result.append({
+            "id": r["id"],
+            "path": path,
+            "thumb_url": r["thumbnail_path"] if r["thumbnail_path"] else path,
+            "description": r["description"] or "",
+            "sort_order": r["sort_order"]
+        })
+    return result
 
 
 def _delete_seal_image_files(conn, seal_id: int):

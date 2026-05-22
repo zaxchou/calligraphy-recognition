@@ -828,13 +828,7 @@ const currentPreviewDzi = ref('')
 
 function openImagePreview(imageUrl, dziUrl) {
   currentPreviewImage.value = imageUrl
-  if (dziUrl) {
-    currentPreviewDzi.value = dziUrl
-  } else {
-    const match = imageUrl.match(/([^/]+)\.\w+$/)
-    const baseName = match ? match[1] : ''
-    currentPreviewDzi.value = baseName ? '/dzi/' + baseName + '.dzi' : ''
-  }
+  currentPreviewDzi.value = dziUrl || ''
   imagePreviewVisible.value = true
 }
 
