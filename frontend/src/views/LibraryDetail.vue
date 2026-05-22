@@ -286,7 +286,7 @@
         </el-descriptions>
         <div class="drawer-actions" style="margin-top:16px">
           <el-button type="primary" @click="showDetailDrawer = false; openSuggestEdit(selectedArtwork)">我的意见</el-button>
-          <el-button @click="window.open(`/#/tubi/${selectedArtwork.image_id}`, '_blank')">打开完整详情</el-button>
+          <el-button @click="openTubiDetail">打开完整详情</el-button>
         </div>
       </template>
     </el-drawer>
@@ -606,6 +606,11 @@ function openProofread(artwork) {
   if (imageId) {
     router.push({ name: 'Admin', query: { tab: 'verify', image_id: imageId } })
   }
+}
+
+function openTubiDetail() {
+  if (!selectedArtwork.value?.image_id) return
+  window.open(window.location.origin + '/#/tubi/' + selectedArtwork.value.image_id, '_blank')
 }
 
 function openAnnotate(artwork) {

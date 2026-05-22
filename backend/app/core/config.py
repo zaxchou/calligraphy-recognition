@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     TUBI_IMAGE_ID: str = os.getenv("TUBI_IMAGE_ID", "")
     
     # CV-First 新流程开关
-    USE_CV_FIRST_PIPELINE: bool = os.getenv("USE_CV_FIRST_PIPELINE", "true").lower() in ("1", "true", "yes", "y")
+    USE_CV_FIRST_PIPELINE: bool = os.getenv("USE_CV_FIRST_PIPELINE", "false").lower() in ("1", "true", "yes", "y")
 
     TUBI_PAINT_BG_SAMPLE_RATIO: float = float(os.getenv("TUBI_PAINT_BG_SAMPLE_RATIO", "0.06"))
     TUBI_PAINT_BG_DELTAE: float = float(os.getenv("TUBI_PAINT_BG_DELTAE", "12.0"))
