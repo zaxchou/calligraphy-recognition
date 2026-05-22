@@ -98,7 +98,8 @@
               type="number"
               step="0.1"
               min="0"
-              @keydown.enter="saveAlbumDimension(albumName)"
+              @keydown.enter.prevent="saveAlbumDimension(albumName)"
+              @keyup.enter.prevent="saveAlbumDimension(albumName)"
               @blur="saveAlbumDimension(albumName)"
             />
             <span class="dim-sep">×</span>
@@ -110,7 +111,8 @@
               type="number"
               step="0.1"
               min="0"
-              @keydown.enter="saveAlbumDimension(albumName)"
+              @keydown.enter.prevent="saveAlbumDimension(albumName)"
+              @keyup.enter.prevent="saveAlbumDimension(albumName)"
               @blur="saveAlbumDimension(albumName)"
             />
                 <span class="dim-unit">cm</span>
