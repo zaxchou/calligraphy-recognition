@@ -1,25 +1,17 @@
 import time
 import concurrent.futures
 import os
-import cv2
 import json
-import numpy as np
 import redis
 from PIL import Image
 from datetime import datetime, timedelta
+import numpy as np
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.path_utils import normalize_path
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.tubi_job import TubiJob
-from app.services.siliconflow_service import analyze_image_regions
-from app.services.tubi_auto_params import compute_tubi_params
-from app.services.auto_tags import compute_tags
-from app.services.inscription_content_analyzer import extract_material_tags
-from app.services.tubi_mask_refiner import detect_inscription_grid_density, mask_to_regions, regions_to_mask
-from app.services.qwen_vl_ocr_router import OCRRouter
-from app.tubi.integration import run_cv_first_analysis
 
 
 def generate_heatmap_data(regions: Dict, width: int, height: int) -> list:
@@ -48,39 +40,10 @@ def generate_heatmap_data(regions: Dict, width: int, height: int) -> list:
     return heatmap
 
 
-def _filter_ocr_by_mask(ocr_items, inscription_mask, width, height, min_overlap_pct=0.15):
-    """
-    用 inscription_mask 过滤 OCR 检测结果，只保留落在题跋区域内的文字框。
-    min_overlap_pct: bbox 面积中有多少比例必须落在 mask 内才算通过（默认15%）
-    """
-    if inscription_mask is None or width == 0 or height == 0:
-        return []
-    filtered = []
-    mask_h, mask_w = inscription_mask.shape[:2]
-    scale_x = mask_w / width
-    scale_y = mask_h / height
-    for item in ocr_items:
-        bbox = item["bbox"]
-        x1, y1, x2, y2 = [int(v) for v in bbox]
-        # 映射到 mask 坐标
-        mx1 = int(x1 * scale_x); my1 = int(y1 * scale_y)
-        mx2 = int(x2 * scale_x); my2 = int(y2 * scale_y)
-        mx1_c = max(0, mx1); my1_c = max(0, my1)
-        mx2_c = min(mask_w, mx2); my2_c = min(mask_h, my2)
-        if mx2_c <= mx1_c or my2_c <= my1_c:
-            continue
-        mask_roi = inscription_mask[my1_c:my2_c, mx1_c:mx2_c]
-        mask_pixel_count = cv2.countNonZero(mask_roi)
-        total_pixel_count = (mx2_c - mx1_c) * (my2_c - my1_c)
-        if total_pixel_count <= 0:
-            continue
-        overlap_pct = mask_pixel_count / total_pixel_count
-        if overlap_pct >= min_overlap_pct:
-            filtered.append(item)
-    return filtered
-
-
 settings = get_settings()
+
+
+# ===== Worker Queue Keys =====
 QUEUE_KEY_PENDING = "tubi:queue:pending"
 QUEUE_KEY_PROCESSING = "tubi:queue:processing"
 
@@ -106,36 +69,13 @@ def requeue_processing(conn):
 
 
 def cleanup_stale_jobs():
-    threshold = datetime.now() - timedelta(minutes=30)
     db = SessionLocal()
     try:
-        inflight_jobs = db.query(TubiJob).filter(TubiJob.status == "processing").all()
-        if inflight_jobs:
-            inflight_ids = [j.image_id for j in inflight_jobs]
-            for j in inflight_jobs:
-                j.status = "queued"
-                j.last_error = "任务重启已重排队"
-            db.commit()
-
-            inflight_analyses = (
-                db.query(TubiAnalysis)
-                .filter(TubiAnalysis.image_id.in_(inflight_ids))
-                .filter(TubiAnalysis.status == "analyzing")
-                .all()
-            )
-            if inflight_analyses:
-                for a in inflight_analyses:
-                    a.status = "queued"
-                    a.analysis_note = "任务重启已重排队"
-                db.commit()
-
-        stale = (
-            db.query(TubiAnalysis)
-            .filter(TubiAnalysis.status == "analyzing")
-            .filter(TubiAnalysis.updated_at.isnot(None))
-            .filter(TubiAnalysis.updated_at < threshold)
-            .all()
-        )
+        threshold = datetime.now() - timedelta(minutes=30)
+        stale = db.query(TubiAnalysis).filter(
+            TubiAnalysis.status == "analyzing",
+            TubiAnalysis.updated_at < threshold
+        ).all()
         if stale:
             for a in stale:
                 a.status = "error"
@@ -158,26 +98,12 @@ def cleanup_stale_jobs():
         db.close()
 
 
-def analyze_with_timeout(filepath, width, height, timeout_seconds=900):
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(analyze_image_regions, filepath, width, height)
-    try:
-        return future.result(timeout=timeout_seconds)
-    except concurrent.futures.TimeoutError:
-        try:
-            future.cancel()
-        except Exception:
-            pass
-        return {"success": False, "error": "分析超时，请重试"}
-    finally:
-        try:
-            executor.shutdown(wait=False, cancel_futures=True)
-        except Exception:
-            pass
-
-
-
+# ===== 核心：AI 识图（只做画材+画面描述）=====
 def process_one(conn, image_id: str):
+    """调用 VL 模型，返回画材 + 画面结构描述，写入 analysis_note"""
+    import httpx
+    from app.services.siliconflow_service import encode_image_to_base64
+
     db = SessionLocal()
     db_analysis = None
     db_job = None
@@ -198,19 +124,15 @@ def process_one(conn, image_id: str):
         db_analysis.status = "analyzing"
         db.commit()
 
-        # 读取分析模式
-        mode = db_job.mode if db_job and db_job.mode else "analyze"
-        print(f"[tubi_worker] image={image_id} mode={mode}")
-
         filepath = db_analysis.filepath
-        width = db_analysis.image_width or 0
-        height = db_analysis.image_height or 0
-
-        if not filepath:
+        if not filepath or not os.path.exists(filepath):
             db_analysis.status = "error"
+            db_analysis.analysis_note = "文件不存在"
             db.commit()
             return
 
+        width = db_analysis.image_width or 0
+        height = db_analysis.image_height or 0
         if width == 0 or height == 0:
             with Image.open(filepath) as img:
                 width, height = img.size
@@ -218,92 +140,88 @@ def process_one(conn, image_id: str):
                 db_analysis.image_height = height
             db.commit()
 
-        # ===== 直接 OCR（跳过区域检测）=====
-        print(f"[tubi_worker] OCR: {image_id}")
-        inscription_mask = None
+        # VL 模型：画材 + 画面结构
+        print(f"[tubi_worker] VL: {image_id}")
+        b64 = encode_image_to_base64(filepath, max_side=1536, quality=80)
 
-        # ── OCR 文字识别（全图，不筛选区域）──
-        inscription_content = None
-        inscription_percent = 0.0
+        prompt = (
+            "请用中文简要描述这幅书画作品：\n"
+            "1. 画材：纸张/绢本/绫本等材质判断\n"
+            "2. 画面内容与构图：主体元素、布局方式、笔墨特点\n"
+            "限制在100字以内，只返回描述文本，不要JSON格式。"
+        )
 
-        try:
-            if filepath and os.path.exists(filepath):
-                ocr_router = OCRRouter()
-                ocr_result = ocr_router.process(filepath, width, height)
-                if ocr_result.get("success"):
-                    all_items = ocr_result.get("ocr_items", [])
-                    content_parts = [item["text"] for item in all_items]
-                    inscription_content = " | ".join(content_parts) if content_parts else None
-                    print(f"[tubi_worker] OCR: {len(all_items)} 条")
-        except Exception as e:
-            print(f"[tubi_worker] OCR failed: {e}")
+        result_text = ""
+        for attempt in range(2):
+            try:
+                resp = httpx.post(
+                    f"{settings.SILICONFLOW_BASE_URL}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.SILICONFLOW_API_KEY}"},
+                    json={
+                        "model": getattr(settings, "VL_MODEL", None) or "Qwen/Qwen2.5-VL-32B-Instruct",
+                        "messages": [{"role": "user", "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                            {"type": "text", "text": prompt}
+                        ]}],
+                        "max_tokens": 300,
+                        "temperature": 0.3,
+                    },
+                    timeout=60.0
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    result_text = data["choices"][0]["message"]["content"].strip()
+                    break
+                else:
+                    print(f"[tubi_worker] VL {attempt+1} HTTP {resp.status_code}")
+                    time.sleep(2)
+            except Exception as e:
+                print(f"[tubi_worker] VL {attempt+1} error: {e}")
+                time.sleep(2)
 
-        # ── 落库：只持久化需要的数据 ──
-        # 题跋面积占比（排行榜数据源）
-        db_analysis.inscription_percent = inscription_percent
-        
-        # 只有未校对时才覆盖 inscription_content
-        if inscription_content is not None and not db_analysis.inscription_verified:
-            db_analysis.inscription_content = inscription_content
+        if not result_text:
+            db_analysis.status = "error"
+            db_analysis.analysis_note = "VL模型调用失败"
+            if db_job:
+                db_job.status = "error"
+            db.commit()
+            return
 
-        # 画材标签（从 title + inscription_content 提取）
-        try:
-            material_tags_list = extract_material_tags(db_analysis.title or "", inscription_content or "")
-            if material_tags_list:
-                db_analysis.material_tags = ",".join(material_tags_list)
-            else:
-                db_analysis.material_tags = None
-        except Exception as e:
-            print(f"[tubi_worker] 提取画材标签失败: {e}")
-            db_analysis.material_tags = None
-
-        db_analysis.status = "analyzed" if (inscription_content or db_analysis.inscription_content) else "no_text"
+        # 落库
+        db_analysis.analysis_note = result_text
+        db_analysis.status = "analyzed"
         if db_job:
             db_job.status = "done"
-            db_job.last_error = None
 
-        # 自动标签持久化
-        try:
-            record_for_tags = {
-                "title": db_analysis.title,
-                "period_phase": db_analysis.period_phase,
-                "artwork_height_cm": db_analysis.artwork_height_cm,
-                "artwork_width_cm": db_analysis.artwork_width_cm,
-                "content_analysis": db_analysis.content_analysis,
-                "material_tags": db_analysis.material_tags,
-            }
-            auto_tags = compute_tags(record_for_tags)
-            if auto_tags:
-                existing_tags = []
-                if db_analysis.tags:
-                    try:
-                        existing_tags = json.loads(db_analysis.tags) if isinstance(db_analysis.tags, str) else db_analysis.tags
-                    except Exception:
-                        existing_tags = []
-                if not isinstance(existing_tags, list):
-                    existing_tags = []
-                for tag in auto_tags:
-                    if tag not in existing_tags:
-                        existing_tags.append(tag)
-                db_analysis.tags = json.dumps(existing_tags, ensure_ascii=False)
-        except Exception as e:
-            print(f"[tubi_worker] 自动标签持久化失败: {e}")
+        # 画材标签
+        kw_map = {"纸本": "纸本", "绢本": "绢本", "绫本": "绫本", "水墨": "水墨", "设色": "设色", "金笺": "金笺"}
+        tags = [v for k, v in kw_map.items() if k in result_text]
+        if tags:
+            db_analysis.material_tags = ",".join(tags)
+
         db.commit()
+        print(f"[tubi_worker] done: {image_id}")
+
     except Exception as e:
+        print(f"[tubi_worker] error: {e}")
+        import traceback; traceback.print_exc()
         if db_analysis:
             try:
                 db_analysis.status = "error"
-                db_analysis.analysis_note = f"分析失败: {str(e)}"
+                db_analysis.analysis_note = str(e)[:500]
                 if db_job:
                     db_job.status = "error"
-                    db_job.last_error = (db_analysis.analysis_note or "")[:500]
                 db.commit()
             except Exception:
                 pass
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
+# ===== Worker main loop =====
 def run():
     conn = None
     cleanup_stale_jobs()
@@ -364,22 +282,11 @@ def run():
             db = SessionLocal()
             try:
                 job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
-                analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
-                if job:
-                    if analysis and analysis.status == "analyzed":
-                        job.status = "done"
-                        job.last_error = None
-                    elif analysis and analysis.status == "error":
-                        job.status = "error"
-                        job.last_error = (analysis.analysis_note or "")[:500]
-                    else:
-                        job.status = "error"
-                        job.last_error = "任务结束但未生成结果"
+                if job and job.status != "done" and job.status != "error":
+                    job.status = "done"
                     db.commit()
             finally:
                 db.close()
-
-            time.sleep(1)
 
 
 if __name__ == "__main__":
