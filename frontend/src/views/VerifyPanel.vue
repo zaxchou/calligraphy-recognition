@@ -121,18 +121,16 @@
                   :type="seal.isNew ? 'success' : undefined"
                   class="seal-tag"
                   @close="removeSealTag(idx)"
-                  @mouseenter="showSealPreview(seal.name, $event)"
-                  @mouseleave="hideSealPreview"
                 >
                   {{ seal.name }}
                   <template v-if="sealTypeMap[seal.name]">
                     <span class="seal-tag-type">({{ sealTypeMap[seal.name] }})</span>
                   </template>
+                  <div v-if="sealImageMap[seal.name]" class="seal-preview-popup">
+                    <img :src="sealImageMap[seal.name]" class="seal-preview-img" />
+                  </div>
                 </el-tag>
                 <el-button v-if="sealTags.length > 0" type="danger" text size="small" @click="clearAllSeals" class="clear-seals-btn">清空</el-button>
-                <div v-if="previewSealName && sealImageMap[previewSealName]" class="seal-preview-popup" :style="previewPos">
-                  <img :src="sealImageMap[previewSealName]" class="seal-preview-img" />
-                </div>
               </div>
               <div class="seal-input-row">
                 <el-input v-model="sealInput" placeholder="输入印章名回车添加" size="small" style="width: 200px;" @keyup.enter="addSealInput" />
@@ -148,12 +146,13 @@
                       class="seal-library-item"
                       :class="{ 'is-selected': sealTags.some(t => t.name === s.name) }"
                       @click="addSealFromLibrary(s.name)"
-                      @mouseenter="showSealPreview(s.name)"
-                      @mouseleave="hideSealPreview"
                     >
                       <div v-if="sealImageMap[s.name]" class="seal-lib-thumb"><img :src="sealImageMap[s.name]" /></div>
                       <div v-else class="seal-lib-icon"><el-icon :size="14"><Stamp /></el-icon></div>
                       <span class="seal-lib-name">{{ s.name }}</span>
+                      <div v-if="sealImageMap[s.name]" class="seal-preview-popup">
+                        <img :src="sealImageMap[s.name]" class="seal-preview-img" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -279,7 +278,6 @@ const sealInput = ref('')
 const sealLibrary = ref([])
 const sealImageMap = ref({})
 const sealTypeMap = ref({})
-const previewSealName = ref(null)
 
 function parseSealContent(content) {
   if (!content) return []
@@ -315,22 +313,6 @@ function addSealFromLibrary(name) {
   sealTags.value.push({ name, isNew: false })
   editSealContent.value = sealTagsToString()
 }
-
-const previewPos = ref({})
-
-function showSealPreview(name, event) {
-  previewSealName.value = name
-  if (event?.target) {
-    const rect = event.target.getBoundingClientRect()
-    previewPos.value = {
-      position: 'fixed',
-      left: rect.left + rect.width / 2 + 'px',
-      top: rect.top - 8 + 'px',
-      transform: 'translate(-50%, -100%)',
-    }
-  }
-}
-function hideSealPreview() { previewSealName.value = null }
 
 // 按类型分组的印章库
 const groupedSeals = computed(() => {
@@ -804,7 +786,9 @@ defineExpose({ nextRecord, jumpToRecordById })
 .seal-tag { cursor: default; }
 .seal-tag-type { font-size: 10px; color: #999; margin-left: 2px; }
 .clear-seals-btn { margin-left: auto; }
-.seal-preview-popup { z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; pointer-events: none; }
+.seal-tag { position: relative; overflow: visible; }
+.seal-tag .seal-preview-popup { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; }
+.seal-tag:hover .seal-preview-popup { display: block; }
 .seal-preview-img { width: 96px; height: 96px; object-fit: contain; }
 .seal-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .seal-library { border: 1px solid #ebe8e0; border-radius: 8px; padding: 8px; background: #fdfcf9; }
