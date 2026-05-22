@@ -748,10 +748,12 @@ async function startBatchAiAnalyze(mode) {
   aiAnalyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
   try {
     // 增量模式：只包含未分析的作品；全量模式：全部
-    const allIds = artworks.value.filter(a => a.image_id)
+    // 从后端获取所有作品（不限分页），避免只发当前页
+    const allArtworks = await tubiApi.getAllResults(0, 2000, null, libraryId.value)
+    const allItems = (allArtworks?.data || allArtworks || [])
     const imageIds = mode === 'incremental'
-      ? allIds.filter(a => a.status !== 'analyzed').map(a => a.image_id)
-      : allIds.map(a => a.image_id)
+      ? allItems.filter(a => a.status !== 'analyzed').map(a => a.image_id || a.id)
+      : allItems.filter(a => a.image_id || a.id).map(a => a.image_id || a.id)
     if (imageIds.length === 0) {
       ElMessage.warning(mode === 'incremental' ? '没有未分析的作品' : '库内没有可分析的作品')
       aiAnalyzing.value = false
