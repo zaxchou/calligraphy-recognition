@@ -128,11 +128,11 @@
                   <template v-if="sealTypeMap[seal.name]">
                     <span class="seal-tag-type">({{ sealTypeMap[seal.name] }})</span>
                   </template>
+                  <div v-if="previewSealName === seal.name && sealImageMap[seal.name]" class="seal-preview-popup">
+                    <img :src="sealImageMap[seal.name]" class="seal-preview-img" />
+                  </div>
                 </el-tag>
                 <el-button v-if="sealTags.length > 0" type="danger" text size="small" @click="clearAllSeals" class="clear-seals-btn">清空</el-button>
-                <div v-if="previewSealName && sealImageMap[previewSealName]" class="seal-preview-popup">
-                  <img :src="sealImageMap[previewSealName]" class="seal-preview-img" />
-                </div>
               </div>
               <div class="seal-input-row">
                 <el-input v-model="sealInput" placeholder="输入印章名回车添加" size="small" style="width: 200px;" @keyup.enter="addSealInput" />
@@ -791,7 +791,8 @@ defineExpose({ nextRecord, jumpToRecordById })
 .seal-tag { cursor: default; }
 .seal-tag-type { font-size: 10px; color: #999; margin-left: 2px; }
 .clear-seals-btn { margin-left: auto; }
-.seal-preview-popup { position: absolute; top: -110px; left: 50%; transform: translateX(-50%); z-index: 100; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; }
+.seal-tag { position: relative; }
+.seal-preview-popup { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 6px; z-index: 100; background: white; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 6px; }
 .seal-preview-img { width: 96px; height: 96px; object-fit: contain; }
 .seal-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .seal-library { border: 1px solid #ebe8e0; border-radius: 8px; padding: 8px; background: #fdfcf9; }

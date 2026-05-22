@@ -80,7 +80,7 @@
           <h4 class="image-title" :title="record.title">{{ record.title || '未命名' }}</h4>
           <div class="image-meta">
             <span class="year">{{ record.year ? record.year + '年' : (record.period_phase || '年代不详') }}</span>
-            <span v-if="record.period_phase" class="period">{{ record.period_phase }}</span>
+            <span v-if="record.period_phase && record.year" class="period">{{ record.period_phase }}</span>
           </div>
         </div>
       </div>
