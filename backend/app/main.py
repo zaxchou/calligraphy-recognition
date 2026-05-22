@@ -317,3 +317,71 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=settings.SERVER_PORT)
+
+
+# ════════════════════════════════════════════════════════════════
+# 嵌入式 AI 识图 Worker（后台线程，无需单独启动进程）
+# ════════════════════════════════════════════════════════════════
+import threading
+import time as _time
+
+_worker_running = False
+
+def _embedded_worker_loop():
+    """DB 轮询模式：直接查 tubi_jobs 表，不需要 Redis"""
+    global _worker_running
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    from app.core.database import SessionLocal
+    from app.models.tubi_analysis import TubiAnalysis
+    from app.models.tubi_job import TubiJob
+
+    logger = logging.getLogger("embedded_worker")
+    logger.info("嵌入式 Worker 已启动（DB 轮询模式）")
+
+    while _worker_running:
+        db = SessionLocal()
+        image_id = None
+        try:
+            job = db.query(TubiJob).filter(TubiJob.status == "queued").order_by(TubiJob.created_at.asc()).first()
+            if not job:
+                _time.sleep(2)
+                continue
+
+            image_id = job.image_id
+            job.status = "processing"
+            db.commit()
+        except Exception as e:
+            logger.error(f"取任务失败: {e}")
+            _time.sleep(3)
+            continue
+        finally:
+            db.close()
+
+        if not image_id:
+            continue
+
+        # process_one 内部自己管理 DB session
+        try:
+            from tubi_worker import process_one
+            process_one(None, image_id)
+        except Exception as e:
+            logger.error(f"处理失败 {image_id}: {e}")
+
+    logger.info("嵌入式 Worker 已停止")
+
+
+@app.on_event("startup")
+def _start_embedded_worker():
+    global _worker_running
+    if _worker_running:
+        return
+    _worker_running = True
+    t = threading.Thread(target=_embedded_worker_loop, daemon=True, name="tubi-worker")
+    t.start()
+
+
+@app.on_event("shutdown")
+def _stop_embedded_worker():
+    global _worker_running
+    _worker_running = False
