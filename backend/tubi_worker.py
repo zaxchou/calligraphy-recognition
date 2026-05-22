@@ -187,20 +187,23 @@ def process_one(conn, image_id: str):
             db.commit()
             return
 
-        # 落库
+        # 落库 — 立即 commit，防止进程意外退出丢失结果
         db_analysis.analysis_note = result_text
         db_analysis.status = "analyzed"
         if db_job:
             db_job.status = "done"
-
-        # 画材标签
-        kw_map = {"纸本": "纸本", "绢本": "绢本", "绫本": "绫本", "水墨": "水墨", "设色": "设色", "金笺": "金笺"}
-        tags = [v for k, v in kw_map.items() if k in result_text]
-        if tags:
-            db_analysis.material_tags = ",".join(tags)
-
         db.commit()
         print(f"[tubi_worker] done: {image_id}")
+
+        # 画材标签（可选，失败不影响主流程）
+        try:
+            kw_map = {"纸本": "纸本", "绢本": "绢本", "绫本": "绫本", "水墨": "水墨", "设色": "设色", "金笺": "金笺"}
+            tags = [v for k, v in kw_map.items() if k in result_text]
+            if tags:
+                db_analysis.material_tags = ",".join(tags)
+                db.commit()
+        except Exception:
+            pass
 
     except Exception as e:
         print(f"[tubi_worker] error: {e}")
