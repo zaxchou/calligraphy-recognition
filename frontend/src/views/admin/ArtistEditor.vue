@@ -363,7 +363,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Plus, MagicStick, Delete } from '@element-plus/icons-vue'
@@ -373,7 +373,7 @@ import AvatarCropper from '@/components/AvatarCropper.vue'
 const route = useRoute()
 const router = useRouter()
 
-const artistName = route.params.name
+const artistName = computed(() => route.params.name)
 const editing = ref(false)
 const artistId = ref(null)
 const originalName = ref('')
@@ -485,7 +485,7 @@ function normalizePhoto(p) {
 }
 
 async function searchArtworks() {
-  if (!gallerySearch.value || !artistName) return
+  if (!gallerySearch.value || !artistName.value) return
   searching.value = true
   try {
     const params = { keyword: gallerySearch.value, limit: 20 }
@@ -509,10 +509,26 @@ async function fetchArtistOptions() {
   try { const d = await api.get('/content-analysis/artists'); artistOptions.value = d.artists || [] } catch (e) { }
 }
 
+async function loadArtist() {
+  if (artistName.value && artistName.value !== 'new') {
+    await fetchArtist()
+  } else {
+    editing.value = false
+    loading.value = false
+  }
+}
+
+// 侧边栏切换艺术家时自动重新加载
+watch(artistName, () => {
+  if (artistName.value && artistName.value !== 'new') {
+    fetchArtist()
+  }
+})
+
 async function fetchArtist() {
   loading.value = true
   try {
-    const data = await api.get(`/artists/by-name/${encodeURIComponent(artistName)}`)
+    const data = await api.get(`/artists/by-name/${encodeURIComponent(artistName.value)}`)
     if (data.success && data.artist) {
       const a = data.artist
       artistId.value = a.id
@@ -575,12 +591,7 @@ async function handleAiFill() {
 const observer = ref(null)
 onMounted(async () => {
   await Promise.all([fetchPeriods(), fetchArtistOptions()])
-  if (artistName && artistName !== 'new') {
-    await fetchArtist()
-  } else {
-    editing.value = false
-    loading.value = false
-  }
+  await loadArtist()
   observer.value = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting) { activeSection.value = entry.target.id }
