@@ -2362,7 +2362,6 @@ async def batch_update_album_dimensions(request: AlbumDimensionRequest, db: Sess
     updated = (
         db.query(TubiAnalysis)
         .filter(TubiAnalysis.album_name == request.album_name)
-        .filter(TubiAnalysis.artist.in_(["李鱓", "李复堂", "李鳆"]))
         .all()
     )
 
