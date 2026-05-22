@@ -218,85 +218,65 @@ def process_one(conn, image_id: str):
                 db_analysis.image_height = height
             db.commit()
 
-        # ===== OCR + 画材标签 =====
-        # 区域检测已禁用（USE_CV_FIRST_PIPELINE=false 时直接 OCR 整图，不检测区域）
-        skip_region_detection = not getattr(settings, "USE_CV_FIRST_PIPELINE", True)
+        # ===== 统一识图流程：VL区域检测 + OCR + 画材标签 =====
+        # CV 已禁用（USE_CV_FIRST_PIPELINE=false），直接用 VL 做区域检测
+        print(f"[tubi_worker] VL区域检测: {image_id}")
         regions = {}
         inscription_mask = None
 
-        if not skip_region_detection:
-            # ── 区域检测（仅供内部 OCR 过滤用，不落库）──
-            print(f"[tubi_worker] 开始区域检测: {image_id}")
-            use_cv_first = getattr(settings, "USE_CV_FIRST_PIPELINE", True)
-            result = None
+        result = analyze_with_timeout(filepath, width, height)
+        if not result or not result.get("success", False):
+            error_msg = result.get("error", "分析失败") if result else "分析失败"
+            db_analysis.status = "error"
+            db.commit()
+            return
+        regions = result.get("regions", {})
 
-            if use_cv_first:
-                try:
-                    cv_result = run_cv_first_analysis(filepath, width, height)
-                    if cv_result.get("success"):
-                        result = cv_result
-                        regions = result.get("regions", {})
-                        print(f"[tubi_worker] CV-First succeeded. Group: {result.get('group', 'unknown')}")
-                    else:
-                        print(f"[tubi_worker] CV-First failed: {cv_result.get('error', 'unknown')}, falling back to VL")
-                except Exception as e:
-                    print(f"[tubi_worker] CV-First exception: {e}, falling back to VL")
+        # 遮罩生成（用于 OCR 题跋区域过滤）
+        try:
+            paint_seed = regions_to_mask(regions.get("painting_regions", []) or [], width, height)
+            insc_seed = regions_to_mask(regions.get("inscription_regions", []) or [], width, height)
+            if cv2.countNonZero(paint_seed) > 0 and cv2.countNonZero(insc_seed) > 0:
+                paint_norm = cv2.subtract(paint_seed, insc_seed)
+                norm_regions = mask_to_regions(paint_norm)
+                if norm_regions:
+                    regions["painting_regions"] = norm_regions
+        except Exception:
+            pass
 
-            if not result:
-                result = analyze_with_timeout(filepath, width, height)
-                if not result or not result.get("success", False):
-                    error_msg = result.get("error", "分析失败") if result else "分析失败"
-                    db_analysis.status = "error"
-                    db.commit()
-                    return
-                regions = result.get("regions", {})
+        auto = compute_tubi_params(filepath, width, height, regions)
+        insc_auto = (auto or {}).get("insc") or {}
+        try:
+            refined_insc = detect_inscription_grid_density(
+                image_path=filepath,
+                inscription_regions=regions.get("inscription_regions", []) or [],
+                image_width=width,
+                image_height=height,
+                expand_x_ratio=float(insc_auto.get("expand_x_ratio", 0.22)),
+                expand_x_min=int(insc_auto.get("expand_x_min", 48)),
+                expand_y_ratio=float(insc_auto.get("expand_y_ratio", 0.10)),
+                density_thresh_core=float(insc_auto.get("density_thresh_core", 0.055)),
+                density_thresh_expand=float(insc_auto.get("density_thresh_expand", 0.120)),
+                return_mask=True,
+            )
+            if refined_insc.get("ok"):
+                inscription_mask = refined_insc.get("mask")
+        except Exception:
+            pass
 
-            # 遮罩生成（用于 OCR 题跋区域过滤）
+        if inscription_mask is None:
             try:
-                paint_seed = regions_to_mask(regions.get("painting_regions", []) or [], width, height)
-                insc_seed = regions_to_mask(regions.get("inscription_regions", []) or [], width, height)
-                if cv2.countNonZero(paint_seed) > 0 and cv2.countNonZero(insc_seed) > 0:
-                    paint_norm = cv2.subtract(paint_seed, insc_seed)
-                    norm_regions = mask_to_regions(paint_norm)
-                    if norm_regions:
-                        regions["painting_regions"] = norm_regions
+                inscription_seed_mask = regions_to_mask(regions.get("inscription_regions", []) or [], width, height)
+                if cv2.countNonZero(inscription_seed_mask) > 0:
+                    inscription_mask = inscription_seed_mask
             except Exception:
                 pass
 
-            auto = compute_tubi_params(filepath, width, height, regions)
-            insc_auto = (auto or {}).get("insc") or {}
-            try:
-                refined_insc = detect_inscription_grid_density(
-                    image_path=filepath,
-                    inscription_regions=regions.get("inscription_regions", []) or [],
-                    image_width=width,
-                    image_height=height,
-                    expand_x_ratio=float(insc_auto.get("expand_x_ratio", 0.22)),
-                    expand_x_min=int(insc_auto.get("expand_x_min", 48)),
-                    expand_y_ratio=float(insc_auto.get("expand_y_ratio", 0.10)),
-                    density_thresh_core=float(insc_auto.get("density_thresh_core", 0.055)),
-                    density_thresh_expand=float(insc_auto.get("density_thresh_expand", 0.120)),
-                    return_mask=True,
-                )
-                if refined_insc.get("ok"):
-                    inscription_mask = refined_insc.get("mask")
-            except Exception:
-                pass
-
-            if inscription_mask is None:
-                try:
-                    inscription_seed_mask = regions_to_mask(regions.get("inscription_regions", []) or [], width, height)
-                    if cv2.countNonZero(inscription_seed_mask) > 0:
-                        inscription_mask = inscription_seed_mask
-                except Exception:
-                    pass
-        else:
-            print(f"[tubi_worker] 区域检测已禁用，直接全图OCR: {image_id}")
-
-        # ── OCR 文字识别 ──
+        # ── OCR 文字识别（用 inscription_mask 过滤）──
         inscription_content = None
-        inscription_percent = 0.0
 
+        # 从遮罩计算题跋面积占比（排行榜数据源）
+        inscription_percent = 0.0
         if inscription_mask is not None:
             total_px = float(width * height) if width > 0 and height > 0 else 0.0
             if total_px > 0:
@@ -309,7 +289,6 @@ def process_one(conn, image_id: str):
                 ocr_result = ocr_router.process(filepath, width, height)
                 if ocr_result.get("success"):
                     all_items = ocr_result.get("ocr_items", [])
-                    # 有 mask 则过滤，无 mask 则全量
                     filtered_items = _filter_ocr_by_mask(all_items, inscription_mask, width, height) if inscription_mask is not None else all_items
                     content_parts = []
                     for item in filtered_items:
