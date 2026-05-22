@@ -10,6 +10,7 @@
         :auto-upload="false"
         :on-change="handleFileChange"
         :on-remove="handleFileRemove"
+        :on-exceed="handleExceed"
         :file-list="fileList"
         :limit="50"
         multiple
@@ -59,6 +60,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Picture, PictureFilled, Close } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -73,6 +75,9 @@ const fileList = ref([...props.modelValue])
 watch(() => props.modelValue, (v) => { fileList.value = [...v] }, { deep: true })
 watch(fileList, (v) => { emit('update:modelValue', v) }, { deep: true })
 
+function handleExceed(_files, uploadFiles) {
+  ElMessage.warning(`一次最多上传 50 张，当前已选 ${uploadFiles.length} 张，超出部分已自动忽略。请分批次上传。`)
+}
 function handleFileChange(_f, uploadFiles) {
   fileList.value = uploadFiles
   uploadFiles.forEach(f => {
