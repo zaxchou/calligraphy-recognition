@@ -155,10 +155,10 @@ def process_one(conn, image_id: str):
         for attempt in range(2):
             try:
                 resp = httpx.post(
-                    f"{settings.SILICONFLOW_BASE_URL}/chat/completions",
+                    "https://api.siliconflow.cn/v1/chat/completions",
                     headers={"Authorization": f"Bearer {settings.SILICONFLOW_API_KEY}"},
                     json={
-                        "model": getattr(settings, "VL_MODEL", None) or "Qwen/Qwen2.5-VL-32B-Instruct",
+                        "model": getattr(settings, "SILICONFLOW_MODEL", None) or "Qwen/Qwen2.5-VL-32B-Instruct",
                         "messages": [{"role": "user", "content": [
                             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                             {"type": "text", "text": prompt}
