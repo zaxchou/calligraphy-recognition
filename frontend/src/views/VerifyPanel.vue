@@ -577,7 +577,7 @@ function handleAnalyze() { if (!currentRecord.value) return; emit('analyze', { i
 watch(filteredRecords, () => { if (currentIndex.value >= filteredRecords.value.length) currentIndex.value = Math.max(0, filteredRecords.value.length - 1) })
 watch(currentRecord, (rec) => { if (rec) { editContent.value = rec.inscription_content || ''; editSealContent.value = rec.seal_content || ''; sealTags.value = parseSealContent(rec.seal_content || ''); editAnalysisNote.value = rec.analysis_note || '' } })
 watch(() => props.artist, () => { loadSealLibrary() })
-watch(() => props.records, (newRecords) => { if (newRecords.length > 0 && currentIndex.value === 0) { editContent.value = newRecords[0].inscription_content || ''; editSealContent.value = newRecords[0].seal_content || ''; sealTags.value = parseSealContent(newRecords[0].seal_content || '') } }, { immediate: true })
+// 初始化/切换记录时，由 currentRecord watcher 统一处理，不再额外 watch props.records
 
 defineExpose({ nextRecord, jumpToRecordById })
 </script>

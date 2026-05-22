@@ -372,7 +372,6 @@ import AvatarCropper from '@/components/AvatarCropper.vue'
 
 const route = useRoute()
 const router = useRouter()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const artistName = route.params.name
 const editing = ref(false)
@@ -444,20 +443,14 @@ async function onAvatarCropped(blob) {
   const fd = new FormData()
   fd.append('file', blob, 'avatar.jpg')
   try {
-    const res = await fetch(`${API_BASE}/artists/upload-image`, { method: 'POST', body: fd })
-    if (res.ok) {
-      const data = await res.json()
-      if (data.success && data.url) {
-        form.avatar_url = data.url
-        ElMessage.success('上传成功')
-      } else {
-        ElMessage.error(data.detail || '上传失败')
-      }
+    const data = await api.post('/artists/upload-image', fd)
+    if (data.success && data.url) {
+      form.avatar_url = data.url
+      ElMessage.success('上传成功')
     } else {
-      const err = await res.json().catch(() => ({}))
-      ElMessage.error(err.detail || '上传失败')
+      ElMessage.error(data.detail || '上传失败')
     }
-  } catch (e) { ElMessage.error('上传失败') }
+  } catch (e) { ElMessage.error(e.response?.data?.detail || '上传失败') }
 }
 
 async function uploadPhoto(file) {
@@ -465,20 +458,14 @@ async function uploadPhoto(file) {
   const fd = new FormData()
   fd.append('file', file)
   try {
-    const res = await fetch(`${API_BASE}/artists/upload-photo`, { method: 'POST', body: fd })
-    if (res.ok) {
-      const data = await res.json()
-      if (data.success && data.url) {
-        form.photos.push({ url: data.url, thumb_url: data.thumb_url || data.url })
-        ElMessage.success('照片已上传')
-      } else {
-        ElMessage.error(data.detail || '上传失败')
-      }
+    const data = await api.post('/artists/upload-photo', fd)
+    if (data.success && data.url) {
+      form.photos.push({ url: data.url, thumb_url: data.thumb_url || data.url })
+      ElMessage.success('照片已上传')
     } else {
-      const err = await res.json().catch(() => ({}))
-      ElMessage.error(err.detail || '上传失败')
+      ElMessage.error(data.detail || '上传失败')
     }
-  } catch (e) { ElMessage.error('上传失败') }
+  } catch (e) { ElMessage.error(e.response?.data?.detail || '上传失败') }
   finally { uploadingPhoto.value = false }
   return false
 }
@@ -501,52 +488,46 @@ async function searchArtworks() {
   if (!gallerySearch.value || !artistName) return
   searching.value = true
   try {
-    const params = new URLSearchParams({ keyword: gallerySearch.value, limit: 20 })
-    const res = await fetch(`${API_BASE}/tubi/search?${params}`)
-    if (res.ok) {
-      const data = await res.json()
-      searchResults.value = (data.data || []).map(w => ({
-        id: w.id || w.db_id,
-        title: w.title || w.work_name || '未命名',
-        year: w.year || '',
-        thumbnail_url: w.thumbnail_url || w.url || '',
-        url: w.url || ''
-      }))
-    }
+    const params = { keyword: gallerySearch.value, limit: 20 }
+    const data = await api.get('/tubi/search', { params })
+    searchResults.value = (data.data || []).map(w => ({
+      id: w.id || w.db_id,
+      title: w.title || w.work_name || '未命名',
+      year: w.year || '',
+      thumbnail_url: w.thumbnail_url || w.url || '',
+      url: w.url || ''
+    }))
   } catch (e) { }
   finally { searching.value = false }
 }
 
 async function fetchPeriods() {
-  try { const r = await fetch(`${API_BASE}/artists/periods`); if (r.ok) { const d = await r.json(); periods.value = d.periods || [] } } catch (e) { }
+  try { const d = await api.get('/artists/periods'); periods.value = d.periods || [] } catch (e) { }
 }
 
 async function fetchArtistOptions() {
-  try { const r = await fetch(`${API_BASE}/content-analysis/artists`); if (r.ok) { const d = await r.json(); artistOptions.value = d.artists || [] } } catch (e) { }
+  try { const d = await api.get('/content-analysis/artists'); artistOptions.value = d.artists || [] } catch (e) { }
 }
 
 async function fetchArtist() {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(artistName)}`)
-    if (res.ok) {
-      const data = await res.json()
-      if (data.success && data.artist) {
-        const a = data.artist
-        artistId.value = a.id
-        originalName.value = a.name
-        editing.value = true
-        for (const key of Object.keys(form)) {
-          if (JSON_ARRAYS.includes(key)) {
-            try { form[key] = typeof a[key] === 'string' ? JSON.parse(a[key] || '[]') : (Array.isArray(a[key]) ? a[key] : []) } catch { form[key] = [] }
-            if (key === 'photos') form[key] = form[key].map(normalizePhoto)
-          } else if (key === 'birth_year' || key === 'death_year') {
-            form[key] = a[key] || null
-          } else if (key === 'featured' || key === 'enabled') {
-            form[key] = a[key] || 0
-          } else {
-            form[key] = a[key] || ''
-          }
+    const data = await api.get(`/artists/by-name/${encodeURIComponent(artistName)}`)
+    if (data.success && data.artist) {
+      const a = data.artist
+      artistId.value = a.id
+      originalName.value = a.name
+      editing.value = true
+      for (const key of Object.keys(form)) {
+        if (JSON_ARRAYS.includes(key)) {
+          try { form[key] = typeof a[key] === 'string' ? JSON.parse(a[key] || '[]') : (Array.isArray(a[key]) ? a[key] : []) } catch { form[key] = [] }
+          if (key === 'photos') form[key] = form[key].map(normalizePhoto)
+        } else if (key === 'birth_year' || key === 'death_year') {
+          form[key] = a[key] || null
+        } else if (key === 'featured' || key === 'enabled') {
+          form[key] = a[key] || 0
+        } else {
+          form[key] = a[key] || ''
         }
       }
     }

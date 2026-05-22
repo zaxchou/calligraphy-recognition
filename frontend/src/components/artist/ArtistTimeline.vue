@@ -73,11 +73,17 @@ function normalizeDynasty(raw) {
   return '年代不详'
 }
 
+const pinyinCache = new Map()
+
 function getPinyinFirst(name) {
   if (!name) return '#'
+  const cached = pinyinCache.get(name)
+  if (cached !== undefined) return cached
   const py = pinyin(name, { toneType: 'none', type: 'array' })
   const first = py[0]?.charAt(0) || ''
-  return /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#'
+  const result = /[a-zA-Z]/.test(first) ? first.toUpperCase() : '#'
+  pinyinCache.set(name, result)
+  return result
 }
 
 const expandedMap = ref({})
@@ -97,7 +103,7 @@ function updateExpanded() {
 
 watch(() => [props.artists, props.autoExpand], () => {
   updateExpanded()
-}, { deep: true, immediate: true })
+}, { immediate: true })
 
 function toggleExpanded(key) {
   expandedMap.value = { ...expandedMap.value, [key]: !expandedMap.value[key] }

@@ -29,6 +29,7 @@ from app.models.literature_reference import LiteratureReference
 from app.models.auction_record import AuctionRecord
 from app.models.research_note import ResearchNote
 from app.models.user import User
+from app.services.dzi_generator import generate_dzi as _gen_dzi
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -387,6 +388,14 @@ async def upload_artwork(
         create_thumbnail_simple(filepath, thumbnail_path)
     except Exception as e:
         logger.warning(f"获取图片尺寸/缩略图失败: {e}")
+
+    # 生成 DZI 瓦片（异步、非阻塞）
+    try:
+        _dzidir = settings.DZI_DIR
+        os.makedirs(_dzidir, exist_ok=True)
+        _gen_dzi(filepath, _dzidir)
+    except Exception as e:
+        logger.warning("DZI 生成失败（不影响上传）: %s", e)
 
     # 文件名拆解：朝代_作者_作品名_年份（未显式传参时自动提取）
     parsed = _parse_filename_meta(file.filename, title, artist, year, period)

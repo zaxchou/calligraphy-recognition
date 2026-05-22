@@ -165,6 +165,28 @@ def run_migrations():
                     (lib_name, artist_name),
                 )
                 logger.info("Migration: 创建画库 %s", lib_name)
+        # ── 确保 tubi_analyses 有 Phase 1 多用户底座所有列 ──
+        ta_cols = {row[1] for row in conn.execute("PRAGMA table_info(tubi_analyses)").fetchall()}
+        for col, defn in [
+            ("library_id", "INTEGER DEFAULT NULL"),
+            ("owner_id", "INTEGER DEFAULT NULL"),
+            ("visibility", "TEXT DEFAULT 'public'"),
+            ("created_by", "TEXT DEFAULT NULL"),
+            ("material", "TEXT DEFAULT NULL"),
+            ("mounting_format", "TEXT DEFAULT NULL"),
+            ("current_location", "TEXT DEFAULT NULL"),
+            ("provenance", "TEXT DEFAULT NULL"),
+            ("style_tags", "TEXT DEFAULT NULL"),
+            ("subject_tags", "TEXT DEFAULT NULL"),
+            ("technique_tags", "TEXT DEFAULT NULL"),
+            ("free_tags", "TEXT DEFAULT NULL"),
+            ("inscription_author", "TEXT DEFAULT NULL"),
+            ("inscription_date", "TEXT DEFAULT NULL"),
+        ]:
+            if col not in ta_cols:
+                conn.execute(f"ALTER TABLE tubi_analyses ADD COLUMN {col} {defn}")
+                logger.info("Migration: added tubi_analyses.%s column", col)
+
         # 归入现有作品
         lib_map = {
             r[1]: r[0] for r in conn.execute(

@@ -1154,10 +1154,23 @@ onUnmounted(() => {
   color: #fff;
   flex-shrink: 0;
   cursor: default;
+  transition: background 0.2s;
 }
 
-.artwork-status-dots .status-dot.done { background: #5a8c7a; }
-.artwork-status-dots .status-dot.pending { background: rgba(0,0,0,0.35); }
+.artwork-status-dots .status-dot.done {
+  background: #4caf50;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.artwork-status-dots .status-dot.pending {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.25);
+}
+
+.artwork-card:hover .artwork-status-dots .status-dot.pending {
+  background: rgba(0,0,0,0.3);
+  color: rgba(255,255,255,0.6);
+}
 
 .artwork-info {
   padding: 8px 10px 6px;

@@ -11,12 +11,6 @@
           <span class="ornament-line"></span>
         </div>
       </div>
-      <div class="header-actions">
-        <el-button type="primary" @click="showCreateDialog = true">
-          <el-icon><Plus /></el-icon>
-          新建条屏
-        </el-button>
-      </div>
     </div>
 
     <!-- 加载状态 -->
@@ -26,7 +20,7 @@
     </div>
 
     <div v-else>
-      <!-- 统计栏 -->
+      <!-- 统计栏 + 操作按钮 -->
       <div class="stats-bar">
         <div class="stat-card">
           <span class="stat-num">{{ strips.length }}</span>
@@ -35,6 +29,12 @@
         <div class="stat-card">
           <span class="stat-num">{{ totalItems }}</span>
           <span class="stat-label">作品总数</span>
+        </div>
+        <div class="stats-bar-actions">
+          <el-button type="primary" size="large" @click="showCreateDialog = true">
+            <el-icon><Plus /></el-icon>
+            新建条屏
+          </el-button>
         </div>
       </div>
 
@@ -814,17 +814,24 @@ onMounted(() => {
 /* 统计栏 */
 .stats-bar {
   display: flex;
+  align-items: center;
   gap: 16px;
   margin-bottom: 24px;
 }
 
 .stat-card {
   flex: 1;
+  max-width: 200px;
   background: #fff;
   border: 1px solid #e8e6dc;
   border-radius: 12px;
   padding: 16px 20px;
   text-align: center;
+}
+
+.stats-bar-actions {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .stat-num {

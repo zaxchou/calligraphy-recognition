@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { siteConfig } from '../config'
+import api from '@/api'
 
 const routes = [
   {
@@ -222,6 +223,7 @@ router.beforeResolve(async (to, _from) => {
   const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis']
   if (artistRoutes.includes(to.name) && to.params.name) {
     const raw = to.params.name
+    // 已缓存的 canonical 名 → 直接返回，不发起网络请求
     if (nameCache.has(raw)) {
       const canonical = nameCache.get(raw)
       if (canonical && canonical !== raw) {
@@ -229,22 +231,18 @@ router.beforeResolve(async (to, _from) => {
       }
       return true
     }
+    // 未命中 → 请求后端 canonical 解析（复用 api 实例，自动携带 auth）
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-      const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(raw)}`)
-      if (res.ok) {
-        const data = await res.json()
-        const canonical = data.canonical_name || raw
-        nameCache.set(raw, canonical)
-        if (canonical !== raw) {
-          nameCache.set(canonical, canonical)
-          return { name: to.name, params: { ...to.params, name: canonical } }
-        }
-      } else {
-        nameCache.set(raw, null)
+      const data = await api.get(`/artists/by-name/${encodeURIComponent(raw)}`)
+      const canonical = data.canonical_name || raw
+      nameCache.set(raw, canonical)
+      if (canonical !== raw) {
+        nameCache.set(canonical, canonical)
+        return { name: to.name, params: { ...to.params, name: canonical } }
       }
     } catch (e) {
-      // network error - allow navigation, component will handle 404
+      // 网络错误或名称不存在——允许导航继续，页面组件自行处理 404
+      // 不缓存 null 结果，允许后续重试
     }
   }
   return true

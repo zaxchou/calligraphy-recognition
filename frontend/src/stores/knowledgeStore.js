@@ -40,6 +40,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   const processingStage = ref('')
   const currentTaskId = ref(null)
   let processingInterval = null
+  let searchProgressInterval = null  // tracked for cleanup on unmount
   
   // 统计
   const stats = ref(null)
@@ -300,8 +301,11 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     queryRewrite.value = null
     relatedImages.value = []
 
+    // 清除上一次搜索的进度条（避免并行搜索时泄漏）
+    if (searchProgressInterval) { clearInterval(searchProgressInterval); searchProgressInterval = null }
+
     // 模拟进度条
-    const progressInterval = setInterval(() => {
+    searchProgressInterval = setInterval(() => {
       if (searchProgress.value < 80) {
         searchProgress.value += Math.random() * 15
       }
@@ -315,7 +319,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
         include_private: options.includePrivate || false,  // Phase 3b
       })
 
-      clearInterval(progressInterval)
+      if (searchProgressInterval) { clearInterval(searchProgressInterval); searchProgressInterval = null }
       searchProgress.value = 100
 
       searchResults.value = response.results || []
@@ -334,7 +338,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
 
       return response
     } catch (error) {
-      clearInterval(progressInterval)
+      if (searchProgressInterval) { clearInterval(searchProgressInterval); searchProgressInterval = null }
       throw error
     } finally {
       setTimeout(() => {
@@ -455,6 +459,18 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     }
   }
   
+  // 清理所有定时器（组件 unmount 时调用，防止内存泄漏）
+  function cleanup() {
+    if (processingInterval) {
+      clearInterval(processingInterval)
+      processingInterval = null
+    }
+    if (searchProgressInterval) {
+      clearInterval(searchProgressInterval)
+      searchProgressInterval = null
+    }
+  }
+
   // 重置上传状态
   function resetUploadStatus() {
     uploadStatus.value = 'idle'
@@ -536,6 +552,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     fetchStats,
     resetUploadStatus,
     clearSearchResults,
+    cleanup,
 
     // Phase 3a: 私人文档 actions
     fetchMyDocuments,

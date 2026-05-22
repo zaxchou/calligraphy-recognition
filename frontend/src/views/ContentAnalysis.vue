@@ -400,18 +400,17 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { Download, MagicStick, Loading } from '@element-plus/icons-vue'
+import api from '@/api'
 
 const router = useRouter()
 const route = useRoute()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const selectedArtist = ref('')
 const artistList = ref([])
 const loading = ref(false)
 async function fetchArtistList() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
     // URL query 优先
     const urlArtist = route.query.artist
@@ -512,15 +511,15 @@ onMounted(() => {
 async function loadStats() {
   loading.value = true
   try {
-    const params = new URLSearchParams({ artist: selectedArtist.value })
-    const [statsRes, corrRes, sizeStatsRes] = await Promise.all([
-      fetch(`${API_BASE}/content-analysis/stats?${params}`),
-      fetch(`${API_BASE}/content-analysis/correlation?${params}`),
-      fetch(`${API_BASE}/content-analysis/size-stats?${params}`),
+    const params = { artist: selectedArtist.value }
+    const [statsDataRes, corrRes, sizeStatsRes] = await Promise.all([
+      api.get('/content-analysis/stats', { params }),
+      api.get('/content-analysis/correlation', { params }),
+      api.get('/content-analysis/size-stats', { params }),
     ])
-    statsData.value = await statsRes.json()
-    correlationData.value = await corrRes.json()
-    sizeStats.value = await sizeStatsRes.json()
+    statsData.value = statsDataRes
+    correlationData.value = corrRes
+    sizeStats.value = sizeStatsRes
     await nextTick()
     // 延迟渲染确保 DOM 完全加载
     setTimeout(() => {
@@ -536,12 +535,10 @@ async function loadStats() {
 // 页面加载时自动读取缓存的学术报告
 async function loadCachedSummary() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/summary`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artist: selectedArtist.value, force_regenerate: false }),
+    const data = await api.post('/content-analysis/summary', {
+      artist: selectedArtist.value,
+      force_regenerate: false,
     })
-    const data = await res.json()
     if (data.success && data.summary) {
       summaryData.value = data.summary
       summaryCached.value = data.cached || false
@@ -554,19 +551,20 @@ async function loadCachedSummary() {
       }
     }
   } catch (e) {
-    // 静默失败，不影响主流程
+    // 用户未登录或没有编辑权限时静默跳过；其他错误记录日志
+    if (e.response?.status !== 401 && e.response?.status !== 403) {
+      console.warn('加载缓存报告失败:', e.response?.status || e.message)
+    }
   }
 }
 
 async function generateSummary() {
   summaryLoading.value = true
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/summary`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artist: selectedArtist.value, force_regenerate: true }),
+    const data = await api.post('/content-analysis/summary', {
+      artist: selectedArtist.value,
+      force_regenerate: true,
     })
-    const data = await res.json()
     if (data.success) {
       summaryData.value = data.summary
       reportData.value = data.report || null
@@ -580,7 +578,13 @@ async function generateSummary() {
       ElMessage.error('生成报告失败: ' + (data.error || '未知错误'))
     }
   } catch (e) {
-    ElMessage.error('生成报告失败: ' + e.message)
+    if (e.response?.status === 401) {
+      ElMessage.warning('生成学术报告需要登录并具有编辑权限，请先登录')
+    } else if (e.response?.status === 403) {
+      ElMessage.warning('您的账号没有编辑权限，无法生成学术报告')
+    } else {
+      ElMessage.error('生成报告失败: ' + (e.response?.data?.detail || e.message))
+    }
   } finally {
     summaryLoading.value = false
   }
@@ -1137,10 +1141,9 @@ async function openThemeDialog(themeName) {
   themeDialogData.value = { paintings: [], total: 0, theme_name: themeName, theme_code: theme.code }
   themeDialogOffset = 0
   try {
-    const res = await fetch(
-      `${API_BASE}/content-analysis/theme/${theme.code}/paintings?artist=${selectedArtist.value}&limit=${THEME_DIALOG_PAGE}&offset=0`
-    )
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/theme/${theme.code}/paintings`, {
+      params: { artist: selectedArtist.value, limit: THEME_DIALOG_PAGE, offset: 0 },
+    })
     if (data.success) {
       themeDialogData.value = data
       themeDialogOffset = data.paintings.length
@@ -1162,10 +1165,9 @@ async function openSentimentDialog(polarity, polarityName) {
   sentimentDialogData.value = { paintings: [], total: 0, polarity, polarity_name: polarityName }
   sentimentDialogOffset = 0
   try {
-    const res = await fetch(
-      `${API_BASE}/content-analysis/sentiment/${polarity}/paintings?artist=${selectedArtist.value}&limit=${THEME_DIALOG_PAGE}&offset=0`
-    )
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/sentiment/${polarity}/paintings`, {
+      params: { artist: selectedArtist.value, limit: THEME_DIALOG_PAGE, offset: 0 },
+    })
     if (data.success) {
       sentimentDialogData.value = data
       sentimentDialogOffset = data.paintings.length
@@ -1180,10 +1182,9 @@ async function openSentimentDialog(polarity, polarityName) {
 async function loadMoreSentimentPaintings() {
   sentimentDialogLoadingMore.value = true
   try {
-    const res = await fetch(
-      `${API_BASE}/content-analysis/sentiment/${sentimentDialogData.value.polarity}/paintings?artist=${selectedArtist.value}&limit=${THEME_DIALOG_PAGE}&offset=${sentimentDialogOffset}`
-    )
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/sentiment/${sentimentDialogData.value.polarity}/paintings`, {
+      params: { artist: selectedArtist.value, limit: THEME_DIALOG_PAGE, offset: sentimentDialogOffset },
+    })
     if (data.success) {
       sentimentDialogData.value.paintings.push(...data.paintings)
       sentimentDialogOffset += data.paintings.length
@@ -1201,10 +1202,9 @@ async function openPeriodDialog(period) {
   periodDialogData.value = { paintings: [], total: 0, period }
   periodDialogOffset = 0
   try {
-    const res = await fetch(
-      `${API_BASE}/content-analysis/period/${encodeURIComponent(period)}/paintings?artist=${selectedArtist.value}&limit=${THEME_DIALOG_PAGE}&offset=0`
-    )
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/period/${encodeURIComponent(period)}/paintings`, {
+      params: { artist: selectedArtist.value, limit: THEME_DIALOG_PAGE, offset: 0 },
+    })
     if (data.success) {
       periodDialogData.value = data
       periodDialogOffset = data.paintings.length
@@ -1219,10 +1219,9 @@ async function openPeriodDialog(period) {
 async function loadMorePeriodPaintings() {
   periodDialogLoadingMore.value = true
   try {
-    const res = await fetch(
-      `${API_BASE}/content-analysis/period/${encodeURIComponent(periodDialogData.value.period)}/paintings?artist=${selectedArtist.value}&limit=${THEME_DIALOG_PAGE}&offset=${periodDialogOffset}`
-    )
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/period/${encodeURIComponent(periodDialogData.value.period)}/paintings`, {
+      params: { artist: selectedArtist.value, limit: THEME_DIALOG_PAGE, offset: periodDialogOffset },
+    })
     if (data.success) {
       periodDialogData.value.paintings.push(...data.paintings)
       periodDialogOffset += data.paintings.length
@@ -1259,10 +1258,9 @@ function renderMarkdown(text) {
 async function loadMoreThemePaintings() {
   themeDialogLoadingMore.value = true
   try {
-    const res = await fetch(
-      `${API_BASE}/content-analysis/theme/${themeDialogData.value.theme_code}/paintings?artist=${selectedArtist.value}&limit=${THEME_DIALOG_PAGE}&offset=${themeDialogOffset}`
-    )
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/theme/${themeDialogData.value.theme_code}/paintings`, {
+      params: { artist: selectedArtist.value, limit: THEME_DIALOG_PAGE, offset: themeDialogOffset },
+    })
     if (data.success) {
       themeDialogData.value.paintings.push(...data.paintings)
       themeDialogOffset += data.paintings.length

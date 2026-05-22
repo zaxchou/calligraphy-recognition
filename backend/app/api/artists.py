@@ -161,15 +161,21 @@ async def list_artists(
 
         offset = (page - 1) * page_size
         rows = conn.execute(
-            f"SELECT * FROM artists WHERE {where_clause} ORDER BY {sort_sql} LIMIT ? OFFSET ?",
+            f"""SELECT a.id, a.name, a.alias, a.dynasty, a.art_school,
+                       a.birth_year, a.death_year, a.hometown,
+                       a.avatar_url, a.summary, a.featured, a.verified,
+                       a.created_at, a.updated_at,
+                       COALESCE(t.cnt, 0) AS artwork_count
+                FROM artists a
+                LEFT JOIN (SELECT artist, COUNT(*) AS cnt FROM tubi_analyses GROUP BY artist) t
+                  ON a.name = t.artist
+                WHERE {where_clause}
+                ORDER BY {sort_sql}
+                LIMIT ? OFFSET ?""",
             (*params, page_size, offset)
         ).fetchall()
 
         artists = [dict(row) for row in rows]
-        for a in artists:
-            a["artwork_count"] = conn.execute(
-                "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (a["name"],)
-            ).fetchone()[0]
         return {"success": True, "artists": artists, "total": total, "page": page, "page_size": page_size}
     finally:
         conn.close()

@@ -998,6 +998,14 @@ async def upload_images(
                 thumbnail_path = None
                 thumbnail_filename = None
 
+            # 生成 DZI 瓦片（异步、非阻塞）
+            try:
+                _dzidir = settings.DZI_DIR
+                os.makedirs(_dzidir, exist_ok=True)
+                _gen_dzi(filepath, _dzidir)
+            except Exception as e:
+                logger.warning("DZI 生成失败（不影响上传）: %s", e)
+
             # 保存到数据库 - 使用标准化路径
             # 解析文件名提取 title/artist/year/period
             parsed = _parse_calligraphy_filename(file.filename)
@@ -1197,6 +1205,14 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
     elif image_url:
         thumbnail_url = image_url
 
+    # 构建 DZI URL
+    dzi_url = None
+    if image_url and image_url.startswith("/static/uploads/"):
+        img_basename = os.path.splitext(basename(image_url))[0]
+        dzi_path = os.path.join(settings.DZI_DIR, f"{img_basename}.dzi")
+        if os.path.exists(dzi_path):
+            dzi_url = f"/dzi/{img_basename}.dzi"
+
     # 解析 position_analysis JSON
     position_analysis_data = None
     if db_analysis.position_analysis:
@@ -1222,6 +1238,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
             "filepath": db_analysis.filepath,
             "url": image_url,
             "thumbnail_url": thumbnail_url,
+            "dzi_url": dzi_url,
             "image_width": db_analysis.image_width,
             "image_height": db_analysis.image_height,
             "width": db_analysis.image_width,

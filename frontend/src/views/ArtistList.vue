@@ -134,7 +134,6 @@ function handlePinyinSearch() {
     }
     if (matching.length > 0) {
       pinyinSearchNames.value = matching
-      store.clear()
       doLoad()
       return
     }
@@ -143,7 +142,6 @@ function handlePinyinSearch() {
 }
 
 function onFilterChange() {
-  store.clear()
   pinyinLetterNames.value = []
   pinyinSearchNames.value = []
   activeLetter.value = ''

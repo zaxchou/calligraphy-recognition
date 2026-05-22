@@ -14,6 +14,8 @@ export const useArtistStore = defineStore('artist', () => {
   const statsSummary = ref(null)
   const lastFetchTime = ref(0)
   const lastMetaTime = ref(0)
+  const lastFetchKey = ref('')           // 缓存键：JSON params，避免同参数重复请求
+  const lastFetchList = ref([])          // 缓存上一次的成功结果，filter 切换时先显示旧数据
 
   function isStale() {
     return Date.now() - lastFetchTime.value > CACHE_TTL
@@ -39,6 +41,14 @@ export const useArtistStore = defineStore('artist', () => {
   }
 
   async function fetchPage(page = 1, filters = {}) {
+    const paramsKey = JSON.stringify({ page, sort: filters.sort || 'created_at', dynasty: filters.dynasty || '', school: filters.school || '', keyword: filters.keyword || '', names: filters.names || '' })
+
+    // 首页 + 相同参数 + 缓存未过期 → 直接返回缓存
+    if (page === 1 && !isStale() && lastFetchKey.value === paramsKey && lastFetchList.value.length > 0) {
+      list.value = lastFetchList.value
+      return { artists: list.value, total: total.value }
+    }
+
     const params = {
       page,
       page_size: 40,
@@ -60,10 +70,20 @@ export const useArtistStore = defineStore('artist', () => {
     }
     total.value = data.total || 0
     lastFetchTime.value = Date.now()
+    lastFetchKey.value = paramsKey
+    lastFetchList.value = list.value
     return data
   }
 
   async function fetchAll(filters = {}) {
+    const paramsKey = JSON.stringify({ sort: filters.sort || 'created_at', dynasty: filters.dynasty || '', school: filters.school || '', keyword: filters.keyword || '', names: filters.names || '' })
+
+    // 相同参数 + 缓存未过期 → 直接返回缓存，不发起请求
+    if (!isStale() && lastFetchKey.value === paramsKey && lastFetchList.value.length > 0) {
+      list.value = lastFetchList.value
+      return { artists: list.value, total: total.value }
+    }
+
     const params = {
       page: 1,
       page_size: 2000,
@@ -78,6 +98,8 @@ export const useArtistStore = defineStore('artist', () => {
     list.value = data.artists || []
     total.value = data.total || 0
     lastFetchTime.value = Date.now()
+    lastFetchKey.value = paramsKey
+    lastFetchList.value = list.value
     return data
   }
 

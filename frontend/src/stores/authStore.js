@@ -128,10 +128,5 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin, isSuperAdmin, isEditor, score,
     loginByCode, loginByPassword, sendCode, register, login,
     logout, getAuthHeader, refreshProfile,
-    token, userInfo, loading,
-    isLoggedIn, userId, nickname, avatarUrl, role,
-    isAdmin, isSuperAdmin, isEditor,
-    loginByCode, loginByPassword, sendCode, register, login,
-    logout, getAuthHeader,
   }
 })

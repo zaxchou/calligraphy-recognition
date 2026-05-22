@@ -89,8 +89,27 @@ const authStore = useAuthStore()
 
 
 const ALL_CATEGORIES = ['作品库', '工具', '批量操作', '系统']
+const EXPAND_STORAGE_KEY = 'admin_sidebar_expanded_libs'
+
+function _loadExpandedFromStorage() {
+  try {
+    const raw = localStorage.getItem(EXPAND_STORAGE_KEY)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr)) return new Set(arr)
+    }
+  } catch (_) { /* ignore corrupt data */ }
+  return new Set()
+}
+
+function _saveExpandedToStorage(s) {
+  try {
+    localStorage.setItem(EXPAND_STORAGE_KEY, JSON.stringify([...s]))
+  } catch (_) { /* quota exceeded, ignore */ }
+}
+
 const expandedGroups = ref(new Set(ALL_CATEGORIES))
-const expandedLibraries = ref(new Set())
+const expandedLibraries = ref(_loadExpandedFromStorage())
 const librarySearch = ref('')
 const userPermissions = ref([])
 
@@ -282,6 +301,11 @@ onMounted(() => {
 })
 
 // 路由变化时同步展开状态
+// 侧边栏展开状态持久化到 localStorage（刷新不丢失）
+watch(expandedLibraries, (val) => {
+  _saveExpandedToStorage(val)
+}, { deep: true })
+
 watch(() => route.query.detail_id, () => {
   const id = route.query.detail_id
   if (id) {
