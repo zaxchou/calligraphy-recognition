@@ -476,6 +476,7 @@ async function saveSingle(id) {
 async function saveAlbumDimension(albumName) {
   const h = albumHeights.value[albumName]
   const w = albumWidths.value[albumName]
+  console.log('[saveAlbum]', albumName, 'h=', h, 'w=', w)
   if (!h && !w) return
   if (!h || !w) { ElMessage.warning('请同时填写高和宽'); return }
   const height = parseFloat(h)
@@ -483,6 +484,7 @@ async function saveAlbumDimension(albumName) {
   if (isNaN(height) || isNaN(width)) { ElMessage.warning('请输入有效数字'); return }
 
   try {
+    console.log('[saveAlbum] sending...', { album_name: albumName, height, width })
     const res = await fetch(`${API_BASE}/tubi/dimensions/album/batch`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -509,6 +511,7 @@ async function saveAlbumDimension(albumName) {
       ElMessage.success(data.message)
     }
   } catch (e) {
+    console.error('[saveAlbum] error:', e)
     ElMessage.error('批量保存失败: ' + e.message)
   }
 }
