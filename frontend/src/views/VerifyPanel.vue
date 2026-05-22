@@ -450,7 +450,7 @@ async function jumpToRecordById(id) {
   if (idx !== -1) {
     currentIndex.value = idx
     const rec = filteredRecords.value[idx]
-    ElMessage.success(`已定位到记录：${rec.title || '无标题'} (${rec.year || '未知年份'})`)
+    ElMessage.success(`已定位到记录：${rec.title || '无标题'} (${rec.year || '年代不详'})`)
     return true
   }
   // 如果被筛选过滤了，尝试在原始 records 中找并清除筛选
