@@ -687,17 +687,41 @@ async def generate_travel_notes(name: str, editor=Depends(require_editor)):
 
         paintings_text = "\n".join([
             f"- [{a['image_id']}] {a['title']} ({a['year'] or '年代不详'})"
-            for a in artworks[:500]
+            for a in artworks[:200]
         ])
 
         city_hint = json.dumps(city_coords, ensure_ascii=False) if city_coords else "无坐标库"
+        # 如果坐标库过大（>5000字符），只保留华东/华北主要城市
+        if len(city_hint) > 5000:
+            important_regions = ['北京', '上海', '天津', '重庆',
+                '南京', '苏州', '扬州', '杭州', '绍兴', '宁波', '无锡', '常州', '镇江', '南通', '徐州',
+                '济南', '青岛', '西安', '洛阳', '开封', '郑州',
+                '广州', '福州', '厦门', '南昌', '长沙', '武汉',
+                '成都', '昆明', '贵阳', '沈阳', '长春', '哈尔滨',
+                '合肥', '太原', '兰州', '银川', '西宁', '拉萨', '乌鲁木齐',
+                '桂林', '南宁', '海口', '三亚',
+                '大同', '保定', '邯郸', '张家口', '承德', '沧州',
+                '淄博', '潍坊', '临沂', '泰安', '济宁', '聊城', '德州', '菏泽',
+                '襄阳', '荆州', '宜昌', '黄冈',
+                '岳阳', '衡阳', '株洲', '湘潭',
+                '赣州', '九江', '景德镇',
+                '泉州', '漳州',
+                '佛山', '东莞', '珠海', '惠州',
+                '遵义', '安顺',
+                '大理', '丽江',
+                '扬州', '淮安', '连云港', '盐城',
+                '金华', '温州', '湖州', '嘉兴', '台州', '衢州',
+                '芜湖', '安庆', '黄山', '宣城',
+                '深圳', '中山', '江门', '湛江']
+            reduced = {k: v for k, v in city_coords.items() if k in important_regions}
+            city_hint = json.dumps(reduced, ensure_ascii=False) + f"\n（完整坐标库共{len(city_coords)}城，以上为主要城市，如需其他城市坐标请告知）"
 
         prompt = f"""你是一位中国美术史专家。请为画家「{name}」({lifespan}) 生成一份结构化的"翰墨行旅"数据。
 
 ## 年谱数据
 {chrono_text}
 
-## 作品列表（共 {len(artworks)} 幅，仅展示前500）
+## 作品列表（共 {len(artworks)} 幅，仅展示前200）
 {paintings_text}
 
 ## 城市坐标库（必须使用，古地名需映射到现代标准城市名）
@@ -736,23 +760,30 @@ async def generate_travel_notes(name: str, editor=Depends(require_editor)):
 7. 只返回JSON，不要任何额外文字"""
 
         # 调用 AI
+        import logging
+        _logger = logging.getLogger(__name__)
         try:
             from app.services.qwen_llm_client import call_qwen_chat
+            _logger.info(f"Travel notes AI: calling LLM for {name}, prompt ~{len(prompt)} chars")
             response = call_qwen_chat(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 max_tokens=8000,
             )
             if "error" in response:
+                _logger.error(f"Travel notes AI error: {response['error']}")
                 raise HTTPException(status_code=500, detail=f"AI调用失败: {response['error']}")
 
             content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
             if not content:
+                _logger.error(f"Travel notes AI: empty content, full response keys: {list(response.keys())}")
                 raise HTTPException(status_code=500, detail="AI返回空内容")
+            _logger.info(f"Travel notes AI: got {len(content)} chars response")
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"AI调用异常: {str(e)}")
+            _logger.error(f"Travel notes AI exception: {type(e).__name__}: {str(e)[:200]}")
+            raise HTTPException(status_code=500, detail=f"AI调用异常: {str(e)[:200]}")
 
         # 解析 JSON
         parsed = _parse_travel_json(content)
