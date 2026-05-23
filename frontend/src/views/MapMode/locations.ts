@@ -71,6 +71,104 @@ export function lookupCity(rawLocation: string): { name: string; lat: number; ln
 // ── 从坐标生成唯一 key（用作分组和标记点 id）──
 export function coordKey(lat: number, lng: number): string { return `${lat.toFixed(2)},${lng.toFixed(2)}` }
 
+// ── 从括号注释中提取可能的现代地名 ──
+// "宣府（今河北张家口）" → ["张家口"]
+// "范县（今属河南）" → []
+function extractParentheticalCities(raw: string): string[] {
+  const m = raw.match(/[（(]今[^）)]*?([一-鿿]{2,6}(?:市|县|区|镇)?)[）)]/)
+  if (m && m[1]) {
+    const coords = CITY_COORDS as Record<string, [number, number]>
+    const hint = m[1]
+    // 直接匹配
+    if (coords[hint]) return [hint]
+    // 尝试去掉后缀
+    const noSuffix = hint.replace(/[市县区镇]$/, '')
+    if (noSuffix !== hint && coords[noSuffix]) return [noSuffix]
+    // 反向匹配
+    for (const key of Object.keys(coords)) {
+      if (hint.includes(key) || key.includes(hint)) return [key]
+    }
+  }
+  return []
+}
+
+// ── 查找位置中的所有匹配城市（用于复合地点如"绍兴、宁波"）──
+export function lookupAllCities(rawLocation: string): { name: string; lat: number; lng: number }[] {
+  if (!rawLocation) return []
+  const coords = CITY_COORDS as Record<string, [number, number]>
+  const results: { name: string; lat: number; lng: number }[] = []
+  const seen = new Set<string>()
+
+  function add(result: { name: string; lat: number; lng: number } | null) {
+    if (result && !seen.has(result.name)) {
+      seen.add(result.name)
+      results.push(result)
+    }
+  }
+
+  // 先尝试从括号中提取现代地名
+  const hints = extractParentheticalCities(rawLocation)
+  for (const hint of hints) {
+    if (coords[hint]) add({ name: hint, lat: coords[hint][0], lng: coords[hint][1] })
+  }
+
+  // 清洗括号后匹配
+  const cleaned = rawLocation.replace(/（[^）]*）/g, '').replace(/\([^)]*\)/g, '').trim()
+  if (!cleaned) return results
+
+  // 1) 精确匹配
+  if (coords[cleaned]) { add({ name: cleaned, lat: coords[cleaned][0], lng: coords[cleaned][1] }); return results }
+
+  // 2) 按分隔符拆分，对每个部分尝试匹配（ALL parts, not just first）
+  const parts = cleaned.split(/[、，,至到]/).map(p => p.trim()).filter(Boolean)
+  for (const part of parts) {
+    // 2a) 直接匹配
+    if (coords[part]) { add({ name: part, lat: coords[part][0], lng: coords[part][1] }); continue }
+    // 2b) 去掉省名前缀
+    let short = part
+    for (const prefix of ['江苏', '浙江', '山东', '安徽', '河南', '河北', '湖北', '湖南', '广东', '广西', '福建', '江西', '四川', '云南', '贵州', '陕西', '甘肃', '辽宁', '吉林', '黑龙江', '山西', '海南', '台湾', '北京市', '上海市', '天津市', '重庆市', '北京', '上海', '天津', '重庆']) {
+      if (short.startsWith(prefix)) {
+        short = short.slice(prefix.length)
+        if (coords[short]) { add({ name: short, lat: coords[short][0], lng: coords[short][1] }) }
+        break
+      }
+    }
+    // 2c) 反向匹配
+    if (!seen.has(part)) {
+      for (const [key, val] of Object.entries(coords)) {
+        if (part.includes(key) || key.includes(part)) {
+          add({ name: key, lat: val[0], lng: val[1] })
+          break
+        }
+      }
+    }
+  }
+
+  // 3) 全局反向匹配（兜底：整个 cleaned 字符串）
+  if (results.length === 0) {
+    for (const [key, val] of Object.entries(coords)) {
+      if (cleaned.includes(key) || key.includes(cleaned)) {
+        add({ name: key, lat: val[0], lng: val[1] })
+        break
+      }
+    }
+    // 对每个 part 也做一次
+    if (results.length === 0) {
+      for (const part of parts) {
+        for (const [key, val] of Object.entries(coords)) {
+          if (part.includes(key) || key.includes(part)) {
+            add({ name: key, lat: val[0], lng: val[1] })
+            break
+          }
+        }
+        if (results.length > 0) break
+      }
+    }
+  }
+
+  return results
+}
+
 export interface ChronologyEntry {
   year?: string | number; event?: string; location?: string; description?: string
 }
@@ -107,13 +205,14 @@ export function buildLocationsFromChronology(
   for (const entry of chronology) {
     const raw = entry.location || ''
     if (!raw) continue
-    const match = lookupCity(raw)
-    if (!match) continue
-    const key = coordKey(match.lat, match.lng)
-    if (!groups.has(key)) {
-      groups.set(key, { entries: [], name: match.name, lat: match.lat, lng: match.lng })
+    const matches = lookupAllCities(raw)
+    for (const match of matches) {
+      const key = coordKey(match.lat, match.lng)
+      if (!groups.has(key)) {
+        groups.set(key, { entries: [], name: match.name, lat: match.lat, lng: match.lng })
+      }
+      groups.get(key)!.entries.push(entry)
     }
-    groups.get(key)!.entries.push(entry)
   }
 
   const locations: MapLocation[] = []
@@ -231,11 +330,17 @@ function generatePeriodLabel(events: string[], start: number, end: number, index
 
   if (bestLabel && bestScore >= 2) return bestLabel
 
-  // 回退：用生命周期位置
+  // 回退：用生命周期位置（避免重复标签）
   if (total >= 3) {
     if (index === 0) return hasBirth ? '出生与早年' : '早年'
     if (index === total - 1) return '晚年'
-    return `盛年`
+    // 中间时期：按位置给不同标签
+    const middleLabels = ['青壮年', '壮年', '盛年', '中年', '暮年']
+    const labelIdx = index - 1 // 第一个中间时期 → 0
+    const label = middleLabels[Math.min(labelIdx, middleLabels.length - 1)]
+    // 如果中间时期数量超过 middleLabels，追加年份
+    if (labelIdx >= middleLabels.length) return `盛年（${start}-${end}）`
+    return label
   }
   return `${start}-${end}`
 }
