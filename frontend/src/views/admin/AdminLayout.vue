@@ -32,15 +32,14 @@
                 </router-link>
                 <!-- 作品库列表 + 子菜单 -->
                 <div v-for="lib in filteredLibraries" :key="'lib-'+lib.id" class="nav-library" :class="{ 'lib-active': isLibraryActive(lib) }">
-                  <div class="nav-lib-row">
-                    <span class="nav-lib-arrow" :class="{ open: expandedLibraries.has(lib.id) }" @click.stop="toggleLibrary(lib.id)">▸</span>
-                    <router-link
-                      :to="`/admin?tab=libraries&detail_id=${lib.id}`"
+                  <div class="nav-lib-row" @click="toggleLibrary(lib.id)">
+                    <span class="nav-lib-arrow" :class="{ open: expandedLibraries.has(lib.id) }">▸</span>
+                    <span
                       class="nav-lib-link"
                       :class="{ active: activeTab === 'libraries' && route.query.detail_id == lib.id && !route.query.panel }"
                     >
                       {{ lib.name }}
-                    </router-link>
+                    </span>
                   </div>
                   <div v-show="expandedLibraries.has(lib.id)" class="nav-lib-items">
                     <router-link :to="`/admin?tab=libraries&detail_id=${lib.id}`" class="nav-item-sub" :class="{ active: activeTab === 'libraries' && route.query.detail_id == lib.id && !route.query.panel }">作品列表</router-link>
@@ -427,6 +426,7 @@ watch(() => route.name, () => {
   padding: 1px 2px;
   border-radius: 4px;
   transition: background 0.12s;
+  cursor: pointer;
 }
 .nav-lib-row:hover { background: #f0ebe0; }
 
