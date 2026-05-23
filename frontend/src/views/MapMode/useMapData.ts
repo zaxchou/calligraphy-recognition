@@ -199,6 +199,7 @@ export function useMapData() {
         loc.markerRadius = computeRadius(loc.paintingCount, max)
       }
       locationsWithPaintings.value = locs
+    } catch (e: any) {
       error.value = e?.message || '数据加载失败'
       console.error('MapMode fetch error:', e)
     } finally {

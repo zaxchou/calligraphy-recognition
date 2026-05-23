@@ -322,11 +322,11 @@ const periodCities = computed<PeriodCityEntry[]>(() => {
       const chronYears = (chronology.value || []).filter(e => {
         const match = lookupCity(e.location || '')
         return match && coordKey(match.lat, match.lng) === loc.id
-      }).map(e => parseInt(String(e.year || ''))).filter(y => !isNaN(y)).sort()
+      }).map(e => parseInt(String(e.year || ''))).filter(y => !isNaN(y) && y >= cfg.yearRange[0] && y <= cfg.yearRange[1]).sort()
       return {
         locId: loc.id,
         name: loc.name,
-        year: chronYears[0] || 0,
+        year: chronYears[0] || cfg.yearRange[0],
         briefDesc: brief || loc.description?.slice(0, 50) || '',
         color: cfg.color,
       }

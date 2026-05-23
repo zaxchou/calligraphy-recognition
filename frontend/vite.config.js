@@ -15,19 +15,16 @@ export default defineConfig({
     port: 8080,
     proxy: {
       '/api': {
-        target: 'https://124.223.17.29',
-        changeOrigin: true,
-        secure: false
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true
       },
       '/static': {
-        target: 'https://124.223.17.29',
-        changeOrigin: true,
-        secure: false
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true
       },
       '/dzi': {
-        target: 'https://124.223.17.29',
-        changeOrigin: true,
-        secure: false
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true
       }
     },
     // 确保 .mjs 文件正确服务
