@@ -258,7 +258,7 @@ router.afterEach((to) => {
   const pageTitle = to.meta?.title
   const name = to.params?.name
   // 画家相关路由 → 动态标题："李鱓 - 作品 - 墨林百科"
-  if (name && ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis'].includes(to.name)) {
+  if (name && ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistMap'].includes(to.name)) {
     const section = pageTitle?.replace('画家', '') || ''
     document.title = section ? `${name} - ${section} - ${siteConfig.fullTitle}` : `${name} - ${siteConfig.fullTitle}`
     return

@@ -129,10 +129,12 @@ export function buildLocationsFromChronology(
     })
   }
 
-  // 按最早年份排序
+  // 按最早画作年份排序
   locations.sort((a, b) => {
-    const aMin = Math.min(...(a.paintings.map(p => parseInt(String(p.year))).filter(n => !isNaN(n)) || [9999]))
-    const bMin = Math.min(...(b.paintings.map(p => parseInt(String(p.year))).filter(n => !isNaN(n)) || [9999]))
+    const aYears = a.paintings.map(p => parseInt(String(p.year))).filter(n => !isNaN(n))
+    const bYears = b.paintings.map(p => parseInt(String(p.year))).filter(n => !isNaN(n))
+    const aMin = aYears.length > 0 ? Math.min(...aYears) : 9999
+    const bMin = bYears.length > 0 ? Math.min(...bYears) : 9999
     return aMin - bMin
   })
 

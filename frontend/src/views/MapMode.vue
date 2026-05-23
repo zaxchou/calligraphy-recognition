@@ -24,7 +24,7 @@
 
           <!-- Smart Hint: hides after first interaction -->
           <div v-if="!activePanel" class="map-hint">
-            点击城市标记查看李鱓在该地的经历与画作
+            点击城市标记查看{{ artistName }}在该地的经历与画作
           </div>
 
           <!-- City Quick List (top-left overlay) -->
@@ -83,6 +83,7 @@
             <!-- Panel Body -->
             <PeriodPanel
               v-if="activePanel === 'period'"
+              :artist-name="artistName"
               :period-label="currentPeriodLabel"
               :cities="periodCities"
               @select-city="selectCityFromPeriod"
@@ -90,6 +91,7 @@
             <CityPanel
               v-else
               :location="selectedLocation!"
+              :periods="periods"
               @go-to-painting="goToPainting"
             />
           </div>
@@ -104,10 +106,10 @@
           @click="onFilterAll"
         >
           <span class="period-btn-label">全 程</span>
-          <span class="period-btn-year">1686-1756</span>
+          <span class="period-btn-year">{{ totalYearRange }}</span>
         </button>
         <button
-          v-for="period in PERIOD_CONFIG"
+          v-for="period in periods"
           :key="period.id"
           class="period-btn"
           :class="{ active: selectedPeriod === period.id }"
@@ -134,16 +136,17 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { useMapData } from './MapMode/useMapData'
-import { PERIOD_CONFIG, LI_SHAN_LOCATIONS } from './MapMode/locations'
-import type { LocationWithPaintings, Painting } from './MapMode/useMapData'
+import type { MapLocation as LocationWithPaintings, PeriodConfig } from './MapMode/locations'
+import type { Painting } from './MapMode/useMapData'
 import PeriodPanel from './MapMode/PeriodPanel.vue'
 import CityPanel from './MapMode/CityPanel.vue'
 import chinaGeoJSON from '@/assets/china-geojson.json'
 
 const router = useRouter()
+const route = useRoute()
 const chartContainer = ref<HTMLElement | null>(null)
 const selectedLocation = ref<LocationWithPaintings | null>(null)
 const activePanel = ref<'period' | 'city' | null>(null)
@@ -152,12 +155,22 @@ const hasInteracted = ref(false)
 const {
   loading,
   error,
+  artistName,
+  artistBirthYear,
+  artistDeathYear,
   locationsWithPaintings,
+  periods,
   filteredLocations,
   fetchData,
   selectedPeriod,
   selectPeriod: _selectPeriod,
 } = useMapData()
+
+const totalYearRange = computed(() => {
+  const start = artistBirthYear.value || ''
+  const end = artistDeathYear.value || ''
+  return start && end ? `${start}-${end}` : (start || end || '')
+})
 
 let chart: echarts.ECharts | null = null
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
@@ -182,39 +195,22 @@ interface TimelineEntry {
 }
 
 const cachedTimeline = computed<TimelineEntry[]>(() => {
-  // Detailed travel sequence based on historical anchor points,
-  // forming a realistic continuous path without impossible parallel lines.
-  const seq: [string, number, number, string][] = [
-    // ▸ 早年求学与仕进（1686–1713）
-    ['xinghua', 1686, 1713, 'early'],
-    ['nanjing', 1711, 1711, 'exam-court'],
-    ['chengde', 1713, 1713, 'exam-court'],
-    ['beijing', 1713, 1718, 'exam-court'],
-    // ▸ 江湖卖画（1718–1730）
-    ['yangzhou', 1718, 1727, 'wandering'],
-    ['huzhou', 1727, 1727, 'wandering'],
-    ['yangzhou', 1727, 1730, 'wandering'],
-    // ▸ 再度入都（1730–1736）
-    ['beijing', 1730, 1732, 'wandering'],
-    ['yangzhou', 1732, 1736, 'wandering'],
-    ['linyi', 1736, 1736, 'wandering'],
-    // ▸ 山东仕途（1736–1744）
-    ['beijing', 1736, 1737, 'shandong'],
-    ['linzi', 1737, 1738, 'shandong'],
-    ['tengxian', 1738, 1740, 'shandong'],
-    ['jinan', 1740, 1744, 'late'],
-    ['xinghua', 1744, 1745, 'late'],
-    // ▸ 扬州终老（1745–1756）
-    ['yangzhou', 1745, 1756, 'late'],
-    ['nantong', 1756, 1756, 'late'],
-  ]
-  return seq.map(([locId, startYear, endYear, periodId]) => {
-    const loc = LI_SHAN_LOCATIONS.find((l) => l.id === locId)!
-    const cfg = PERIOD_CONFIG.find((p) => p.id === periodId)!
+  const sorted = [...locationsWithPaintings.value].sort((a, b) => {
+    const aY = a.paintings.map(p => Number(p.year)).filter(y => !isNaN(y))
+    const bY = b.paintings.map(p => Number(p.year)).filter(y => !isNaN(y))
+    return (aY[0] || 9999) - (bY[0] || 9999)
+  })
+  return sorted.map((loc) => {
+    const years = loc.paintings.map(p => Number(p.year)).filter(y => !isNaN(y)).sort()
+    const startYear = years[0] || 0
+    const endYear = years[years.length - 1] || startYear
+    const period = periods.value.find(p => startYear >= p.yearRange[0] && startYear <= p.yearRange[1])
     return {
-      locId, name: loc.name, lat: loc.lat, lng: loc.lng,
-      startYear, endYear, periodId,
-      periodLabel: cfg.label, periodColor: cfg.color,
+      locId: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng,
+      startYear, endYear,
+      periodId: period?.id || 'p0',
+      periodLabel: period?.label || '',
+      periodColor: period?.color || '#8b7d6b',
     }
   })
 })
@@ -292,7 +288,7 @@ const periodCities = computed<PeriodCityEntry[]>(() => {
       return true
     })
     .map((e) => {
-      const loc = LI_SHAN_LOCATIONS.find((l) => l.id === e.locId)
+      const loc = locationsWithPaintings.value.find((l) => l.id === e.locId)
       const brief = loc?.description?.split('\n')[0]?.replace(/^[^。]+。/, '').slice(0, 40) || ''
       return {
         locId: e.locId,
@@ -306,12 +302,12 @@ const periodCities = computed<PeriodCityEntry[]>(() => {
 
 const currentPeriodLabel = computed(() => {
   if (!selectedPeriod.value) return ''
-  return PERIOD_CONFIG.find((p) => p.id === selectedPeriod.value)?.label || ''
+  return periods.value.find((p) => p.id === selectedPeriod.value)?.label || ''
 })
 
 const currentPeriodYearRange = computed(() => {
   if (!selectedPeriod.value) return ''
-  const cfg = PERIOD_CONFIG.find((p) => p.id === selectedPeriod.value)
+  const cfg = periods.value.find((p) => p.id === selectedPeriod.value)
   if (!cfg) return ''
   const [s, e] = cfg.yearRange
   return s === e ? `${s}年` : `${s} — ${e}年`
@@ -321,8 +317,11 @@ const periodTooltips = computed(() => {
   const map: Record<string, string> = {}
   const locs = locationsWithPaintings.value
   if (!locs.length) return map
-  for (const period of PERIOD_CONFIG) {
-    const cities = locs.filter((l) => l.periods.includes(period.id))
+  for (const period of periods.value) {
+    const cities = locs.filter((l) => l.paintings.some(p => {
+      const py = Number(p.year); if (isNaN(py)) return false
+      return py >= period.yearRange[0] && py <= period.yearRange[1]
+    }))
     const names = cities.map((c) => c.name).join('、')
     const total = cities.reduce((sum, c) => sum + c.paintingCount, 0)
     map[period.id] = `${names} · 共 ${total} 幅`
@@ -333,11 +332,11 @@ const periodTooltips = computed(() => {
 // ── Helpers ──
 
 function getPeriodLabel(periodId: string): string {
-  return PERIOD_CONFIG.find((p) => p.id === periodId)?.label || periodId
+  return periods.value.find((p) => p.id === periodId)?.label || periodId
 }
 
 function getPeriodColor(periodId: string): string {
-  return PERIOD_CONFIG.find((p) => p.id === periodId)?.color || '#8b7d6b'
+  return periods.value.find((p) => p.id === periodId)?.color || '#8b7d6b'
 }
 
 function formatYearRange(range: [number, number]): string {
@@ -520,22 +519,24 @@ function stopTour() {
 // ── ECharts ──
 
 const CHINESE_NUMS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪']
-const VISITED_PROVINCES = ['北京市', '河北省', '江苏省', '浙江省', '山东省']
 
-// Per-city label position: assign based on longitude to avoid overlaps
-// Eastern cities (>118.3°E) get 'left', western get 'right'
-const LABEL_POSITIONS: Record<string, { position: 'left' | 'right'; offset?: [number, number] }> = {
-  xinghua:  { position: 'left' },
-  nanjing:  { position: 'left' },
-  chengde:  { position: 'right' },
-  yangzhou: { position: 'left',  offset: [0, -8] },
-  huzhou:   { position: 'left' },
-  linyi:    { position: 'right' },
-  linzi:    { position: 'right' },
-  tengxian: { position: 'left' },
-  beijing:  { position: 'right' },
-  jinan:    { position: 'left' },
-  nantong:  { position: 'left' },
+// 自动从 locations 提取省份，东经 >118.3 标签在左，否则在右
+const visitedProvinces = computed(() => {
+  const set = new Set<string>()
+  for (const loc of locationsWithPaintings.value) {
+    const prov = chinaGeoJSON.features.find((f: any) => {
+      const cp = f.properties?.center || f.properties?.cp
+      return cp && Math.abs(cp[0] - loc.lng) < 2.0 && Math.abs(cp[1] - loc.lat) < 1.5
+    })
+    if (prov) set.add(prov.properties.name)
+  }
+  return [...set]
+})
+
+function getLabelPosition(locId: string): { position: 'left' | 'right'; offset?: [number, number] } {
+  const loc = locationsWithPaintings.value.find(l => l.id === locId)
+  if (!loc) return { position: 'right' }
+  return loc.lng > 118.3 ? { position: 'left' } : { position: 'right' }
 }
 
 function makeScatterData(locations: LocationWithPaintings[]) {
@@ -544,7 +545,7 @@ function makeScatterData(locations: LocationWithPaintings[]) {
     const order = meta?.order || 0
     const color = meta?.color || '#c9a96e'
     const num = CHINESE_NUMS[order - 1] || `${order}`
-    const labelCfg = LABEL_POSITIONS[loc.id] || { position: 'right' as const }
+    const labelCfg = getLabelPosition(loc.id)
     const dx = labelCfg.position === 'left' ? -6 : 6
     const extraOffset = labelCfg.offset || [0, 0]
     return {
@@ -685,11 +686,9 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
           if (locId) {
             const meta = cachedMarkerMeta.value.get(locId)
             const loc = allLocations.find((l) => l.id === locId)
-            const periods = loc?.periods || []
-            const labels = periods.map((p: string) => getPeriodLabel(p)).join('、')
-            const yrs = loc?.yearRanges
-              .map((r: [number, number]) => `${r[0]}-${r[1]}`).join('、') || ''
-            return `<strong>${meta?.name || params.name}</strong><br/>时期：${labels}<br/>年份：${yrs}<br/>画作：${count} 幅`
+            const locYears = (loc?.paintings || []).map(p => Number(p.year)).filter(y => !isNaN(y)).sort()
+            const yrStr = locYears.length > 0 ? `${locYears[0]}-${locYears[locYears.length - 1]}` : '未知'
+            return `<strong>${meta?.name || params.name}</strong><br/>年份：${yrStr}<br/>画作：${count} 幅`
           }
           return `<strong>${params.name}</strong><br/>画作数量：${count} 幅`
         }
@@ -716,7 +715,7 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
       },
       emphasis: { disabled: true },
       label: { show: false },
-      regions: VISITED_PROVINCES.map((name) => ({
+      regions: visitedProvinces.value.map((name) => ({
         name,
         itemStyle: { areaColor: '#f0ead8' },
       })),
@@ -862,11 +861,21 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 onMounted(async () => {
-  await fetchData()
+  const name = (route.params.name as string) || '李鱓'
+  await fetchData(name)
   await nextTick()
   initChart()
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
+})
+
+// 侧边栏切换艺术家时重新加载
+watch(() => route.params.name, async (newName) => {
+  if (newName && typeof newName === 'string') {
+    await fetchData(newName)
+    await nextTick()
+    updateChartData()
+  }
 })
 
 onUnmounted(() => {

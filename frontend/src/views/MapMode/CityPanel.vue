@@ -55,8 +55,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { PeriodConfig } from './locations'
-import type { LocationWithPaintings, Painting } from './useMapData'
+import type { MapLocation as LocationWithPaintings } from './locations'
+import type { Painting } from './useMapData'
 
 const props = defineProps<{
   location: LocationWithPaintings
