@@ -41,7 +41,6 @@
                 {{ CHINESE_NUMS[city.order - 1] }}
               </span>
               <span class="city-quick-name">{{ city.name }}</span>
-              <span class="city-quick-province">{{ city.province }}</span>
               <span class="city-quick-count">{{ city.paintingCount }}幅</span>
             </div>
           </div>
@@ -241,7 +240,7 @@ const tourEntries = computed(() => cachedTimeline.value)
 // ── City quick list (top-left overlay) ──
 
 const cityQuickList = computed(() => {
-  const result: { locId: string; order: number; color: string; name: string; province: string; paintingCount: number }[] = []
+  const result: { locId: string; order: number; color: string; name: string; paintingCount: number }[] = []
   for (const entry of cachedTimeline.value) {
     if (result.find((c) => c.locId === entry.locId)) continue
     const loc = locationsWithPaintings.value.find((l) => l.id === entry.locId)
@@ -250,7 +249,6 @@ const cityQuickList = computed(() => {
       order: result.length + 1,
       color: entry.periodColor,
       name: entry.name,
-      province: loc?.province || '',
       paintingCount: loc?.paintingCount || 0,
     })
   }
