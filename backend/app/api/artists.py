@@ -667,7 +667,7 @@ async def generate_travel_notes(name: str, editor=Depends(require_editor)):
         # 获取城市坐标库
         import os as _os
         cities_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
-                                     "frontend", "src", "views", "MapMode", "cities.json")
+                                     "data", "cities.json")
         city_coords = {}
         try:
             with open(cities_path, "r", encoding="utf-8") as f:

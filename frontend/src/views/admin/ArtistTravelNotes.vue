@@ -11,10 +11,10 @@
         </span>
       </div>
       <div class="toolbar-actions">
-        <el-button :loading="generating" type="warning" @click="generateAI">
+        <el-button :loading="generating" type="warning" @click="generateAI" :disabled="!artistName">
           🤖 AI 一键生成
         </el-button>
-        <el-button :loading="saving" type="primary" @click="save" :disabled="!editedJson">
+        <el-button :loading="saving" type="primary" @click="save" :disabled="!editedJson || !artistName">
           保存
         </el-button>
         <el-button @click="resetEdit" :disabled="!hasChanges">撤销</el-button>

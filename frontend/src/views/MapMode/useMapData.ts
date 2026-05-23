@@ -4,6 +4,7 @@ import { artistsApi } from '@/api/artists'
 import {
   buildLocationsFromChronology,
   buildPeriodsFromChronology,
+  PERIOD_COLORS,
   type MapLocation,
   type PeriodConfig,
   type ChronologyEntry,
@@ -22,7 +23,6 @@ export interface Painting {
 
 const MIN_RADIUS = 0.08
 const MAX_RADIUS = 0.25
-const PERIOD_COLORS = ['#a08060', '#c96442', '#5b7a8c', '#8b6d4b', '#6b8b5a', '#8b5a8c', '#4a7a8c', '#c9a06c']
 
 function computeRadius(count: number, maxCount: number): number {
   if (maxCount === 0) return MIN_RADIUS

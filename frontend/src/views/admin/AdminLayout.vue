@@ -36,7 +36,7 @@
                     <span class="nav-lib-arrow" :class="{ open: expandedLibraries.has(lib.id) }">▸</span>
                     <span
                       class="nav-lib-link"
-                      :class="{ active: activeTab === 'libraries' && route.query.detail_id == lib.id && !route.query.panel }"
+                      :class="{ active: isLibraryActive(lib) }"
                     >
                       {{ lib.name }}
                     </span>
