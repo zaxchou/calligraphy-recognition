@@ -573,6 +573,10 @@ class SyncNameRequest(BaseModel):
     new_name: str
 
 
+class TravelNotesUpdate(BaseModel):
+    travel_notes: Optional[str] = None  # JSON string
+
+
 @router.post("/{artist_id}/sync-name")
 async def sync_artist_name(artist_id: int, req: SyncNameRequest, editor=Depends(require_editor)):
     """同步画家姓名到所有相关作品"""
@@ -606,6 +610,202 @@ async def sync_artist_name(artist_id: int, req: SyncNameRequest, editor=Depends(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
+
+
+@router.put("/by-name/{name}/travel-notes")
+async def save_travel_notes(name: str, req: TravelNotesUpdate, editor=Depends(require_editor)):
+    """保存行旅数据（手动编辑或AI生成后保存）"""
+    conn = get_db_connection()
+    try:
+        artist = conn.execute("SELECT id, name FROM artists WHERE name = ?", (name,)).fetchone()
+        if not artist:
+            raise HTTPException(status_code=404, detail="画家不存在")
+
+        conn.execute(
+            "UPDATE artists SET travel_notes = ?, updated_at = ? WHERE name = ?",
+            (req.travel_notes, datetime.now().isoformat(), name)
+        )
+        conn.commit()
+        return {"success": True, "message": "行旅数据已保存"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@router.post("/by-name/{name}/travel-notes/generate")
+async def generate_travel_notes(name: str, editor=Depends(require_editor)):
+    """AI 根据年谱+作品列表生成结构化行旅数据"""
+    conn = get_db_connection()
+    try:
+        artist = conn.execute("SELECT * FROM artists WHERE name = ?", (name,)).fetchone()
+        if not artist:
+            raise HTTPException(status_code=404, detail="画家不存在")
+
+        artist_dict = dict(artist)
+
+        # 获取年谱
+        chronology_raw = artist_dict.get("art_chronology", "[]")
+        try:
+            chronology = json.loads(chronology_raw) if isinstance(chronology_raw, str) else (chronology_raw or [])
+        except Exception:
+            chronology = []
+
+        if not chronology or len(chronology) < 3:
+            raise HTTPException(status_code=400, detail="年谱数据不足（需至少3条记录），请先完善年谱")
+
+        # 获取作品列表
+        artworks = conn.execute(
+            "SELECT image_id, title, year, period, period_phase, thumbnail_path "
+            "FROM tubi_analyses WHERE artist = ? ORDER BY year",
+            (name,)
+        ).fetchall()
+
+        # 获取城市坐标库
+        import os as _os
+        cities_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
+                                     "frontend", "src", "views", "MapMode", "cities.json")
+        city_coords = {}
+        try:
+            with open(cities_path, "r", encoding="utf-8") as f:
+                city_coords = json.load(f)
+        except Exception:
+            pass
+
+        # 构建 prompt
+        birth = artist_dict.get("birth_year") or ""
+        death = artist_dict.get("death_year") or ""
+        lifespan = f"{birth}-{death}" if birth and death else (f"{birth}" if birth else "")
+
+        chrono_text = "\n".join([
+            f"{e.get('year','?')} | {e.get('event','')} | {e.get('location','')} | {e.get('description','')}"
+            for e in chronology[:80]
+        ])
+
+        paintings_text = "\n".join([
+            f"- [{a['image_id']}] {a['title']} ({a['year'] or '年代不详'})"
+            for a in artworks[:500]
+        ])
+
+        city_hint = json.dumps(city_coords, ensure_ascii=False) if city_coords else "无坐标库"
+
+        prompt = f"""你是一位中国美术史专家。请为画家「{name}」({lifespan}) 生成一份结构化的"翰墨行旅"数据。
+
+## 年谱数据
+{chrono_text}
+
+## 作品列表（共 {len(artworks)} 幅，仅展示前500）
+{paintings_text}
+
+## 城市坐标库（必须使用，古地名需映射到现代标准城市名）
+{city_hint}
+
+## 任务
+从年谱中提取该画家一生到访/居住过的所有城市，并为每个城市关联相关作品，按生命阶段划分3-5个有意义的时期。
+
+## 输出格式（严格JSON，不要markdown代码块）
+{{
+  "periods": [
+    {{"id": "p0", "label": "时期名称（如：早年求学、科举仕途、为官时期、罢官归隐、晚年）", "year_range": [起始年, 结束年], "order": 0}}
+  ],
+  "locations": [
+    {{
+      "name": "现代标准城市名（如：绍兴、杭州，必须来自坐标库或古地名→现代名映射）",
+      "lat": 纬度（浮点数，从坐标库取）,
+      "lng": 经度（浮点数，从坐标库取）,
+      "periods": ["p0", "p1"],
+      "summary": "基于年谱史实的100字以内概述，描述画家在此地的活动",
+      "painting_ids": ["uuid1", "uuid2"],
+      "events": [
+        {{"year": 1521, "event": "出生", "description": "基于年谱的详细描述"}}
+      ]
+    }}
+  ]
+}}
+
+## 严格要求
+1. **绝不编造**：所有城市、事件、画作关联必须基于年谱和作品列表中的真实数据
+2. **古地名映射**：古地名必须映射到坐标库中的现代标准城市名（如"山阴"→"绍兴"、"宣府"→"张家口"、"金陵"→"南京"）
+3. **画作关联**：仅将画作关联到该画家确实在该城市的年份范围，±5年容差
+4. **时期划分**：根据人生阶段合理划分，每时期有明确语义标签，不要重复标签
+5. **坐标精确**：lat/lng必须直接从坐标库中取，不得估算
+6. **summary不可编造**：仅基于年谱中的事件描述，不知道的不要写
+7. 只返回JSON，不要任何额外文字"""
+
+        # 调用 AI
+        try:
+            from app.services.qwen_llm_client import call_qwen_chat
+            response = call_qwen_chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+                max_tokens=8000,
+            )
+            if "error" in response:
+                raise HTTPException(status_code=500, detail=f"AI调用失败: {response['error']}")
+
+            content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if not content:
+                raise HTTPException(status_code=500, detail="AI返回空内容")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"AI调用异常: {str(e)}")
+
+        # 解析 JSON
+        parsed = _parse_travel_json(content)
+        if not parsed:
+            raise HTTPException(status_code=500, detail="AI返回的JSON解析失败，请重试")
+
+        # 基础校验
+        if not parsed.get("locations") or len(parsed["locations"]) == 0:
+            raise HTTPException(status_code=500, detail="AI生成的城市列表为空")
+
+        # 补充元数据
+        parsed["generated_at"] = datetime.now().isoformat()
+        parsed["model"] = "deepseek-v3"
+
+        travel_json = json.dumps(parsed, ensure_ascii=False)
+
+        # 保存到 DB
+        conn.execute(
+            "UPDATE artists SET travel_notes = ?, updated_at = ? WHERE name = ?",
+            (travel_json, datetime.now().isoformat(), name)
+        )
+        conn.commit()
+
+        return {"success": True, "travel_notes": parsed, "message": f"AI已生成{len(parsed['locations'])}个城市的行旅数据"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+def _parse_travel_json(content: str) -> dict:
+    """解析 AI 返回的行旅 JSON"""
+    content = content.strip()
+    # 去除可能的 markdown 代码块
+    for prefix in ["```json", "```"]:
+        if content.startswith(prefix):
+            content = content[len(prefix):]
+    if content.endswith("```"):
+        content = content[:-3]
+    content = content.strip()
+
+    start = content.find("{")
+    end = content.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            return json.loads(content[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+    return {}
 
 
 @router.post("/{artist_id}/ai-fill")

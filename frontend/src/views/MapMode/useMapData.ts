@@ -22,6 +22,7 @@ export interface Painting {
 
 const MIN_RADIUS = 0.08
 const MAX_RADIUS = 0.25
+const PERIOD_COLORS = ['#a08060', '#c96442', '#5b7a8c', '#8b6d4b', '#6b8b5a', '#8b5a8c', '#4a7a8c', '#c9a06c']
 
 function computeRadius(count: number, maxCount: number): number {
   if (maxCount === 0) return MIN_RADIUS
@@ -33,6 +34,66 @@ function parseJsonField(raw: any): any[] {
   if (!raw) return []
   if (Array.isArray(raw)) return raw
   try { return JSON.parse(raw) } catch { return [] }
+}
+
+// ── 从 AI travel_notes JSON 映射为 MapLocation[] ──
+function mapTravelNotesToLocations(
+  travelNotes: any,
+  paintings: Painting[],
+): MapLocation[] {
+  const periods: any[] = travelNotes.periods || []
+  const locations: any[] = travelNotes.locations || []
+
+  // 构建 painting image_id → Painting 的快速查找
+  const paintingMap = new Map<string, Painting>()
+  for (const p of paintings) {
+    const key = p.image_id || String(p.id)
+    paintingMap.set(key, p)
+  }
+
+  return locations.map((loc: any) => {
+    const paintingIds: string[] = loc.painting_ids || []
+    const matchedPaintings = paintingIds
+      .map((pid: string) => paintingMap.get(pid))
+      .filter(Boolean) as Painting[]
+
+    // 构建 chronologyLines 从 events
+    const events: any[] = loc.events || []
+    const chronologyLines = events.map((e: any) => {
+      const y = e.year ? `${e.year}年` : ''
+      const ev = e.event || ''
+      const desc = e.description || ''
+      const main = [y, ev].filter(Boolean).join(' ')
+      return desc ? `${main}：${desc}` : main
+    })
+
+    // description = summary（AI生成的城市概述）
+    const description = loc.summary || `${loc.name}（暂无详细记录）`
+
+    return {
+      id: `${(loc.lat || 0).toFixed(2)},${(loc.lng || 0).toFixed(2)}`,
+      name: loc.name || '未知',
+      lat: loc.lat || 0,
+      lng: loc.lng || 0,
+      description,
+      chronologyLines: chronologyLines.length > 0 ? chronologyLines : [description],
+      paintingCount: matchedPaintings.length,
+      paintings: matchedPaintings,
+      markerRadius: 0,
+    } as MapLocation
+  })
+}
+
+// ── 从 AI travel_notes JSON 映射为 PeriodConfig[] ──
+function mapTravelNotesToPeriods(travelNotes: any): PeriodConfig[] {
+  const periods: any[] = travelNotes.periods || []
+  return periods.map((p: any, i: number) => ({
+    id: p.id || `p${i}`,
+    label: p.label || `时期${i + 1}`,
+    yearRange: (p.year_range || [0, 0]) as [number, number],
+    color: PERIOD_COLORS[i % PERIOD_COLORS.length],
+    order: p.order ?? i,
+  }))
 }
 
 export function useMapData() {
@@ -107,15 +168,34 @@ export function useMapData() {
       }))
       allPaintings.value = paintings
 
-      // 构建地点和时期
-      const locs = buildLocationsFromChronology(chron, paintings)
-      const max = Math.max(...locs.map(l => l.paintingCount), 1)
-      for (const loc of locs) {
-        loc.markerRadius = computeRadius(loc.paintingCount, max)
+      // 构建地点和时期（优先使用 AI travel_notes）
+      const travelNotesRaw = artistRes?.artist?.travel_notes || artistRes?.travel_notes
+      let travelNotes: any = null
+      if (travelNotesRaw) {
+        try {
+          travelNotes = typeof travelNotesRaw === 'string' ? JSON.parse(travelNotesRaw) : travelNotesRaw
+        } catch { /* ignore parse error */ }
       }
-      locationsWithPaintings.value = locs
 
-      periods.value = buildPeriodsFromChronology(chron, artistBirthYear.value, artistDeathYear.value)
+      if (travelNotes && travelNotes.locations && travelNotes.locations.length > 0) {
+        // 使用 AI 生成的数据
+        periods.value = mapTravelNotesToPeriods(travelNotes)
+        const locs = mapTravelNotesToLocations(travelNotes, paintings)
+        const max = Math.max(...locs.map(l => l.paintingCount), 1)
+        for (const loc of locs) {
+          loc.markerRadius = computeRadius(loc.paintingCount, max)
+        }
+        locationsWithPaintings.value = locs
+      } else {
+        // 回退：自动派生
+        const locs = buildLocationsFromChronology(chron, paintings)
+        const max = Math.max(...locs.map(l => l.paintingCount), 1)
+        for (const loc of locs) {
+          loc.markerRadius = computeRadius(loc.paintingCount, max)
+        }
+        locationsWithPaintings.value = locs
+        periods.value = buildPeriodsFromChronology(chron, artistBirthYear.value, artistDeathYear.value)
+      }
     } catch (e: any) {
       error.value = e?.message || '数据加载失败'
       console.error('MapMode fetch error:', e)

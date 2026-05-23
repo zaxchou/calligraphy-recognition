@@ -155,6 +155,12 @@ const routes = [
         meta: { title: '编辑画家', requiresAuth: true },
       },
       {
+        path: 'travel-notes',
+        name: 'AdminTravelNotes',
+        component: () => import('../views/admin/ArtistTravelNotes.vue'),
+        meta: { title: '行旅编辑', requiresAuth: true },
+      },
+      {
         path: 'settings',
         name: 'AdminSettings',
         component: () => import('../views/admin/SystemSettings.vue'),

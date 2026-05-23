@@ -44,6 +44,7 @@
                   <div v-show="expandedLibraries.has(lib.id)" class="nav-lib-items">
                     <router-link :to="`/admin?tab=libraries&detail_id=${lib.id}`" class="nav-item-sub" :class="{ active: activeTab === 'libraries' && route.query.detail_id == lib.id && !route.query.panel }">作品列表</router-link>
                     <router-link v-if="lib.artist_name" :to="{ name: 'ArtistEditor', params: { name: lib.artist_name } }" class="nav-item-sub" :class="{ active: route.name === 'ArtistEditor' && route.params.name === lib.artist_name }">艺术家信息</router-link>
+                    <router-link v-if="lib.artist_name" :to="`/admin/travel-notes?artist=${encodeURIComponent(lib.artist_name)}&lib_id=${lib.id}`" class="nav-item-sub" :class="{ active: route.name === 'AdminTravelNotes' && route.query.artist === lib.artist_name }">行旅</router-link>
                     <template v-for="sub in LIBRARY_TAB_SUB_MENUS" :key="'tab-'+sub.key">
                       <router-link v-if="userPermissions.includes(sub.perm)" :to="`/admin?tab=${sub.key}&artist=${encodeURIComponent(lib.artist_name || '')}&lib_id=${lib.id}`" class="nav-item-sub" :class="{ active: activeTab === sub.key && route.query.artist === lib.artist_name }">{{ sub.label }}</router-link>
                     </template>
@@ -152,6 +153,7 @@ function isLibraryActive(lib) {
   if (activeTab.value === 'libraries' && route.query.detail_id == lib.id && !route.query.panel) return true
   if (activeTab.value === 'libraries' && route.query.detail_id == lib.id && route.query.panel) return true
   if (route.name === 'ArtistEditor' && route.params.name === lib.artist_name) return true
+  if (route.name === 'AdminTravelNotes' && route.query.artist === lib.artist_name) return true
   if (activeTab.value === 'verify' && route.query.artist === lib.artist_name) return true
   if (activeTab.value === 'annotation' && route.query.artist === lib.artist_name) return true
   if (activeTab.value === 'artist-rules' && route.query.artist === lib.artist_name) return true
