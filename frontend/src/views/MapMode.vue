@@ -17,6 +17,14 @@
 
     <!-- Main Content -->
     <template v-else>
+      <!-- Top Bar: artist name + breadcrumb -->
+      <div class="map-topbar">
+        <router-link :to="`/artist/${encodeURIComponent(artistName)}`" class="topbar-back">
+          &larr;&nbsp;{{ artistName }}
+        </router-link>
+        <span class="topbar-title">翰墨行旅</span>
+      </div>
+
       <div class="map-main" :class="{ 'panel-open': activePanel }">
         <!-- ECharts Map -->
         <div class="map-wrapper">
@@ -922,6 +930,36 @@ onUnmounted(() => {
   background: #f8f5f0;
   position: relative;
   overflow: hidden;
+}
+
+/* ── Top Bar (breadcrumb) ── */
+.map-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e8e4d8;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.topbar-back {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.92rem;
+  color: #5e5d59;
+  text-decoration: none;
+  transition: color 0.2s;
+  letter-spacing: 0.04em;
+}
+.topbar-back:hover {
+  color: #c9a96e;
+}
+.topbar-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.82rem;
+  color: #b8a990;
+  letter-spacing: 0.08em;
 }
 
 .map-loading,
