@@ -77,6 +77,7 @@ function mapTravelNotesToLocations(
       lng: loc.lng || 0,
       description,
       chronologyLines: chronologyLines.length > 0 ? chronologyLines : [description],
+      periods: loc.periods || [],
       paintingCount: matchedPaintings.length,
       paintings: matchedPaintings,
       markerRadius: 0,
@@ -172,31 +173,32 @@ export function useMapData() {
       const travelNotesRaw = artistRes?.artist?.travel_notes || artistRes?.travel_notes
       let travelNotes: any = null
       if (travelNotesRaw) {
-        try {
-          travelNotes = typeof travelNotesRaw === 'string' ? JSON.parse(travelNotesRaw) : travelNotesRaw
-        } catch { /* ignore parse error */ }
+        try { travelNotes = typeof travelNotesRaw === 'string' ? JSON.parse(travelNotesRaw) : travelNotesRaw } catch (_) { /* ignore */ }
       }
 
+      let locs: MapLocation[]
       if (travelNotes && travelNotes.locations && travelNotes.locations.length > 0) {
         // 使用 AI 生成的数据
         periods.value = mapTravelNotesToPeriods(travelNotes)
-        const locs = mapTravelNotesToLocations(travelNotes, paintings)
-        const max = Math.max(...locs.map(l => l.paintingCount), 1)
-        for (const loc of locs) {
-          loc.markerRadius = computeRadius(loc.paintingCount, max)
-        }
-        locationsWithPaintings.value = locs
+        locs = mapTravelNotesToLocations(travelNotes, paintings)
       } else {
         // 回退：自动派生
-        const locs = buildLocationsFromChronology(chron, paintings)
-        const max = Math.max(...locs.map(l => l.paintingCount), 1)
-        for (const loc of locs) {
-          loc.markerRadius = computeRadius(loc.paintingCount, max)
-        }
-        locationsWithPaintings.value = locs
+        locs = buildLocationsFromChronology(chron, paintings)
         periods.value = buildPeriodsFromChronology(chron, artistBirthYear.value, artistDeathYear.value)
+        // 计算每个 location 所属的时期
+        for (const loc of locs) {
+          const locYears = loc.paintings.map(p => parseInt(String(p.year))).filter(n => !isNaN(n))
+          loc.periods = periods.value
+            .filter(p => locYears.some(y => y >= p.yearRange[0] && y <= p.yearRange[1]))
+            .map(p => p.id)
+        }
       }
-    } catch (e: any) {
+      // 统一计算 marker radius
+      const max = Math.max(...locs.map(l => l.paintingCount), 1)
+      for (const loc of locs) {
+        loc.markerRadius = computeRadius(loc.paintingCount, max)
+      }
+      locationsWithPaintings.value = locs
       error.value = e?.message || '数据加载失败'
       console.error('MapMode fetch error:', e)
     } finally {

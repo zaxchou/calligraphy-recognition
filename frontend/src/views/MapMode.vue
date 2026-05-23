@@ -204,15 +204,23 @@ interface TimelineEntry {
 }
 
 const cachedTimeline = computed<TimelineEntry[]>(() => {
-  const sorted = [...locationsWithPaintings.value].sort((a, b) => {
-    const aY = a.paintings.map(p => Number(p.year)).filter(y => !isNaN(y))
-    const bY = b.paintings.map(p => Number(p.year)).filter(y => !isNaN(y))
-    return (aY[0] || 9999) - (bY[0] || 9999)
+  // 优先按 period yearRange 排序（AI数据更可靠）
+  const locsWithYears = locationsWithPaintings.value.map(loc => {
+    let startYear = 0; let endYear = 0
+    // 尝试从 chronologyLines 提取年份
+    for (const line of (loc.chronologyLines || [])) {
+      const m = line.match(/^(\d+)年/)
+      if (m) {
+        const y = parseInt(m[1])
+        if (startYear === 0 || y < startYear) startYear = y
+        if (y > endYear) endYear = y
+      }
+    }
+    return { loc, startYear, endYear }
   })
-  return sorted.map((loc) => {
-    const years = loc.paintings.map(p => Number(p.year)).filter(y => !isNaN(y)).sort()
-    const startYear = years[0] || 0
-    const endYear = years[years.length - 1] || startYear
+  locsWithYears.sort((a, b) => a.startYear - b.startYear)
+
+  return locsWithYears.map(({ loc, startYear, endYear }) => {
     const period = periods.value.find(p => startYear >= p.yearRange[0] && startYear <= p.yearRange[1])
     return {
       locId: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng,
@@ -290,18 +298,20 @@ const periodCities = computed<PeriodCityEntry[]>(() => {
   const cfg = periods.value.find((p) => p.id === selectedPeriod.value)
   if (!cfg) return []
 
-  // 按年谱条目年份确定该时期涉及的城市（不依赖画作年份）
   return locationsWithPaintings.value
     .filter(loc => {
-      // 优先检查 chronology 中的年份
+      // AI data: 直接用 location.periods 判断
+      if (loc.periods && loc.periods.length > 0) {
+        return loc.periods.includes(selectedPeriod.value!)
+      }
+      // 回退：按年谱条目年份确定
       const chronYears = (chronology.value || []).filter(e => {
         const y = parseInt(String(e.year || '')); if (isNaN(y)) return false
-        // 粗略匹配：chronology 条目属于此 loc（通过 lookupCity）
         const match = lookupCity(e.location || '')
         return match && coordKey(match.lat, match.lng) === loc.id && y >= cfg.yearRange[0] && y <= cfg.yearRange[1]
       })
       if (chronYears.length > 0) return true
-      // 回退：检查画作年份
+      // 再回退：检查画作年份
       return loc.paintings.some(p => {
         const py = Number(p.year); if (isNaN(py)) return false
         return py >= cfg.yearRange[0] && py <= cfg.yearRange[1]
@@ -342,14 +352,16 @@ const periodTooltips = computed(() => {
   if (!locs.length) return map
   for (const period of periods.value) {
     const cities = locs.filter((l) => {
-      // 优先用 chronology 年份判断
+      // AI data: 直接用 location.periods
+      if (l.periods && l.periods.length > 0) return l.periods.includes(period.id)
+      // 回退：chronology 年份判断
       const chronMatch = (chronology.value || []).some(e => {
         const y = parseInt(String(e.year || '')); if (isNaN(y)) return false
         const m = lookupCity(e.location || '')
         return m && coordKey(m.lat, m.lng) === l.id && y >= period.yearRange[0] && y <= period.yearRange[1]
       })
       if (chronMatch) return true
-      // 回退：画作年份
+      // 再回退：画作年份
       return l.paintings.some(p => {
         const py = Number(p.year); if (isNaN(py)) return false
         return py >= period.yearRange[0] && py <= period.yearRange[1]

@@ -46,7 +46,7 @@
                     <router-link v-if="lib.artist_name" :to="{ name: 'ArtistEditor', params: { name: lib.artist_name } }" class="nav-item-sub" :class="{ active: route.name === 'ArtistEditor' && route.params.name === lib.artist_name }">艺术家信息</router-link>
                     <router-link v-if="lib.artist_name" :to="`/admin/travel-notes?artist=${encodeURIComponent(lib.artist_name)}&lib_id=${lib.id}`" class="nav-item-sub" :class="{ active: route.name === 'AdminTravelNotes' && route.query.artist === lib.artist_name }">行旅</router-link>
                     <template v-for="sub in LIBRARY_TAB_SUB_MENUS" :key="'tab-'+sub.key">
-                      <router-link v-if="userPermissions.includes(sub.perm)" :to="`/admin?tab=${sub.key}&artist=${encodeURIComponent(lib.artist_name || '')}&lib_id=${lib.id}`" class="nav-item-sub" :class="{ active: activeTab === sub.key && route.query.artist === lib.artist_name }">{{ sub.label }}</router-link>
+                      <router-link v-if="userPermissions.includes(sub.perm)" :to="`/admin?tab=${sub.key}&artist=${encodeURIComponent(lib.artist_name || '')}&lib_id=${lib.id}`" class="nav-item-sub" :class="{ active: route.query.tab === sub.key && route.query.artist === lib.artist_name }">{{ sub.label }}</router-link>
                     </template>
                     <router-link v-for="sub in LIBRARY_PANEL_SUB_MENUS" :key="sub.key" :to="`/admin?tab=libraries&detail_id=${lib.id}&panel=${sub.key}`" class="nav-item-sub" :class="{ active: activeTab === 'libraries' && route.query.detail_id == lib.id && route.query.panel === sub.key }">{{ sub.label }}</router-link>
                   </div>

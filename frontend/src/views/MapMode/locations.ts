@@ -10,6 +10,7 @@ export interface MapLocation {
   lng: number
   description: string
   chronologyLines: string[]
+  periods: string[]
   paintingCount: number
   paintings: any[]
   markerRadius: number
@@ -234,6 +235,7 @@ export function buildLocationsFromChronology(
       lng: group.lng,
       description,
       chronologyLines,
+      periods: [],
       paintingCount: matchedPaintings.length,
       paintings: matchedPaintings,
       markerRadius: 0,
