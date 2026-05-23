@@ -218,10 +218,10 @@ const cachedTimeline = computed<TimelineEntry[]>(() => {
     }
     return { loc, startYear, endYear }
   })
-  locsWithYears.sort((a, b) => a.startYear - b.startYear)
+  locsWithYears.sort((a, b) => a.endYear - b.endYear)
 
   return locsWithYears.map(({ loc, startYear, endYear }) => {
-    const period = periods.value.find(p => startYear >= p.yearRange[0] && startYear <= p.yearRange[1])
+    const period = periods.value.find(p => endYear >= p.yearRange[0] && endYear <= p.yearRange[1])
     return {
       locId: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng,
       startYear, endYear,
