@@ -174,10 +174,15 @@ const routes = [
     meta: { title: '题跋标注', requiresAuth: true, requiresEditor: true }
   },
   {
-    path: '/map',
-    name: 'MapMode',
+    path: '/artist/:name/map',
+    name: 'ArtistMap',
     component: () => import('../views/MapMode.vue'),
     meta: { title: '翰墨行旅' }
+  },
+  // 旧 route 重定向
+  {
+    path: '/map',
+    redirect: '/artist/李鱓/map'
   },
   // Phase 3: 个人中心独立页面 (简化)
   {
@@ -220,7 +225,7 @@ const router = createRouter({
 const nameCache = new Map()
 
 router.beforeResolve(async (to, _from) => {
-  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis']
+  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistMap']
   if (artistRoutes.includes(to.name) && to.params.name) {
     const raw = to.params.name
     // 已缓存的 canonical 名 → 直接返回，不发起网络请求

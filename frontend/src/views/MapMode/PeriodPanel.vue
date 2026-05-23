@@ -1,7 +1,7 @@
 <template>
   <div class="period-timeline">
     <div class="panel-description period-desc">
-      李鱓{{ periodLabel }}期间，足迹涉及 {{ cities.length }} 座城市：
+      {{ artistName }}{{ periodLabel }}期间，足迹涉及 {{ cities.length }} 座城市：
     </div>
     <div
       v-for="(city, idx) in cities"
@@ -23,6 +23,7 @@
 
 <script setup lang="ts">
 defineProps<{
+  artistName: string
   periodLabel: string
   cities: {
     locId: string

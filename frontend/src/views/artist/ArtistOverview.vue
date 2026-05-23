@@ -281,13 +281,21 @@ const suggestForm = reactive({
 })
 const submitting = ref(false)
 
-const subNavTabs = [
-  { label: '概览', name: 'ArtistOverview' },
-  { label: '作品', name: 'ArtistWorks' },
-  { label: '印章', name: 'ArtistSeals' },
-  { label: '文献', name: 'ArtistLiterature' },
-  { label: '分析', name: 'ArtistAnalysis' },
-]
+const subNavTabs = computed(() => {
+  const tabs = [
+    { label: '概览', name: 'ArtistOverview' },
+    { label: '作品', name: 'ArtistWorks' },
+    { label: '印章', name: 'ArtistSeals' },
+    { label: '文献', name: 'ArtistLiterature' },
+    { label: '分析', name: 'ArtistAnalysis' },
+  ]
+  // 年谱数据 >= 5 条才显示翰墨行旅 tab
+  const chron = parseJsonField(artist.value?.art_chronology)
+  if (chron.length >= 5) {
+    tabs.push({ label: '行旅', name: 'ArtistMap' })
+  }
+  return tabs
+})
 
 const tocItems = computed(() => {
   const items = []

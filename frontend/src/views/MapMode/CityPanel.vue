@@ -55,11 +55,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { PERIOD_CONFIG } from './locations'
+import type { PeriodConfig } from './locations'
 import type { LocationWithPaintings, Painting } from './useMapData'
 
 const props = defineProps<{
   location: LocationWithPaintings
+  periods: PeriodConfig[]
 }>()
 
 defineEmits<{
@@ -75,11 +76,11 @@ function onThumbError(id: number | string) {
 }
 
 function getPeriodLabel(periodId: string): string {
-  return PERIOD_CONFIG.find((p) => p.id === periodId)?.label || periodId
+  return props.periods.find((p) => p.id === periodId)?.label || periodId
 }
 
 function getPeriodColor(periodId: string): string {
-  return PERIOD_CONFIG.find((p) => p.id === periodId)?.color || '#8b7d6b'
+  return props.periods.find((p) => p.id === periodId)?.color || '#8b7d6b'
 }
 
 const paintingPhases = computed(() => {

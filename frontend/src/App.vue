@@ -19,7 +19,6 @@
           <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
           <router-link to="/content-analysis" class="nav-item" active-class="active"><span class="nav-text">大数据分析</span></router-link>
-          <router-link to="/map" class="nav-item" active-class="active"><span class="nav-text">翰墨行旅</span></router-link>
         </nav>
         <div class="user-area">
           <template v-if="authStore.isLoggedIn">
@@ -91,9 +90,6 @@
           </router-link>
           <router-link to="/content-analysis" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">大数据分析</span>
-          </router-link>
-          <router-link to="/map" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
-            <span class="nav-text">翰墨行旅</span>
           </router-link>
           <template v-if="authStore.isLoggedIn">
             <div class="drawer-section-label">个人中心</div>
