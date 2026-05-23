@@ -26,31 +26,39 @@ const PERIOD_COLORS = ['#a08060', '#c96442', '#5b7a8c', '#8b6d4b', '#6b8b5a', '#
 const PROVINCE_RE = /^(江苏|浙江|山东|安徽|河南|河北|湖北|湖南|广东|广西|福建|江西|四川|云南|贵州|陕西|甘肃|辽宁|吉林|黑龙江|山西|海南|台湾|北京市?|上海市?|天津市?|重庆市?)/
 
 // ── 模糊解析城市名 → { name, lat, lng } ──
-// 返回值同名城市返回相同 name（选最短的匹配 key）
+// 1) 精确匹配 2) 拆分子串 3) 去省名前缀 4) 反向匹配（最后手段）
 export function lookupCity(rawLocation: string): { name: string; lat: number; lng: number } | null {
   if (!rawLocation) return null
   const coords = CITY_COORDS as Record<string, [number, number]>
   const cleaned = rawLocation.replace(/（[^）]*）/g, '').replace(/\([^)]*\)/g, '').trim()
   if (!cleaned) return null
 
-  // 精确匹配
+  // 1) 精确匹配
   if (coords[cleaned]) return { name: cleaned, lat: coords[cleaned][0], lng: coords[cleaned][1] }
 
-  // 拆分子串匹配（分隔符：、，至 和省份前缀）
+  // 2) 按分隔符拆分，对每个部分尝试匹配
   const parts = cleaned.split(/[、，,至到]/).map(p => p.trim()).filter(Boolean)
   for (const part of parts) {
+    // 2a) 直接匹配
     if (coords[part]) return { name: part, lat: coords[part][0], lng: coords[part][1] }
-    const short = part.replace(PROVINCE_RE, '')
-    if (short !== part && coords[short]) return { name: short, lat: coords[short][0], lng: coords[short][1] }
+    // 2b) 去掉省名前缀
+    let short = part
+    for (const prefix of ['江苏', '浙江', '山东', '安徽', '河南', '河北', '湖北', '湖南', '广东', '广西', '福建', '江西', '四川', '云南', '贵州', '陕西', '甘肃', '辽宁', '吉林', '黑龙江', '山西', '海南', '台湾', '北京市', '上海市', '天津市', '重庆市', '北京', '上海', '天津', '重庆']) {
+      if (short.startsWith(prefix)) {
+        short = short.slice(prefix.length)
+        if (coords[short]) return { name: short, lat: coords[short][0], lng: coords[short][1] }
+        break
+      }
+    }
   }
 
-  // 反向匹配（包含关系）
+  // 3) 反向匹配 — 只在以上都失败时使用
   for (const [key, val] of Object.entries(coords)) {
-    if (key.includes(cleaned) || cleaned.includes(key)) {
+    if (cleaned.includes(key) || key.includes(cleaned)) {
       return { name: key, lat: val[0], lng: val[1] }
     }
     for (const part of parts) {
-      if (key.includes(part) || part.includes(key)) {
+      if (part.includes(key) || key.includes(part)) {
         return { name: key, lat: val[0], lng: val[1] }
       }
     }
@@ -64,6 +72,23 @@ function coordKey(lat: number, lng: number): string { return `${lat.toFixed(2)},
 
 export interface ChronologyEntry {
   year?: string | number; event?: string; location?: string; description?: string
+}
+
+// ── 格式化描述文本（排版优化）──
+function formatDescription(entries: ChronologyEntry[], cityName: string): string {
+  const lines = entries
+    .filter(e => e.event || e.description)
+    .map(e => {
+      const y = e.year ? `${e.year}年` : ''
+      const ev = e.event || ''
+      const desc = e.description || ''
+      const main = [y, ev].filter(Boolean).join(' ')
+      return desc ? `${main}：${desc}` : main
+    })
+  // 去重（同年同事件只保留一次）
+  const seen = new Set<string>()
+  const unique = lines.filter(l => { const k = l.slice(0, 20); if (seen.has(k)) return false; seen.add(k); return true })
+  return unique.length > 0 ? unique.join('\n') : `${cityName}（暂无详细记录）`
 }
 
 // ── 从 art_chronology 构建地点列表 ──
@@ -90,13 +115,7 @@ export function buildLocationsFromChronology(
   const locations: MapLocation[] = []
   for (const [, group] of groups) {
     const years = group.entries.map(e => parseInt(String(e.year || ''))).filter(y => !isNaN(y))
-    const descParts = group.entries
-      .filter(e => e.event || e.description)
-      .map(e => {
-        const y = e.year ? `${e.year}年` : ''
-        return [y, e.event, e.description].filter(Boolean).join(' ')
-      })
-    const description = descParts.join('；') || group.name
+    const description = formatDescription(group.entries, group.name)
 
     // 画作匹配（缩小到 ±15年 窗口）
     const matchedPaintings = paintings.filter(p => {
@@ -161,7 +180,7 @@ export function buildPeriodsFromChronology(
       return y >= start && y <= end
     })
     const events = periodEntries.map(e => e.event || '').filter(Boolean)
-    const label = generatePeriodLabel(events, start, end, i, targetPeriods)
+    const label = generatePeriodLabel(events, start, end, i, targetPeriods, chronology)
 
     periods.push({ id: `p${i}`, label, yearRange: [start, end], color: PERIOD_COLORS[i % PERIOD_COLORS.length], order: i })
   }
@@ -170,24 +189,48 @@ export function buildPeriodsFromChronology(
 }
 
 // ── 生成语义时期标签 ──
-const LIFE_PHASE_TERMS = ['出生', '早年', '学', '师', '中举', '进士', '仕', '宫廷', '官', '知县', '游', '卖画', '寓', '隐', '归', '老', '卒', '殁', '定居', '讲学']
+function generatePeriodLabel(events: string[], start: number, end: number, index: number, total: number, allEntries: ChronologyEntry[]): string {
+  // 检测关键人生阶段
+  const allEvents = events.join(' ')
+  const hasDeath = allEntries.some(e => {
+    const ev = (e.event || '') + (e.description || '')
+    return /[去世卒殁逝世]/.test(ev)
+  })
+  const hasBirth = allEntries.some(e => {
+    const ev = (e.event || '') + (e.description || '')
+    return /[出生诞]/.test(ev)
+  })
 
-function generatePeriodLabel(events: string[], start: number, end: number, index: number, total: number): string {
-  // 取出现频次最高的事件关键词
-  const hits: Record<string, number> = {}
-  for (const ev of events) {
-    for (const term of LIFE_PHASE_TERMS) {
-      if (ev.includes(term)) hits[term] = (hits[term] || 0) + 1
-    }
+  // 最后一个时期如果包含去世事件，标记为"晚年"
+  if (index === total - 1 && hasDeath) return '晚年'
+
+  // 关键词检测
+  const patternHits: [string, RegExp][] = [
+    ['出生与早年', /[出生诞幼少童年启蒙]/],
+    ['求学', /[学读书书院师习]/],
+    ['科举仕途', /[中举进士科举仕官宦第]/],
+    ['宫廷供奉', /[宫廷内廷供奉行走御]/],
+    ['游历', /[游历旅]/],
+    ['卖画', /[卖画鬻画]/],
+    ['为官', /[知县县令知州为官官]/],
+    ['罢官归隐', /[罢归隐退]/],
+    ['晚年', /[老晚]/],
+  ]
+
+  let bestLabel = ''
+  let bestScore = 0
+  for (const [label, re] of patternHits) {
+    const matches = (allEvents.match(new RegExp(re.source, 'g')) || []).length
+    if (matches > bestScore) { bestScore = matches; bestLabel = label }
   }
-  const topTerms = Object.entries(hits).sort((a, b) => b[1] - a[1]).slice(0, 2).map(e => e[0])
-  if (topTerms.length > 0) return topTerms.join('·')
+
+  if (bestLabel && bestScore >= 2) return bestLabel
 
   // 回退：用生命周期位置
   if (total >= 3) {
-    if (index === 0) return '早年'
+    if (index === 0) return hasBirth ? '出生与早年' : '早年'
     if (index === total - 1) return '晚年'
-    return `盛年${index > 1 ? '后期' : ''}`
+    return `盛年`
   }
   return `${start}-${end}`
 }
