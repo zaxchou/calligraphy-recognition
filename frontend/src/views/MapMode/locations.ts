@@ -68,7 +68,7 @@ export function lookupCity(rawLocation: string): { name: string; lat: number; ln
 }
 
 // ── 从坐标生成唯一 key（用作分组和标记点 id）──
-function coordKey(lat: number, lng: number): string { return `${lat.toFixed(2)},${lng.toFixed(2)}` }
+export function coordKey(lat: number, lng: number): string { return `${lat.toFixed(2)},${lng.toFixed(2)}` }
 
 export interface ChronologyEntry {
   year?: string | number; event?: string; location?: string; description?: string
