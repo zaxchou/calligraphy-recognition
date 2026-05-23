@@ -9,6 +9,7 @@ export interface MapLocation {
   lat: number
   lng: number
   description: string
+  chronologyLines: string[]
   paintingCount: number
   paintings: any[]
   markerRadius: number
@@ -75,7 +76,7 @@ export interface ChronologyEntry {
 }
 
 // ── 格式化描述文本（排版优化）──
-function formatDescription(entries: ChronologyEntry[], cityName: string): string {
+function formatDescription(entries: ChronologyEntry[], cityName: string): { text: string; lines: string[] } {
   const lines = entries
     .filter(e => e.event || e.description)
     .map(e => {
@@ -88,7 +89,10 @@ function formatDescription(entries: ChronologyEntry[], cityName: string): string
   // 去重（同年同事件只保留一次）
   const seen = new Set<string>()
   const unique = lines.filter(l => { const k = l.slice(0, 20); if (seen.has(k)) return false; seen.add(k); return true })
-  return unique.length > 0 ? unique.join('\n') : `${cityName}（暂无详细记录）`
+  return {
+    text: unique.length > 0 ? unique.join('\n') : `${cityName}（暂无详细记录）`,
+    lines: unique,
+  }
 }
 
 // ── 从 art_chronology 构建地点列表 ──
@@ -115,7 +119,7 @@ export function buildLocationsFromChronology(
   const locations: MapLocation[] = []
   for (const [, group] of groups) {
     const years = group.entries.map(e => parseInt(String(e.year || ''))).filter(y => !isNaN(y))
-    const description = formatDescription(group.entries, group.name)
+    const { text: description, lines: chronologyLines } = formatDescription(group.entries, group.name)
 
     // 画作匹配（缩小到 ±15年 窗口）
     const matchedPaintings = paintings.filter(p => {
@@ -130,6 +134,7 @@ export function buildLocationsFromChronology(
       lat: group.lat,
       lng: group.lng,
       description,
+      chronologyLines,
       paintingCount: matchedPaintings.length,
       paintings: matchedPaintings,
       markerRadius: 0,

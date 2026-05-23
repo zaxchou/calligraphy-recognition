@@ -13,7 +13,19 @@
       </el-tag>
     </div>
 
-    <p class="panel-description">{{ location.description }}</p>
+    <div class="panel-chronology">
+      <div
+        v-for="(line, idx) in location.chronologyLines"
+        :key="idx"
+        class="chronology-entry"
+      >
+        <span class="chronology-year">{{ extractYear(line) }}</span>
+        <span class="chronology-text">{{ extractText(line) }}</span>
+      </div>
+      <div v-if="!location.chronologyLines || location.chronologyLines.length === 0" class="no-chronology">
+        {{ location.description }}
+      </div>
+    </div>
 
     <div class="panel-count">
       <span class="count-num">{{ location.paintingCount }}</span>
@@ -69,6 +81,15 @@ defineEmits<{
 
 const failedThumbs = ref<(number | string)[]>([])
 
+function extractYear(line: string): string {
+  const m = line.match(/^(\d+年)/)
+  return m ? m[1] : ''
+}
+
+function extractText(line: string): string {
+  return line.replace(/^\d+年\s*/, '')
+}
+
 function onThumbError(id: number | string) {
   if (!failedThumbs.value.includes(id)) {
     failedThumbs.value.push(id)
@@ -110,12 +131,37 @@ const paintingPhases = computed(() => {
 }
 .period-tag { border: none !important; }
 
-.panel-description {
+.panel-chronology {
   padding: 16px 24px 0;
+  flex-shrink: 0;
+}
+.chronology-entry {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0ece4;
+  line-height: 1.7;
+}
+.chronology-entry:last-child {
+  border-bottom: none;
+}
+.chronology-year {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #c9a96e;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.chronology-text {
+  font-size: 0.84rem;
+  color: #5e5d59;
+}
+.no-chronology {
   font-size: 0.88rem;
   line-height: 1.75;
   color: #5e5d59;
-  margin: 0;
 }
 
 .panel-count {
