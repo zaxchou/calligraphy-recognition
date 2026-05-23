@@ -139,6 +139,7 @@ import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { useMapData } from './MapMode/useMapData'
 import type { MapLocation as LocationWithPaintings, PeriodConfig } from './MapMode/locations'
+import { lookupCity, coordKey } from './MapMode/locations'
 import type { Painting } from './MapMode/useMapData'
 import PeriodPanel from './MapMode/PeriodPanel.vue'
 import CityPanel from './MapMode/CityPanel.vue'
@@ -157,6 +158,7 @@ const {
   artistName,
   artistBirthYear,
   artistDeathYear,
+  chronology,
   locationsWithPaintings,
   periods,
   filteredLocations,
@@ -279,20 +281,34 @@ const periodCities = computed<PeriodCityEntry[]>(() => {
   if (!selectedPeriod.value) return []
   const cfg = periods.value.find((p) => p.id === selectedPeriod.value)
   if (!cfg) return []
-  const seen = new Set<string>()
-  // 按画作年份直接匹配当前时期（同一城市可出现在多个时期）
+
+  // 按年谱条目年份确定该时期涉及的城市（不依赖画作年份）
   return locationsWithPaintings.value
-    .filter(loc => loc.paintings.some(p => {
-      const py = Number(p.year); if (isNaN(py)) return false
-      return py >= cfg.yearRange[0] && py <= cfg.yearRange[1]
-    }))
+    .filter(loc => {
+      // 优先检查 chronology 中的年份
+      const chronYears = (chronology.value || []).filter(e => {
+        const y = parseInt(String(e.year || '')); if (isNaN(y)) return false
+        // 粗略匹配：chronology 条目属于此 loc（通过 lookupCity）
+        const match = lookupCity(e.location || '')
+        return match && coordKey(match.lat, match.lng) === loc.id && y >= cfg.yearRange[0] && y <= cfg.yearRange[1]
+      })
+      if (chronYears.length > 0) return true
+      // 回退：检查画作年份
+      return loc.paintings.some(p => {
+        const py = Number(p.year); if (isNaN(py)) return false
+        return py >= cfg.yearRange[0] && py <= cfg.yearRange[1]
+      })
+    })
     .map(loc => {
-      const brief = loc.description?.split('\n')[0]?.replace(/^[^。]+。/, '').slice(0, 40) || ''
-      const years = loc.paintings.map(p => Number(p.year)).filter(y => !isNaN(y)).sort()
+      const brief = loc.description?.split('\n')[0]?.slice(0, 50) || ''
+      const chronYears = (chronology.value || []).filter(e => {
+        const match = lookupCity(e.location || '')
+        return match && coordKey(match.lat, match.lng) === loc.id
+      }).map(e => parseInt(String(e.year || ''))).filter(y => !isNaN(y)).sort()
       return {
         locId: loc.id,
         name: loc.name,
-        year: years[0] || 0,
+        year: chronYears[0] || 0,
         briefDesc: brief || loc.description?.slice(0, 50) || '',
         color: cfg.color,
       }
@@ -317,13 +333,23 @@ const periodTooltips = computed(() => {
   const locs = locationsWithPaintings.value
   if (!locs.length) return map
   for (const period of periods.value) {
-    const cities = locs.filter((l) => l.paintings.some(p => {
-      const py = Number(p.year); if (isNaN(py)) return false
-      return py >= period.yearRange[0] && py <= period.yearRange[1]
-    }))
+    const cities = locs.filter((l) => {
+      // 优先用 chronology 年份判断
+      const chronMatch = (chronology.value || []).some(e => {
+        const y = parseInt(String(e.year || '')); if (isNaN(y)) return false
+        const m = lookupCity(e.location || '')
+        return m && coordKey(m.lat, m.lng) === l.id && y >= period.yearRange[0] && y <= period.yearRange[1]
+      })
+      if (chronMatch) return true
+      // 回退：画作年份
+      return l.paintings.some(p => {
+        const py = Number(p.year); if (isNaN(py)) return false
+        return py >= period.yearRange[0] && py <= period.yearRange[1]
+      })
+    })
     const names = cities.map((c) => c.name).join('、')
     const total = cities.reduce((sum, c) => sum + c.paintingCount, 0)
-    map[period.id] = `${names} · 共 ${total} 幅`
+    map[period.id] = names ? `${names} · 共 ${total} 幅` : '暂无记录'
   }
   return map
 })
@@ -825,7 +851,8 @@ function initChart() {
       if (!loc) return
       markInteraction()
       if (tourState.value !== 'idle') stopTour()
-      selectedLocation.value = loc
+      // 浅拷贝确保 Vue 响应式追踪嵌套 paintings 数组
+      selectedLocation.value = { ...loc, paintings: [...loc.paintings] }
       activePanel.value = 'city'
       updateChartEffectScatter([loc.lng, loc.lat])
     }
