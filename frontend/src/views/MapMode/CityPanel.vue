@@ -179,11 +179,9 @@ const paintingPhases = computed(() => {
 .count-label { font-size: 0.88rem; color: #8b7d6b; }
 
 .panel-paintings {
-  flex: 1;
   padding: 0 24px 24px;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 .paintings-title {
   font-size: 0.82rem;
@@ -194,9 +192,7 @@ const paintingPhases = computed(() => {
   flex-shrink: 0;
 }
 .paintings-list {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
+  /* 自然高度，由外层 .panel-body 统一滚动 */
 }
 .phase-header {
   font-size: 0.78rem;
