@@ -277,23 +277,24 @@ interface PeriodCityEntry {
 
 const periodCities = computed<PeriodCityEntry[]>(() => {
   if (!selectedPeriod.value) return []
+  const cfg = periods.value.find((p) => p.id === selectedPeriod.value)
+  if (!cfg) return []
   const seen = new Set<string>()
-  return cachedTimeline.value
-    .filter((e) => e.periodId === selectedPeriod.value)
-    .filter((e) => {
-      if (seen.has(e.locId)) return false
-      seen.add(e.locId)
-      return true
-    })
-    .map((e) => {
-      const loc = locationsWithPaintings.value.find((l) => l.id === e.locId)
-      const brief = loc?.description?.split('\n')[0]?.replace(/^[^。]+。/, '').slice(0, 40) || ''
+  // 按画作年份直接匹配当前时期（同一城市可出现在多个时期）
+  return locationsWithPaintings.value
+    .filter(loc => loc.paintings.some(p => {
+      const py = Number(p.year); if (isNaN(py)) return false
+      return py >= cfg.yearRange[0] && py <= cfg.yearRange[1]
+    }))
+    .map(loc => {
+      const brief = loc.description?.split('\n')[0]?.replace(/^[^。]+。/, '').slice(0, 40) || ''
+      const years = loc.paintings.map(p => Number(p.year)).filter(y => !isNaN(y)).sort()
       return {
-        locId: e.locId,
-        name: e.name,
-        year: e.startYear,
-        briefDesc: brief || loc?.description?.slice(0, 50) || '',
-        color: e.periodColor,
+        locId: loc.id,
+        name: loc.name,
+        year: years[0] || 0,
+        briefDesc: brief || loc.description?.slice(0, 50) || '',
+        color: cfg.color,
       }
     })
 })
