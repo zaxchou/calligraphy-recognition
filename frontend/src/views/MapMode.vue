@@ -705,6 +705,32 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     periodFilter ? allLocations : locations,
   )
 
+  // ── 动态计算地图缩放和中心点 ──
+  // 时期筛选时用筛选后的地点，全览时用全部地点
+  const boundsLocs = periodFilter && locations.length > 0 ? locations : allLocations
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
+  for (const loc of boundsLocs) {
+    if (loc.lng < 70 || loc.lng > 140 || loc.lat < 15 || loc.lat > 55) continue // 跳过海外点
+    if (loc.lat < minLat) minLat = loc.lat
+    if (loc.lat > maxLat) maxLat = loc.lat
+    if (loc.lng < minLng) minLng = loc.lng
+    if (loc.lng > maxLng) maxLng = loc.lng
+  }
+  // 兜底：至少有一个有效坐标
+  const hasBounds = minLat < 90
+  if (!hasBounds) { minLat = 20; maxLat = 45; minLng = 100; maxLng = 125 }
+
+  // 加 padding 防止边缘城市被裁切
+  const pad = 2
+  minLat -= pad; maxLat += pad; minLng -= pad; maxLng += pad
+
+  const latSpread = maxLat - minLat
+  const lngSpread = maxLng - minLng
+  const maxSpread = Math.max(latSpread, lngSpread)
+  // zoom 反比：范围越小 zoom 越大，范围越大 zoom 越小
+  const autoZoom = Math.max(1.8, Math.min(6, 10 - maxSpread * 0.45))
+  const autoCenter: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2]
+
   if (periodFilter) {
     for (const d of scatterData) {
       if (!visibleLocIds!.has(d.locId)) {
@@ -750,8 +776,8 @@ function buildOption(locations: LocationWithPaintings[], allLocations: LocationW
     geo: {
       map: 'china',
       roam: true,
-      zoom: 5,
-      center: [118, 36],
+      zoom: autoZoom,
+      center: autoCenter,
       scaleLimit: { min: 1.5, max: 8 },
       itemStyle: {
         areaColor: '#f6f3ed',
