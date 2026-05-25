@@ -379,6 +379,11 @@ watch(imgNaturalW, () => {
   resetView()
 })
 
+// 选"余边"时自动切换为矩形工具
+watch(currentRegionType, (t) => {
+  if (t === 'margin') drawMode.value = 'rect'
+})
+
 // 按钮缩放
 function zoomIn() {
   const scale = currentScale.value / 1.25
@@ -560,8 +565,11 @@ function onSvgClick(e) {
 }
 
 function onSvgMouseDown(e) {
-  // 矩形模式：开始拖拽
-  if (drawMode.value !== 'rect') return
+  // 仅左键 + 矩形模式才处理（中键留给画布平移）
+  if (e.button !== 0 || drawMode.value !== 'rect') {
+    // 不阻止事件冒泡，让 canvas-area 的中键/空格平移正常工作
+    return
+  }
   if (isReviewMode.value) return
   const pt = screenToSvg(e.clientX, e.clientY)
   if (!pt) return
