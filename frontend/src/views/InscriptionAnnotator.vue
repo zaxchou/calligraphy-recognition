@@ -1061,11 +1061,7 @@ async function loadRecord() {
     }
     imageUrl.value = fullUrl
 
-    // 预加载原图（用于放大镜高精度显示）
-    const fullUrl = data.data.url || data.data.filepath || ''
-    const magnifierSrc = (fullUrl && !fullUrl.startsWith('http'))
-      ? `${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`
-      : fullUrl
+    // 预加载原图（用于放大镜高精度显示，复用上面已构建的 fullUrl）
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
@@ -1077,7 +1073,7 @@ async function loadRecord() {
       }
       console.log(`[Annotator] Image loaded: ${img.naturalWidth}x${img.naturalHeight}`)
     }
-    img.src = magnifierSrc
+    img.src = fullUrl
 
     // 如果已有 regions，回显
     const allRegions = []
