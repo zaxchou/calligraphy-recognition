@@ -226,14 +226,31 @@ def build_artist_data(name: str, raw_info: dict, bio_text: str) -> dict:
             break
     if 'dynasty' not in info:
         info['dynasty'] = ''
-    # 如果 infobox 没有朝代，从传记第一段提取
-    if not info['dynasty'] and bio_text:
-        first_para = bio_text[:300]
-        for d in ['唐代', '宋朝', '北宋', '南宋', '元代', '明朝', '清代', '东晋', '西晋',
-                   '南北朝', '隋代', '五代', '民国', '现代', '当代', '元末明初', '明末清初']:
-            if d in first_para:
-                info['dynasty'] = d
-                break
+    # 如果 infobox 没有朝代，根据生卒年推断（比文本匹配更可靠）
+    if not info['dynasty']:
+        by = info.get('birth_year')
+        if by:
+            if by >= 1949: info['dynasty'] = '当代'
+            elif by >= 1912: info['dynasty'] = '近现代'
+            elif by >= 1840: info['dynasty'] = '清末民初'
+            elif by >= 1644: info['dynasty'] = '清代'
+            elif by >= 1368: info['dynasty'] = '明代'
+            elif by >= 1271: info['dynasty'] = '元代'
+            elif by >= 960: info['dynasty'] = '宋代'
+            elif by >= 618: info['dynasty'] = '唐代'
+            elif by >= 581: info['dynasty'] = '隋代'
+            elif by >= 420: info['dynasty'] = '南北朝'
+            elif by >= 265: info['dynasty'] = '晋代'
+            elif by >= 220: info['dynasty'] = '三国'
+            elif by >= 202: info['dynasty'] = '汉代'
+        elif bio_text:
+            # 最后回退：从传记第一段提取（仅对无生卒年的艺术家）
+            first_para = bio_text[:300]
+            for d in ['唐代', '宋代', '北宋', '南宋', '元代', '明代', '清代',
+                       '东晋', '西晋', '南北朝', '隋代', '五代十国', '战国', '汉代']:
+                if d in first_para:
+                    info['dynasty'] = d
+                    break
 
     # ── 籍贯 ──
     for k in ['出生地', '籍贯', '出生地点', '出 生 地']:
