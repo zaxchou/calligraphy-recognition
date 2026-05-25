@@ -33,6 +33,9 @@
           :viewBox="viewBoxString"
           preserveAspectRatio="xMidYMid meet"
           @click="onSvgClick"
+          @mousedown="onSvgMouseDown"
+          @mousemove="onSvgMouseMove"
+          @mouseup="onSvgMouseUp"
           @dblclick="closeCurrentPolygon"
           @contextmenu.prevent="onRightClick"
         >
@@ -64,6 +67,21 @@
             v-if="currentPoly.length > 1"
             :points="currentPolyPointsStr"
             class="poly-drawing"
+            :class="{
+              'drawing-inscription': currentRegionType === 'inscription',
+              'drawing-painting': currentRegionType === 'painting',
+              'drawing-margin': currentRegionType === 'margin'
+            }"
+          />
+
+          <!-- 矩形模式拖拽预览 -->
+          <rect
+            v-if="drawMode === 'rect' && rectStart"
+            :x="Math.min(rectStart.x, rectCurrent.x)"
+            :y="Math.min(rectStart.y, rectCurrent.y)"
+            :width="Math.abs(rectCurrent.x - rectStart.x)"
+            :height="Math.abs(rectCurrent.y - rectStart.y)"
+            class="rect-preview"
             :class="{
               'drawing-inscription': currentRegionType === 'inscription',
               'drawing-painting': currentRegionType === 'painting',
@@ -133,7 +151,7 @@
             <span class="panel-title">手动标注区域</span>
           </div>
           <div class="toolbar-group">
-            <span class="tip-text">点击添加顶点，双击封闭多边形；拖拽顶点调整位置</span>
+            <span class="tip-text">{{ drawMode === 'rect' ? '按住拖拽绘制矩形；拖拽顶点调整位置' : '点击添加顶点，双击封闭多边形；拖拽顶点调整位置' }}</span>
           </div>
           <div class="toolbar-controls">
             <div class="zoom-controls">
@@ -148,6 +166,10 @@
                 <el-icon><FullScreen /></el-icon>
               </el-button>
             </div>
+            <el-radio-group v-model="drawMode" size="small" class="draw-mode-selector">
+              <el-radio-button value="poly">多边形</el-radio-button>
+              <el-radio-button value="rect">矩形</el-radio-button>
+            </el-radio-group>
             <el-radio-group v-model="currentRegionType" size="small" class="region-type-selector">
               <el-radio-button value="inscription">
                 <span class="type-dot inscription"></span>题跋
@@ -259,13 +281,14 @@
 
         <!-- 操作提示 -->
         <div class="panel-section hint-section">
+          <div class="hint-title" style="font-size:13px;font-weight:600;margin-bottom:8px;color:#4d4c48;">操作提示</div>
           <div class="hint-item">
-            <span class="hint-key">单击</span>
-            <span class="hint-val">添加顶点</span>
+            <span class="hint-key">多边形</span>
+            <span class="hint-val">单击加点 / 双击封闭</span>
           </div>
           <div class="hint-item">
-            <span class="hint-key">双击</span>
-            <span class="hint-val">封闭多边形</span>
+            <span class="hint-key">矩形</span>
+            <span class="hint-val">按住拖拽框选</span>
           </div>
           <div class="hint-item">
             <span class="hint-key">拖拽顶点</span>
@@ -273,7 +296,7 @@
           </div>
           <div class="hint-item">
             <span class="hint-key">右键</span>
-            <span class="hint-val">删除当前多边形</span>
+            <span class="hint-val">删除当前区域</span>
           </div>
           <div class="hint-item">
             <span class="hint-key">M</span>
@@ -435,9 +458,12 @@ function onCanvasMouseLeave() {
   magnifierVisible.value = false
 }
 
-const polygons = ref([]) // [{type: 'inscription'|'painting', points: [{x,y},...]}, ...]
+const polygons = ref([]) // [{type: 'inscription'|'painting'|'margin', points: [{x,y},...]}, ...]
 const currentPoly = ref([]) // 当前正在绘制的多边形顶点
 const currentRegionType = ref('inscription') // 当前绘制区域类型
+const drawMode = ref('poly') // 'poly' | 'rect'
+const rectStart = ref(null) // 矩形起点 {x,y}
+const rectCurrent = ref(null) // 矩形当前鼠标位置 {x,y}
 const selectedPolyIdx = ref(-1)
 const history = ref([]) // 操作历史（用于撤销）
 
@@ -516,6 +542,8 @@ function polygonArea(idx) {
 function onSvgClick(e) {
   // 审核预览模式：禁止修改
   if (isReviewMode.value) return
+  // 矩形模式不通过点击添加点
+  if (drawMode.value === 'rect') return
   // 如果正在拖拽，不处理
   if (isDragging) return
   // 如果点击的是已完成多边形或顶点，不添加新点
@@ -529,6 +557,56 @@ function onSvgClick(e) {
   if (pt.x < 0 || pt.x > imgNaturalW.value || pt.y < 0 || pt.y > imgNaturalH.value) return
 
   currentPoly.value.push(pt)
+}
+
+function onSvgMouseDown(e) {
+  // 矩形模式：开始拖拽
+  if (drawMode.value !== 'rect') return
+  if (isReviewMode.value) return
+  const pt = screenToSvg(e.clientX, e.clientY)
+  if (!pt) return
+  if (pt.x < 0 || pt.x > imgNaturalW.value || pt.y < 0 || pt.y > imgNaturalH.value) return
+  rectStart.value = { x: pt.x, y: pt.y }
+  rectCurrent.value = { x: pt.x, y: pt.y }
+  e.preventDefault()
+  e.stopPropagation()
+}
+
+function onSvgMouseMove(e) {
+  if (!rectStart.value || drawMode.value !== 'rect') return
+  const pt = screenToSvg(e.clientX, e.clientY)
+  if (!pt) return
+  rectCurrent.value = { x: Math.max(0, Math.min(pt.x, imgNaturalW.value)), y: Math.max(0, Math.min(pt.y, imgNaturalH.value)) }
+}
+
+function onSvgMouseUp(e) {
+  if (!rectStart.value || drawMode.value !== 'rect') return
+  const pt = screenToSvg(e.clientX, e.clientY)
+  if (!pt) { rectStart.value = null; rectCurrent.value = null; return }
+
+  const x1 = rectStart.value.x
+  const y1 = rectStart.value.y
+  const x2 = Math.max(0, Math.min(pt.x, imgNaturalW.value))
+  const y2 = Math.max(0, Math.min(pt.y, imgNaturalH.value))
+
+  // 至少 5px 的矩形才保存
+  if (Math.abs(x2 - x1) >= 5 && Math.abs(y2 - y1) >= 5) {
+    const snap = JSON.parse(JSON.stringify(polygons.value))
+    history.value.push({ type: 'add', polys: snap, current: JSON.parse(JSON.stringify(currentPoly.value)) })
+    polygons.value.push({
+      type: currentRegionType.value,
+      points: [
+        { x: Math.min(x1, x2), y: Math.min(y1, y2) },
+        { x: Math.max(x1, x2), y: Math.min(y1, y2) },
+        { x: Math.max(x1, x2), y: Math.max(y1, y2) },
+        { x: Math.min(x1, x2), y: Math.max(y1, y2) }
+      ]
+    })
+    selectedPolyIdx.value = polygons.value.length - 1
+  }
+
+  rectStart.value = null
+  rectCurrent.value = null
 }
 
 function onSvgImageLoad() {
@@ -622,6 +700,8 @@ function renderMagnifier(e) {
 }
 
 function closeCurrentPolygon() {
+  // 矩形模式不封闭多边形
+  if (drawMode.value === 'rect') return
   if (currentPoly.value.length >= 3) {
     const snap = JSON.parse(JSON.stringify(polygons.value))
     history.value.push({ type: 'add', polys: snap, current: JSON.parse(JSON.stringify(currentPoly.value)) })
@@ -726,7 +806,11 @@ function onKeyDown(e) {
     viewBoxY.value -= move
     e.preventDefault()
   } else if (e.key === 'Escape') {
-    if (currentPoly.value.length > 0) {
+    if (rectStart.value) {
+      // 取消矩形拖拽
+      rectStart.value = null
+      rectCurrent.value = null
+    } else if (currentPoly.value.length > 0) {
       currentPoly.value = []
     } else {
       selectedPolyIdx.value = -1
@@ -1246,6 +1330,18 @@ onBeforeUnmount(() => {
   fill: rgba(153, 153, 153, 0.15);
   stroke: #b0b0b0;
 }
+
+/* 矩形模式拖拽预览 */
+.rect-preview {
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+  pointer-events: none;
+}
+.rect-preview.drawing-inscription { stroke: #e07a5a; fill: rgba(201, 100, 66, 0.1); }
+.rect-preview.drawing-painting { stroke: #6a9fd9; fill: rgba(74, 127, 201, 0.1); }
+.rect-preview.drawing-margin { stroke: #b0b0b0; fill: rgba(153, 153, 153, 0.1); }
 
 /* 顶点样式 */
 .vertex {
