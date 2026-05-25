@@ -1,6 +1,9 @@
 <template>
   <div class="dzi-wrap">
     <div class="dzi-toolbar">
+      <button class="dzi-btn" @click="$emit('close')" title="关闭">
+        <el-icon><Close /></el-icon>
+      </button>
       <button class="dzi-btn" @click="zoomIn" title="放大">
         <el-icon><ZoomIn /></el-icon>
       </button>
@@ -15,9 +18,6 @@
       </button>
       <button class="dzi-btn" @click="toggleRotate" title="旋转">
         <el-icon><RefreshRight /></el-icon>
-      </button>
-      <button class="dzi-btn" @click="$emit('close')" title="关闭">
-        <el-icon><Close /></el-icon>
       </button>
     </div>
     <div ref="viewerRef" class="dzi-viewer" />
