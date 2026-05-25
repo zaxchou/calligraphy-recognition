@@ -166,6 +166,9 @@
                 <el-icon><FullScreen /></el-icon>
               </el-button>
             </div>
+            <el-button size="small" :type="useThumbnail ? 'info' : 'warning'" @click="toggleImageSource" style="margin-right:8px;">
+              {{ useThumbnail ? '缩略图' : '原图' }}
+            </el-button>
             <el-radio-group v-model="drawMode" size="small" class="draw-mode-selector">
               <el-radio-button value="poly">多边形</el-radio-button>
               <el-radio-button value="rect">矩形</el-radio-button>
@@ -466,6 +469,15 @@ const rectStart = ref(null) // 矩形起点 {x,y}
 const rectCurrent = ref(null) // 矩形当前鼠标位置 {x,y}
 const selectedPolyIdx = ref(-1)
 const history = ref([]) // 操作历史（用于撤销）
+
+// 图片源切换
+const useThumbnail = ref(true)
+const originalUrl = ref('')
+const thumbUrl = ref('')
+function toggleImageSource() {
+  useThumbnail.value = !useThumbnail.value
+  imageUrl.value = useThumbnail.value ? (thumbUrl.value || originalUrl.value) : originalUrl.value
+}
 
 const saving = ref(false)
 const recordData = ref(null)
@@ -1054,12 +1066,22 @@ async function loadRecord() {
       imgNaturalH.value = h
     }
 
-    // 标注用原图——缩略图只有300px方形裁切，拉伸到原图尺寸无法使用
+    // 构建原图 URL
     let fullUrl = data.data.url || data.data.filepath || ''
     if (fullUrl && !fullUrl.startsWith('http')) {
       fullUrl = `${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`
     }
-    imageUrl.value = fullUrl
+    originalUrl.value = fullUrl
+
+    // 构建缩略图 URL
+    let tUrl = data.data.thumbnail_url || data.data.thumbnail_path || ''
+    if (tUrl && !tUrl.startsWith('http')) {
+      tUrl = tUrl.startsWith('/') ? tUrl : '/' + tUrl
+    }
+    thumbUrl.value = tUrl || fullUrl
+
+    // 默认用缩略图（快），可手动切换原图（清晰）
+    imageUrl.value = useThumbnail.value ? thumbUrl.value : originalUrl.value
 
     // 预加载原图（用于放大镜高精度显示，复用上面已构建的 fullUrl）
     const img = new Image()
