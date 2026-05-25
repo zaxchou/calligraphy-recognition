@@ -151,7 +151,7 @@
             <span class="panel-title">手动标注区域</span>
           </div>
           <div class="toolbar-group">
-            <span class="tip-text">{{ drawMode === 'rect' ? '按住拖拽绘制矩形；拖拽顶点调整位置' : '点击添加顶点，双击封闭多边形；拖拽顶点调整位置' }}</span>
+            <span class="tip-text">{{ drawMode === 'rect' ? (currentRegionType === 'margin' ? '框选内容区，自动反算出四边余边' : '按住拖拽绘制矩形；拖拽顶点调整位置') : '点击添加顶点，双击封闭多边形；拖拽顶点调整位置' }}</span>
           </div>
           <div class="toolbar-controls">
             <div class="zoom-controls">
@@ -601,15 +601,48 @@ function onSvgMouseUp(e) {
   if (Math.abs(x2 - x1) >= 5 && Math.abs(y2 - y1) >= 5) {
     const snap = JSON.parse(JSON.stringify(polygons.value))
     history.value.push({ type: 'add', polys: snap, current: JSON.parse(JSON.stringify(currentPoly.value)) })
-    polygons.value.push({
-      type: currentRegionType.value,
-      points: [
-        { x: Math.min(x1, x2), y: Math.min(y1, y2) },
-        { x: Math.max(x1, x2), y: Math.min(y1, y2) },
-        { x: Math.max(x1, x2), y: Math.max(y1, y2) },
-        { x: Math.min(x1, x2), y: Math.max(y1, y2) }
-      ]
-    })
+
+    if (currentRegionType.value === 'margin') {
+      // 余边模式：框选的是内容区，反算四边余边
+      const cx1 = Math.min(x1, x2), cy1 = Math.min(y1, y2)
+      const cx2 = Math.max(x1, x2), cy2 = Math.max(y1, y2)
+      const W = imgNaturalW.value, H = imgNaturalH.value
+
+      const marginRects = []
+      // 上余边
+      if (cy1 > 0) marginRects.push({ x: 0, y: 0, w: W, h: cy1 })
+      // 下余边
+      if (cy2 < H) marginRects.push({ x: 0, y: cy2, w: W, h: H - cy2 })
+      // 左余边（避开上下已覆盖的区域）
+      if (cx1 > 0) marginRects.push({ x: 0, y: cy1, w: cx1, h: cy2 - cy1 })
+      // 右余边
+      if (cx2 < W) marginRects.push({ x: cx2, y: cy1, w: W - cx2, h: cy2 - cy1 })
+
+      for (const r of marginRects) {
+        if (r.w > 0 && r.h > 0) {
+          polygons.value.push({
+            type: 'margin',
+            points: [
+              { x: r.x, y: r.y },
+              { x: r.x + r.w, y: r.y },
+              { x: r.x + r.w, y: r.y + r.h },
+              { x: r.x, y: r.y + r.h }
+            ]
+          })
+        }
+      }
+    } else {
+      // 题跋/绘画模式：直接保存矩形
+      polygons.value.push({
+        type: currentRegionType.value,
+        points: [
+          { x: Math.min(x1, x2), y: Math.min(y1, y2) },
+          { x: Math.max(x1, x2), y: Math.min(y1, y2) },
+          { x: Math.max(x1, x2), y: Math.max(y1, y2) },
+          { x: Math.min(x1, x2), y: Math.max(y1, y2) }
+        ]
+      })
+    }
     selectedPolyIdx.value = polygons.value.length - 1
   }
 
