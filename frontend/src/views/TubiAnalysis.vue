@@ -1543,6 +1543,7 @@ async function loadHistoryItem(row) {
           tags: data.tags,
           album_name: data.album_name,
           album_index: data.album_index,
+          page_role: data.page_role,
           period_phase: data.period_phase,
           material_tags: data.material_tags,
           computed_tags: data.computed_tags
@@ -2199,6 +2200,7 @@ onMounted(async () => {
           tags: data.tags,
           album_name: data.album_name,
           album_index: data.album_index,
+          page_role: data.page_role,
           period_phase: data.period_phase,
           material_tags: data.material_tags,
           computed_tags: data.computed_tags
@@ -2210,6 +2212,8 @@ onMounted(async () => {
         }
 
         // 先加载全量作品列表（确保 prev/next 数据就绪），历史列表不阻塞 UI
+        // 先设置 currentArtist，否则 loadHistory 会按默认画家（李鱓）过滤
+        if (historyImage.artist) currentArtist.value = historyImage.artist
         await loadFullItemList()
         loadHistory()
 
@@ -2312,7 +2316,9 @@ async function navigateToAlbumItem(item) {
   )
   
   if (targetImage) {
-    // 找到，直接切换
+    // 找到，合并 album nav 中的元数据（page_role 等可能不在缓存中）
+    if (item.page_role !== undefined) targetImage.page_role = item.page_role
+    if (item.album_index !== undefined) targetImage.album_index = item.album_index
     selectImage(targetImage)
     return
   }
@@ -2354,7 +2360,10 @@ async function navigateToAlbumItem(item) {
         contentAnalysis: data.content_analysis || null,
         dzi_url: data.dzi_url,
         artwork_width_cm: data.artwork_width_cm,
-        artwork_height_cm: data.artwork_height_cm
+        artwork_height_cm: data.artwork_height_cm,
+        page_role: data.page_role,
+        album_name: data.album_name,
+        album_index: data.album_index,
       }
       
       // 添加到当前会话

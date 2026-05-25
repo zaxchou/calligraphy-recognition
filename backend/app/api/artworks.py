@@ -86,6 +86,7 @@ class ArtworkUpdate(BaseModel):
     artwork_width_cm: Optional[float] = None
     artwork_height_cm: Optional[float] = None
     tags: Optional[str] = None
+    page_role: Optional[str] = None  # cover / back_cover / accessory
 
 
 class LiteratureCreate(BaseModel):
@@ -172,6 +173,7 @@ def _artwork_to_dict(a: TubiAnalysis) -> dict:
         "seal_verified": a.seal_verified,
         "is_manual_annotated": a.is_manual_annotated,
         "work_type": a.work_type,
+        "page_role": a.page_role,
         "created_at": _ts(a.created_at),
         "updated_at": _ts(a.updated_at),
     }
@@ -294,18 +296,78 @@ def _update_artwork_count(library_id: int, db: Session) -> None:
 # ── 缩略图生成 ──
 
 def create_thumbnail_simple(image_path: str, thumbnail_path: str, max_size: int = 300):
-    """简化缩略图：缩放至 max_size 以内"""
+    """生成缩略图。对卷轴类（极端宽高比）自动切分拼接，避免缩成一条线。"""
     from PIL import Image, ImageOps
+    Image.MAX_IMAGE_PIXELS = None  # 允许大尺寸卷轴
     try:
         with Image.open(image_path) as img:
             img = ImageOps.exif_transpose(img)
-            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
-            img.save(thumbnail_path, "JPEG", quality=85)
+            w, h = img.size
+            ratio = max(w, h) / min(w, h) if min(w, h) > 0 else 1
+
+            if ratio > 3:
+                # 卷轴/长卷：切片拼接缩略图
+                _create_scroll_thumbnail(img, w, h, thumbnail_path, max_size)
+            else:
+                # 常规比例：直接缩放到 max_size 方框内
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
+                img.save(thumbnail_path, "JPEG", quality=85)
     except Exception as e:
         logger.warning(f"缩略图生成失败: {e}")
+
+
+def _create_scroll_thumbnail(img, w: int, h: int, out_path: str, max_size: int = 300):
+    """卷轴专用缩略图：等分切片后纵向拼接，保留可读细节。"""
+    from PIL import Image
+    import math, os
+
+    # 确定切片数：目标让每片宽高比接近 1:1
+    if w > h:
+        # 横卷：按宽度切成若干段
+        slices = max(2, math.ceil(w / h / 2))
+        slice_w = w // slices
+        slice_h = h
+        # 每片缩放到 slice 宽度=max_size, 高度按比例
+        cell_w = max_size
+        cell_h = max(1, int(h * max_size / slice_w))
+        # 限制总高度不超过 max_size * 2
+        total_h = cell_h * slices
+        if total_h > max_size * 2:
+            cell_h = max(1, max_size * 2 // slices)
+        canvas = Image.new("RGB", (cell_w, cell_h * slices))
+        for i in range(slices):
+            x1 = i * slice_w
+            x2 = (i + 1) * slice_w if i < slices - 1 else w
+            crop = img.crop((x1, 0, x2, slice_h))
+            crop = crop.resize((cell_w, cell_h), Image.Resampling.LANCZOS)
+            if crop.mode != "RGB":
+                crop = crop.convert("RGB")
+            canvas.paste(crop, (0, i * cell_h))
+    else:
+        # 竖卷：按高度切成若干段，横向拼接
+        slices = max(2, math.ceil(h / w / 2))
+        slice_h = h // slices
+        slice_w = w
+        cell_h = max_size
+        cell_w = max(1, int(w * max_size / slice_h))
+        total_w = cell_w * slices
+        if total_w > max_size * 2:
+            cell_w = max(1, max_size * 2 // slices)
+        canvas = Image.new("RGB", (cell_w * slices, cell_h))
+        for i in range(slices):
+            y1 = i * slice_h
+            y2 = (i + 1) * slice_h if i < slices - 1 else h
+            crop = img.crop((0, y1, slice_w, y2))
+            crop = crop.resize((cell_w, cell_h), Image.Resampling.LANCZOS)
+            if crop.mode != "RGB":
+                crop = crop.convert("RGB")
+            canvas.paste(crop, (i * cell_w, 0))
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    canvas.save(out_path, "JPEG", quality=85)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -331,6 +393,9 @@ async def upload_artwork(
     free_tags: Optional[str] = Form(None),
     inscription_author: Optional[str] = Form(None),
     inscription_date: Optional[str] = Form(None),
+    artwork_width_cm: Optional[float] = Form(None),
+    artwork_height_cm: Optional[float] = Form(None),
+    page_role: Optional[str] = Form(None),
     visibility: str = Form("public"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -432,6 +497,9 @@ async def upload_artwork(
         free_tags=free_tags,
         inscription_author=inscription_author,
         inscription_date=inscription_date,
+        artwork_width_cm=artwork_width_cm,
+        artwork_height_cm=artwork_height_cm,
+        page_role=page_role,
     )
     db.add(artwork)
     db.commit()
@@ -1064,6 +1132,12 @@ async def trigger_artwork_analysis(
     image_id = artwork.image_id
     if not image_id:
         raise HTTPException(status_code=400, detail="作品缺少 image_id，无法分析")
+
+    # 附件/封面不可分析
+    if artwork.page_role:
+        role_names = {"cover": "封面", "back_cover": "封底", "accessory": "附件", "inscription": "题跋页", "other": "其他页"}
+        role_cn = role_names.get(artwork.page_role, artwork.page_role)
+        raise HTTPException(status_code=400, detail=f"无法分析：此页为{role_cn}，非正文画页")
 
     # 已在分析中
     if artwork.status == "analyzing":

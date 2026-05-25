@@ -6,7 +6,7 @@
 用法:
   python upload_artworks.py --csv "E:/下载/朱耷/artwork_metadata.csv" \
     --images "E:/下载/朱耷" --library-id 9 \
-    --api-base http://127.0.0.1:8000
+    --api-base http://127.0.0.1:3000
 """
 
 import argparse
@@ -25,8 +25,8 @@ def parse_args():
     p.add_argument("--csv", required=True, help="CSV 元数据文件路径")
     p.add_argument("--images", required=True, help="图片文件目录")
     p.add_argument("--library-id", type=int, required=True, help="作品库 ID")
-    p.add_argument("--api-base", default="http://127.0.0.1:8000",
-                   help="API 地址 (默认 http://127.0.0.1:8000)")
+    p.add_argument("--api-base", default="http://127.0.0.1:3000",
+                   help="API 地址 (默认 http://127.0.0.1:3000)")
     p.add_argument("--phone", default="13917029446", help="登录手机号")
     p.add_argument("--password", default="ilovehouhan", help="登录密码")
     p.add_argument("--max", type=int, default=None, help="限制上传数量 (测试用)")
@@ -150,6 +150,65 @@ def get_image_files(csv_row: dict, images_dir: Path) -> list[Path]:
     return filtered
 
 
+def parse_dimensions(dims_str: str) -> tuple[float | None, float | None]:
+    """Parse dimension string like '120x57.4厘米' into (width_cm, height_cm)."""
+    if not dims_str or not dims_str.strip():
+        return None, None
+    import re
+    # Match: WxH followed by optional unit
+    m = re.match(r'([\d.]+)\s*[x×X]\s*([\d.]+)\s*(?:厘?米|cm)?', dims_str.strip())
+    if m:
+        try:
+            return float(m.group(1)), float(m.group(2))
+        except ValueError:
+            pass
+    return None, None
+
+
+CN_NUM = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+    '六': 6, '七': 7, '八': 8, '九': 9,
+    '〇': 0, '零': 0, '○': 0,
+}
+
+
+def parse_year(text: str) -> int | None:
+    """Extract creation year from text (handles Arabic and Chinese numerals).
+    Looks for '创作年代：YYYY' or '创作年代：一二三四' patterns."""
+    if not text:
+        return None
+    import re
+    idx = text.find('创作年代')
+    if idx < 0:
+        return None
+    after = text[idx + 4:]
+    after = after.lstrip('：:：| ')
+
+    # Try Arabic year first
+    m = re.search(r'(\d{4})', after[:30])
+    if m:
+        y = int(m.group(1))
+        if 1000 < y < 2026:
+            return y
+
+    # Try Chinese numerals (e.g. "一六六五" → 1665)
+    cn_year = ''
+    for ch in after[:20]:
+        if ch in CN_NUM:
+            cn_year += str(CN_NUM[ch])
+        elif ch == '年':
+            break
+        elif ch in '十百千—–- ':
+            continue
+        else:
+            break
+    if len(cn_year) == 4 and cn_year.isdigit():
+        y = int(cn_year)
+        if 1000 < y < 2026:
+            return y
+    return None
+
+
 def build_metadata(csv_row: dict) -> dict:
     """将 CSV 行映射为 API 字段."""
     meta = {}
@@ -162,14 +221,25 @@ def build_metadata(csv_row: dict) -> dict:
     meta["material"] = csv_row.get("material", "").strip()
     meta["mounting_format"] = csv_row.get("format", "").strip()
 
-    # Build notes from description + dimensions + seals
+    # Parse dimensions into structured fields
+    dims_str = csv_row.get("dimensions", "").strip()
+    width_cm, height_cm = parse_dimensions(dims_str)
+    if width_cm is not None:
+        meta["artwork_width_cm"] = width_cm
+    if height_cm is not None:
+        meta["artwork_height_cm"] = height_cm
+
+    # Parse year from inscriptions/description
+    text_for_year = (csv_row.get("inscriptions", "") or "") + " " + (csv_row.get("description", "") or "")
+    yr = parse_year(text_for_year)
+    if yr is not None:
+        meta["year"] = yr
+
+    # Build notes from description + seals (NOT dimensions, now in structured fields)
     notes_parts = []
     desc = csv_row.get("description", "").strip()
     if desc:
         notes_parts.append(desc)
-    dims = csv_row.get("dimensions", "").strip()
-    if dims:
-        notes_parts.append(f"尺寸: {dims}")
     author_seals = csv_row.get("author_seals", "").strip()
     if author_seals:
         notes_parts.append(f"作者印: {author_seals}")

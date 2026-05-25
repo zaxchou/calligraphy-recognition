@@ -1,9 +1,9 @@
 <template>
-  <div class="analysis-container">
+  <div class="analysis-container" :class="{ 'attachment-mode': currentImage?.page_role }">
     <!-- 左侧：原作图 + 作品信息（sticky） -->
     <div class="left-panel">
       <!-- 原作卡片 -->
-      <el-card shadow="always" class="original-image-card" v-if="analyzeStatus === 'analyzed' && currentImage?.url">
+      <el-card shadow="always" class="original-image-card" v-if="(analyzeStatus === 'analyzed' || currentImage?.page_role) && currentImage?.url">
         <template #header>
           <div class="card-header navigation-header">
             <el-button
@@ -53,6 +53,9 @@
                   @error="e => e.target.style.display='none'"
                 />
                 <div v-else class="thumb-placeholder">{{ item.album_index || idx + 1 }}</div>
+                <span v-if="item.page_role" class="thumb-role-badge" :class="'role-' + item.page_role">
+                  {{ roleBadge(item.page_role) }}
+                </span>
               </div>
             </div>
             <button class="album-nav-arrow right" @click="scrollAlbumThumbs(1)" title="向右滚动">
@@ -63,7 +66,7 @@
       </el-card>
 
       <!-- 画作信息卡片（作者/年份/尺寸合并） -->
-      <div class="artwork-info-card" v-if="currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm)">
+      <div class="artwork-info-card" v-if="!currentImage.page_role && (currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm))">
         <div class="info-card-row" v-if="currentImage.artist">
           <span class="info-card-label">作者</span>
           <span class="info-card-value">{{ currentImage.artist }}</span>
@@ -91,10 +94,15 @@
           </el-button>
         </div>
       </div>
+
+      <!-- 附件页提示 -->
+      <div v-if="currentImage.page_role" class="attachment-notice">
+        {{ roleLabel(currentImage.page_role) }} — 非正文画页，不参与AI分析
+      </div>
     </div>
 
-    <!-- 右侧：分析结果 -->
-    <div class="right-panel">
+    <!-- 右侧：分析结果（附件页隐藏） -->
+    <div class="right-panel" v-if="!currentImage.page_role">
       <el-card shadow="hover" class="upload-card" :body-style="{ padding: '0' }">
         <div class="image-display">
           <!-- 面积占比智能示意图 + 标签/款识/钤印 并排布局 -->
@@ -381,7 +389,7 @@
             <el-tag type="info">{{ currentImage.width }} × {{ currentImage.height }}</el-tag>
             <el-tag v-if="analyzeStatus === 'analyzed'" type="success">分析完成</el-tag>
             <el-button
-              v-if="analyzeStatus !== 'analyzing' && analyzeStatus !== 'analyzed'"
+              v-if="analyzeStatus !== 'analyzing' && analyzeStatus !== 'analyzed' && !currentImage.page_role"
               type="primary"
               size="small"
               @click="$emit('auto-analyze')"
@@ -543,6 +551,12 @@ const authStore = useAuthStore()
 function canEditItem(item) {
   return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
 }
+
+// page_role 中文映射
+const ROLE_LABEL = { cover: '封面', back_cover: '封底', inscription: '题跋页', accessory: '附件', other: '其他页' }
+const ROLE_BADGE = { cover: '封', back_cover: '底', inscription: '跋', accessory: '附', other: '他' }
+function roleLabel(role) { return ROLE_LABEL[role] || '其他页' }
+function roleBadge(role) { return ROLE_BADGE[role] || '他' }
 
 // 我的意见
 const showSuggestDialog = ref(false)
@@ -1625,12 +1639,13 @@ defineExpose({
 .album-nav-thumbnails::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
 .album-nav-thumbnail {
   flex-shrink: 0;
+  position: relative;
   width: 38px;
   height: 38px;
   border-radius: 5px;
   border: 2px solid transparent;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -1650,11 +1665,14 @@ defineExpose({
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 3px;
 }
 .album-nav-thumbnail .thumb-placeholder {
   font-size: 12px;
   color: #8a8a7a;
   font-weight: 500;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 /* ── 悬浮布局示意图覆盖层 ── */
@@ -1811,5 +1829,47 @@ defineExpose({
 }
 :deep(.pol-neutral) {
   color: #909399;
+}
+
+/* ── 页面角色角标 ── */
+.thumb-role-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 2px;
+  color: #fff;
+  pointer-events: none;
+  z-index: 1;
+}
+.thumb-role-badge.role-cover {
+  background: #8b6914;
+}
+.thumb-role-badge.role-back_cover {
+  background: #666;
+}
+.thumb-role-badge.role-accessory {
+  background: #2c6e8f;
+}
+.thumb-role-badge.role-inscription {
+  background: #7b4a8b;
+}
+.thumb-role-badge.role-other {
+  background: #999;
+}
+
+/* 附件模式下全宽图 */
+.attachment-view .original-image-wrapper {
+  max-width: 100%;
+}
+.attachment-notice {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 12px 0;
+  border-top: 1px solid #eee;
+  margin-top: 8px;
 }
 </style>

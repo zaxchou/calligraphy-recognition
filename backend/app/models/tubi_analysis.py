@@ -107,3 +107,6 @@ class TubiAnalysis(Base):
 
     # ── 作品类型 ───────────────────────────────────────────
     work_type = Column(String(20), nullable=True, default='画作', comment="作品类型：画作/书法")
+
+    # ── 页面角色 ───────────────────────────────────────────
+    page_role = Column(String(20), nullable=True, default=None, comment="页面角色：cover/back_cover/accessory/inscription/other，NULL=正文")

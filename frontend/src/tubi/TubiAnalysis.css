@@ -724,6 +724,12 @@
   gap: 14px;
 }
 
+/* 附件模式：全宽 */
+.analysis-container.attachment-mode {
+  grid-template-columns: 1fr;
+  max-width: 100%;
+}
+
 /* 左侧面板 */
 .left-panel {
   min-width: 0;

@@ -92,7 +92,7 @@ async def get_artist_rule_by_name(artist_name: str):
             "SELECT * FROM artist_rules WHERE artist_name = ?", (artist_name,)
         ).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="该画家规则不存在")
+            return {"success": True, "rule": None}
         return {"success": True, "rule": _row_to_dict(row)}
     finally:
         conn.close()

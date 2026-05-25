@@ -400,6 +400,7 @@ class ImageInfoRequest(BaseModel):
     painting_percent: Optional[float] = None
     blank_percent: Optional[float] = None
     work_type: Optional[str] = None
+    page_role: Optional[str] = None  # cover / back_cover / accessory
 
 
 def draw_annotated_image(original_path: str, regions: dict, output_path: str):
@@ -1262,6 +1263,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
             "artwork_height_cm": db_analysis.artwork_height_cm,
             "album_name": db_analysis.album_name,
             "album_index": db_analysis.album_index,
+            "page_role": db_analysis.page_role,
             "tags": db_analysis.tags,
             "material_tags": db_analysis.material_tags,
             "period_phase": db_analysis.period_phase,
@@ -1567,6 +1569,8 @@ async def update_image_info(
         db_analysis.blank_percent = request.blank_percent
     if request.work_type is not None:
         db_analysis.work_type = request.work_type
+    if request.page_role is not None:
+        db_analysis.page_role = request.page_role if request.page_role else None
 
     # 自动重新计算分期（period_phase）
     db_analysis.period_phase = get_period_phase(db_analysis.year, db_analysis.artist)
@@ -1859,6 +1863,7 @@ async def get_all_results(
             "thumbnail_url": thumbnail_url,
             "album_name": analysis.album_name,
             "album_index": analysis.album_index,
+            "page_role": analysis.page_role,
             "tags": analysis.tags,
         }
 
@@ -2472,6 +2477,7 @@ async def get_album(album_name: str, db: Session = Depends(get_db)):
             "title": r.title,
             "year": r.year,
             "album_index": r.album_index,
+            "page_role": r.page_role,
             "artwork_height_cm": r.artwork_height_cm,
             "artwork_width_cm": r.artwork_width_cm,
             "thumbnail_url": (
@@ -2637,6 +2643,7 @@ async def get_album_navigation(record_id: str, db: Session = Depends(get_db)):
             "db_id": r.id,
             "title": r.title,
             "album_index": r.album_index,
+            "page_role": r.page_role,
             "thumbnail_url": (
                 get_static_url(f"thumbnails/{basename(r.thumbnail_path)}")
                 if r.thumbnail_path

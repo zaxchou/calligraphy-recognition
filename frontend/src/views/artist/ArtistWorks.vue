@@ -83,6 +83,10 @@
             <div v-if="w.work_type === '篆刻'" class="aw-type-badge seal-type">
               <span>篆刻</span>
             </div>
+            <!-- 页面角色角标 -->
+            <div v-if="w.page_role" class="aw-role-badge" :class="'role-' + w.page_role">
+              <span>{{ roleBadge(w.page_role) }}</span>
+            </div>
             <!-- 面积统计（右下角） -->
             <div v-if="w.inscription_percent !== undefined || w.painting_percent > 0" class="aw-labels">
               <span v-if="w.inscription_percent !== undefined" class="aw-label stat-danger">{{ w.inscription_percent?.toFixed(1) }}%题跋</span>
@@ -176,6 +180,9 @@ const router = useRouter()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const artistName = computed(() => route.params.name)
+
+const ROLE_BADGE = { cover: '封', back_cover: '底', inscription: '跋', accessory: '附', other: '他' }
+function roleBadge(role) { return ROLE_BADGE[role] || '他' }
 const viewMode = ref('grid')
 const works = ref([])
 const totalCount = ref(0)
@@ -314,6 +321,15 @@ onMounted(() => { loadWorks() })
 .aw-type-badge { position: absolute; top: 4px; right: 4px; z-index: 2; }
 .aw-type-badge span { display: inline-block; padding: 1px 5px; background: #5a7a8c; color: #fff; border-radius: 3px; font-size: 9px; font-weight: 500; }
 .aw-type-badge.seal-type span { background: #8b6f8e; }
+
+/* 页面角色角标 */
+.aw-role-badge { position: absolute; top: 24px; right: 4px; z-index: 2; }
+.aw-role-badge span { display: inline-block; padding: 1px 5px; color: #fff; border-radius: 3px; font-size: 9px; font-weight: 500; }
+.aw-role-badge.role-cover span { background: #8b6914; }
+.aw-role-badge.role-back_cover span { background: #666; }
+.aw-role-badge.role-accessory span { background: #2c6e8f; }
+.aw-role-badge.role-inscription span { background: #7b4a8b; }
+.aw-role-badge.role-other span { background: #999; }
 
 /* 面积标签 */
 .aw-labels { position: absolute; bottom: 4px; right: 4px; display: flex; gap: 3px; }

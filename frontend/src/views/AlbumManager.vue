@@ -270,6 +270,21 @@
                 />
               </div>
             </div>
+            <!-- 页面角色 -->
+            <el-select
+              :model-value="item.page_role || ''"
+              size="small"
+              class="item-role-select"
+              placeholder="正文"
+              @change="(val) => setItemPageRole(item, val)"
+            >
+              <el-option label="正文" value="" />
+              <el-option label="封面" value="cover" />
+              <el-option label="封底" value="back_cover" />
+              <el-option label="题跋页" value="inscription" />
+              <el-option label="附件" value="accessory" />
+              <el-option label="其他" value="other" />
+            </el-select>
             <div class="item-actions">
               <el-button
                 size="small"
@@ -773,6 +788,20 @@ async function saveItemYear(item) {
   }
 }
 
+async function setItemPageRole(item, role) {
+  // role 来自 el-select: "" = 正文, "cover" = 封面, etc.
+  // 后端 "" → page_role=NULL（清除角色）
+  try {
+    await tubiApi.updateImageInfo(item.id, { page_role: role || '' })
+    ElMessage.success(role ? '角色已更新' : '已设为正文')
+    item.page_role = role || null
+    const record = allRecords.value.find(r => r.id === item.id)
+    if (record) record.page_role = role || null
+  } catch (e) {
+    ElMessage.error('更新失败: ' + e.message)
+  }
+}
+
 onMounted(() => {
   loadData()
 })
@@ -1266,6 +1295,11 @@ onMounted(() => {
 
 .item-year-input {
   max-width: 100px;
+}
+
+.item-role-select {
+  width: 80px;
+  flex-shrink: 0;
 }
 
 .item-actions {
