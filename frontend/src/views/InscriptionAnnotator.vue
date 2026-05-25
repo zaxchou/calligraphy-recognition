@@ -50,10 +50,11 @@
             :key="'p-' + idx"
             :points="polyPointsStr(poly)"
             class="poly-done"
-            :class="{ 
+            :class="{
               'poly-selected': selectedPolyIdx === idx,
               'poly-inscription': poly.type === 'inscription' || !poly.type,
-              'poly-painting': poly.type === 'painting'
+              'poly-painting': poly.type === 'painting',
+              'poly-margin': poly.type === 'margin'
             }"
             @click.stop="selectPolygon(idx)"
           />
@@ -65,7 +66,8 @@
             class="poly-drawing"
             :class="{
               'drawing-inscription': currentRegionType === 'inscription',
-              'drawing-painting': currentRegionType === 'painting'
+              'drawing-painting': currentRegionType === 'painting',
+              'drawing-margin': currentRegionType === 'margin'
             }"
           />
 
@@ -78,10 +80,11 @@
               :cy="pt.y"
               :r="vertexRadius"
               class="vertex"
-              :class="{ 
+              :class="{
                 'vertex-selected': selectedPolyIdx === pidx,
                 'vertex-inscription': poly.type === 'inscription' || !poly.type,
-                'vertex-painting': poly.type === 'painting'
+                'vertex-painting': poly.type === 'painting',
+                'vertex-margin': poly.type === 'margin'
               }"
               @mousedown.prevent.stop="startDragVertex(pidx, vidx, $event)"
             />
@@ -98,7 +101,8 @@
               class="vertex-drawing"
               :class="{
                 'drawing-inscription': currentRegionType === 'inscription',
-                'drawing-painting': currentRegionType === 'painting'
+                'drawing-painting': currentRegionType === 'painting',
+                'drawing-margin': currentRegionType === 'margin'
               }"
               @mousedown.prevent.stop="startDragVertex(-1, vidx, $event)"
             />
@@ -126,7 +130,7 @@
               <el-icon><ArrowLeft /></el-icon>
               返回
             </el-button>
-            <span class="panel-title">手动标注题跋区域</span>
+            <span class="panel-title">手动标注区域</span>
           </div>
           <div class="toolbar-group">
             <span class="tip-text">点击添加顶点，双击封闭多边形；拖拽顶点调整位置</span>
@@ -150,6 +154,9 @@
               </el-radio-button>
               <el-radio-button value="painting">
                 <span class="type-dot painting"></span>绘画
+              </el-radio-button>
+              <el-radio-button value="margin">
+                <span class="type-dot margin"></span>余边
               </el-radio-button>
             </el-radio-group>
             <el-button
@@ -230,8 +237,8 @@
               <span class="poly-index">{{ idx + 1 }}</span>
               <span
                 class="poly-type-dot"
-                :class="poly.type === 'painting' ? 'type-painting' : 'type-inscription'"
-                :title="poly.type === 'painting' ? '绘画区域，点击切换为题跋' : '题跋区域，点击切换为绘画'"
+                :class="poly.type === 'painting' ? 'type-painting' : poly.type === 'margin' ? 'type-margin' : 'type-inscription'"
+                :title="poly.type === 'painting' ? '绘画区域，点击切换为余边' : poly.type === 'margin' ? '余边区域，点击切换为题跋' : '题跋区域，点击切换为绘画'"
                 @click.stop="togglePolyType(idx)"
               ></span>
               <span class="poly-info">{{ polygonArea(idx).toFixed(2) }}%</span>
@@ -641,7 +648,10 @@ function togglePolyType(idx) {
   const poly = polygons.value[idx]
   if (!poly) return
   history.value.push({ type: 'toggle', polys: JSON.parse(JSON.stringify(polygons.value)) })
-  poly.type = poly.type === 'painting' ? 'inscription' : 'painting'
+  // 轮换: inscription → painting → margin → inscription
+  if (poly.type === 'inscription' || !poly.type) poly.type = 'painting'
+  else if (poly.type === 'painting') poly.type = 'margin'
+  else poly.type = 'inscription'
 }
 
 // 删除多边形
@@ -943,6 +953,23 @@ async function loadRecord() {
 
     // 如果已有 regions，回显
     const allRegions = []
+    if (data.data.regions?.margin_regions?.length) {
+      data.data.regions.margin_regions.forEach(r => {
+        if (r.x1 !== undefined) {
+          allRegions.push({
+            type: 'margin',
+            points: [
+              { x: r.x1, y: r.y1 },
+              { x: r.x2, y: r.y1 },
+              { x: r.x2, y: r.y2 },
+              { x: r.x1, y: r.y2 }
+            ]
+          })
+        } else if (r.points) {
+          allRegions.push({ type: 'margin', points: r.points })
+        }
+      })
+    }
     if (data.data.regions?.inscription_regions?.length) {
       data.data.regions.inscription_regions.forEach(r => {
         if (r.x1 !== undefined) {
@@ -1119,6 +1146,10 @@ onBeforeUnmount(() => {
   background: #4a7fc9;
 }
 
+.type-dot.margin {
+  background: #999;
+}
+
 /* 按钮文字垂直居中 */
 .annotator-toolbar :deep(.el-button) {
   display: inline-flex;
@@ -1171,6 +1202,18 @@ onBeforeUnmount(() => {
   stroke-width: 3;
 }
 
+/* 余边区域 - 灰色 */
+.poly-done.poly-margin {
+  fill: rgba(153, 153, 153, 0.25);
+  stroke: #999;
+}
+
+.poly-done.poly-margin:hover,
+.poly-done.poly-margin.poly-selected {
+  fill: rgba(153, 153, 153, 0.4);
+  stroke-width: 3;
+}
+
 /* 绘画区域 - 蓝色 */
 .poly-done.poly-painting {
   fill: rgba(74, 127, 201, 0.25);
@@ -1199,6 +1242,11 @@ onBeforeUnmount(() => {
   stroke: #6a9fd9;
 }
 
+.poly-drawing.drawing-margin {
+  fill: rgba(153, 153, 153, 0.15);
+  stroke: #b0b0b0;
+}
+
 /* 顶点样式 */
 .vertex {
   stroke: white;
@@ -1225,6 +1273,15 @@ onBeforeUnmount(() => {
   fill: #3a6fb9;
 }
 
+/* 余边顶点 - 灰色 */
+.vertex.vertex-margin {
+  fill: #999;
+}
+
+.vertex.vertex-margin:hover {
+  fill: #777;
+}
+
 .vertex-selected {
   fill: #a8503a;
   stroke: #ffd700;
@@ -1244,6 +1301,10 @@ onBeforeUnmount(() => {
 
 .vertex-drawing.drawing-painting {
   fill: #6a9fd9;
+}
+
+.vertex-drawing.drawing-margin {
+  fill: #b0b0b0;
 }
 
 /* 右侧面板 */
@@ -1447,6 +1508,10 @@ onBeforeUnmount(() => {
 
 .poly-type-dot.type-painting {
   background: #4a7fc9;
+}
+
+.poly-type-dot.type-margin {
+  background: #999;
 }
 
 .poly-info {

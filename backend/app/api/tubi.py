@@ -405,17 +405,17 @@ class ImageInfoRequest(BaseModel):
 
 def draw_annotated_image(original_path: str, regions: dict, output_path: str):
     """
-    绘制区域标注图片 — 只标注题跋区域（红色），不标注绘画和留白
+    绘制区域标注图片 — 余边（灰色）+ 题跋区域（红色）
     """
     try:
         from PIL import Image, ImageDraw
         import os
-        
+
         # 检查文件是否存在
         if not os.path.exists(original_path):
             logger.warning("原始文件不存在: %s", original_path)
             return None
-        
+
         # 打开原图并调整大小以减少内存使用
         max_size = 1024  # 限制最大边长为1024像素
         with Image.open(original_path) as img:
@@ -429,21 +429,45 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
                     new_height = max_size
                     new_width = int(width * max_size / height)
                 img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+
             # 转换为RGBA模式以支持透明叠加
             if img.mode != 'RGBA':
                 img = img.convert('RGBA')
-            
+
             # 创建透明叠加层
             overlay = Image.new('RGBA', img.size, (255, 255, 255, 0))
             draw = ImageDraw.Draw(overlay)
-            
-            # 只画题跋区域 - 红色
+
+            # 余边区域 - 暗灰色 #999
+            margin_fill = (153, 153, 153, 100)
+            margin_border = (153, 153, 153, 220)
+
+            max_regions = 100
+
+            for region in regions.get("margin_regions", [])[:max_regions]:
+                try:
+                    if "points" in region and isinstance(region["points"], list):
+                        points = region["points"]
+                        if len(points) >= 3:
+                            scale_x = new_width / width if 'new_width' in locals() else 1
+                            scale_y = new_height / height if 'new_height' in locals() else 1
+                            poly_points = [(int(p["x"] * scale_x), int(p["y"] * scale_y)) for p in points]
+                            draw.polygon(poly_points, fill=margin_fill)
+                            draw.polygon(poly_points, outline=margin_border, width=2)
+                    elif "x1" in region:
+                        scale_x = new_width / width if 'new_width' in locals() else 1
+                        scale_y = new_height / height if 'new_height' in locals() else 1
+                        x1, y1 = int(region["x1"] * scale_x), int(region["y1"] * scale_y)
+                        x2, y2 = int(region["x2"] * scale_x), int(region["y2"] * scale_y)
+                        draw.rectangle([x1, y1, x2, y2], fill=margin_fill)
+                        draw.rectangle([x1, y1, x2, y2], outline=margin_border, width=2)
+                except Exception as e:
+                    logger.error("绘制余边区域时出错: %s", e)
+
+            # 题跋区域 - 红色
             insc_fill = (220, 50, 50, 80)
             insc_border = (220, 50, 50, 220)
-            
-            max_regions = 100
-            
+
             for region in regions.get("inscription_regions", [])[:max_regions]:
                 try:
                     if "points" in region and isinstance(region["points"], list):
@@ -463,14 +487,14 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
                         draw.rectangle([x1, y1, x2, y2], outline=insc_border, width=2)
                 except Exception as e:
                     logger.error("绘制区域时出错: %s", e)
-            
+
             # 合并图层
             result = Image.alpha_composite(img, overlay)
-            
+
             # 转换为RGB保存
             if result.mode == 'RGBA':
                 result = result.convert('RGB')
-            
+
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             result.save(output_path, 'JPEG', quality=75, optimize=True)
             return output_path
@@ -483,9 +507,9 @@ def draw_annotated_image(original_path: str, regions: dict, output_path: str):
 
 def draw_all_regions_image(original_path: str, regions: dict, output_path: str, original_width: int = None, original_height: int = None):
     """
-    绘制三色区域标注图 — 题跋（红色）、绘画（蓝色）、留白（灰色）
+    绘制四色区域标注图 — 余边（暗灰）、题跋（红色）、绘画（蓝色）、留白（浅灰）
     使用 OpenCV 实现，支持半透明叠加
-    
+
     Args:
         original_width: 原始图片宽度（用于坐标缩放）
         original_height: 原始图片高度（用于坐标缩放）
@@ -493,22 +517,22 @@ def draw_all_regions_image(original_path: str, regions: dict, output_path: str, 
     try:
         import cv2
         import numpy as np
-        
+
         # 检查文件是否存在
         if not os.path.exists(original_path):
             logger.warning("原始文件不存在: %s", original_path)
             return None
-        
+
         # 读取原图
         img = cv2.imread(original_path)
         if img is None:
             logger.warning("无法读取图片: %s", original_path)
             return None
-        
+
         height, width = img.shape[:2]
         original_width = original_width or width
         original_height = original_height or height
-        
+
         # 调整大小以减少内存使用
         max_size = 1024
         scale_x = 1.0
@@ -524,12 +548,29 @@ def draw_all_regions_image(original_path: str, regions: dict, output_path: str, 
             scale_x = new_width / original_width
             scale_y = new_height / original_height
             height, width = img.shape[:2]
-        
-        # 创建三个 mask
+
+        # 创建四个 mask
+        margin_mask = np.zeros((height, width), dtype=np.uint8)
         inscription_mask = np.zeros((height, width), dtype=np.uint8)
         painting_mask = np.zeros((height, width), dtype=np.uint8)
-        blank_mask = np.zeros((height, width), dtype=np.uint8)
-        
+
+        # 填充余边区域
+        for region in regions.get("margin_regions", []):
+            try:
+                if "points" in region and isinstance(region["points"], list):
+                    points = region["points"]
+                    if len(points) >= 3:
+                        pts = np.array([[int(p["x"] * scale_x), int(p["y"] * scale_y)] for p in points], dtype=np.int32)
+                        cv2.fillPoly(margin_mask, [pts], 255)
+                elif "x1" in region:
+                    x1 = int(region["x1"] * scale_x)
+                    y1 = int(region["y1"] * scale_y)
+                    x2 = int(region["x2"] * scale_x)
+                    y2 = int(region["y2"] * scale_y)
+                    cv2.rectangle(margin_mask, (x1, y1), (x2, y2), 255, -1)
+            except Exception as e:
+                logger.error("填充余边区域时出错: %s", e)
+
         # 填充题跋区域
         for region in regions.get("inscription_regions", []):
             try:
@@ -546,7 +587,7 @@ def draw_all_regions_image(original_path: str, regions: dict, output_path: str, 
                     cv2.rectangle(inscription_mask, (x1, y1), (x2, y2), 255, -1)
             except Exception as e:
                 logger.error("填充题跋区域时出错: %s", e)
-        
+
         # 填充绘画区域
         for region in regions.get("painting_regions", []):
             try:
@@ -563,45 +604,52 @@ def draw_all_regions_image(original_path: str, regions: dict, output_path: str, 
                     cv2.rectangle(painting_mask, (x1, y1), (x2, y2), 255, -1)
             except Exception as e:
                 logger.error("填充绘画区域时出错: %s", e)
-        
-        # 留白区域 = 总面积 - 题跋 - 绘画
-        # 先计算未被题跋和绘画覆盖的区域
-        covered_mask = cv2.bitwise_or(inscription_mask, painting_mask)
+
+        # 留白区域 = 总面积 - 余边 - 题跋 - 绘画
+        covered_mask = cv2.bitwise_or(margin_mask, cv2.bitwise_or(inscription_mask, painting_mask))
         blank_mask = cv2.bitwise_not(covered_mask)
-        
+
         # 创建颜色叠加层
+        # 余边 - 暗灰 #999 (BGR: 153, 153, 153)，透明度 45%
+        dark_gray_overlay = np.zeros_like(img)
+        dark_gray_overlay[:, :] = [153, 153, 153]
+
         # 题跋 - 红色 (BGR: 60, 60, 220)，透明度 50%
         red_overlay = np.zeros_like(img)
         red_overlay[:, :] = [60, 60, 220]
-        
+
         # 绘画 - 蓝色 (BGR: 220, 100, 50)，透明度 50%
         blue_overlay = np.zeros_like(img)
         blue_overlay[:, :] = [220, 100, 50]
-        
-        # 留白 - 灰色 (BGR: 180, 180, 180)，透明度 30%
-        gray_overlay = np.zeros_like(img)
-        gray_overlay[:, :] = [180, 180, 180]
-        
-        # 应用 mask 叠加颜色
-        # 先应用留白（灰色）
-        gray_blend = cv2.addWeighted(img, 0.70, gray_overlay, 0.30, 0)
+
+        # 留白 - 浅灰 (BGR: 180, 180, 180)，透明度 30%
+        light_gray_overlay = np.zeros_like(img)
+        light_gray_overlay[:, :] = [180, 180, 180]
+
+        # 应用 mask 叠加颜色（按优先级从低到高）
+        # 先应用留白（浅灰）
+        gray_blend = cv2.addWeighted(img, 0.70, light_gray_overlay, 0.30, 0)
         cv2.copyTo(gray_blend, blank_mask, img)
-        
+
         # 再应用绘画（蓝色）
         blue_blend = cv2.addWeighted(img, 0.50, blue_overlay, 0.50, 0)
         cv2.copyTo(blue_blend, painting_mask, img)
-        
-        # 最后应用题跋（红色），优先级最高
+
+        # 应用题跋（红色）
         red_blend = cv2.addWeighted(img, 0.50, red_overlay, 0.50, 0)
         cv2.copyTo(red_blend, inscription_mask, img)
-        
+
+        # 最后应用余边（暗灰），优先级最高
+        margin_blend = cv2.addWeighted(img, 0.55, dark_gray_overlay, 0.45, 0)
+        cv2.copyTo(margin_blend, margin_mask, img)
+
         # 保存结果
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         cv2.imwrite(output_path, img, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-        
+
         return output_path
     except Exception as e:
-        logger.error("生成三色标注图失败: %s", e)
+        logger.error("生成四色标注图失败: %s", e)
         import traceback
         traceback.print_exc()
         return None
@@ -1146,7 +1194,7 @@ async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db
 
     # 将 RegionData 转为 area_calculator 格式
     regions_dict = {"inscription_regions": [], "painting_regions": [], "blank_regions": []}
-    type_map = {"inscription": "inscription_regions", "painting": "painting_regions", "blank": "blank_regions"}
+    type_map = {"margin": "margin_regions", "inscription": "inscription_regions", "painting": "painting_regions", "blank": "blank_regions"}
     for region in request.regions:
         key = type_map.get(region.type)
         if key is not None:
@@ -3069,9 +3117,10 @@ async def update_regions_manual(
         width = db_analysis.image_width or 1
         height = db_analysis.image_height or 1
 
-    # 构建 regions dict（根据 type 分别归入 inscription/painting）
+    # 构建 regions dict（根据 type 分别归入 inscription/painting/margin）
     inscription_list = []
     painting_list = []
+    margin_list = []
     logger.info(f"[update_regions_manual] 接收到 {len(request.regions)} 个区域")
     for i, r in enumerate(request.regions):
         # 优先使用多边形 points，其次使用矩形 x1/y1/x2/y2
@@ -3091,12 +3140,15 @@ async def update_regions_manual(
         else:
             logger.warning(f"[update_regions_manual] 区域 {i}: 无效数据，跳过")
             continue  # 跳过无效区域
-        
+
         # 根据 type 字段分别存储，默认为 inscription
         region_type = r.type if r.type else 'inscription'
         if region_type == 'painting':
             painting_list.append(region_data)
             logger.info(f"[update_regions_manual] 区域 {i}: 归入 painting_list")
+        elif region_type == 'margin':
+            margin_list.append(region_data)
+            logger.info(f"[update_regions_manual] 区域 {i}: 归入 margin_list")
         else:
             inscription_list.append(region_data)
             logger.info(f"[update_regions_manual] 区域 {i}: 归入 inscription_list")
@@ -3104,6 +3156,7 @@ async def update_regions_manual(
     regions_dict = {
         "inscription_regions": inscription_list,
         "painting_regions": painting_list,
+        "margin_regions": margin_list,
         "blank_regions": []
     }
 
@@ -3120,7 +3173,7 @@ async def update_regions_manual(
             db=db,
             artwork_id=db_analysis.id,
             operation_type="manual_save",
-            change_summary=f"手动保存区域标注（{len(inscription_list)} 个题跋 + {len(painting_list)} 个绘画区域）",
+            change_summary=f"手动保存区域标注（{len(margin_list)} 余边 + {len(inscription_list)} 题跋 + {len(painting_list)} 绘画）",
             approved_by=user.id,
             submitted_by=user.id,
         )
@@ -3258,6 +3311,7 @@ async def recover_regions(
         # 转换数组格式为 dict 格式
         inscription_list = []
         painting_list = []
+        margin_list = []
         for r in raw_regions:
             region_type = r.get("type", "inscription") if isinstance(r, dict) else "inscription"
             if isinstance(r, dict) and "points" in r:
@@ -3268,12 +3322,15 @@ async def recover_regions(
                 continue
             if region_type == "painting":
                 painting_list.append(entry)
+            elif region_type == "margin":
+                margin_list.append(entry)
             else:
                 inscription_list.append(entry)
 
         regions_dict = {
             "inscription_regions": inscription_list,
             "painting_regions": painting_list,
+            "margin_regions": margin_list,
             "blank_regions": [],
             "_meta": {"user_edited": True, "recovered": True}
         }

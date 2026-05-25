@@ -132,6 +132,12 @@
                         preserveAspectRatio="xMidYMid meet"
                       >
                         <polygon
+                          v-for="(reg, idx) in diagramRegions.margin_regions"
+                          :key="'m'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-margin-poly"
+                        />
+                        <polygon
                           v-for="(reg, idx) in diagramRegions.painting_regions"
                           :key="'p'+idx"
                           :points="toDiagramPoints(reg)"
@@ -154,6 +160,7 @@
                         <span class="legend-item"><span class="legend-dot inscription"></span>题跋</span>
                         <span class="legend-item"><span class="legend-dot painting"></span>绘画</span>
                         <span class="legend-item"><span class="legend-dot blank"></span>留白</span>
+                        <span class="legend-item"><span class="legend-dot margin"></span>余边</span>
                       </div>
                     </div>
                   </transition>
@@ -875,15 +882,16 @@ function openImagePreview(imageUrl, dziUrl) {
 
 // ── 解析 regions ──────────────────────────────
 function parseRegions(regionsData) {
-  if (!regionsData) return { inscription_regions: [], painting_regions: [], blank_regions: [] }
+  if (!regionsData) return { inscription_regions: [], painting_regions: [], blank_regions: [], margin_regions: [] }
   let parsed = regionsData
   if (typeof parsed === 'string') {
-    try { parsed = JSON.parse(parsed) } catch { return { inscription_regions: [], painting_regions: [], blank_regions: [] } }
+    try { parsed = JSON.parse(parsed) } catch { return { inscription_regions: [], painting_regions: [], blank_regions: [], margin_regions: [] } }
   }
   return {
     inscription_regions: parsed.inscription_regions || [],
     painting_regions: parsed.painting_regions || [],
-    blank_regions: parsed.blank_regions || []
+    blank_regions: parsed.blank_regions || [],
+    margin_regions: parsed.margin_regions || []
   }
 }
 
@@ -891,7 +899,7 @@ function parseRegions(regionsData) {
 const diagramRegions = computed(() => {
   const currentRegions = parseRegions(props.currentImage?.regions)
   if (!currentRegions.inscription_regions?.length) {
-    return { inscription_regions: [], painting_regions: [], blank_regions: [] }
+    return { inscription_regions: [], painting_regions: [], blank_regions: [], margin_regions: [] }
   }
   return currentRegions
 })
@@ -1714,6 +1722,15 @@ defineExpose({
 .diagram-legend-overlay .legend-dot.inscription { background: rgba(201, 100, 66, 0.7); }
 .diagram-legend-overlay .legend-dot.painting { background: rgba(74, 144, 217, 0.7); }
 .diagram-legend-overlay .legend-dot.blank { background: rgba(144, 164, 174, 0.5); }
+.diagram-legend-overlay .legend-dot.margin { background: rgba(153, 153, 153, 0.7); }
+
+/* 余边图例多边形 - 灰色半透明 */
+.diagram-hover-overlay .diagram-margin-poly {
+  fill: rgba(153, 153, 153, 0.25);
+  stroke: #999;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.25s ease;
 }
