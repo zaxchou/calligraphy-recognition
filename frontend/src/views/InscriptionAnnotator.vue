@@ -1054,26 +1054,12 @@ async function loadRecord() {
       imgNaturalH.value = h
     }
 
-    // 选择图片源：卷轴(宽高比>=5)用原图，普通图用缩略图
-    const aspectRatio = (w && h) ? Math.max(w, h) / Math.max(Math.min(w, h), 1) : 0
-    if (aspectRatio >= 5) {
-      // 卷轴——直接用原图，缩略图拉伸太模糊
-      let fullUrl = data.data.url || data.data.filepath || ''
-      if (fullUrl && !fullUrl.startsWith('http')) {
-        fullUrl = `${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`
-      }
-      imageUrl.value = fullUrl
-    } else {
-      // 普通图——用缩略图，大图也流畅
-      let url = data.data.thumbnail_url || data.data.thumbnail_path || ''
-      if (!url) {
-        url = data.data.url || data.data.filepath || ''
-      }
-      if (url && !url.startsWith('http')) {
-        if (!url.startsWith('/static/') && !url.startsWith('/')) url = '/' + url
-      }
-      imageUrl.value = url
+    // 标注用原图——缩略图只有300px方形裁切，拉伸到原图尺寸无法使用
+    let fullUrl = data.data.url || data.data.filepath || ''
+    if (fullUrl && !fullUrl.startsWith('http')) {
+      fullUrl = `${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`
     }
+    imageUrl.value = fullUrl
 
     // 预加载原图（用于放大镜高精度显示）
     const fullUrl = data.data.url || data.data.filepath || ''
@@ -1322,6 +1308,11 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   cursor: crosshair;
+  will-change: transform;
+  contain: paint;
+}
+.annotator-svg image {
+  image-rendering: optimizeSpeed;
 }
 
 /* 多边形样式 - stroke-width 用 vector-effect 保证视觉一致 */
