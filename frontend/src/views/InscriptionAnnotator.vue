@@ -1046,11 +1046,17 @@ async function loadRecord() {
 
     recordData.value = data.data
 
-    // 构建图片 URL
-    let url = data.data.url || data.data.filepath || ''
-    // 确保是完整 URL
+    // 构建图片 URL —— 用缩略图代替原图，大图标注不卡顿
+    // 坐标系统仍用原图尺寸，SVG viewBox 自动缩放适配
+    let url = data.data.thumbnail_url || data.data.thumbnail_path || ''
+    if (!url) {
+      // 兜底：没有缩略图时用原图
+      url = data.data.url || data.data.filepath || ''
+    }
     if (url && !url.startsWith('http')) {
-      url = `${url.startsWith('/') ? '' : '/'}${url}`
+      // thumbnail_url 如 /static/thumbnails/xxx_thumb.jpg
+      if (url.startsWith('/static/')) url = url
+      else url = `${url.startsWith('/') ? '' : '/'}${url}`
     }
     imageUrl.value = url
 
@@ -1062,7 +1068,11 @@ async function loadRecord() {
       imgNaturalH.value = h
     }
 
-    // 预加载隐藏 Image 对象（用于放大镜）
+    // 预加载原图（用于放大镜高精度显示）
+    const fullUrl = data.data.url || data.data.filepath || ''
+    const magnifierSrc = (fullUrl && !fullUrl.startsWith('http'))
+      ? `${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`
+      : fullUrl
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
@@ -1074,7 +1084,7 @@ async function loadRecord() {
       }
       console.log(`[Annotator] Image loaded: ${img.naturalWidth}x${img.naturalHeight}`)
     }
-    img.src = url
+    img.src = magnifierSrc
 
     // 如果已有 regions，回显
     const allRegions = []
