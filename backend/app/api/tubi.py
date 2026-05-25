@@ -2323,6 +2323,9 @@ async def get_dimensions(
     if library_id:
         query = query.filter(TubiAnalysis.library_id == library_id)
     
+    # 只查正文画页（排除封面/封底/题跋页/附件/其他页）
+    query = query.filter((TubiAnalysis.page_role.is_(None)) | (TubiAnalysis.page_role == ''))
+
     records = query.order_by(TubiAnalysis.year, TubiAnalysis.id).all()
 
     items = []

@@ -1057,6 +1057,7 @@ async def get_records(
     params = list(artist_params)
     where_clauses = [
         artist_where,
+        "(page_role IS NULL OR page_role = '')",
     ]
 
     if library_id is not None:
