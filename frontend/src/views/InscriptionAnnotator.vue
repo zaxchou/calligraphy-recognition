@@ -1239,7 +1239,7 @@ onBeforeUnmount(() => {
 }
 
 .type-dot.margin {
-  background: #666;
+  background: #333;
 }
 
 /* 按钮文字垂直居中 */
@@ -1296,13 +1296,13 @@ onBeforeUnmount(() => {
 
 /* 余边区域 - 灰色 */
 .poly-done.poly-margin {
-  fill: rgba(102, 102, 102, 0.3);
-  stroke: #666;
+  fill: rgba(51, 51, 51, 0.3);
+  stroke: #333;
 }
 
 .poly-done.poly-margin:hover,
 .poly-done.poly-margin.poly-selected {
-  fill: rgba(102, 102, 102, 0.45);
+  fill: rgba(51, 51, 51, 0.45);
   stroke-width: 3;
 }
 
@@ -1335,8 +1335,8 @@ onBeforeUnmount(() => {
 }
 
 .poly-drawing.drawing-margin {
-  fill: rgba(102, 102, 102, 0.2);
-  stroke: #888;
+  fill: rgba(51, 51, 51, 0.2);
+  stroke: #555;
 }
 
 /* 矩形模式拖拽预览 */
@@ -1349,7 +1349,7 @@ onBeforeUnmount(() => {
 }
 .rect-preview.drawing-inscription { stroke: #e07a5a; fill: rgba(201, 100, 66, 0.1); }
 .rect-preview.drawing-painting { stroke: #6a9fd9; fill: rgba(74, 127, 201, 0.1); }
-.rect-preview.drawing-margin { stroke: #888; fill: rgba(102, 102, 102, 0.15); }
+.rect-preview.drawing-margin { stroke: #555; fill: rgba(51, 51, 51, 0.15); }
 
 /* 顶点样式 */
 .vertex {
@@ -1379,7 +1379,7 @@ onBeforeUnmount(() => {
 
 /* 余边顶点 - 灰色 */
 .vertex.vertex-margin {
-  fill: #666;
+  fill: #333;
 }
 
 .vertex.vertex-margin:hover {
@@ -1408,7 +1408,7 @@ onBeforeUnmount(() => {
 }
 
 .vertex-drawing.drawing-margin {
-  fill: #888;
+  fill: #555;
 }
 
 /* 右侧面板 */
@@ -1615,7 +1615,7 @@ onBeforeUnmount(() => {
 }
 
 .poly-type-dot.type-margin {
-  background: #666;
+  background: #333;
 }
 
 .poly-info {
