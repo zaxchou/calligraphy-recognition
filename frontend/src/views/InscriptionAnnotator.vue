@@ -1046,26 +1046,33 @@ async function loadRecord() {
 
     recordData.value = data.data
 
-    // 构建图片 URL —— 用缩略图代替原图，大图标注不卡顿
-    // 坐标系统仍用原图尺寸，SVG viewBox 自动缩放适配
-    let url = data.data.thumbnail_url || data.data.thumbnail_path || ''
-    if (!url) {
-      // 兜底：没有缩略图时用原图
-      url = data.data.url || data.data.filepath || ''
-    }
-    if (url && !url.startsWith('http')) {
-      // thumbnail_url 如 /static/thumbnails/xxx_thumb.jpg
-      if (url.startsWith('/static/')) url = url
-      else url = `${url.startsWith('/') ? '' : '/'}${url}`
-    }
-    imageUrl.value = url
-
     // 设置图片尺寸 - 支持 image_width/image_height 或 width/height
     const w = data.data.image_width || data.data.width
     const h = data.data.image_height || data.data.height
     if (w && h) {
       imgNaturalW.value = w
       imgNaturalH.value = h
+    }
+
+    // 选择图片源：卷轴(宽高比>=5)用原图，普通图用缩略图
+    const aspectRatio = (w && h) ? Math.max(w, h) / Math.max(Math.min(w, h), 1) : 0
+    if (aspectRatio >= 5) {
+      // 卷轴——直接用原图，缩略图拉伸太模糊
+      let fullUrl = data.data.url || data.data.filepath || ''
+      if (fullUrl && !fullUrl.startsWith('http')) {
+        fullUrl = `${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`
+      }
+      imageUrl.value = fullUrl
+    } else {
+      // 普通图——用缩略图，大图也流畅
+      let url = data.data.thumbnail_url || data.data.thumbnail_path || ''
+      if (!url) {
+        url = data.data.url || data.data.filepath || ''
+      }
+      if (url && !url.startsWith('http')) {
+        if (!url.startsWith('/static/') && !url.startsWith('/')) url = '/' + url
+      }
+      imageUrl.value = url
     }
 
     // 预加载原图（用于放大镜高精度显示）
