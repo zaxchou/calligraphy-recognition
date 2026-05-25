@@ -57,7 +57,7 @@ function initViewer() {
   if (viewer) { viewer.destroy(); viewer = null }
   viewer = OSD({
     element: el,
-    tileSources: props.dziUrl || props.imageUrl,
+    tileSources: props.dziUrl || { type: 'image', url: props.imageUrl },
     prefixUrl: '/openseadragon-images/',
     showNavigator: true,
     navigatorPosition: 'BOTTOM_RIGHT',
