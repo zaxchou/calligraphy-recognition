@@ -379,11 +379,6 @@ watch(imgNaturalW, () => {
   resetView()
 })
 
-// 选"余边"时自动切换为矩形工具
-watch(currentRegionType, (t) => {
-  if (t === 'margin') drawMode.value = 'rect'
-})
-
 // 按钮缩放
 function zoomIn() {
   const scale = currentScale.value / 1.25
@@ -474,6 +469,11 @@ const history = ref([]) // 操作历史（用于撤销）
 
 const saving = ref(false)
 const recordData = ref(null)
+
+// 选"余边"时自动切换为矩形工具
+watch(currentRegionType, (t) => {
+  if (t === 'margin') drawMode.value = 'rect'
+})
 
 // 顶点半径（SVG坐标，需根据图片大小缩放）
 const vertexRadius = computed(() => {
