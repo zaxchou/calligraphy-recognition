@@ -14,7 +14,7 @@
 
     <div class="upload-body">
       <div v-if="uploadStore.phase === 'idle'">
-        <UploadPhaseIdle v-model="batchFileList" :upload-store="uploadStore" />
+        <UploadPhaseIdle ref="idleRef" v-model="batchFileList" :upload-store="uploadStore" />
         <div v-if="batchFileList.length > 0" class="body-actions">
           <el-button @click="clearFiles">取消</el-button>
           <el-button type="primary" @click="startBatchUpload">
@@ -57,6 +57,12 @@ const emit = defineEmits(['refresh'])
 
 const batchFileList = ref([])
 let batchUploadCancelled = false
+const idleRef = ref(null)
+
+function triggerFilePicker() {
+  idleRef.value?.triggerFileInput()
+}
+defineExpose({ triggerFilePicker })
 
 const {
   store: uploadStore,
@@ -133,7 +139,10 @@ async function retryAllFailed() {
 
 function clearFiles() { batchFileList.value = [] }
 function cancelUpload() { batchUploadCancelled = true; resetStore() }
-function finishUpload() { resetStore(); batchFileList.value = [] }
+function finishUpload() { resetStore(); batchFileList.value = []
+  // 重置后自动弹出文件选择框
+  nextTick(() => { idleRef.value?.triggerFileInput() })
+}
 function restore() { restoreStore() }
 
 onMounted(() => { restore() })

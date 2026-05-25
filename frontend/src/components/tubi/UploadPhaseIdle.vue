@@ -104,6 +104,16 @@ function formatFileSize(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
+
+// 暴露文件选择触发方法
+function triggerFileInput() {
+  const el = uploadRef.value?.$el || uploadRef.value
+  if (el) {
+    const input = el.querySelector('input[type="file"]')
+    if (input) input.click()
+  }
+}
+defineExpose({ triggerFileInput })
 </script>
 
 <style scoped>

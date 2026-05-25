@@ -37,6 +37,7 @@
         </el-button>
       </div>
       <TubiUploadInline
+        ref="uploadInlineRef"
         :library-id="libraryId"
         @refresh="onUploadRefresh"
       />
@@ -66,7 +67,7 @@
             <span class="artwork-count">共 {{ totalArtworks }} 件</span>
           </div>
           <div class="toolbar-right">
-            <el-button size="small" @click="showUploadArea = !showUploadArea" :disabled="!canEdit" :class="{ 'is-active': showUploadArea }">
+            <el-button size="small" @click="handleUploadClick" :disabled="!canEdit" :class="{ 'is-active': showUploadArea }">
               <el-icon><Upload /></el-icon>{{ showUploadArea ? '收起上传' : '上传作品' }}
             </el-button>
             <span class="flow-arrow">→</span>
@@ -93,7 +94,7 @@
         </div>
 
         <el-empty v-else-if="artworks.length === 0" description="库内还没有作品">
-          <el-button type="primary" @click="showUploadArea = true" :disabled="!canEdit">上传作品</el-button>
+          <el-button type="primary" @click="handleUploadClick" :disabled="!canEdit">上传作品</el-button>
         </el-empty>
 
         <!-- 作品网格 -->
@@ -462,7 +463,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete, Close, Bottom, Right, Refresh, RefreshRight, EditPen, Crop, MagicStick } from '@element-plus/icons-vue'
@@ -507,6 +508,19 @@ const order = ref('desc')
 
 // ── Upload ──
 const showUploadArea = ref(false)
+const uploadInlineRef = ref(null)
+
+function handleUploadClick() {
+  if (showUploadArea.value) {
+    showUploadArea.value = false
+  } else {
+    showUploadArea.value = true
+    // 展开后立即触发文件选择框，省去再点一次
+    nextTick(() => {
+      uploadInlineRef.value?.triggerFilePicker()
+    })
+  }
+}
 
 // ── Batch operations ──
 const switchingLibraryId = ref(null)
