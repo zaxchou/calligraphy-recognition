@@ -1722,12 +1722,12 @@ defineExpose({
 .diagram-legend-overlay .legend-dot.inscription { background: rgba(201, 100, 66, 0.7); }
 .diagram-legend-overlay .legend-dot.painting { background: rgba(74, 144, 217, 0.7); }
 .diagram-legend-overlay .legend-dot.blank { background: rgba(144, 164, 174, 0.5); }
-.diagram-legend-overlay .legend-dot.margin { background: rgba(153, 153, 153, 0.7); }
+.diagram-legend-overlay .legend-dot.margin { background: rgba(102, 102, 102, 0.8); }
 
 /* 余边图例多边形 - 灰色半透明 */
 .diagram-hover-overlay .diagram-margin-poly {
-  fill: rgba(153, 153, 153, 0.25);
-  stroke: #999;
+  fill: rgba(102, 102, 102, 0.3);
+  stroke: #666;
   stroke-width: 0.5;
   vector-effect: non-scaling-stroke;
 }
