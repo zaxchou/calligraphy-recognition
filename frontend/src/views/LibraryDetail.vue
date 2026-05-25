@@ -515,10 +515,16 @@ function handleUploadClick() {
     showUploadArea.value = false
   } else {
     showUploadArea.value = true
-    // 展开后立即触发文件选择框，省去再点一次
-    nextTick(() => {
-      uploadInlineRef.value?.triggerFilePicker()
-    })
+    // UploadPhaseIdle 是异步组件，需要等它渲染完成
+    let retries = 0
+    const tryOpen = () => {
+      if (uploadInlineRef.value?.triggerFilePicker()) {
+        // 成功触发
+      } else if (retries++ < 10) {
+        setTimeout(tryOpen, 150)
+      }
+    }
+    nextTick(() => setTimeout(tryOpen, 100))
   }
 }
 

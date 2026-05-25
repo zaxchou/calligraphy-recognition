@@ -110,8 +110,9 @@ function triggerFileInput() {
   const el = uploadRef.value?.$el || uploadRef.value
   if (el) {
     const input = el.querySelector('input[type="file"]')
-    if (input) input.click()
+    if (input) { input.click(); return true }
   }
+  return false
 }
 defineExpose({ triggerFileInput })
 </script>
