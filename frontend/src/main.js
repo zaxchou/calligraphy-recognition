@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import enLocale from 'element-plus/dist/locale/en.mjs'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-600.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-700.css'
@@ -12,6 +13,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { siteConfig, loadSiteConfig } from './config'
+import i18n from './locales/index'
 
 // ── 全局增强 fetch：自动携带 JWT Authorization header ──
 const _origFetch = window.fetch
@@ -31,23 +33,23 @@ window.fetch = function (input, init) {
   return _origFetch.call(window, input, init)
 }
 
-async function init() {
-  // 1. 先从 API 拉取站点配置（标题、副标题等可由管理员在线修改）
-  await loadSiteConfig()
+// Element Plus locale 跟随 i18n 切换
+const epLocales = { zh: zhCn, en: enLocale }
+function getEpLocale() { return epLocales[i18n.global.locale.value] || zhCn }
 
-  // 2. 设置全局默认标题
+async function init() {
+  await loadSiteConfig()
   document.title = siteConfig.htmlTitle
 
-  // 3. 挂载应用
   const app = createApp(App)
 
-  // 注册所有图标
   for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
   }
 
   app.use(createPinia())
-  app.use(ElementPlus, { locale: zhCn })
+  app.use(ElementPlus, { locale: getEpLocale() })
+  app.use(i18n)
   app.use(router)
   app.mount('#app')
 }

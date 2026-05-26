@@ -21,6 +21,9 @@
           <router-link to="/content-analysis" class="nav-item" active-class="active"><span class="nav-text">大数据分析</span></router-link>
         </nav>
         <div class="user-area">
+          <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
+            {{ locale === 'zh' ? 'EN' : '中' }}
+          </button>
           <template v-if="authStore.isLoggedIn">
             <NotificationBell />
             <div class="user-menu-wrap" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
@@ -144,11 +147,13 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
+import { useI18n } from 'vue-i18n'
 import NotificationBell from './components/NotificationBell.vue'
 import { siteConfig } from './config'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { locale } = useI18n()
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 let closeTimer = null
@@ -163,6 +168,10 @@ onMounted(() => {
 function toggleMobileMenu() { mobileMenuOpen.value = !mobileMenuOpen.value }
 function closeMobileMenu() { mobileMenuOpen.value = false }
 function handleLogout() { authStore.logout(); router.push('/'); userMenuOpen.value = false }
+function toggleLang() {
+  locale.value = locale.value === 'zh' ? 'en' : 'zh'
+  localStorage.setItem('lang', locale.value)
+}
 function go(path) { router.push(path); userMenuOpen.value = false }
 </script>
 
@@ -444,6 +453,23 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.lang-switch {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border: 1px solid #d0c8b8;
+  border-radius: 4px;
+  background: transparent;
+  color: #8a7a5e;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.lang-switch:hover {
+  background: #f5f0e8;
+  border-color: #b8a47e;
+  color: #5d4e37;
 }
 
 .admin-nav-link {

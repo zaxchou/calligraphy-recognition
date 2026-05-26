@@ -12,22 +12,22 @@
               @click="$emit('navigate', prevImage)"
               :icon="ArrowLeft"
             >
-              上一幅
+              {{ $t('nav.prev') }}
             </el-button>
-            <span class="nav-title">{{ currentImage.title || '未命名' }}</span>
+            <span class="nav-title">{{ currentImage.title || $t('card.untitled') }}</span>
             <el-button
               size="small"
               :disabled="!nextImage"
               @click="$emit('navigate', nextImage)"
               :icon="ArrowRight"
             >
-              下一幅
+              {{ $t('nav.next') }}
             </el-button>
           </div>
         </template>
         <div class="original-image-wrapper">
-          <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url, currentImage.dzi_url)" title="点击放大查看" />
-          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url, currentImage.dzi_url)" title="放大查看"><ZoomIn /></el-icon>
+          <img :src="currentImage.thumbnailUrl || currentImage.url" class="original-image" @click="openImagePreview(currentImage.url, currentImage.dzi_url)" :title="$t('nav.prev')" />
+          <el-icon class="zoom-icon" @click="openImagePreview(currentImage.url, currentImage.dzi_url)" :title="$t('action.zoom')"><ZoomIn /></el-icon>
         </div>
 
         <!-- 册页导航 -->
@@ -37,7 +37,7 @@
             <span class="album-nav-count">第{{ albumNavigation.current_index + 1 }}幅 / 共{{ albumNavigation.total_count }}幅</span>
           </div>
           <div class="album-nav-scroll">
-            <button class="album-nav-arrow left" @click="scrollAlbumThumbs(-1)" title="向左滚动">
+            <button class="album-nav-arrow left" @click="scrollAlbumThumbs(-1)" :title="$t('action.scroll_left')">
               <el-icon><ArrowLeft /></el-icon>
             </button>
             <div class="album-nav-thumbnails" ref="albumThumbsRef" @wheel.prevent="onAlbumThumbnailsWheel">
@@ -58,7 +58,7 @@
                 </span>
               </div>
             </div>
-            <button class="album-nav-arrow right" @click="scrollAlbumThumbs(1)" title="向右滚动">
+            <button class="album-nav-arrow right" @click="scrollAlbumThumbs(1)" :title="$t('action.scroll_right')">
               <el-icon><ArrowRight /></el-icon>
             </button>
           </div>
@@ -68,36 +68,36 @@
       <!-- 画作信息卡片（作者/年份/尺寸合并） -->
       <div class="artwork-info-card" v-if="!currentImage.page_role && (currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm))">
         <div class="info-card-row" v-if="currentImage.artist">
-          <span class="info-card-label">作者</span>
+          <span class="info-card-label">{{ $t("info.author") }}</span>
           <span class="info-card-value">{{ currentImage.artist }}</span>
         </div>
         <div class="info-card-row" v-if="currentImage.year">
-          <span class="info-card-label">年份</span>
+          <span class="info-card-label">{{ $t("info.year") }}</span>
           <span class="info-card-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
         </div>
         <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
-          <span class="info-card-label">尺寸</span>
+          <span class="info-card-label">{{ $t("info.size") }}</span>
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
         </div>
         <div class="info-card-actions">
           <el-button v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)" plain size="small" class="btn-action" @click="$emit('edit-current')">
-            <el-icon><Edit /></el-icon><span class="btn-label">编辑</span>
+            <el-icon><Edit /></el-icon><span class="btn-label">{{ $t("btn.edit") }}</span>
           </el-button>
           <el-button v-if="authStore.isLoggedIn" plain size="small" class="btn-action" @click="openSuggestEdit">
-            <el-icon><EditPen /></el-icon><span class="btn-label">我的意见</span>
+            <el-icon><EditPen /></el-icon><span class="btn-label">{{ $t("btn.suggest") }}</span>
           </el-button>
           <el-button plain size="small" class="btn-action" @click="openRevisions">
-            <el-icon><Clock /></el-icon><span class="btn-label">版本历史</span>
+            <el-icon><Clock /></el-icon><span class="btn-label">{{ $t("btn.history") }}</span>
           </el-button>
           <el-button plain size="small" class="btn-action" @click="$emit('back')">
-            <el-icon><HomeFilled /></el-icon><span class="btn-label">返回</span>
+            <el-icon><HomeFilled /></el-icon><span class="btn-label">{{ $t("btn.back") }}</span>
           </el-button>
         </div>
       </div>
 
       <!-- 附件页提示 -->
       <div v-if="currentImage.page_role" class="attachment-notice">
-        {{ roleLabel(currentImage.page_role) }} — 非正文画页，不参与AI分析
+        {{ $t(roleLabel(currentImage.page_role)) }} — {{ $t("attachment.notice") }}
       </div>
     </div>
 
@@ -110,8 +110,8 @@
             <div class="analysis-left-col">
               <!-- ===== Card 1: 情绪解读 ===== -->
               <div class="score-card" v-if="currentImage?.contentAnalysis">
-                <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> 情绪解读</h4>
-                <!-- 有空间分析 → 综合判断 -->
+                <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> {{ $t("card.emotion") }}</h4>
+                <!-- 有空间分析 → {{ $t("judgment.combined") }} -->
                 <template v-if="combinedSentiment">
                   <div class="emotion-layout">
                     <!-- 左：头脑 SVG 底图 + 三维度覆盖 -->
@@ -134,7 +134,7 @@
                         <!-- hover 提示 -->
                         <transition name="fade">
                           <div class="brain-tooltip" v-if="brainHover">
-                            {{ brainHover === 'text' ? '题跋文字' : brainHover === 'spatial' ? '空间布局' : brainHover === 'combined' ? '综合判断' : '钤印' }}
+                            {{ brainHover === 'text' ? $t('factor.text') : brainHover === 'spatial' ? $t('factor.spatial') : brainHover === 'combined' ? $t('judgment.combined') : $t('factor.seal') }}
                           </div>
                         </transition>
                       </div>
@@ -144,11 +144,11 @@
                       <div class="final-judgment-card">
                         <div class="judgment-info-col">
                           <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
-                          <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">{{ currentImage.contentAnalysis.period_phase }}</el-tag>
+                          <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
                         </div>
                         <div class="judgment-score-col">
                           <span class="judgment-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399' }">
-                            {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
+                            {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? '复杂' : $t('polarity.neutral') }}
                           </span>
                           <span class="judgment-score"
                             :style="{ color: displayScore < 0 ? '#f56c6c' : '#3cb88b' }">
@@ -158,18 +158,18 @@
                       </div>
                       <table class="factor-table">
                         <tr class="factor-row">
-                          <td class="factor-col-head">题跋文字</td>
-                          <td class="factor-col-head" v-if="spatialEmotion">空间布局</td>
-                          <td class="factor-col-head" v-if="sealEmotion?.total_seals">钤印</td>
+                          <td class="factor-col-head">{{ $t("factor.text") }}</td>
+                          <td class="factor-col-head" v-if="spatialEmotion">{{ $t("factor.spatial") }}</td>
+                          <td class="factor-col-head" v-if="sealEmotion?.total_seals">{{ $t("factor.seal") }}</td>
                         </tr>
                         <tr class="factor-row">
                           <td class="factor-cell">
                             <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
-                              {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                              {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? $t('polarity.positive') : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? $t('polarity.negative') : $t('polarity.neutral') }}
                             </span>
                           </td>
                           <td class="factor-cell" v-if="spatialEmotion">
-                            <span class="factor-result neutral">{{ spatialEmotion.combined_spatial_sentiment || '平稳' }}</span>
+                            <span class="factor-result neutral">{{ spatialEmotion.combined_spatial_sentiment || $t('emotion.neutral') }}</span>
                           </td>
                           <td class="factor-cell" v-if="sealEmotion?.total_seals">
                             <span class="factor-result" :class="sealEmotion.composite_score > 0.3 ? 'positive' : sealEmotion.composite_score < -0.3 ? 'negative' : 'neutral'">
@@ -185,12 +185,13 @@
                           </td>
                           <td class="factor-value" v-if="spatialEmotion">
                             <span class="factor-score" v-if="combinedSentiment?.spatial_score != null">{{ combinedSentiment.spatial_score > 0 ? '+' : '' }}{{ combinedSentiment.spatial_score }}</span>
-                            <span class="factor-score" v-else>—</span>
+                            <span class="factor-score" v-else>0</span>
                           </td>
                           <td class="factor-value" v-if="sealEmotion?.total_seals">
                             <span class="factor-score" v-if="sealEmotion.composite_score !== 0">
                               {{ sealEmotion.composite_score > 0 ? '+' : '' }}{{ sealEmotion.composite_score.toFixed(1) }}
                             </span>
+                            <span class="factor-score" v-else>0</span>
                           </td>
                         </tr>
                         <tr class="factor-row">
@@ -213,12 +214,12 @@
                   <div class="sentiment-card">
                     <div class="sentiment-header">
                       <span class="sentiment-dot" :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"></span>
-                      <span class="sentiment-polarity-text" :style="{ color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">{{ currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性' }}</span>
+                      <span class="sentiment-polarity-text" :style="{ color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">{{ currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? $t('polarity.positive') : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? $t('polarity.negative') : $t('polarity.neutral') }}</span>
                       <span class="sentiment-sep">·</span>
-                      <span class="sentiment-score-text">强度 {{ Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) }}%</span>
+                      <span class="sentiment-score-text">{{ $t('sentiment.intensity') }} {{ Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) }}%</span>
                       <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
                         <span class="sentiment-sep">·</span>
-                        <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
+                        <span class="sentiment-score-text">{{ $t('sentiment.score') }} {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
                       </template>
                     </div>
                     <div class="sentiment-bar-track">
@@ -230,7 +231,7 @@
 
               <!-- ===== Card 2: 主题判断 ===== -->
               <div class="theme-card" v-if="currentImage.contentAnalysis?.themes?.length">
-                <h4 class="section-title"><el-icon><Collection /></el-icon> 主题判断</h4>
+                <h4 class="section-title"><el-icon><Collection /></el-icon> {{ $t("card.themes") }}</h4>
                 <div ref="themeChartRef" class="theme-chart-small"></div>
                 <div class="theme-tags">
                   <el-tag
@@ -239,8 +240,8 @@
                     size="small"
                     class="theme-tag"
                   >
-                    {{ theme.name }}
-                    <span class="theme-confidence">(可信度 {{ Math.round(theme.confidence * 100) }}%)</span>
+                    {{ $t(theme.name) }}
+                    <span class="theme-confidence">({{ $t('theme.confidence') }} {{ Math.round(theme.confidence * 100) }}%)</span>
                   </el-tag>
                 </div>
               </div>
@@ -251,7 +252,7 @@
               <!-- 空间情绪解读（含布局类型，默认展开） -->
               <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
                 <h4 class="section-title">
-                  <el-icon><MagicStick /></el-icon> 空间情绪解读
+                  <el-icon><MagicStick /></el-icon> {{ $t("card.spatial") }}
                   <!-- 布局类型标签（始终可见） -->
                   <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
                     <el-tooltip
@@ -262,7 +263,7 @@
                       effect="dark"
                     >
                       <span class="form-type-tag" :class="`tag-code-${ft.code}`">
-                        {{ ft.name }}
+                        {{ $t(ft.name) }}
                       </span>
                     </el-tooltip>
                   </div>
@@ -270,17 +271,17 @@
                 <div class="spatial-detail">
                     <div v-for="(sig, idx) in sortedSpatialSignals" :key="idx" class="spatial-item">
                       <span class="spatial-dot" :class="'emotion-' + sig.emotion_key"></span>
-                      <span class="spatial-type">{{ sig.type }}</span>
-                      <span class="spatial-emotion-tag">{{ sig.emotion }}</span>
+                      <span class="spatial-type">{{ $t(sig.type) }}</span>
+                      <span class="spatial-emotion-tag">{{ $t(sig.emotion) }}</span>
                       <p class="spatial-desc">{{ sig.desc }}</p>
                     </div>
                     <div class="spatial-item">
                       <span class="spatial-dot blank-dot"></span>
-                      <span class="spatial-type">留白 {{ spatialEmotion.blank_percent }}%</span>
+                      <span class="spatial-type">{{ $t('spatial.blank') }} {{ spatialEmotion.blank_percent }}%</span>
                       <p class="spatial-desc">{{ spatialEmotion.blank_analysis }}</p>
                     </div>
                     <div v-if="spatialEmotion?.combined_spatial_sentiment" class="spatial-combined">
-                      <span class="spatial-combined-label">空间综合判断</span>
+                      <span class="spatial-combined-label">空间{{ $t("judgment.combined") }}</span>
                       <span class="spatial-combined-text">{{ spatialEmotion.combined_spatial_sentiment }}</span>
                     </div>
                   </div>
@@ -288,7 +289,7 @@
               <!-- 无空间情绪数据时，回退显示纯布局类型 -->
               <div class="spatial-analysis-card" v-else-if="analyzeStatus === 'analyzed' && positionAnalysis">
                 <h4 class="section-title">
-                  <el-icon><DataAnalysis /></el-icon> 题跋布局类型
+                  <el-icon><DataAnalysis /></el-icon> {{ $t("card.layout") }}
                   <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
                     <el-tooltip
                       v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
@@ -298,10 +299,10 @@
                       effect="dark"
                     >
                       <span class="form-type-tag" :class="`tag-code-${ft.code}`">
-                        {{ ft.name }}
+                        {{ $t(ft.name) }}
                       </span>
                     </el-tooltip>
-                    <span v-if="positionAnalysis.vl_overall_status === 'partial_timeout'" class="vl-timeout-badge">VL超时</span>
+                    <span v-if="positionAnalysis.vl_overall_status === 'partial_timeout'" class="vl-timeout-badge">VL Timeout</span>
                   </div>
                 </h4>
                 <div class="spatial-description" v-if="positionAnalysis?.form_types?.length">
@@ -321,9 +322,9 @@
               
 <!-- ===== Card 4: 推导过程 ===== -->
               <div class="steps-card" v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
-                <h4 class="section-title"><el-icon><MagicStick /></el-icon> 推导过程</h4>
+                <h4 class="section-title"><el-icon><MagicStick /></el-icon> {{ $t("card.steps") }}</h4>
                 <div class="reasoning-steps">
-                  <div class="reasoning-label">文字分析推导</div>
+                  <div class="reasoning-label">{{ $t("derivation.text") }}</div>
                   <div class="steps-list">
                     <div
                       v-for="(step, idx) in currentImage.contentAnalysis.sentiment.reasoning_steps"
@@ -334,7 +335,7 @@
                       <span class="step-icon">{{ step.icon }}</span>
                       <div class="step-body">
                         <div class="step-header">
-                          <span class="step-label">{{ step.label }}</span>
+                          <span class="step-label">{{ $t(step.label) }}</span>
                           <span
                             v-if="step.offset !== null && step.offset !== 0"
                             class="step-offset"
@@ -348,29 +349,29 @@
                   </div>
                 </div>
                 <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
-                  <div class="reasoning-label">文字维度分析</div>
+                  <div class="reasoning-label">{{ $t("derivation.dimension") }}</div>
                   <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.reasoning }}</div>
                 </div>
               </div>
               <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
-                暂无内容分析数据
+                {{ $t("analysis.empty") }}
               </div>
 
             </div>
             <div class="analysis-right-col">
               <div class="annotated-image-section">
                 <h4 class="section-title">
-                  <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
+                  <el-icon><DataAnalysis /></el-icon> {{ $t("card.diagram") }}
                   <el-button
                     v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)"
                     size="small" text
                     class="btn-annotate"
                     @click="$emit('open-annotator')"
-                  >手动标注</el-button>
+                  >{{ $t("btn.manual_annotate") }}</el-button>
                 </h4>
                 <div class="annotated-image-wrapper" @mouseenter="showDiagramOverlay = false" @mouseleave="showDiagramOverlay = true">
                   <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
-                  <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
+                  <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" :title="$t('btn.manual_annotate')">
                     <el-icon><Check /></el-icon>
                   </div>
                   <!-- 悬浮布局示意图 -->
@@ -407,10 +408,10 @@
                         />
                       </svg>
                       <div class="diagram-legend-overlay">
-                        <span class="legend-item"><span class="legend-dot inscription"></span>题跋</span>
-                        <span class="legend-item"><span class="legend-dot painting"></span>绘画</span>
-                        <span class="legend-item"><span class="legend-dot blank"></span>留白</span>
-                        <span class="legend-item"><span class="legend-dot margin"></span>余边</span>
+                        <span class="legend-item"><span class="legend-dot inscription"></span>{{ $t("area.inscription") }}</span>
+                        <span class="legend-item"><span class="legend-dot painting"></span>{{ $t("area.painting") }}</span>
+                        <span class="legend-item"><span class="legend-dot blank"></span>{{ $t("area.blank") }}</span>
+                        <span class="legend-item"><span class="legend-dot margin"></span>{{ $t("area.margin") }}</span>
                       </div>
                     </div>
                   </transition>
@@ -418,55 +419,58 @@
               </div>
               <!-- 题跋占比分析 -->
               <div class="stats-section">
-                <h4 class="section-title"><el-icon><PieChart /></el-icon> 题跋占比分析</h4>
+                <h4 class="section-title"><el-icon><PieChart /></el-icon> {{ $t("card.area") }}</h4>
                 <div class="stats-content">
                   <div ref="pieChartRef" class="pie-chart-small"></div>
                 </div>
                 <div class="stats-list">
                   <div class="stat-item inscription">
                     <span class="stat-dot" style="background: #d4846a;"></span>
-                    <span class="stat-name">题跋区域</span>
-                    <span class="stat-percentile" v-if="areaPercentile !== null">高于{{ currentImage.artist || '该画家' }} {{ areaPercentile }}% 的作品</span>
+                    <span class="stat-name">{{ $t("area.inscription") }}</span>
+                    <span class="stat-percentile" v-if="areaPercentile !== null">{{ $t('area.percentile', { artist: currentImage.artist || '该画家', pct: areaPercentile }) }}</span>
                     <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
                   </div>
                   <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
                     <span class="stat-dot" style="background: #7ba3c4;"></span>
-                    <span class="stat-name">绘画区域</span>
+                    <span class="stat-name">{{ $t("area.painting") }}</span>
                     <span class="stat-percent">{{ areaStats.paintingPercent }}%</span>
                   </div>
                   <div class="stat-item blank" v-if="areaStats.blankPercent > 0">
                     <span class="stat-dot" style="background: #a8c97a;"></span>
-                    <span class="stat-name">留白区域</span>
+                    <span class="stat-name">{{ $t("area.blank") }}</span>
                     <span class="stat-percent">{{ areaStats.blankPercent }}%</span>
                   </div>
                 </div>
               </div>
               <div class="inscription-note-main">
                 <h4>
-                  <el-icon><Edit /></el-icon> 款识题跋
-                  <el-button
-                    v-if="currentImage.inscriptionModern && currentImage.inscriptionModern !== currentImage.inscriptionContent"
-                    size="small" text class="btn-modern-toggle"
-                    @click="showModern = !showModern"
-                  >{{ showModern ? '原文' : '白话文' }}</el-button>
+                  <el-icon><Edit /></el-icon> {{ $t('card.inscription') }}
+                  <span class="inscription-mode-btns">
+                    <el-button size="small" text :class="{ active: inscriptionMode === 'original' }" @click="inscriptionMode = 'original'">{{ $t('btn.original') }}</el-button>
+                    <el-button v-if="currentImage.inscriptionModern && currentImage.inscriptionModern !== currentImage.inscriptionContent" size="small" text :class="{ active: inscriptionMode === 'modern' }" @click="inscriptionMode = 'modern'">{{ $t('btn.vernacular') }}</el-button>
+                    <el-button v-if="currentImage.inscriptionEn" size="small" text :class="{ active: inscriptionMode === 'english' }" @click="inscriptionMode = 'english'">{{ $t('btn.english') }}</el-button>
+                  </span>
                 </h4>
                 <div class="inscription-switch">
                   <transition name="el-fade-in" mode="out-in">
-                    <div v-if="!showModern && currentImage.inscriptionContent" key="orig" class="inscription-content">
+                    <div v-if="inscriptionMode === 'original' && currentImage.inscriptionContent" key="orig" class="inscription-content">
                       {{ currentImage.inscriptionContent }}
                     </div>
-                    <div v-else-if="showModern && currentImage.inscriptionModern" key="modern" class="inscription-content modern">
+                    <div v-else-if="inscriptionMode === 'modern' && currentImage.inscriptionModern" key="modern" class="inscription-content modern">
                       {{ currentImage.inscriptionModern }}
                     </div>
+                    <div v-else-if="inscriptionMode === 'english' && currentImage.inscriptionEn" key="en" class="inscription-content english">
+                      {{ currentImage.inscriptionEn }}
+                    </div>
                     <div v-else key="empty" class="inscription-empty">
-                      <p>暂无款识题跋内容</p>
-                      <p class="empty-tip">可在编辑画作信息时添加</p>
+                      <p>{{ $t('inscription.empty') }}</p>
+                      <p class="empty-tip">{{ $t('inscription.tip') }}</p>
                     </div>
                   </transition>
                 </div>
               </div>
               <div class="seal-note-main">
-                <h4><el-icon><Collection /></el-icon> 钤印</h4>
+                <h4><el-icon><Collection /></el-icon> {{ $t("card.seals") }}</h4>
                 <div v-if="currentImage.sealContent" class="seal-content">
                   <div class="seal-tags-display">
                     <span v-for="(seal, idx) in detailSealTags" :key="idx"
@@ -478,21 +482,21 @@
                     </span>
                   </div>
                 </div>
-                <div v-else class="seal-empty"><p>暂无钤印内容</p></div>
+                <div v-else class="seal-empty"><p>{{ $t("seal.none") }}</p></div>
                 <!-- 印章情绪解读 -->
                 <div v-if="sealEmotion?.total_seals" class="seal-interp">
-                  <div class="seal-interp-header">印章情绪</div>
+                  <div class="seal-interp-header">{{ $t("seal.emotion") }}</div>
                   <div class="seal-interp-signals">
                     <template v-for="sig in sealEmotion.signals.filter(s => s.raw_score !== 0)" :key="sig.seal">
                       <span class="seal-interp-tag">{{ sig.seal }}：{{ sig.desc }}（{{ sig.raw_score > 0 ? '+' : '' }}{{ sig.raw_score }}）</span>
                     </template>
                     <span v-if="!sealEmotion.signals.filter(s => s.raw_score !== 0).length" class="seal-interp-neutral">
-                      均为身份标识印章，无明显情感倾向
+                      {{ $t("seal.neutral") }}
                     </span>
                   </div>
                 </div>
                 <div v-else-if="currentImage.sealContent && !sealEmotion" class="seal-interp">
-                  <span class="seal-interp-neutral">印章数据已录入，运行「全部重跑」后显示情绪解读</span>
+                  <span class="seal-interp-neutral">{{ $t("seal.no_data") }}</span>
                 </div>
               </div>
               <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
@@ -531,19 +535,19 @@
               size="small"
               @click="$emit('auto-analyze')"
             >
-              开始AI分析
+              {{ $t('analysis.start') }}
             </el-button>
           </div>
         </div>
       </el-card>
 
-      <!-- 作品库 -->
+      <!-- {{ $t('gallery.title') }} -->
       <el-card shadow="hover" class="history-card">
         <template #header>
           <div class="card-header">
-            <span>作品库</span>
+            <span>{{ $t('gallery.title') }}</span>
             <el-button type="primary" size="small" @click="openRanking" :icon="Clock">
-              查看全部
+              {{ $t('gallery.view_all') }}
             </el-button>
           </div>
         </template>
@@ -562,11 +566,11 @@
             <div v-if="item.id === currentImage.id" class="history-grid-thumb-overlay">
               <el-icon><Check /></el-icon>
             </div>
-            <div class="history-grid-title">{{ item.title || '未命名' }}</div>
+            <div class="history-grid-title">{{ item.title || $t('card.untitled') }}</div>
           </div>
         </div>
         <div class="history-summary empty" v-else>
-          <p>暂无同作者作品</p>
+          <p>{{ $t('gallery.no_same_artist') }}</p>
         </div>
       </el-card>
     </div>
@@ -590,7 +594,7 @@
     <!-- 我的意见对话框 -->
     <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close @closed="suggestDialogClosed">
       <p style="margin-bottom:16px;color:var(--stone-gray)">
-        您正在对 <strong>{{ currentImage.title || '未命名' }}</strong> 提出修改意见，提交后由管理员审核。
+        您正在对 <strong>{{ currentImage.title || $t('card.untitled') }}</strong> 提出修改意见，提交后由管理员审核。
       </p>
       <el-form :model="suggestForm" label-position="top">
         <el-form-item label="修改字段">
@@ -610,7 +614,7 @@
         <template v-if="suggestForm.field_name === 'annotation_regions'">
           <el-form-item label="修改标注">
             <div style="font-size:13px;color:#666;margin-bottom:12px;">
-              点击下方按钮，在标注编辑器中修改题跋区域。修改完成后点击"提交审阅"即可。
+              点击下方按钮，在标注编辑器中修改{{ $t("area.inscription") }}。修改完成后点击"提交审阅"即可。
             </div>
             <el-button type="primary" @click="openAnnotatorSuggest">
               <el-icon><EditPen /></el-icon> 打开标注编辑器
@@ -653,12 +657,12 @@
             <div class="rev-header">
               <span class="rev-number">#{{ rev.revision_number }}</span>
               <el-tag :type="rev.operation_type === 'rollback' ? 'warning' : rev.operation_type === 'approve' ? 'success' : 'info'" size="small">
-                {{ rev.operation_type === 'rollback' ? '回滚' : rev.operation_type === 'approve' ? '审核通过' : '直接编辑' }}
+                {{ rev.operation_type === 'rollback' ? '回滚' : rev.operation_type === 'approve' ? $t('revision.approve') : $t('revision.edit') }}
               </el-tag>
             </div>
-            <div class="rev-summary">{{ rev.change_summary || '无摘要' }}</div>
+            <div class="rev-summary">{{ rev.change_summary || $t('revision.no_summary') }}</div>
             <el-button v-if="rev.revision_number > 1" text size="small" type="primary" @click="handleRollback(rev)">
-              回滚到此版本
+              {{ $t('revision.rollback_btn') }}
             </el-button>
           </el-timeline-item>
         </el-timeline>
@@ -990,7 +994,7 @@ function scrollAlbumThumbs(direction) {
 const showDiagramOverlay = ref(true)
 const showSpatialEmotion = ref(true)
 const brainHover = ref(null)
-const showModern = ref(false)
+const inscriptionMode = ref("original")
 
 // 空间情绪数据
 const contentAnalysis = computed(() => {
@@ -2435,22 +2439,32 @@ defineExpose({
   align-items: center;
   gap: 6px;
 }
-.btn-modern-toggle {
+.inscription-mode-btns {
+  display: flex;
+  gap: 2px;
   margin-left: auto;
-  font-size: 10px !important;
-  color: #b0a898 !important;
-  padding: 0 6px !important;
+}
+.inscription-mode-btns .el-button {
+  font-size: 10px;
+  color: #b0a898;
+  padding: 0 6px;
   height: 22px;
-  border: 1px solid #e8e4da !important;
+  border: 1px solid #e8e4da;
   border-radius: 4px;
-  background: transparent !important;
-  box-shadow: none !important;
+  background: transparent;
+  box-shadow: none;
 }
-.btn-modern-toggle:hover {
+.inscription-mode-btns .el-button.active {
   color: #c45a3c;
-  border-color: #d4c4b0;
-  background: #fdfaf5;
+  border-color: #c45a3c;
+  background: #fdf5f2;
 }
+.inscription-content.english {
+  background: #f6f4f8;
+  border-left: 3px solid #6b7db3;
+  padding-left: 10px;
+}
+
 .inscription-switch {
   min-height: 60px;
 }

@@ -1838,14 +1838,15 @@ async def export_csv_report(
 # ============ 翻译相关 API ============
 
 class TranslateRequest(BaseModel):
-    inscription_content: str
+    inscription_content: str = ""
 
 
 class TranslateResponse(BaseModel):
     success: bool
     record_id: int
     original: str
-    modern: str
+    translated: str
+    target: str = "modern_chinese"
     message: str
 
 
@@ -1862,44 +1863,39 @@ class AnalyzeResponse(BaseModel):
 @router.post("/translate/{record_id}", response_model=TranslateResponse)
 async def translate_single(
     record_id: int,
-    request: TranslateRequest,
+    request: TranslateRequest = TranslateRequest(),
+    target: str = Query(default="modern_chinese", description="翻译目标: modern_chinese 或 english"),
     editor=Depends(require_editor),
 ):
     """
-    单条记录翻译：将古文题跋翻译为现代文
+    单条记录翻译：古文 → 现代汉语 或 英文
     """
     from app.services.inscription_translation import translate_inscription
 
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # 检查记录存在
-    cur.execute("SELECT id, inscription_content, inscription_modern FROM tubi_analyses WHERE id = ?", (record_id,))
+    cur.execute("SELECT id, inscription_content, inscription_modern, inscription_en FROM tubi_analyses WHERE id = ?", (record_id,))
     row = cur.fetchone()
     if not row:
         conn.close()
         raise HTTPException(status_code=404, detail="Record not found")
 
-    # 使用请求中的内容或数据库中的内容
-    content = request.inscription_content.strip() if request.inscription_content else row[1]
+    content = request.inscription_content.strip() if request.inscription_content else (row[1] or "")
     if not content:
         conn.close()
         raise HTTPException(status_code=400, detail="题跋内容为空")
 
-    # 调用翻译服务
-    result = await translate_inscription(content)
+    result = await translate_inscription(content, target)
 
     if not result.success:
         conn.close()
         raise HTTPException(status_code=500, detail=result.error)
 
-    # 更新数据库
-    cur.execute("""
-        UPDATE tubi_analyses
-        SET inscription_modern = ?,
-            updated_at = ?
-        WHERE id = ?
-    """, (result.modern, datetime.now(), record_id))
+    # 更新对应字段
+    col = "inscription_modern" if target in ("modern_chinese", "zh") else "inscription_en"
+    cur.execute(f"UPDATE tubi_analyses SET {col} = ?, updated_at = ? WHERE id = ?",
+                (result.translated, datetime.now(), record_id))
 
     conn.commit()
     conn.close()
@@ -1908,9 +1904,68 @@ async def translate_single(
         success=True,
         record_id=record_id,
         original=result.original,
-        modern=result.modern,
+        translated=result.translated,
+        target=target,
         message="翻译完成"
     )
+
+
+@router.post("/batch-translate")
+async def batch_translate(
+    target: str = Query(default="english", description="翻译目标: modern_chinese 或 english"),
+    artist: str = Query(default="all"),
+    library_id: Optional[int] = Query(None),
+    editor=Depends(require_editor),
+):
+    """
+    批量翻译题跋，按画家/作品库筛选
+    """
+    from app.services.inscription_translation import translate_inscription
+    col = "inscription_modern" if target in ("modern_chinese", "zh") else "inscription_en"
+    col_label = "白话文" if target in ("modern_chinese", "zh") else "English"
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    where = []
+    params = []
+    if library_id:
+        where.append("library_id = ?")
+        params.append(library_id)
+    elif artist and artist != "all":
+        where.append("artist = ?")
+        params.append(artist)
+    where.append(f"({col} IS NULL OR {col} = '')")
+    where.append("inscription_content IS NOT NULL AND inscription_content != ''")
+
+    cur.execute(f"SELECT id, inscription_content, title FROM tubi_analyses WHERE {' AND '.join(where)} ORDER BY id", params)
+    rows = cur.fetchall()
+    total = len(rows)
+    done = errors = 0
+
+    for row in rows:
+        rid, text, title = row["id"], row["inscription_content"], row["title"]
+        try:
+            result = await translate_inscription(text, target)
+            if result.success:
+                cur.execute(f"UPDATE tubi_analyses SET {col} = ?, updated_at = ? WHERE id = ?",
+                            (result.translated, datetime.now(), rid))
+                done += 1
+            else:
+                errors += 1
+        except Exception:
+            errors += 1
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "target": target,
+        "total": total,
+        "translated": done,
+        "errors": errors,
+        "message": f"完成：{done}/{total} 条{col_label}翻译"
+    }
 
 
 @router.post("/analyze/{record_id}", response_model=AnalyzeResponse)

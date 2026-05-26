@@ -41,6 +41,7 @@ class TubiAnalysis(Base):
     
     # 款识题跋现代文翻译
     inscription_modern = Column(Text, nullable=True, default=None, comment="题跋现代文翻译")
+    inscription_en = Column(Text, nullable=True, default=None, comment="题跋英文翻译")
     
     # 标注图片路径
     annotated_image_path = Column(String(500), comment="标注后的图片路径")

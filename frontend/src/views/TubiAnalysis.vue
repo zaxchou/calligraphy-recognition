@@ -1351,6 +1351,7 @@ async function handleSearch(keyword) {
         analysisNote: item.analysis_note,
         inscriptionContent: item.inscription_content,
         inscriptionModern: item.inscription_modern,
+        inscriptionEn: item.inscription_en,
         sealContent: item.seal_content
       }))
       if (searchResults.value.length === 0) {
@@ -1534,6 +1535,7 @@ async function loadHistoryItem(row) {
           analysisNote: analysisNote,
           inscriptionContent: inscriptionContent,
           inscriptionModern: data.inscription_modern || '',
+          inscriptionEn: data.inscription_en || '',
           sealContent: data.seal_content || '',
           contentAnalysis: data.content_analysis || null,
           dzi_url: data.dzi_url,
@@ -1609,6 +1611,7 @@ async function loadAndSelectImage(imageId) {
         analysisNote: analysisNote,
         inscriptionContent: inscriptionContent,
         inscriptionModern: data.inscription_modern || '',
+          inscriptionEn: data.inscription_en || '',
         sealContent: data.seal_content || '',
         contentAnalysis: data.content_analysis || null,
         artwork_width_cm: data.artwork_width_cm,
@@ -2191,6 +2194,7 @@ onMounted(async () => {
           analysisNote: analysisNoteText,
           inscriptionContent: inscriptionContent,
           inscriptionModern: data.inscription_modern || '',
+          inscriptionEn: data.inscription_en || '',
           sealContent: data.seal_content || '',
           contentAnalysis: data.content_analysis || null,
           dzi_url: data.dzi_url,
@@ -2355,6 +2359,7 @@ async function navigateToAlbumItem(item) {
         analysisNote: analysisNoteText,
         inscriptionContent: inscriptionContent,
         inscriptionModern: data.inscription_modern || '',
+          inscriptionEn: data.inscription_en || '',
         sealContent: data.seal_content || '',
         contentAnalysis: data.content_analysis || null,
         dzi_url: data.dzi_url,
