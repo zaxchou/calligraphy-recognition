@@ -314,11 +314,17 @@ async def analyze_single_record(record_id: int, cur) -> dict:
 
     # 2. 空间布局（从 spatial_emotion 提取）
     spatial_raw = 0.0
+    spatial_has_data = False
     if se:
         spatial_raw = se.get("combined_spatial_score", 0) or 0
+        spatial_has_data = bool(se.get("signals"))
 
     # 3. 印章情感
-    seal_raw = seal_result.get("composite_score", 0) if seal_result else 0
+    seal_raw = 0.0
+    seal_has_data = False
+    if seal_result:
+        seal_raw = seal_result.get("composite_score", 0) or 0
+        seal_has_data = seal_result.get("total_seals", 0) > 0
 
     # 4. 画材情感（从 v4_signals.painting 提取）
     painting_raw = 0.0
@@ -350,8 +356,8 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     # 所有维度汇总
     all_dimensions = {
         "text": {"raw": text_raw, "confidence": 1.0},
-        "spatial": {"raw": spatial_raw, "confidence": 0.8 if spatial_raw != 0 else 0.3},
-        "seal": {"raw": seal_raw, "confidence": 0.6 if seal_raw != 0 else 0.2},
+        "spatial": {"raw": spatial_raw, "confidence": 0.8 if spatial_has_data else 0.3},
+        "seal": {"raw": seal_raw, "confidence": 0.6 if seal_has_data else 0.2},
         "painting": {"raw": painting_raw, "confidence": 0.5 if painting_raw != 0 else 0.2},
         "time": {"raw": time_raw, "confidence": 0.7 if time_raw != 0 else 0.2},
         "size": {"raw": size_raw, "confidence": 0.4 if size_raw != 0 else 0.2},
@@ -383,17 +389,17 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     cp = "positive" if vader_normalized >= 0.10 else ("negative" if vader_normalized <= -0.10 else "neutral")
 
     # 构建推理文字（始终列出所有维度）
-    def _dim_label(name, raw, conf):
-        if raw == 0 and conf < 0.5:
+    def _dim_label(name, raw, has_data):
+        if not has_data:
             return f"{name}无数据"
         norm = raw / (raw ** 2 + 8) ** 0.5 if raw != 0 else 0
         p = "积极" if norm >= 0.10 else ("消极" if norm <= -0.10 else "中性")
         return f"{name}{p}"
 
     parts = [
-        _dim_label("文字", text_raw, 1.0),
-        _dim_label("空间", spatial_raw, 0.8 if spatial_raw else 0.3),
-        _dim_label("印章", seal_raw, 0.6 if seal_raw else 0.2),
+        _dim_label("文字", text_raw, True),
+        _dim_label("空间", spatial_raw, spatial_has_data),
+        _dim_label("印章", seal_raw, seal_has_data),
     ]
     if painting_raw != 0:
         parts.append(_dim_label("画材", painting_raw, 0.5))
