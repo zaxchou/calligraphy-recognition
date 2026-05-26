@@ -213,6 +213,44 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     new_ca["rules_version"] = "5.6"
     new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
 
+    # 4. 空间情绪分析（如果已标注区域）
+    try:
+        cur.execute("SELECT regions, blank_percent, position_analysis, image_width, image_height FROM tubi_analyses WHERE id = ?", (record_id,))
+        sr = cur.fetchone()
+        if sr and sr["regions"]:
+            regions_raw = sr["regions"]
+            regions = json.loads(regions_raw) if isinstance(regions_raw, str) else regions_raw
+            if regions and regions.get("inscription_regions"):
+                from app.services.inscription_position_analyzer import analyze_inscription_position_simple
+                from app.services.inscription_content_analyzer import analyze_spatial_emotion
+
+                pos = analyze_inscription_position_simple(regions, sr["image_width"] or 1000, sr["image_height"] or 1000)
+                cur.execute("UPDATE tubi_analyses SET position_analysis = ? WHERE id = ?",
+                            (json.dumps(pos, ensure_ascii=False), record_id))
+
+                se = analyze_spatial_emotion(pos, sr["blank_percent"] or 50, pos.get("coverage_ratio", 0))
+                new_ca["spatial_emotion"] = se
+
+                # 合并空间+文字综合
+                text_pol = new_ca.get("sentiment", {}).get("polarity", "neutral")
+                spatial_sig = se.get("combined_spatial_sentiment", "")
+                is_sp_neg = any(kw in spatial_sig for kw in ["压抑", "宣泄", "紧张"])
+                is_sp_pos = any(kw in spatial_sig for kw in ["正面", "舒展", "狂放", "自信"])
+
+                if text_pol == "negative" and is_sp_neg:
+                    cp, cr = "negative", "文字与空间布局均传递压抑信号，情感一致偏负面"
+                elif text_pol == "positive" and is_sp_pos:
+                    cp, cr = "positive", "文字情感与空间布局均传递积极信号，情感一致偏正面"
+                elif text_pol == "negative" and is_sp_pos:
+                    cp, cr = "ambiguous", "文字表面消极，但空间布局克制自持，可能为含蓄表达而非真正压抑"
+                elif text_pol == "positive" and is_sp_neg:
+                    cp, cr = "ambiguous", "文字表面积极，但空间布局暗示压抑，需结合时期背景判断是否为反讽"
+                else:
+                    cp, cr = text_pol or "neutral", "情感信号不显著"
+                new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr}
+    except Exception as e:
+        logger.warning(f"空间情绪分析跳过 (record_id={record_id}): {e}")
+
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
     cur.execute("""
         UPDATE tubi_analyses SET content_analysis = ?, theme_tags = ? WHERE id = ?
