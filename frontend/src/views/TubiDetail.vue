@@ -2195,7 +2195,7 @@ defineExpose({
   background: #faf9f7;
   border: 1px solid #e8e4da;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 8px 12px 10px;
 }
 .theme-card .section-title {
   display: flex;
@@ -2204,11 +2204,11 @@ defineExpose({
   font-size: 13px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .theme-chart-small {
   width: 100%;
-  height: 80px;
+  height: 100px;
 }
 .theme-card .theme-tags {
   display: flex;
