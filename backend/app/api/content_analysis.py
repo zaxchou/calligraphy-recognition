@@ -2233,15 +2233,15 @@ async def translate_batch(
         record_id, content = row
 
         # 调用翻译服务
-        result = await translate_inscription(content)
+        result = await translate_inscription(content, target)
 
         if result.success:
-            cur.execute("""
+            cur.execute(f"""
                 UPDATE tubi_analyses
-                SET inscription_modern = ?,
+                SET {col} = ?,
                     updated_at = ?
                 WHERE id = ?
-            """, (result.modern, datetime.now(), record_id))
+            """, (result.translated, datetime.now(), record_id))
             translated += 1
         else:
             failed += 1
@@ -2265,6 +2265,7 @@ async def translate_batch_stream(
     artist: str = Query(default="all", description="画家名称"),
     force_retranslate: bool = Query(default=False, description="强制重新翻译已翻译记录"),
     library_id: Optional[int] = Query(None, description="按作品库筛选"),
+    target: str = Query(default="modern_chinese", description="翻译目标: modern_chinese 或 english"),
 ):
     """
     批量翻译（SSE流式）：对已校对但未翻译的记录进行翻译，实时推送进度
@@ -2275,6 +2276,8 @@ async def translate_batch_stream(
     logger = logging.getLogger(__name__)
 
     artist_where, artist_params = build_artist_condition(artist)
+    is_english = target == "english"
+    col = "inscription_en" if is_english else "inscription_modern"
 
     async def event_generator():
         conn = get_db_connection()
@@ -2307,7 +2310,7 @@ async def translate_batch_stream(
                   AND inscription_content IS NOT NULL
                   AND LENGTH(inscription_content) > 0
                   AND inscription_verified = 1
-                  AND (inscription_modern IS NULL OR LENGTH(inscription_modern) = 0)
+                  AND ({col} IS NULL OR LENGTH({col}) = 0)
             """, params)
 
         rows = cur.fetchall()
@@ -2326,18 +2329,18 @@ async def translate_batch_stream(
             yield f'data: {{"type": "progress", "current": {idx + 1}, "total": {total}, "status": "translating", "record_id": {record_id}}}\n\n'
 
             # 调用翻译服务
-            result = await translate_inscription(content)
+            result = await translate_inscription(content, target)
             
             if not result.success:
                 logger.error(f"翻译失败 record_id={record_id}: {result.error}")
 
             if result.success:
-                cur.execute("""
+                cur.execute(f"""
                     UPDATE tubi_analyses
-                    SET inscription_modern = ?,
+                    SET {col} = ?,
                         updated_at = ?
                     WHERE id = ?
-                """, (result.modern, datetime.now(), record_id))
+                """, (result.translated, datetime.now(), record_id))
                 conn.commit()  # 每条成功后立即提交
                 translated += 1
                 yield f'data: {{"type": "record_done", "current": {idx + 1}, "total": {total}, "record_id": {record_id}, "success": true}}\n\n'
@@ -2463,6 +2466,8 @@ async def reclassify_themes_sentiment(
     from app.services.inscription_content_analyzer import llm_theme_classification_v3, llm_sentiment_analysis_v3, classify_inscription_v4, llm_analyze_combined, detect_sentiment_theme_conflict, llm_retry_with_conflict
 
     artist_where, artist_params = build_artist_condition(artist)
+    is_english = target == "english"
+    col = "inscription_en" if is_english else "inscription_modern"
 
     async def event_generator():
         try:

@@ -15,11 +15,12 @@ $ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BACKEND_DIR = "$ROOT\backend"
 $FRONTEND_DIR = "$ROOT\frontend"
 $PORT = 3000
+$PYTHON = "C:\Python314\python.exe"
 
 # ── 端口清理：防止旧进程残留导致启动失败 ──
 $ports = @(3000, 5173, 8080, 6333)
 foreach ($p in $ports) {
-    $conn = Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue
+    $conn = Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -ne 0 }
     if ($conn) {
         $name = (Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue).ProcessName
         Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
@@ -61,7 +62,7 @@ if (-not $SkipQdrant) {
 if (-not $SkipCelery) {
     Write-Host "[2/5] Starting Celery Worker..." -ForegroundColor Yellow
     Push-Location $BACKEND_DIR
-    Start-Process -FilePath "python" -ArgumentList "-m","celery","-A","app.core.celery_app","worker","--loglevel=info","--pool=solo","-n","worker1@%h" -WindowStyle Normal
+    Start-Process -FilePath $PYTHON -ArgumentList "-m","celery","-A","app.core.celery_app","worker","--loglevel=info","--pool=solo","-n","worker1@%h" -WindowStyle Normal
     Pop-Location
     Write-Host "  OK - Celery window opened" -ForegroundColor Green
 }
@@ -69,7 +70,7 @@ if (-not $SkipCelery) {
 # Backend (port 3000)
 Write-Host "[3/5] Starting FastAPI Backend (port $PORT)..." -ForegroundColor Yellow
 Push-Location $BACKEND_DIR
-Start-Process -FilePath "python" -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$PORT","--workers","2" -WindowStyle Normal
+Start-Process -FilePath $PYTHON -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$PORT","--workers","2" -WindowStyle Normal
 Pop-Location
 Write-Host "  OK - Backend window opened" -ForegroundColor Green
 

@@ -34,7 +34,7 @@
         <div v-if="albumNavigation.is_in_album" class="album-navigation">
           <div class="album-nav-header">
             <span class="album-nav-title">「{{ albumNavigation.album_name }}」</span>
-            <span class="album-nav-count">第{{ albumNavigation.current_index + 1 }}幅 / 共{{ albumNavigation.total_count }}幅</span>
+            <span class="album-nav-count">{{ $t('album.current', { n: albumNavigation.current_index + 1 }) }} / {{ $t('album.total', { n: albumNavigation.total_count }) }}</span>
           </div>
           <div class="album-nav-scroll">
             <button class="album-nav-arrow left" @click="scrollAlbumThumbs(-1)" :title="$t('action.scroll_left')">
@@ -69,11 +69,11 @@
       <div class="artwork-info-card" v-if="!currentImage.page_role && (currentImage.artist || currentImage.year || (currentImage.artwork_width_cm && currentImage.artwork_height_cm))">
         <div class="info-card-row" v-if="currentImage.artist">
           <span class="info-card-label">{{ $t("info.author") }}</span>
-          <span class="info-card-value">{{ currentImage.artist }}</span>
+          <span class="info-card-value">{{ $t(currentImage.artist) }}</span>
         </div>
         <div class="info-card-row" v-if="currentImage.year">
           <span class="info-card-label">{{ $t("info.year") }}</span>
-          <span class="info-card-value">{{ currentImage.year }}年 {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}岁)` : '' }}</span>
+          <span class="info-card-value">{{ currentImage.year }}{{ locale === 'en' ? '' : '年' }} {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}${$t('info.age')})` : '' }}</span>
         </div>
         <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
           <span class="info-card-label">{{ $t("info.size") }}</span>
@@ -143,12 +143,12 @@
                     <div class="emotion-text-col">
                       <div class="final-judgment-card">
                         <div class="judgment-info-col">
-                          <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
+                          <div class="judgment-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
                           <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
                         </div>
                         <div class="judgment-score-col">
                           <span class="judgment-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399' }">
-                            {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? '复杂' : $t('polarity.neutral') }}
+                            {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? $t('polarity.ambiguous') : $t('polarity.neutral') }}
                           </span>
                           <span class="judgment-score"
                             :style="{ color: displayScore < 0 ? '#f56c6c' : '#3cb88b' }">
@@ -169,11 +169,11 @@
                             </span>
                           </td>
                           <td class="factor-cell" v-if="spatialEmotion">
-                            <span class="factor-result neutral">{{ spatialEmotion.combined_spatial_sentiment || $t('emotion.neutral') }}</span>
+                            <span class="factor-result neutral">{{ translateContent(spatialEmotion.combined_spatial_sentiment) || $t('emotion.neutral') }}</span>
                           </td>
                           <td class="factor-cell" v-if="sealEmotion?.total_seals">
                             <span class="factor-result" :class="sealEmotion.composite_score > 0.3 ? 'positive' : sealEmotion.composite_score < -0.3 ? 'negative' : 'neutral'">
-                              {{ sealEmotion.seal_emotion }}
+                              {{ translateContent(sealEmotion.seal_emotion) }}
                             </span>
                           </td>
                         </tr>
@@ -199,10 +199,10 @@
                             <span class="factor-desc">{{ textSentimentSummary }}</span>
                           </td>
                           <td class="factor-value" v-if="spatialEmotion">
-                            <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
+                            <span class="factor-detail">{{ spatialEmotion.signals?.map(s => t(s.emotion)).join(', ') }}</span>
                           </td>
                           <td class="factor-value" v-if="sealEmotion?.total_seals">
-                            <span class="factor-detail">{{ sealEmotion.signals?.filter(s => s.raw_score !== 0).map(s => s.desc).join('、') || '无明显情感倾向' }}</span>
+                            <span class="factor-detail">{{ sealEmotion.signals?.filter(s => s.raw_score !== 0).map(s => s.desc).join('、') || $t('seal.no_seal_emotion') }}</span>
                           </td>
                         </tr>
                       </table>
@@ -273,16 +273,16 @@
                       <span class="spatial-dot" :class="'emotion-' + sig.emotion_key"></span>
                       <span class="spatial-type">{{ $t(sig.type) }}</span>
                       <span class="spatial-emotion-tag">{{ $t(sig.emotion) }}</span>
-                      <p class="spatial-desc">{{ sig.desc }}</p>
+                      <p class="spatial-desc">{{ translateContent(sig.desc) }}</p>
                     </div>
                     <div class="spatial-item">
                       <span class="spatial-dot blank-dot"></span>
                       <span class="spatial-type">{{ $t('spatial.blank') }} {{ spatialEmotion.blank_percent }}%</span>
-                      <p class="spatial-desc">{{ spatialEmotion.blank_analysis }}</p>
+                      <p class="spatial-desc">{{ translateContent(spatialEmotion.blank_analysis) }}</p>
                     </div>
                     <div v-if="spatialEmotion?.combined_spatial_sentiment" class="spatial-combined">
-                      <span class="spatial-combined-label">空间{{ $t("judgment.combined") }}</span>
-                      <span class="spatial-combined-text">{{ spatialEmotion.combined_spatial_sentiment }}</span>
+                      <span class="spatial-combined-label">{{ $t('spatial.combined') }}</span>
+                      <span class="spatial-combined-text">{{ translateContent(spatialEmotion.combined_spatial_sentiment) }}</span>
                     </div>
                   </div>
               </div>
@@ -343,14 +343,14 @@
                           >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
                           <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
                         </div>
-                        <div class="step-detail" v-html="mapPolarityText(step.detail)"></div>
+                        <div class="step-detail" v-html="mapPolarityText(translateContent(step.detail))"></div>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
                   <div class="reasoning-label">{{ $t("derivation.dimension") }}</div>
-                  <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.reasoning }}</div>
+                  <div class="reasoning-text">{{ translateContent(currentImage.contentAnalysis.sentiment.reasoning) }}</div>
                 </div>
               </div>
               <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
@@ -427,7 +427,7 @@
                   <div class="stat-item inscription">
                     <span class="stat-dot" style="background: #d4846a;"></span>
                     <span class="stat-name">{{ $t("area.inscription") }}</span>
-                    <span class="stat-percentile" v-if="areaPercentile !== null">{{ $t('area.percentile', { artist: currentImage.artist || '该画家', pct: areaPercentile }) }}</span>
+                    <span class="stat-percentile" v-if="areaPercentile !== null">{{ $t('area.percentile', { artist: $t(currentImage.artist) || $t('area.this_artist'), pct: areaPercentile }) }}</span>
                     <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
                   </div>
                   <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
@@ -488,7 +488,7 @@
                   <div class="seal-interp-header">{{ $t("seal.emotion") }}</div>
                   <div class="seal-interp-signals">
                     <template v-for="sig in sealEmotion.signals.filter(s => s.raw_score !== 0)" :key="sig.seal">
-                      <span class="seal-interp-tag">{{ sig.seal }}：{{ sig.desc }}（{{ sig.raw_score > 0 ? '+' : '' }}{{ sig.raw_score }}）</span>
+                      <span class="seal-interp-tag">{{ sig.seal }}：{{ translateContent(sig.desc) }}（{{ sig.raw_score > 0 ? '+' : '' }}{{ sig.raw_score }}）</span>
                     </template>
                     <span v-if="!sealEmotion.signals.filter(s => s.raw_score !== 0).length" class="seal-interp-neutral">
                       {{ $t("seal.neutral") }}
@@ -501,7 +501,7 @@
               </div>
               <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
                 <div class="detail-tags-list">
-                  <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
+                  <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ $t(tag) }}</span>
                 </div>
               </div>
 
@@ -522,13 +522,13 @@
               <span class="glow-progress-text">{{ analyzeProgress }}%</span>
             </div>
             <p class="analyzing-text">{{ analyzingStep }}</p>
-            <p class="analyzing-subtext">书画AI智能系统正在分析中...</p>
+            <p class="analyzing-subtext">{{ $t('analysis.analyzing') }}</p>
           </div>
 
           <div class="image-meta">
             <el-tag>{{ currentImage.name }}</el-tag>
             <el-tag type="info">{{ currentImage.width }} × {{ currentImage.height }}</el-tag>
-            <el-tag v-if="analyzeStatus === 'analyzed'" type="success">分析完成</el-tag>
+            <el-tag v-if="analyzeStatus === 'analyzed'" type="success">{{ $t('analysis.complete_tag') }}</el-tag>
             <el-button
               v-if="analyzeStatus !== 'analyzing' && analyzeStatus !== 'analyzed' && !currentImage.page_role"
               type="primary"
@@ -592,61 +592,60 @@
     />
 
     <!-- 我的意见对话框 -->
-    <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close @closed="suggestDialogClosed">
-      <p style="margin-bottom:16px;color:var(--stone-gray)">
-        您正在对 <strong>{{ currentImage.title || $t('card.untitled') }}</strong> 提出修改意见，提交后由管理员审核。
+    <el-dialog v-model="showSuggestDialog" :title="$t('suggest.title')" width="560px" destroy-on-close @closed="suggestDialogClosed">
+      <p style="margin-bottom:16px;color:var(--stone-gray)" v-html="$t('suggest.intro', { title: currentImage.title || $t('card.untitled') })">
       </p>
       <el-form :model="suggestForm" label-position="top">
-        <el-form-item label="修改字段">
+        <el-form-item :label="$t('suggest.field')">
           <el-select v-model="suggestForm.field_name" style="width:100%">
-            <el-option label="标题" value="title" />
-            <el-option label="画家" value="artist" />
-            <el-option label="年代" value="year" />
-            <el-option label="时期" value="period" />
-            <el-option label="备注" value="notes" />
-            <el-option label="题跋内容" value="inscription_content" />
-            <el-option label="标注图" value="annotation_regions" />
+            <el-option :label="$t('suggest.field_title')" value="title" />
+            <el-option :label="$t('suggest.field_artist')" value="artist" />
+            <el-option :label="$t('suggest.field_year')" value="year" />
+            <el-option :label="$t('suggest.field_period')" value="period" />
+            <el-option :label="$t('suggest.field_notes')" value="notes" />
+            <el-option :label="$t('suggest.field_inscription')" value="inscription_content" />
+            <el-option :label="$t('suggest.field_annotation')" value="annotation_regions" />
           </el-select>
         </el-form-item>
-        <el-form-item label="原值">
+        <el-form-item :label="$t('suggest.old_value')">
           <div class="old-value-display">{{ suggestForm.old_value }}</div>
         </el-form-item>
         <template v-if="suggestForm.field_name === 'annotation_regions'">
-          <el-form-item label="修改标注">
+          <el-form-item :label="$t('suggest.field_annotation')">
             <div style="font-size:13px;color:#666;margin-bottom:12px;">
-              点击下方按钮，在标注编辑器中修改{{ $t("area.inscription") }}。修改完成后点击"提交审阅"即可。
+              {{ $t('suggest.annotation_hint', { area: $t('area.inscription') }) }}
             </div>
             <el-button type="primary" @click="openAnnotatorSuggest">
-              <el-icon><EditPen /></el-icon> 打开标注编辑器
+              <el-icon><EditPen /></el-icon> {{ $t('suggest.open_annotator') }}
             </el-button>
             <div v-if="suggestAnnotationSaved" style="margin-top:10px;color:#67c23a;font-size:13px;">
-              <el-icon><CircleCheckFilled /></el-icon> 标注意见已提交
+              <el-icon><CircleCheckFilled /></el-icon> {{ $t('suggest.annotation_saved') }}
             </div>
           </el-form-item>
         </template>
         <template v-else>
-          <el-form-item label="新值" required>
-            <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="在原值基础上修改，或输入新内容" />
+          <el-form-item :label="$t('suggest.new_value')" required>
+            <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" :placeholder="$t('suggest.new_value_ph')" />
           </el-form-item>
-          <el-form-item label="修改说明" required>
-            <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
+          <el-form-item :label="$t('suggest.change_desc')" required>
+            <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" :placeholder="$t('suggest.change_desc_ph')" />
           </el-form-item>
         </template>
       </el-form>
       <template #footer>
-        <el-button @click="showSuggestDialog = false">取消</el-button>
-        <el-button v-if="suggestForm.field_name !== 'annotation_regions'" type="primary" @click="handleSubmitChange" :loading="submitting">提交意见</el-button>
+        <el-button @click="showSuggestDialog = false">{{ $t('suggest.cancel') }}</el-button>
+        <el-button v-if="suggestForm.field_name !== 'annotation_regions'" type="primary" @click="handleSubmitChange" :loading="submitting">{{ $t('suggest.submit') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 版本历史对话框 -->
-    <el-dialog v-model="showRevisionsDialog" title="版本历史" width="700px" destroy-on-close>
+    <el-dialog v-model="showRevisionsDialog" :title="$t('revision.title')" width="700px" destroy-on-close>
       <div v-if="revisionsLoading" style="text-align:center;padding:40px;">
         <el-icon class="is-loading" size="24"><Loading /></el-icon>
-        <p style="margin-top:12px;color:#999;">加载中...</p>
+        <p style="margin-top:12px;color:#999;">{{ $t('revision.loading') }}</p>
       </div>
       <template v-else>
-        <el-empty v-if="revisions.length === 0" description="暂无版本历史" />
+        <el-empty v-if="revisions.length === 0" :description="$t('revision.empty')" />
         <el-timeline v-else>
           <el-timeline-item
             v-for="rev in revisions"
@@ -657,7 +656,7 @@
             <div class="rev-header">
               <span class="rev-number">#{{ rev.revision_number }}</span>
               <el-tag :type="rev.operation_type === 'rollback' ? 'warning' : rev.operation_type === 'approve' ? 'success' : 'info'" size="small">
-                {{ rev.operation_type === 'rollback' ? '回滚' : rev.operation_type === 'approve' ? $t('revision.approve') : $t('revision.edit') }}
+                {{ rev.operation_type === 'rollback' ? $t('revision.rollback') : rev.operation_type === 'approve' ? $t('revision.approve') : $t('revision.edit') }}
               </el-tag>
             </div>
             <div class="rev-summary">{{ rev.change_summary || $t('revision.no_summary') }}</div>
@@ -673,6 +672,21 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+const { t, locale } = useI18n()
+
+// 内容文本翻译：对中文分词逐个查字典翻译
+function translateContent(text) {
+  if (!text) return ''
+  // 先查完整匹配
+  const full = t(text)
+  if (full !== text) return full
+  // 逐词替换
+  return text.replace(/[一-鿿]+/g, (word) => {
+    const translated = t(word)
+    return translated !== word ? translated : word
+  })
+}
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled, MagicStick
@@ -693,11 +707,9 @@ function canEditItem(item) {
   return authStore.isAdmin || (authStore.isEditor && item.owner_id === authStore.userId)
 }
 
-// page_role 中文映射
-const ROLE_LABEL = { cover: '封面', back_cover: '封底', inscription: '题跋页', accessory: '附件', other: '其他页' }
-const ROLE_BADGE = { cover: '封', back_cover: '底', inscription: '跋', accessory: '附', other: '他' }
-function roleLabel(role) { return ROLE_LABEL[role] || '其他页' }
-function roleBadge(role) { return ROLE_BADGE[role] || '他' }
+// page_role
+function roleLabel(role) { return t('role.' + (role || 'other')) }
+function roleBadge(role) { return { cover: t('role.cover')[0], back_cover: t('role.back_cover')[0], inscription: t('role.inscription')[0], accessory: t('role.accessory')[0], other: t('role.other')[0] }[role] || '?' }
 
 // 我的意见
 const showSuggestDialog = ref(false)
@@ -716,7 +728,7 @@ function getSuggestFieldValue(fieldName) {
     return props.currentImage.inscriptionContent || ''
   }
   if (fieldName === 'annotation_regions') {
-    return '标注图（请在标注编辑器中查看）'
+    return t('suggest.annotation_view')
   }
   const val = props.currentImage[fieldName]
   return val !== null && val !== undefined ? String(val) : ''
@@ -734,7 +746,7 @@ const ANNOTATE_SUGGEST_FLAG = 'suggest_annotation_done_'
 function openSuggestEdit() {
   if (!props.currentImage) return
   if (!props.currentImage.library_id) {
-    ElMessage.warning('该作品未关联作品库，无法提交意见')
+    ElMessage.warning(t('suggest.no_library'))
     return
   }
   // 检查先前打开的标注审阅是否已保存
@@ -751,7 +763,7 @@ function openAnnotatorSuggest() {
   if (!props.currentImage) return
   const imageId = props.currentImage.image_id || props.currentImage.id
   if (!imageId) {
-    ElMessage.warning('无法获取作品ID')
+    ElMessage.warning(t('suggest.no_artwork_id'))
     return
   }
   const libId = props.currentImage.library_id
@@ -774,16 +786,16 @@ function suggestDialogClosed() {
 
 async function handleSubmitChange() {
   if (!suggestForm.new_value) {
-    ElMessage.warning('请输入新值')
+    ElMessage.warning(t('suggest.enter_new_value'))
     return
   }
   if (!suggestForm.change_summary || !suggestForm.change_summary.trim()) {
-    ElMessage.warning('请填写修改说明')
+    ElMessage.warning(t('suggest.enter_desc'))
     return
   }
   const libId = props.currentImage.library_id
   if (!libId) {
-    ElMessage.error('该作品未关联作品库，无法提交意见。请刷新页面后重试')
+    ElMessage.error(t('suggest.no_library_detail'))
     return
   }
   submitting.value = true
@@ -797,10 +809,10 @@ async function handleSubmitChange() {
       request_type: suggestForm.field_name === 'inscription_content' ? 'edit_inscription' : 'edit_field'
     }
     await api.post(`/libraries/${libId}/requests`, data)
-    ElMessage.success('意见已提交')
+    ElMessage.success(t('suggest.submitted'))
     showSuggestDialog.value = false
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '提交失败')
+    ElMessage.error(e.response?.data?.detail || t('suggest.submit_fail'))
   } finally {
     submitting.value = false
   }
@@ -819,7 +831,7 @@ async function openRevisions() {
     const resp = await api.get(`/artworks/${props.currentImage.id}/revisions`)
     revisions.value = resp.revisions || []
   } catch (e) {
-    ElMessage.error('加载版本历史失败')
+    ElMessage.error(t('revision.load_fail'))
     revisions.value = []
   } finally {
     revisionsLoading.value = false
@@ -829,16 +841,16 @@ async function openRevisions() {
 async function handleRollback(rev) {
   try {
     await ElMessageBox.confirm(
-      `确定要回滚到版本 #${rev.revision_number}？此操作不可撤销。`,
-      '回滚确认',
-      { confirmButtonText: '确认回滚', cancelButtonText: '取消', type: 'warning' }
+      t('revision.confirm_msg', { num: rev.revision_number }),
+      t('revision.confirm_title'),
+      { confirmButtonText: t('revision.confirm_btn'), cancelButtonText: t('suggest.cancel'), type: 'warning' }
     )
     await api.post(`/artworks/${props.currentImage.id}/rollback/${rev.id}`)
-    ElMessage.success('回滚成功')
+    ElMessage.success(t('revision.success'))
     showRevisionsDialog.value = false
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.detail || '回滚失败')
+      ElMessage.error(e.response?.data?.detail || t('revision.fail'))
     }
   }
 }
@@ -875,7 +887,7 @@ async function loadSealByName(name) {
       return
     }
   } catch (e) { /* 静默 */ }
-  ElMessage.info(`「${name}」暂无印章图库记录，可前往印章管理添加`)
+  ElMessage.info(t('seal.not_in_library', { name }))
 }
 
 const detailSealTags = computed(() => {
@@ -994,7 +1006,7 @@ function scrollAlbumThumbs(direction) {
 const showDiagramOverlay = ref(true)
 const showSpatialEmotion = ref(true)
 const brainHover = ref(null)
-const inscriptionMode = ref("original")
+const inscriptionMode = ref(locale.value === 'en' ? 'english' : 'original')
 
 // 空间情绪数据
 const contentAnalysis = computed(() => {
@@ -1021,12 +1033,11 @@ const sealEmotion = computed(() => contentAnalysis.value?.seal_emotion || null)
 const textSentimentSummary = computed(() => {
   const s = contentAnalysis.value?.sentiment
   if (!s) return ''
-  // 取主题名作为简短上下文
   const themes = contentAnalysis.value?.themes
-  const themeNames = themes?.slice(0, 2).map(t => t.name).join('、') || ''
+  const themeNames = themes?.slice(0, 2).map(theme => t(theme.name)).join(locale === 'en' ? ', ' : '、') || ''
   const phase = contentAnalysis.value?.period_phase || ''
   const parts = []
-  if (phase) parts.push(phase)
+  if (phase) parts.push(t(phase))
   if (themeNames) parts.push(themeNames)
   return parts.join(' · ') || '—'
 })
@@ -1151,9 +1162,9 @@ function getSentimentIntensity(sentiment) {
 function mapPolarityText(text) {
   if (!text) return ''
   return text
-    .replace(/\bpositive\b/g, '<span class="pol-label pol-positive">积极</span>')
-    .replace(/\bnegative\b/g, '<span class="pol-label pol-negative">消极</span>')
-    .replace(/\bneutral\b/g, '<span class="pol-label pol-neutral">中性</span>')
+    .replace(/\bpositive\b/g, `<span class="pol-label pol-positive">${t('polarity.positive')}</span>`)
+    .replace(/\bnegative\b/g, `<span class="pol-label pol-negative">${t('polarity.negative')}</span>`)
+    .replace(/\bneutral\b/g, `<span class="pol-label pol-neutral">${t('polarity.neutral')}</span>`)
 }
 
 function getInscriptionAreaClass() {
@@ -1163,11 +1174,11 @@ function getInscriptionAreaClass() {
     if (matched.length) return `area-code-${matched[0].code}`
   }
   const layoutType = positionAnalysis.value.layout_type
-  if (layoutType === '边角式') return 'area-corner'
-  if (layoutType === '拦边封角式') return 'area-frame'
-  if (layoutType === '穿插式') return 'area-interleaved'
-  if (layoutType === '满布式') return 'area-full'
-  if (layoutType === '独立式') return 'area-independent'
+  if (layoutType === t('area.corner')) return 'area-corner'
+  if (layoutType === t('area.frame')) return 'area-frame'
+  if (layoutType === t('area.interleaved')) return 'area-interleaved'
+  if (layoutType === t('area.full')) return 'area-full'
+  if (layoutType === t('area.independent')) return 'area-independent'
   return ''
 }
 
@@ -1346,9 +1357,9 @@ function updatePieChart() {
   const blank = areaStats.value.blankPercent || 0
 
   const rawItems = [
-    { name: '题跋', value: insc, color: '#d4846a' },
-    { name: '绘画', value: paint, color: '#7ba3c4' },
-    { name: '留白', value: blank, color: '#a8c97a' },
+    { name: t('area.inscription'), value: insc, color: '#d4846a' },
+    { name: t('area.painting'), value: paint, color: '#7ba3c4' },
+    { name: t('area.blank'), value: blank, color: '#a8c97a' },
   ].filter(i => i.value > 0)
 
   rawItems.sort((a, b) => b.value - a.value)
@@ -1453,9 +1464,9 @@ function updateThemeChart() {
   const themes = props.currentImage?.contentAnalysis?.themes
   if (!themes?.length) return
 
-  const data = themes.map(t => ({
-    name: t.name,
-    value: Math.round(t.confidence * 100)
+  const data = themes.map(theme => ({
+    name: t(theme.name),
+    value: Math.round(theme.confidence * 100)
   })).sort((a, b) => b.value - a.value)
 
   themeChart.setOption({
@@ -2181,8 +2192,10 @@ defineExpose({
   text-align: center;
   vertical-align: middle;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
-.factor-cell { white-space: nowrap; }
+.factor-cell { word-break: break-word; }
 .factor-value {
   color: #999;
   font-size: 11px;
@@ -2309,6 +2322,8 @@ defineExpose({
   font-size: 11px;
   color: #777;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .spatial-combined {
   margin-top: 8px;
@@ -2318,6 +2333,8 @@ defineExpose({
   font-size: 11px;
   color: #4d4c48;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .spatial-combined-label {
   font-weight: 600;
@@ -2361,6 +2378,8 @@ defineExpose({
   font-size: 12px;
   color: #6b6356;
   line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ── 推导因素 ── */
@@ -2401,6 +2420,8 @@ defineExpose({
 .factor-detail {
   color: #999;
   font-size: 11px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ── 印章情绪解读 ── */

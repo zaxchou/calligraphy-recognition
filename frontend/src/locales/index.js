@@ -9,6 +9,8 @@ const i18n = createI18n({
   locale: savedLang,
   fallbackLocale: 'zh',
   messages: { zh, en },
+  silentTranslationWarn: true,
+  silentFallbackWarn: true,
 })
 
 export function switchLang(lang) {

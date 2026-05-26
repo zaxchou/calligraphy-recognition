@@ -1223,6 +1223,23 @@ async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db
     }
 
 
+def _get_adjacent_image_id(db, analysis, direction="prev"):
+    """获取同作者/同库的前一个或后一个 image_id，用于导航按钮"""
+    query = db.query(TubiAnalysis.image_id).filter(
+        TubiAnalysis.artist == analysis.artist,
+        TubiAnalysis.id != analysis.id,
+        TubiAnalysis.page_role.is_(None) | (TubiAnalysis.page_role == ""),
+    )
+    if analysis.library_id:
+        query = query.filter(TubiAnalysis.library_id == analysis.library_id)
+    if direction == "prev":
+        query = query.filter(TubiAnalysis.id < analysis.id).order_by(TubiAnalysis.id.desc())
+    else:
+        query = query.filter(TubiAnalysis.id > analysis.id).order_by(TubiAnalysis.id.asc())
+    result = query.first()
+    return result[0] if result else None
+
+
 @router.get("/result/{image_id}")
 async def get_result(image_id: str, db: Session = Depends(get_db), user: Optional[User] = Depends(get_optional_user)):
     db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
@@ -1300,7 +1317,7 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
             "analysis_note": db_analysis.analysis_note,
             "inscription_content": db_analysis.inscription_content,
             "inscription_modern": db_analysis.inscription_modern,
-            "inscription_en": db_getattr(analysis, 'inscription_en', None),
+            "inscription_en": getattr(db_analysis, 'inscription_en', None),
             "seal_content": db_analysis.seal_content,
             "content_analysis": json.loads(db_analysis.content_analysis) if db_analysis.content_analysis else None,
             "status": db_analysis.status,
@@ -1323,7 +1340,10 @@ async def get_result(image_id: str, db: Session = Depends(get_db), user: Optiona
                 "artwork_width_cm": db_analysis.artwork_width_cm,
                 "content_analysis": db_analysis.content_analysis,
                 "material_tags": db_analysis.material_tags,
-            })
+            }),
+            # 同作者/同库的前后相邻记录（用于导航按钮）
+            "prev_image_id": _get_adjacent_image_id(db, db_analysis, "prev"),
+            "next_image_id": _get_adjacent_image_id(db, db_analysis, "next"),
         }
     }
     # Phase 1: 已登录用户附加私有数据
@@ -1952,8 +1972,6 @@ async def get_all_results(
                 "inscription_content": analysis.inscription_content,
                 "inscription_modern": analysis.inscription_modern,
                 "inscription_en": getattr(analysis, 'inscription_en', None),
-                    "inscription_en": getattr(analysis, 'inscription_en', None),
-                "inscription_en": getattr(analysis, 'inscription_en', None),
                 "seal_content": analysis.seal_content,
                 "content_analysis": json.loads(analysis.content_analysis) if analysis.content_analysis else None,
                 "artwork_width_cm": analysis.artwork_width_cm,
@@ -2152,8 +2170,6 @@ async def search_images(
                 "analysis_note": analysis.analysis_note,
                 "inscription_content": analysis.inscription_content,
                 "inscription_modern": analysis.inscription_modern,
-                "inscription_en": getattr(analysis, 'inscription_en', None),
-                    "inscription_en": getattr(analysis, 'inscription_en', None),
                 "inscription_en": getattr(analysis, 'inscription_en', None),
                 "seal_content": analysis.seal_content,
                 "album_name": analysis.album_name,

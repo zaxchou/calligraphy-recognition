@@ -356,6 +356,8 @@
   color: #888;
   line-height: 1.4;
   margin-top: 1px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* 旧版推导文本（兼容） */
@@ -378,6 +380,8 @@
   font-size: 13px;
   color: #4a4a4a;
   line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .ts-empty {
@@ -3497,7 +3501,8 @@ gallery-album-tag {
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.2s;
-  white-space: nowrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* 8类型配色 */

@@ -1,9 +1,9 @@
 <template>
   <div class="ranking-module">
     <div class="module-header">
-      <h3 class="module-title">题跋比排行榜</h3>
+      <h3 class="module-title">{{ $t('ranking.title') }}</h3>
       <el-button type="primary" size="small" @click="handleMore">
-        更多
+        {{ $t('ranking.more') }}
       </el-button>
     </div>
     <el-card shadow="never" class="ranking-card">
@@ -41,8 +41,8 @@
             </div>
           </div>
           <div class="ranking-row-info">
-            <div class="ranking-row-name">{{ item.title || '未命名' }}</div>
-            <div class="ranking-row-author">{{ item.artist || '李鱓' }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</div>
+            <div class="ranking-row-name">{{ item.title || $t('card.untitled') }}</div>
+            <div class="ranking-row-author">{{ $t(item.artist) || item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}${$t('info.age')}` : '' }}</div>
           </div>
           <div class="ranking-row-ratio">{{ item.tubiRatio.toFixed(2) }}%</div>
         </div>
@@ -63,8 +63,8 @@
             </div>
           </div>
           <div class="ranking-row-info">
-            <div class="ranking-row-name">{{ item.title || '未命名' }}</div>
-            <div class="ranking-row-author">{{ item.artist || '李鱓' }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</div>
+            <div class="ranking-row-name">{{ item.title || $t('card.untitled') }}</div>
+            <div class="ranking-row-author">{{ $t(item.artist) || item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}${$t('info.age')}` : '' }}</div>
           </div>
           <div class="ranking-row-ratio">{{ item.tubiRatio.toFixed(2) }}%</div>
         </div>
@@ -73,7 +73,7 @@
       <!-- 无数据提示 -->
       <div v-if="!loading && rankings.length === 0" class="no-data">
         <el-icon size="48"><Picture /></el-icon>
-        <p>暂无数据，请先上传画作</p>
+        <p>{{ $t('ranking.no_data') }}</p>
       </div>
     </el-card>
   </div>
