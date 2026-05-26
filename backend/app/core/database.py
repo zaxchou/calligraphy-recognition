@@ -437,7 +437,7 @@ def _ensure_artist_columns():
         ]
         for col, col_type in new_cols:
             if col not in existing:
-                escaped = f'[{col}]' if col in ('references',) else col
+                escaped = f'"{col}"' if col in ('references',) else col
                 conn.execute(f"ALTER TABLE artists ADD COLUMN {escaped} {col_type}")
                 logger.info("Migration: added artists.%s", col)
         if "verified" not in existing:
