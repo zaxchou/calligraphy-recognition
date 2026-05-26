@@ -178,6 +178,9 @@ export default {
   'ranking.title': 'Inscription Ratio Ranking',
   'ranking.more': 'More',
   'ranking.no_data': 'No data — upload artworks first',
+
+  // Scoring method
+  'method.vader_tip': 'Sentiment normalized to [-1, +1] via VADER algorithm. Ref: Hutto & Gilbert (2014), ICWSM.',
   'revision.rollback': 'Rollback',
   'revision.approve': 'Approved',
   'revision.edit': 'Direct Edit',

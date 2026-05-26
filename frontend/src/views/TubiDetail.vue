@@ -154,6 +154,9 @@
                             :style="{ color: displayScore < 0 ? '#f56c6c' : '#3cb88b' }">
                             {{ displayScore > 0 ? '+' : '' }}{{ displayScore }}
                           </span>
+                          <el-tooltip v-if="isVaderScore" :content="$t('method.vader_tip')" placement="top" effect="light">
+                            <span class="score-method-badge">VADER</span>
+                          </el-tooltip>
                         </div>
                       </div>
                       <table class="factor-table">
@@ -1013,9 +1016,13 @@ const sortedSpatialSignals = computed(() => {
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
 const displayScore = computed(() => {
   const cs = combinedSentiment.value
+  // 优先使用 VADER 归一化分数 [-1, +1]
+  if (cs?.vader_normalized != null) return cs.vader_normalized
+  // 向后兼容旧数据
   if (cs?.combined_score != null) return cs.combined_score
   return contentAnalysis.value?.sentiment?.emotion_score ?? 0
 })
+const isVaderScore = computed(() => combinedSentiment.value?.vader_normalized != null)
 const sealEmotion = computed(() => contentAnalysis.value?.seal_emotion || null)
 
 // 文字情绪摘要
@@ -2357,6 +2364,24 @@ defineExpose({
   font-size: 13px;
   font-weight: 700;
   margin-top: 2px;
+}
+.score-method-badge {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #8a7e6b;
+  background: #f0ede6;
+  border: 1px solid #d8d0c0;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-top: 3px;
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.score-method-badge:hover {
+  opacity: 1;
 }
 .judgment-info-col {
   flex: 1;

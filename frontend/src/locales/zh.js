@@ -178,6 +178,9 @@ export default {
   'ranking.title': '题跋比排行榜',
   'ranking.more': '更多',
   'ranking.no_data': '暂无数据，请先上传画作',
+
+  // Scoring method
+  'method.vader_tip': '情绪值基于 VADER 算法归一化到 [-1, +1]。参考: Hutto & Gilbert (2014), ICWSM.',
   'revision.rollback': '回滚',
   'revision.approve': '审核通过',
   'revision.edit': '直接编辑',
