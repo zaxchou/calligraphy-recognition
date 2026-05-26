@@ -1869,6 +1869,153 @@ async def reanalyze_single(record_id: int, editor=Depends(require_editor)):
     return result
 
 
+@router.post("/analyze-all/{image_id}")
+async def analyze_all_spatial_and_text(
+    image_id: str,
+    editor=Depends(require_editor),
+):
+    """
+    一键全维度分析：空间情绪 + 位置分析 + 文字情感
+    前置条件：inscription_verified=1 且 regions 不为空
+    """
+    from app.services.inscription_content_analyzer import analyze_spatial_emotion
+    from app.services.inscription_position_analyzer import analyze_inscription_position_simple
+    import json as _json
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # 查询记录
+    cur.execute(
+        "SELECT id, image_id, inscription_content, regions, blank_percent, content_analysis, "
+        "position_analysis, image_width, image_height, year, title, analysis_note, "
+        "artwork_width_cm, artwork_height_cm, artist, inscription_verified "
+        "FROM tubi_analyses WHERE image_id = ? OR CAST(id AS TEXT) = ?",
+        (image_id, image_id)
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="记录不存在")
+
+    (db_id, img_id, text, regions_raw, blank_pct, content_raw, position_raw,
+     img_w, img_h, year, title, note, w_cm, h_cm, artist, verified) = row
+
+    if not verified:
+        conn.close()
+        raise HTTPException(status_code=400, detail="题跋尚未校对，请先完成题跋校对")
+
+    # 解析 regions
+    regions = None
+    if regions_raw:
+        try:
+            regions = _json.loads(regions_raw) if isinstance(regions_raw, str) else regions_raw
+        except Exception:
+            pass
+
+    if not regions or not regions.get("inscription_regions"):
+        conn.close()
+        raise HTTPException(status_code=400, detail="请先完成区域标注（需标注题跋区域）")
+
+    # 1. 题跋位置分析
+    position_analysis = None
+    try:
+        position_analysis = analyze_inscription_position_simple(regions, img_w or 1000, img_h or 1000)
+        cur.execute(
+            "UPDATE tubi_analyses SET position_analysis = ? WHERE id = ?",
+            (_json.dumps(position_analysis, ensure_ascii=False), db_id)
+        )
+    except Exception as e:
+        logger.error(f"位置分析失败: {e}")
+
+    # 2. 空间情绪分析
+    spatial_emotion = None
+    if position_analysis:
+        spatial_emotion = analyze_spatial_emotion(
+            position_analysis,
+            blank_pct or 50,
+            position_analysis.get("coverage_ratio", 0)
+        )
+
+    # 3. 文字情感分析（调用现有管道）
+    text_analysis = None
+    content_analysis = None
+    if text:
+        try:
+            from app.services.inscription_content_analyzer import classify_inscription_v4
+            text_analysis = classify_inscription_v4(
+                text, year, title, note, w_cm, h_cm, artist
+            )
+            # 合并现有 content_analysis
+            content_analysis = _json.loads(content_raw) if isinstance(content_raw, str) else content_raw
+            if not content_analysis or not isinstance(content_analysis, dict):
+                content_analysis = {}
+            content_analysis["themes"] = [
+                {"code": t.theme_code, "name": t.theme_name, "confidence": t.confidence}
+                for t in (text_analysis.themes if hasattr(text_analysis, 'themes') else [])
+            ]
+            content_analysis["sentiment"] = {
+                "polarity": text_analysis.sentiment_polarity,
+                "intensity": text_analysis.sentiment_intensity,
+                "reasoning": text_analysis.reasoning_overall,
+            } if hasattr(text_analysis, 'sentiment_polarity') else {}
+        except Exception as e:
+            logger.error(f"文字分析失败: {e}")
+
+    # 4. 空间情绪 + 合并
+    if content_analysis is None:
+        content_analysis = _json.loads(content_raw) if isinstance(content_raw, str) else content_raw
+        if not content_analysis or not isinstance(content_analysis, dict):
+            content_analysis = {}
+
+    if spatial_emotion:
+        content_analysis["spatial_emotion"] = spatial_emotion
+
+        # 合并空间+文字综合判断
+        text_polarity = content_analysis.get("sentiment", {}).get("polarity", "neutral")
+        spatial_signal = spatial_emotion.get("combined_spatial_sentiment", "")
+        is_spatial_negative = any(kw in spatial_signal for kw in ["压抑", "宣泄", "紧张"])
+        is_spatial_positive = any(kw in spatial_signal for kw in ["正面", "舒展", "狂放", "自信"])
+
+        if text_polarity == "negative" and is_spatial_negative:
+            combined_polarity = "negative"
+            combined_reasoning = "文字与空间布局均传递压抑信号，情感一致偏负面"
+        elif text_polarity == "positive" and is_spatial_positive:
+            combined_polarity = "positive"
+            combined_reasoning = "文字情感与空间布局均传递积极信号，情感一致偏正面"
+        elif text_polarity == "negative" and is_spatial_positive:
+            combined_polarity = "ambiguous"
+            combined_reasoning = "文字表面消极，但空间布局克制自持，可能为含蓄表达而非真正压抑"
+        elif text_polarity == "positive" and is_spatial_negative:
+            combined_polarity = "ambiguous"
+            combined_reasoning = "文字表面积极，但空间布局暗示压抑，需结合时期背景判断是否为反讽"
+        else:
+            combined_polarity = text_polarity or "neutral"
+            combined_reasoning = "情感信号不显著"
+
+        content_analysis["combined_sentiment"] = {
+            "polarity": combined_polarity,
+            "reasoning": combined_reasoning,
+        }
+
+    # 写入数据库
+    cur.execute(
+        "UPDATE tubi_analyses SET content_analysis = ? WHERE id = ?",
+        (_json.dumps(content_analysis, ensure_ascii=False), db_id)
+    )
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "image_id": img_id,
+        "spatial_emotion": spatial_emotion,
+        "position_analysis": position_analysis,
+        "sentiment": content_analysis.get("sentiment"),
+        "combined_sentiment": content_analysis.get("combined_sentiment"),
+    }
+
+
 @router.post("/translate/batch")
 async def translate_batch(
     editor=Depends(require_editor),

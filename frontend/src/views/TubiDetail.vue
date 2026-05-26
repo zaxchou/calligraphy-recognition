@@ -166,6 +166,35 @@
                   </transition>
                 </div>
               </div>
+              <!-- 空间情绪解读（折叠卡片） -->
+              <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
+                <h4 class="section-title" @click="showSpatialEmotion = !showSpatialEmotion" style="cursor:pointer;">
+                  <el-icon><MagicStick /></el-icon> 空间情绪解读
+                  <span class="spatial-summary" v-if="!showSpatialEmotion">
+                    {{ spatialEmotion.signals[0]?.type }} · 留白{{ spatialEmotion.blank_percent }}% · {{ spatialEmotion.combined_spatial_sentiment }}
+                  </span>
+                  <el-icon class="spatial-toggle-icon"><component :is="showSpatialEmotion ? ArrowUp : ArrowDown" /></el-icon>
+                </h4>
+                <transition name="el-fade-in">
+                  <div v-if="showSpatialEmotion" class="spatial-detail">
+                    <div v-for="(sig, idx) in spatialEmotion.signals" :key="idx" class="spatial-item">
+                      <span class="spatial-dot" :class="'emotion-' + sig.emotion_key"></span>
+                      <span class="spatial-type">{{ sig.type }}</span>
+                      <span class="spatial-emotion-tag">{{ sig.emotion }}</span>
+                      <p class="spatial-desc">{{ sig.desc }}</p>
+                    </div>
+                    <div class="spatial-item">
+                      <span class="spatial-dot blank-dot"></span>
+                      <span class="spatial-type">留白 {{ spatialEmotion.blank_percent }}%</span>
+                      <p class="spatial-desc">{{ spatialEmotion.blank_analysis }}</p>
+                    </div>
+                    <div v-if="combinedSentiment" class="spatial-combined">
+                      <span class="spatial-combined-label">综合判断</span>
+                      <span class="spatial-combined-text">{{ combinedSentiment.reasoning }}</span>
+                    </div>
+                  </div>
+                </transition>
+              </div>
               <!-- 题跋布局类型（精简版） -->
               <div class="spatial-analysis-card" v-if="analyzeStatus === 'analyzed' && positionAnalysis">
                 <h4 class="section-title">
@@ -541,7 +570,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled
+  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled, MagicStick
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getDisplayAge } from '../tubi/utils'
@@ -858,6 +887,16 @@ function scrollAlbumThumbs(direction) {
 
 // ── 悬浮示意图 ────────────────────────────────
 const showDiagramOverlay = ref(false)
+const showSpatialEmotion = ref(false)
+
+// 空间情绪数据
+const contentAnalysis = computed(() => {
+  const ca = props.currentImage?.content_analysis
+  if (!ca) return null
+  return typeof ca === 'string' ? (() => { try { return JSON.parse(ca) } catch { return null } })() : ca
+})
+const spatialEmotion = computed(() => contentAnalysis.value?.spatial_emotion || null)
+const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
 
 // ── Canvas 相关 ────────────────────────────────
 const canvasRef = ref(null)
@@ -1736,6 +1775,83 @@ defineExpose({
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+/* ── 空间情绪解读卡片 ── */
+.spatial-emotion-card {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
+}
+.spatial-emotion-card .section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #141413;
+  margin-bottom: 0;
+  user-select: none;
+}
+.spatial-summary {
+  font-size: 11px;
+  font-weight: 400;
+  color: #999;
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.spatial-toggle-icon { margin-left: auto; font-size: 12px; color: #999; }
+.spatial-detail { margin-top: 10px; }
+.spatial-item { margin-bottom: 8px; }
+.spatial-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.spatial-dot.emotion-negative_intense,
+.spatial-dot.emotion-negative_controlled { background: #c45a3c; }
+.spatial-dot.emotion-positive_resolved,
+.spatial-dot.emotion-positive_unrestrained { background: #5a8a4a; }
+.spatial-dot.emotion-neutral_controlled,
+.spatial-dot.emotion-neutral_balanced,
+.spatial-dot.emotion-neutral { background: #999; }
+.spatial-dot.blank-dot { background: #a8c97a; }
+.spatial-type { font-size: 12px; font-weight: 600; color: #4d4c48; }
+.spatial-emotion-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+}
+.spatial-item:nth-child(1) .spatial-emotion-tag { background: rgba(196, 90, 60, 0.1); color: #c45a3c; }
+.spatial-desc {
+  margin: 4px 0 0 16px;
+  font-size: 11px;
+  color: #777;
+  line-height: 1.5;
+}
+.spatial-combined {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(196, 90, 60, 0.06);
+  border-radius: 6px;
+  font-size: 11px;
+  color: #4d4c48;
+  line-height: 1.5;
+}
+.spatial-combined-label {
+  font-weight: 600;
+  margin-right: 6px;
+  color: #c45a3c;
 }
 
 /* ── 题跋布局类型（精简卡片） ── */

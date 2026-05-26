@@ -826,6 +826,101 @@ def _build_sentiment_reasoning_steps(
     return steps
 
 
+# ── 空间情绪分析 ────────────────────────────────────────────────────────────────
+def analyze_spatial_emotion(
+    position_analysis: Dict,
+    blank_percent: float,
+    inscription_coverage: float = None,
+) -> Dict:
+    """
+    基于论文框架，将题跋位置类型 + 留白比例映射为情感信号。
+
+    Args:
+        position_analysis: analyze_inscription_position_simple() 的输出
+        blank_percent: 留白百分比 (0-100)
+        inscription_coverage: 题跋覆盖率 (0-1)，可选
+
+    Returns:
+        {
+            "signals": [{"type": "拦边封角式", "emotion": "克制收敛", "desc": "..."}],
+            "blank_analysis": "...",
+            "combined_spatial_sentiment": "...",
+            "blank_percent": 52.3,
+            "coverage_ratio": 0.08,
+        }
+    """
+    from app.services.tibi_analysis_rules import SPATIAL_EMOTION_RULES
+
+    form_emotion_map = SPATIAL_EMOTION_RULES["form_emotion_map"]
+    blank_modifiers = SPATIAL_EMOTION_RULES["blank_modifiers"]
+    emotion_label = SPATIAL_EMOTION_RULES["emotion_label"]
+
+    coverage = inscription_coverage
+    if coverage is None and position_analysis:
+        coverage = position_analysis.get("coverage_ratio", 0)
+
+    signals = []
+    form_types = position_analysis.get("form_types", []) if position_analysis else []
+
+    # 从匹配的布局类型提取情感信号
+    for ft in form_types:
+        if not ft.get("matched"):
+            continue
+        code = ft.get("code")
+        if code and code in form_emotion_map:
+            em = form_emotion_map[code]
+            signals.append({
+                "type": ft.get("name", ""),
+                "code": code,
+                "emotion": emotion_label.get(em["emotion"], em["emotion"]),
+                "emotion_key": em["emotion"],
+                "desc": em["desc"],
+            })
+
+    # 留白修正
+    blank_desc = ""
+    blank_mod = 0.0
+    b = blank_percent if blank_percent is not None else 50
+    c = coverage if coverage is not None else 0.1
+    for rule in blank_modifiers:
+        try:
+            if rule["cond"](b, c):
+                blank_desc = rule["desc"]
+                blank_mod = rule["modifier"]
+                break
+        except Exception:
+            continue
+
+    if not blank_desc:
+        if b >= 50:
+            blank_desc = "留白充足，画面气息舒展从容"
+        elif b >= 30:
+            blank_desc = "留白适中，布局均衡"
+        else:
+            blank_desc = "留白偏少，画面饱满紧凑"
+
+    # 综合空间情感判断
+    if not signals:
+        combined = "无题跋标注，无法分析空间情绪"
+    else:
+        main_emotion = signals[0]["emotion_key"]
+        if blank_mod < -0.2:
+            combined = f"{emotion_label.get(main_emotion, main_emotion)}，偏压抑"
+        elif blank_mod > 0.1:
+            combined = f"{emotion_label.get(main_emotion, main_emotion)}，偏正面"
+        else:
+            combined = emotion_label.get(main_emotion, main_emotion)
+
+    return {
+        "signals": signals,
+        "blank_analysis": blank_desc,
+        "blank_modifier": round(blank_mod, 2),
+        "combined_spatial_sentiment": combined,
+        "blank_percent": round(b, 1),
+        "coverage_ratio": round(c, 4),
+    }
+
+
 @dataclass
 class AnalysisResult:
     """题跋内容分析结果"""
