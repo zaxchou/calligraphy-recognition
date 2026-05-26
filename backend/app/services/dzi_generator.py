@@ -39,27 +39,26 @@ def generate_dzi(filepath: str, dzi_dir: str) -> str | None:
         base_name = os.path.splitext(os.path.basename(filepath))[0]
         out_dir = os.path.join(dzi_dir, f"{base_name}_files")
         os.makedirs(out_dir, exist_ok=True)
-        
+
+        # Open image once — avoid re-decoding JPEG for every pyramid level
         with Image.open(filepath) as img:
             if img.mode in ('RGBA', 'LA', 'P'):
                 img = img.convert('RGB')
             width, height = img.size
-        
+
         num_levels = _get_num_levels(width, height)
-        
+
         # Build pyramid from top (smallest) to bottom (full size)
         for level in range(num_levels):
             scale = 1.0 / (2 ** (num_levels - 1 - level))
             level_w = max(1, int(width * scale))
             level_h = max(1, int(height * scale))
-            
+
             level_dir = os.path.join(out_dir, str(level))
             os.makedirs(level_dir, exist_ok=True)
-            
-            with Image.open(filepath) as img:
-                if img.mode in ('RGBA', 'LA', 'P'):
-                    img = img.convert('RGB')
-                resampled = img.resize((level_w, level_h), Image.Resampling.LANCZOS)
+
+            # Resize from in-memory source — no re-decode needed
+            resampled = img.resize((level_w, level_h), Image.Resampling.LANCZOS)
             
             cols = math.ceil(level_w / TILE_SIZE)
             rows = math.ceil(level_h / TILE_SIZE)

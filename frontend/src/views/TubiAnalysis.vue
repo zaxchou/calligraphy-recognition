@@ -948,6 +948,7 @@ async function autoAnalyze() {
     analyzingStep.value = '已加入队列，等待分析...'
 
     const startAt = Date.now()
+    let pollInterval = 3000  // exponential backoff: 3s -> 15s max
     while (true) {
       const statusResult = await tubiApi.getAnalyzeStatus(currentImage.value.id)
       if (!statusResult?.success) {
@@ -977,10 +978,8 @@ async function autoAnalyze() {
         analyzingStep.value = '分析中...'
       }
       const elapsed = Date.now() - startAt
-      const waitMs = status === 'queued'
-        ? (elapsed < 60_000 ? 5000 : 8000)
-        : (elapsed < 60_000 ? 3000 : 6000)
-      await new Promise(resolve => setTimeout(resolve, waitMs))
+      pollInterval = Math.min(15000, pollInterval * 1.5)
+      await new Promise(resolve => setTimeout(resolve, pollInterval))
       if (Date.now() - startAt > 20 * 60 * 1000) {
         throw new Error('分析超时，请重试')
       }

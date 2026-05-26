@@ -1417,16 +1417,25 @@ async def batch_get_status(request: BatchStatusRequest, db: Session = Depends(ge
     if not request.image_ids:
         return {"success": True, "data": []}
 
+    # Single query with IN instead of N individual queries
+    analyses = (
+        db.query(TubiAnalysis)
+        .filter(TubiAnalysis.image_id.in_(request.image_ids))
+        .all()
+    )
+    # Build lookup dict for O(1) access
+    lookup = {a.image_id: a for a in analyses}
+
     results = []
     for image_id in request.image_ids:
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
-        if db_analysis:
+        a = lookup.get(image_id)
+        if a:
             results.append({
                 "id": image_id,
-                "status": db_analysis.status,
-                "error_code": db_analysis.error_code,
-                "analysis_note": db_analysis.analysis_note,
-                "inscription_percent": db_analysis.inscription_percent,
+                "status": a.status,
+                "error_code": a.error_code,
+                "analysis_note": a.analysis_note,
+                "inscription_percent": a.inscription_percent,
             })
         else:
             results.append({"id": image_id, "status": "not_found"})

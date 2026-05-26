@@ -6,6 +6,7 @@ import logging
 import os
 import uuid
 import json
+import asyncio
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
@@ -454,11 +455,11 @@ async def upload_artwork(
     except Exception as e:
         logger.warning(f"获取图片尺寸/缩略图失败: {e}")
 
-    # 生成 DZI 瓦片（异步、非阻塞）
+    # 生成 DZI 瓦片（后台线程，不阻塞上传响应）
     try:
         _dzidir = settings.DZI_DIR
         os.makedirs(_dzidir, exist_ok=True)
-        _gen_dzi(filepath, _dzidir)
+        asyncio.create_task(asyncio.to_thread(_gen_dzi, filepath, _dzidir))
     except Exception as e:
         logger.warning("DZI 生成失败（不影响上传）: %s", e)
 
