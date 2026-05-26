@@ -118,6 +118,8 @@ async def analyze_single_record(record_id: int, cur) -> dict:
          "confidence": ..., "llm_fixed": bool, "llm_error": str|None}
     """
     import json
+    import logging
+    logger = logging.getLogger(__name__)
     from app.services.inscription_content_analyzer import (
         classify_inscription_v4, THEME_NAME_MIGRATION, llm_analyze_combined
     )
@@ -219,8 +221,14 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         sr = cur.fetchone()
         if sr and sr["regions"]:
             regions_raw = sr["regions"]
-            regions = json.loads(regions_raw) if isinstance(regions_raw, str) else regions_raw
-            if regions and regions.get("inscription_regions"):
+            # 处理可能的双重 JSON 编码（数据库存的是字符串，可能被多次序列化）
+            if isinstance(regions_raw, str):
+                regions = json.loads(regions_raw)
+                if isinstance(regions, str):
+                    regions = json.loads(regions)
+            else:
+                regions = regions_raw
+            if regions and isinstance(regions, dict) and regions.get("inscription_regions"):
                 from app.services.inscription_position_analyzer import analyze_inscription_position_simple
                 from app.services.inscription_content_analyzer import analyze_spatial_emotion
 
@@ -242,11 +250,15 @@ async def analyze_single_record(record_id: int, cur) -> dict:
                 elif text_pol == "positive" and is_sp_pos:
                     cp, cr = "positive", "文字情感与空间布局均传递积极信号，情感一致偏正面"
                 elif text_pol == "negative" and is_sp_pos:
-                    cp, cr = "ambiguous", "文字表面消极，但空间布局克制自持，可能为含蓄表达而非真正压抑"
+                    cp, cr = "ambiguous", "文字表面消极，但空间布局舒展自信，可能为含蓄表达而非真正压抑"
                 elif text_pol == "positive" and is_sp_neg:
-                    cp, cr = "ambiguous", "文字表面积极，但空间布局暗示压抑，需结合时期背景判断是否为反讽"
+                    cp, cr = "ambiguous", "文字表面积极，但空间布局暗含压抑，需结合时期背景判断是否为反讽"
+                elif text_pol == "negative":
+                    cp, cr = "negative", "题跋文字偏消极，空间布局则较为克制收敛，综合偏负面"
+                elif text_pol == "positive":
+                    cp, cr = "positive", "题跋文字偏积极，空间布局整体平稳，综合偏正面"
                 else:
-                    cp, cr = text_pol or "neutral", "情感信号不显著"
+                    cp, cr = "neutral", "文字与空间均无明显情感倾向"
                 new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr}
     except Exception as e:
         logger.warning(f"空间情绪分析跳过 (record_id={record_id}): {e}")

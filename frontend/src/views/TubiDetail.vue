@@ -166,13 +166,27 @@
                   </transition>
                 </div>
               </div>
-              <!-- 空间情绪解读（折叠卡片） -->
+              <!-- 空间情绪解读（含布局类型，默认展开） -->
               <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
                 <h4 class="section-title" @click="showSpatialEmotion = !showSpatialEmotion" style="cursor:pointer;">
                   <el-icon><MagicStick /></el-icon> 空间情绪解读
                   <span class="spatial-summary" v-if="!showSpatialEmotion">
                     {{ spatialEmotion.signals[0]?.type }} · 留白{{ spatialEmotion.blank_percent }}% · {{ spatialEmotion.combined_spatial_sentiment }}
                   </span>
+                  <!-- 布局类型标签（始终可见） -->
+                  <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
+                    <el-tooltip
+                      v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
+                      :key="ft.code"
+                      :content="ft.description"
+                      placement="bottom"
+                      effect="dark"
+                    >
+                      <span class="form-type-tag" :class="`tag-code-${ft.code}`">
+                        {{ ft.name }}
+                      </span>
+                    </el-tooltip>
+                  </div>
                   <el-icon class="spatial-toggle-icon"><component :is="showSpatialEmotion ? ArrowUp : ArrowDown" /></el-icon>
                 </h4>
                 <transition name="el-fade-in">
@@ -188,15 +202,15 @@
                       <span class="spatial-type">留白 {{ spatialEmotion.blank_percent }}%</span>
                       <p class="spatial-desc">{{ spatialEmotion.blank_analysis }}</p>
                     </div>
-                    <div v-if="combinedSentiment" class="spatial-combined">
-                      <span class="spatial-combined-label">综合判断</span>
-                      <span class="spatial-combined-text">{{ combinedSentiment.reasoning }}</span>
+                    <div v-if="spatialEmotion?.combined_spatial_sentiment" class="spatial-combined">
+                      <span class="spatial-combined-label">空间综合判断</span>
+                      <span class="spatial-combined-text">{{ spatialEmotion.combined_spatial_sentiment }}</span>
                     </div>
                   </div>
                 </transition>
               </div>
-              <!-- 题跋布局类型（精简版） -->
-              <div class="spatial-analysis-card" v-if="analyzeStatus === 'analyzed' && positionAnalysis">
+              <!-- 无空间情绪数据时，回退显示纯布局类型 -->
+              <div class="spatial-analysis-card" v-else-if="analyzeStatus === 'analyzed' && positionAnalysis">
                 <h4 class="section-title">
                   <el-icon><DataAnalysis /></el-icon> 题跋布局类型
                   <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
@@ -222,9 +236,6 @@
                   >
                     <span class="desc-tag" :class="`desc-tag-${ft.code}`">{{ ft.code }}</span>
                     <span class="desc-text">{{ ft.description }}</span>
-                  </div>
-                  <div v-if="!positionAnalysis.form_types.filter(f => f.matched).length" class="desc-none">
-                    {{ positionAnalysis.layout_description || '暂无形式分析结果' }}
                   </div>
                 </div>
                 <div class="spatial-description" v-else>
@@ -256,48 +267,93 @@
                   </div>
 
                   <div class="ts-section" v-if="currentImage.contentAnalysis?.sentiment">
-                    <div class="ts-label">情感极性</div>
-                    <div class="sentiment-card">
-                      <div class="sentiment-header">
-                        <span
-                          class="sentiment-dot"
-                          :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"
-                        ></span>
-                        <span class="sentiment-polarity-text" :style="{
-                          color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' :
-                                 currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399'
-                        }">{{
-                          currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' :
-                          currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性'
-                        }}</span>
-                        <span class="sentiment-sep">·</span>
-                        <span class="sentiment-score-text">强度 {{
-                          Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100)
-                        }}%</span>
-                        <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
-                          <span class="sentiment-sep">·</span>
-                          <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
-                        </template>
-                        <template v-if="currentImage.contentAnalysis.v4_confidence != null">
-                          <span class="sentiment-sep">·</span>
+                    <!-- 有空间分析 → 综合判断作为最终结论 -->
+                    <template v-if="combinedSentiment">
+                      <div class="ts-label">综合判断</div>
+                      <div class="final-judgment-card">
+                        <div class="final-judgment-header">
                           <span
-                            class="sentiment-score-text confidence-tag"
-                            :class="currentImage.contentAnalysis.v4_confidence >= 0.7 ? 'conf-high' : currentImage.contentAnalysis.v4_confidence >= 0.4 ? 'conf-mid' : 'conf-low'"
-                          >
-                            可信度 {{ Math.round(currentImage.contentAnalysis.v4_confidence * 100) }}%
+                            class="judgment-dot"
+                            :style="{ background: combinedSentiment.polarity === 'positive' ? '#4e8cff' : combinedSentiment.polarity === 'negative' ? '#ff6b35' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#b8a47e' }"
+                          ></span>
+                          <span class="judgment-polarity" :style="{
+                            color: combinedSentiment.polarity === 'positive' ? '#67c23a' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399'
+                          }">
+                            {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
                           </span>
-                        </template>
+                        </div>
+                        <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
                       </div>
-                      <div class="sentiment-bar-track">
-                        <div
-                          class="sentiment-bar-fill"
-                          :style="{
-                            width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
-                            background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e'
-                          }"
-                        ></div>
+                      <!-- 推导因素 -->
+                      <div class="derivation-factors">
+                        <div class="factor-item">
+                          <span class="factor-icon">📝</span>
+                          <span class="factor-label">题跋文字</span>
+                          <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
+                            {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                          </span>
+                          <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                            {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
+                          </span>
+                        </div>
+                        <div class="factor-item" v-if="spatialEmotion">
+                          <span class="factor-icon">📐</span>
+                          <span class="factor-label">空间布局</span>
+                          <span class="factor-result neutral">
+                            {{ spatialEmotion.combined_spatial_sentiment || '平稳' }}
+                          </span>
+                          <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
+                        </div>
                       </div>
-                    </div>
+                      <div class="factor-arrow">
+                        <span class="arrow-text">↓ 综合判断 ↓</span>
+                      </div>
+                    </template>
+                    <!-- 无空间分析 → 纯文字结论 -->
+                    <template v-else>
+                      <div class="ts-label">情感极性</div>
+                      <div class="sentiment-card">
+                        <div class="sentiment-header">
+                          <span
+                            class="sentiment-dot"
+                            :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"
+                          ></span>
+                          <span class="sentiment-polarity-text" :style="{
+                            color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' :
+                                   currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399'
+                          }">{{
+                            currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' :
+                            currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性'
+                          }}</span>
+                          <span class="sentiment-sep">·</span>
+                          <span class="sentiment-score-text">强度 {{
+                            Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100)
+                          }}%</span>
+                          <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                            <span class="sentiment-sep">·</span>
+                            <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
+                          </template>
+                          <template v-if="currentImage.contentAnalysis.v4_confidence != null">
+                            <span class="sentiment-sep">·</span>
+                            <span
+                              class="sentiment-score-text confidence-tag"
+                              :class="currentImage.contentAnalysis.v4_confidence >= 0.7 ? 'conf-high' : currentImage.contentAnalysis.v4_confidence >= 0.4 ? 'conf-mid' : 'conf-low'"
+                            >
+                              可信度 {{ Math.round(currentImage.contentAnalysis.v4_confidence * 100) }}%
+                            </span>
+                          </template>
+                        </div>
+                        <div class="sentiment-bar-track">
+                          <div
+                            class="sentiment-bar-fill"
+                            :style="{
+                              width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
+                              background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e'
+                            }"
+                          ></div>
+                        </div>
+                      </div>
+                    </template>
                     <!-- 结构化推导步骤（新版） -->
                     <div class="reasoning-steps" v-if="currentImage.contentAnalysis.sentiment.reasoning_steps?.length">
                       <div class="reasoning-label">推导过程</div>
@@ -330,7 +386,6 @@
                       <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.reasoning }}</div>
                     </div>
                   </div>
-
                 <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
                   暂无内容分析数据
                 </div>
@@ -887,11 +942,11 @@ function scrollAlbumThumbs(direction) {
 
 // ── 悬浮示意图 ────────────────────────────────
 const showDiagramOverlay = ref(false)
-const showSpatialEmotion = ref(false)
+const showSpatialEmotion = ref(true)
 
 // 空间情绪数据
 const contentAnalysis = computed(() => {
-  const ca = props.currentImage?.content_analysis
+  const ca = props.currentImage?.contentAnalysis
   if (!ca) return null
   return typeof ca === 'string' ? (() => { try { return JSON.parse(ca) } catch { return null } })() : ca
 })
@@ -1854,7 +1909,95 @@ defineExpose({
   color: #c45a3c;
 }
 
+/* ── 综合判断（最终结论） ── */
+.final-judgment-card {
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #faf8f3 0%, #f5f0e8 100%);
+  border-radius: 10px;
+  border: 1px solid #e0d8c8;
+  margin-bottom: 8px;
+}
+.final-judgment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.judgment-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.judgment-polarity {
+  font-size: 16px;
+  font-weight: 700;
+}
+.judgment-reasoning {
+  font-size: 12px;
+  color: #6b6356;
+  line-height: 1.6;
+  padding-left: 18px;
+}
+
+/* ── 推导因素 ── */
+.derivation-factors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 6px 10px;
+  background: #f9f8f6;
+  border-radius: 6px;
+  border: 1px dashed #e0dcd3;
+}
+.factor-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.factor-icon {
+  flex-shrink: 0;
+}
+.factor-label {
+  color: #5d4e37;
+  font-weight: 500;
+  min-width: 60px;
+}
+.factor-result {
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.factor-result.positive { color: #3d7a3d; background: #e8f4e8; }
+.factor-result.negative { color: #a13d3d; background: #fce8e8; }
+.factor-result.neutral  { color: #7a7a7a; background: #f0f0f0; }
+.factor-score {
+  color: #999;
+  font-size: 11px;
+}
+.factor-detail {
+  color: #999;
+  font-size: 11px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.factor-arrow {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.arrow-text {
+  font-size: 11px;
+  color: #b8a47e;
+  letter-spacing: 2px;
+}
+
 /* ── 题跋布局类型（精简卡片） ── */
+
 .spatial-analysis-card {
   margin-top: 10px;
   padding: 10px 12px;
