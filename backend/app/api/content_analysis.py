@@ -304,7 +304,13 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         cp, cr = "positive", "、".join(parts) + "，综合偏正面"
     else:
         cp, cr = "neutral", "、".join(parts) + "，无明显倾向"
-    new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr}
+    new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr,
+        "text_score": new_ca.get("sentiment", {}).get("emotion_score") or 0,
+        "spatial_score": -1 if is_sp_neg else (1 if is_sp_pos else 0),
+        "seal_score": seal_score,
+        "combined_score": round((new_ca.get("sentiment", {}).get("emotion_score") or 0) +
+                                (-1 if is_sp_neg else (1 if is_sp_pos else 0)) +
+                                seal_score, 1)}
 
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
     cur.execute("""
@@ -1945,13 +1951,32 @@ async def reanalyze_single(record_id: int, editor=Depends(require_editor)):
     """
     单条混合引擎分析：调用统一管道 analyze_single_record
     """
-    conn = get_db_connection()
-    cur = conn.cursor()
+    import traceback, sys
+    from fastapi.responses import JSONResponse
 
-    result = await analyze_single_record(record_id, cur)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        result = await analyze_single_record(record_id, cur)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        tb = traceback.format_exc()
+        return JSONResponse(status_code=500, content={"error": str(e), "tb": tb[-500:]})
 
-    conn.commit()
-    conn.close()
+    if not result["success"]:
+        if result.get("error") == "Record not found":
+            raise HTTPException(status_code=404, detail="Record not found")
+        else:
+            raise HTTPException(status_code=400, detail=result.get("error", "分析失败"))
+
+    return result
+
+
+@router.post("/ping-test")
+async def ping_test():
+    """Minimal test endpoint"""
+    return {"ok": True, "msg": "pong"}
 
     if not result["success"]:
         if result.get("error") == "Record not found":

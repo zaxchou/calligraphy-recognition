@@ -899,11 +899,17 @@ def analyze_spatial_emotion(
         else:
             blank_desc = "留白偏少，画面饱满紧凑"
 
-    # 综合空间情感判断
+    # 综合空间情感判断 — 取最极端的情绪，而非第一个
     if not signals:
         combined = "无题跋标注，无法分析空间情绪"
     else:
-        main_emotion = signals[0]["emotion_key"]
+        # 情绪优先级：intense > 其他
+        priority = {"negative_intense": 5, "positive_unrestrained": 5,
+                     "negative_controlled": 3, "positive_defiant": 3,
+                     "positive_resolved": 2, "negative": 2, "positive": 2,
+                     "neutral_controlled": 1, "neutral_balanced": 1, "neutral": 0}
+        main_signal = max(signals, key=lambda s: priority.get(s["emotion_key"], 0))
+        main_emotion = main_signal["emotion_key"]
         if blank_mod < -0.2:
             combined = f"{emotion_label.get(main_emotion, main_emotion)}，偏压抑"
         elif blank_mod > 0.1:

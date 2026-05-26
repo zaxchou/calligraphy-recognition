@@ -114,91 +114,97 @@
                 <!-- 有空间分析 → 综合判断 -->
                 <template v-if="combinedSentiment">
                   <div class="emotion-layout">
-                    <!-- 左：头脑 SVG -->
+                    <!-- 左：头脑 SVG 底图 + 三维度覆盖 -->
                     <div class="emotion-brain-col">
-                      <svg viewBox="0 0 120 140" class="brain-svg">
-                        <defs>
-                          <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stop-color="#fff" stop-opacity="0.25"/>
-                            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
-                          </radialGradient>
-                          <filter id="softShadow">
-                            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/>
-                          </filter>
-                        </defs>
-                        <!-- 头顶轮廓（俯视） -->
-                        <ellipse cx="60" cy="65" rx="48" ry="58" fill="#faf8f3" stroke="#d0c8b8" stroke-width="1.5" filter="url(#softShadow)"/>
-                        <!-- 大脑外形 -->
-                        <path d="M28,55 C26,32 40,16 60,12 C80,16 94,32 92,55 C90,78 78,100 60,106 C42,100 30,78 28,55Z"
-                              fill="#f2efe7" stroke="#d8d0c0" stroke-width="1"/>
-                        <!-- 脑沟纹理 -->
-                        <path d="M40,35 C50,32 58,36 52,42" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
-                        <path d="M80,38 C70,34 62,38 66,44" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
-                        <path d="M35,65 C45,62 52,64 48,72" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
-                        <path d="M85,68 C75,64 68,66 72,74" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
-                        <!-- 左脑（文字情绪） -->
-                        <path d="M30,54 C28,36 40,20 60,16 L60,105 C42,98 32,78 30,54Z"
-                              :fill="textBrainColor" opacity="0.45"/>
-                        <!-- 右脑（空间情绪） -->
-                        <path d="M90,54 C92,36 80,20 60,16 L60,105 C78,98 88,78 90,54Z"
-                              :fill="spatialBrainColor" opacity="0.45"/>
-                        <!-- 胼胝体（中线桥） -->
-                        <ellipse cx="60" cy="50" rx="5" ry="18" fill="#e8e0d0" opacity="0.6"/>
-                        <!-- 中央核心 -->
-                        <circle cx="60" cy="60" r="20" :fill="combinedBrainColor" opacity="0.75"/>
-                        <circle cx="60" cy="60" r="20" fill="url(#coreGlow)"/>
-                        <text x="60" y="57" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="system-ui">
-                          {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
-                        </text>
-                        <text x="60" y="70" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="7" font-family="system-ui">
-                          情绪
-                        </text>
-                        <!-- 脑区标签 -->
-                        <text x="30" y="118" text-anchor="middle" fill="#b0a898" font-size="7">📝 题跋</text>
-                        <text x="90" y="118" text-anchor="middle" fill="#b0a898" font-size="7">📐 空间</text>
-                      </svg>
+                      <div class="brain-container">
+                        <img src="/brain.svg" class="brain-base" />
+                        <div class="brain-overlay brain-left" :style="{ background: textBrainColor, width: textBrainSize + 'px', height: (textBrainSize * 1.35) + 'px' }"
+                          @mouseenter="brainHover = 'text'" @mouseleave="brainHover = null"
+                          :class="{ 'brain-active': brainHover === 'text' }"></div>
+                        <div class="brain-overlay brain-right" :style="{ background: spatialBrainColor, width: spatialBrainSize + 'px', height: (spatialBrainSize * 1.35) + 'px' }"
+                          @mouseenter="brainHover = 'spatial'" @mouseleave="brainHover = null"
+                          :class="{ 'brain-active': brainHover === 'spatial' }"></div>
+                        <div class="brain-overlay brain-core" :style="{ background: combinedBrainColor }"
+                          @mouseenter="brainHover = 'combined'" @mouseleave="brainHover = null"
+                          :class="{ 'brain-active': brainHover === 'combined' }"></div>
+                        <div class="brain-overlay brain-seal" v-if="sealEmotion?.total_seals"
+                          :style="{ background: sealEmotion?.composite_score > 0.3 ? '#3cb88b' : sealEmotion.composite_score < -0.3 ? 'hsl(8, 50%, 45%)' : 'hsl(40, 15%, 65%)' }"
+                          @mouseenter="brainHover = 'seal'" @mouseleave="brainHover = null"
+                          :class="{ 'brain-active': brainHover === 'seal' }"></div>
+                        <!-- hover 提示 -->
+                        <transition name="fade">
+                          <div class="brain-tooltip" v-if="brainHover">
+                            {{ brainHover === 'text' ? '题跋文字' : brainHover === 'spatial' ? '空间布局' : brainHover === 'combined' ? '综合判断' : '钤印' }}
+                          </div>
+                        </transition>
+                      </div>
                     </div>
                     <!-- 右：结论文字 -->
                     <div class="emotion-text-col">
                       <div class="final-judgment-card">
-                        <div class="final-judgment-header">
-                          <span class="judgment-dot" :style="{ background: combinedSentiment.polarity === 'positive' ? '#4e8cff' : combinedSentiment.polarity === 'negative' ? '#ff6b35' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#b8a47e' }"></span>
-                          <span class="judgment-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#67c23a' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399' }">
+                        <div class="judgment-info-col">
+                          <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
+                          <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">{{ currentImage.contentAnalysis.period_phase }}</el-tag>
+                        </div>
+                        <div class="judgment-score-col">
+                          <span class="judgment-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399' }">
                             {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
                           </span>
-                          <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase" style="margin-left:8px;">{{ currentImage.contentAnalysis.period_phase }}</el-tag>
-                        </div>
-                        <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
-                      </div>
-                      <div class="derivation-factors">
-                        <div class="factor-item">
-                          <span class="factor-icon">📝</span>
-                          <span class="factor-label">题跋文字</span>
-                          <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
-                            {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                          <span class="judgment-score"
+                            :style="{ color: displayScore < 0 ? '#f56c6c' : '#3cb88b' }">
+                            {{ displayScore > 0 ? '+' : '' }}{{ displayScore }}
                           </span>
-                          <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
-                            {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
-                          </span>
-                        </div>
-                        <div class="factor-item" v-if="spatialEmotion">
-                          <span class="factor-icon">📐</span>
-                          <span class="factor-label">空间布局</span>
-                          <span class="factor-result neutral">{{ spatialEmotion.combined_spatial_sentiment || '平稳' }}</span>
-                          <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
-                        </div>
-                        <div class="factor-item" v-if="sealEmotion?.total_seals">
-                          <span class="factor-icon">🔖</span>
-                          <span class="factor-label">钤印</span>
-                          <span class="factor-result" :class="sealEmotion.composite_score > 0.3 ? 'positive' : sealEmotion.composite_score < -0.3 ? 'negative' : 'neutral'">
-                            {{ sealEmotion.seal_emotion }}
-                          </span>
-                          <span class="factor-score" v-if="sealEmotion.composite_score !== 0">
-                            {{ sealEmotion.composite_score > 0 ? '+' : '' }}{{ sealEmotion.composite_score.toFixed(1) }}
-                          </span>
-                          <span class="factor-detail">{{ sealEmotion.signals?.filter(s => s.category !== 'identity').map(s => s.desc).join('、') || '身份标识印章为主' }}</span>
                         </div>
                       </div>
+                      <table class="factor-table">
+                        <tr class="factor-row">
+                          <td class="factor-col-head">题跋文字</td>
+                          <td class="factor-col-head" v-if="spatialEmotion">空间布局</td>
+                          <td class="factor-col-head" v-if="sealEmotion?.total_seals">钤印</td>
+                        </tr>
+                        <tr class="factor-row">
+                          <td class="factor-cell">
+                            <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
+                              {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                            </span>
+                          </td>
+                          <td class="factor-cell" v-if="spatialEmotion">
+                            <span class="factor-result neutral">{{ spatialEmotion.combined_spatial_sentiment || '平稳' }}</span>
+                          </td>
+                          <td class="factor-cell" v-if="sealEmotion?.total_seals">
+                            <span class="factor-result" :class="sealEmotion.composite_score > 0.3 ? 'positive' : sealEmotion.composite_score < -0.3 ? 'negative' : 'neutral'">
+                              {{ sealEmotion.seal_emotion }}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr class="factor-row">
+                          <td class="factor-value">
+                            <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                              {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
+                            </span>
+                          </td>
+                          <td class="factor-value" v-if="spatialEmotion">
+                            <span class="factor-score" v-if="combinedSentiment?.spatial_score != null">{{ combinedSentiment.spatial_score > 0 ? '+' : '' }}{{ combinedSentiment.spatial_score }}</span>
+                            <span class="factor-score" v-else>—</span>
+                          </td>
+                          <td class="factor-value" v-if="sealEmotion?.total_seals">
+                            <span class="factor-score" v-if="sealEmotion.composite_score !== 0">
+                              {{ sealEmotion.composite_score > 0 ? '+' : '' }}{{ sealEmotion.composite_score.toFixed(1) }}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr class="factor-row">
+                          <td class="factor-value">
+                            <span class="factor-desc">{{ textSentimentSummary }}</span>
+                          </td>
+                          <td class="factor-value" v-if="spatialEmotion">
+                            <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
+                          </td>
+                          <td class="factor-value" v-if="sealEmotion?.total_seals">
+                            <span class="factor-detail">{{ sealEmotion.signals?.filter(s => s.raw_score !== 0).map(s => s.desc).join('、') || '无明显情感倾向' }}</span>
+                          </td>
+                        </tr>
+                      </table>
                     </div>
                   </div>
                 </template>
@@ -244,11 +250,8 @@
 
               <!-- 空间情绪解读（含布局类型，默认展开） -->
               <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
-                <h4 class="section-title" @click="showSpatialEmotion = !showSpatialEmotion" style="cursor:pointer;">
+                <h4 class="section-title">
                   <el-icon><MagicStick /></el-icon> 空间情绪解读
-                  <span class="spatial-summary" v-if="!showSpatialEmotion">
-                    {{ spatialEmotion.signals[0]?.type }} · 留白{{ spatialEmotion.blank_percent }}% · {{ spatialEmotion.combined_spatial_sentiment }}
-                  </span>
                   <!-- 布局类型标签（始终可见） -->
                   <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
                     <el-tooltip
@@ -263,11 +266,9 @@
                       </span>
                     </el-tooltip>
                   </div>
-                  <el-icon class="spatial-toggle-icon"><component :is="showSpatialEmotion ? ArrowUp : ArrowDown" /></el-icon>
                 </h4>
-                <transition name="el-fade-in">
-                  <div v-if="showSpatialEmotion" class="spatial-detail">
-                    <div v-for="(sig, idx) in spatialEmotion.signals" :key="idx" class="spatial-item">
+                <div class="spatial-detail">
+                    <div v-for="(sig, idx) in sortedSpatialSignals" :key="idx" class="spatial-item">
                       <span class="spatial-dot" :class="'emotion-' + sig.emotion_key"></span>
                       <span class="spatial-type">{{ sig.type }}</span>
                       <span class="spatial-emotion-tag">{{ sig.emotion }}</span>
@@ -283,7 +284,6 @@
                       <span class="spatial-combined-text">{{ spatialEmotion.combined_spatial_sentiment }}</span>
                     </div>
                   </div>
-                </transition>
               </div>
               <!-- 无空间情绪数据时，回退显示纯布局类型 -->
               <div class="spatial-analysis-card" v-else-if="analyzeStatus === 'analyzed' && positionAnalysis">
@@ -442,20 +442,27 @@
                 </div>
               </div>
               <div class="inscription-note-main">
-                <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
-                <div v-if="currentImage.inscriptionContent" class="inscription-content">
-                  {{ currentImage.inscriptionContent }}
-                </div>
-                <div v-else class="inscription-empty">
-                  <p>暂无款识题跋内容</p>
-                  <p class="empty-tip">可在编辑画作信息时添加</p>
-                </div>
-                <div v-if="currentImage.inscriptionModern && currentImage.inscriptionModern !== currentImage.inscriptionContent" class="inscription-translation">
-                  <div class="translation-divider"></div>
-                  <div class="translation-label">
-                    <el-tag type="success" size="small">白话文</el-tag>
-                  </div>
-                  <div class="translation-content">{{ currentImage.inscriptionModern }}</div>
+                <h4>
+                  <el-icon><Edit /></el-icon> 款识题跋
+                  <el-button
+                    v-if="currentImage.inscriptionModern && currentImage.inscriptionModern !== currentImage.inscriptionContent"
+                    size="small" text class="btn-modern-toggle"
+                    @click="showModern = !showModern"
+                  >{{ showModern ? '原文' : '白话文' }}</el-button>
+                </h4>
+                <div class="inscription-switch">
+                  <transition name="el-fade-in" mode="out-in">
+                    <div v-if="!showModern && currentImage.inscriptionContent" key="orig" class="inscription-content">
+                      {{ currentImage.inscriptionContent }}
+                    </div>
+                    <div v-else-if="showModern && currentImage.inscriptionModern" key="modern" class="inscription-content modern">
+                      {{ currentImage.inscriptionModern }}
+                    </div>
+                    <div v-else key="empty" class="inscription-empty">
+                      <p>暂无款识题跋内容</p>
+                      <p class="empty-tip">可在编辑画作信息时添加</p>
+                    </div>
+                  </transition>
                 </div>
               </div>
               <div class="seal-note-main">
@@ -476,11 +483,11 @@
                 <div v-if="sealEmotion?.total_seals" class="seal-interp">
                   <div class="seal-interp-header">印章情绪</div>
                   <div class="seal-interp-signals">
-                    <template v-for="sig in sealEmotion.signals.filter(s => s.category !== 'identity')" :key="sig.seal">
-                      <span class="seal-interp-tag">{{ sig.seal }}：{{ sig.desc }}</span>
+                    <template v-for="sig in sealEmotion.signals.filter(s => s.raw_score !== 0)" :key="sig.seal">
+                      <span class="seal-interp-tag">{{ sig.seal }}：{{ sig.desc }}（{{ sig.raw_score > 0 ? '+' : '' }}{{ sig.raw_score }}）</span>
                     </template>
-                    <span v-if="!sealEmotion.signals.filter(s => s.category !== 'identity').length" class="seal-interp-neutral">
-                      身份标识印章为主，无明显情感倾向
+                    <span v-if="!sealEmotion.signals.filter(s => s.raw_score !== 0).length" class="seal-interp-neutral">
+                      均为身份标识印章，无明显情感倾向
                     </span>
                   </div>
                 </div>
@@ -982,6 +989,8 @@ function scrollAlbumThumbs(direction) {
 // ── 悬浮示意图 ────────────────────────────────
 const showDiagramOverlay = ref(true)
 const showSpatialEmotion = ref(true)
+const brainHover = ref(null)
+const showModern = ref(false)
 
 // 空间情绪数据
 const contentAnalysis = computed(() => {
@@ -990,41 +999,74 @@ const contentAnalysis = computed(() => {
   return typeof ca === 'string' ? (() => { try { return JSON.parse(ca) } catch { return null } })() : ca
 })
 const spatialEmotion = computed(() => contentAnalysis.value?.spatial_emotion || null)
+const sortedSpatialSignals = computed(() => {
+  const signals = spatialEmotion.value?.signals
+  if (!signals) return []
+  const priority = { negative_intense: 5, positive_unrestrained: 5, negative_controlled: 3, positive_defiant: 3, positive_resolved: 2, negative: 2, positive: 2, neutral_controlled: 1, neutral_balanced: 1, neutral: 0 }
+  return [...signals].sort((a, b) => (priority[b.emotion_key] || 0) - (priority[a.emotion_key] || 0))
+})
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
+const displayScore = computed(() => {
+  const cs = combinedSentiment.value
+  if (cs?.combined_score != null) return cs.combined_score
+  return contentAnalysis.value?.sentiment?.emotion_score ?? 0
+})
 const sealEmotion = computed(() => contentAnalysis.value?.seal_emotion || null)
 
+// 文字情绪摘要
+const textSentimentSummary = computed(() => {
+  const s = contentAnalysis.value?.sentiment
+  if (!s) return ''
+  // 取主题名作为简短上下文
+  const themes = contentAnalysis.value?.themes
+  const themeNames = themes?.slice(0, 2).map(t => t.name).join('、') || ''
+  const phase = contentAnalysis.value?.period_phase || ''
+  const parts = []
+  if (phase) parts.push(phase)
+  if (themeNames) parts.push(themeNames)
+  return parts.join(' · ') || '—'
+})
+
 // ── 头脑 SVG 颜色计算 ──────────────────────────
-const sentimentColor = (polarity, score) => {
-  if (polarity === 'positive') return `hsl(210, ${Math.min(90, 40 + Math.abs(score || 0) * 12)}%, ${60 - Math.abs(score || 0) * 4}%)`
-  if (polarity === 'negative') return `hsl(${Math.min(15, 5 + Math.abs(score || 0) * 3)}%, ${Math.min(85, 50 + Math.abs(score || 0) * 10)}%, ${60 - Math.abs(score || 0) * 5}%)`
-  return '#b8b0a0'
+// 统一色调：暖色系（红棕←消极）↔ 中性灰 ↔ 冷色系（蓝绿→积极）
+const polarityColor = (polarity, intensity = 0.5) => {
+  const s = Math.min(1, Math.abs(intensity))
+  if (polarity === 'positive') return `hsl(160, ${50 + s * 30}%, ${50 - s * 10}%)`
+  if (polarity === 'negative') return `hsl(10, ${40 + s * 35}%, ${52 - s * 8}%)`
+  return 'hsl(40, 15%, 65%)'
 }
 const textBrainColor = computed(() => {
   const s = contentAnalysis.value?.sentiment
-  return sentimentColor(s?.polarity || 'neutral', s?.emotion_score)
+  return polarityColor(s?.polarity || 'neutral', (s?.emotion_score || 0) / 5)
 })
 const spatialBrainColor = computed(() => {
   const se = spatialEmotion.value
-  if (!se) return '#d8d4cc'
+  if (!se) return 'hsl(40, 15%, 70%)'
   const sig = se.combined_spatial_sentiment || ''
-  if (sig.includes('压抑') || sig.includes('宣泄')) return '#e07060'
-  if (sig.includes('舒展') || sig.includes('狂放')) return '#70a8d0'
-  return '#c8c0b4'
+  if (sig.includes('压抑') || sig.includes('宣泄')) return polarityColor('negative', 0.7)
+  if (sig.includes('舒展') || sig.includes('狂放')) return polarityColor('positive', 0.6)
+  return 'hsl(40, 15%, 70%)'
 })
 const combinedBrainColor = computed(() => {
   const cs = combinedSentiment.value
-  if (!cs) return '#b8b0a0'
-  if (cs.polarity === 'positive') return '#5b9bd5'
-  if (cs.polarity === 'negative') return '#e07b6a'
-  if (cs.polarity === 'ambiguous') return '#d4a84b'
-  return '#b8b0a0'
+  if (!cs) return 'hsl(40, 15%, 65%)'
+  if (cs.polarity === 'positive') return '#3cb88b'
+  if (cs.polarity === 'negative') return 'hsl(8, 55%, 45%)'
+  if (cs.polarity === 'ambiguous') return 'hsl(35, 50%, 50%)'
+  return 'hsl(40, 15%, 60%)'
 })
-const brainStrokeColor = computed(() => {
-  const cs = combinedSentiment.value
-  if (!cs) return '#ccc'
-  if (cs.polarity === 'negative') return '#d4a090'
-  if (cs.polarity === 'positive') return '#90b8d4'
-  return '#ccc'
+// 脑区尺寸：按情感强度比例缩放（基数 44px，±12px 范围）
+const textBrainSize = computed(() => {
+  const score = Math.abs(contentAnalysis.value?.sentiment?.emotion_score || 0)
+  return Math.round(36 + Math.min(score, 4) * 2.5)
+})
+const spatialBrainSize = computed(() => {
+  const se = spatialEmotion.value
+  if (!se) return 36
+  const sig = se.combined_spatial_sentiment || ''
+  if (sig.includes('压抑') || sig.includes('宣泄') || sig.includes('狂放')) return 42
+  if (sig.includes('舒展')) return 40
+  return 36
 })
 
 // ── Canvas 相关 ────────────────────────────────
@@ -1772,6 +1814,7 @@ defineExpose({
 .btn-annotate {
   font-size: 11px;
   padding: 3px 10px;
+  box-shadow: none !important;
 }
 /* 面积示意图容器（用于定位打勾徽章） */
 .annotated-image-wrapper {
@@ -1960,7 +2003,7 @@ defineExpose({
   background: linear-gradient(135deg, #fdfcf8 0%, #f7f3ea 100%);
   border: 1px solid #e0d8c8;
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
 .score-card .section-title {
   display: flex;
@@ -1975,18 +2018,123 @@ defineExpose({
 /* 头脑图 + 结论 并排 */
 .emotion-layout {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
 }
 .emotion-brain-col {
-  flex: 0 0 120px;
+  flex: 0 0 135px;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
 }
-.brain-svg {
-  width: 120px;
-  height: auto;
+.brain-container {
+  position: relative;
+  width: 130px;
+  height: 160px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+}
+.brain-base {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.5;
+  filter: grayscale(0.4) brightness(1.4) contrast(0.9);
+  mix-blend-mode: multiply;
+}
+.brain-overlay {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.72;
+  mix-blend-mode: normal;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 0 10px rgba(0,0,0,0.18);
+}
+.brain-overlay:hover,
+.brain-overlay.brain-active {
+  opacity: 0.95;
+  z-index: 5;
+}
+.brain-overlay.brain-left:hover,
+.brain-overlay.brain-left.brain-active { transform: scale(1.25); }
+.brain-overlay.brain-right:hover,
+.brain-overlay.brain-right.brain-active { transform: scale(1.25); }
+/* 综合核心呼吸动画 */
+@keyframes brainBreathe {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
+  50% { transform: translateX(-50%) scale(1.2); opacity: 1; box-shadow: 0 0 18px rgba(0,0,0,0.3); }
+}
+.brain-tooltip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+/* 左右脑区微微呼吸 */
+@keyframes brainBreatheSoft {
+  0%, 100% { opacity: 0.68; }
+  50% { opacity: 0.92; }
+}
+.brain-overlay.brain-left {
+  top: 28px; left: 22px;
+  animation: brainBreatheSoft 4s ease-in-out infinite;
+}
+.brain-overlay.brain-right {
+  top: 28px; right: 22px;
+  animation: brainBreatheSoft 4s ease-in-out 0.5s infinite;
+}
+.brain-overlay.brain-core {
+  width: 20px; height: 20px;
+  top: 44px; left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.85;
+  border-width: 2.5px;
+  z-index: 2;
+  animation: brainBreathe 2.5s ease-in-out infinite;
+}
+.brain-overlay.brain-core:hover,
+.brain-overlay.brain-core.brain-active {
+  animation: none;
+  transform: translateX(-50%) scale(1.3);
+  opacity: 0.95;
+}
+.brain-overlay.brain-seal {
+  width: 20px; height: 14px;
+  top: 20px; left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.68;
+  border-width: 2px;
+  animation: brainBreatheSoft 5s ease-in-out 1s infinite;
+}
+.brain-overlay.brain-seal:hover,
+.brain-overlay.brain-seal.brain-active {
+  transform: translateX(-50%) scale(1.3);
+  opacity: 0.95;
+}
+.brain-labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 8px;
+  margin-top: 6px;
+}
+.brain-label {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .emotion-text-col {
   flex: 1;
@@ -2004,23 +2152,36 @@ defineExpose({
   font-size: 15px;
 }
 .emotion-text-col .judgment-reasoning {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.7;
   padding-left: 14px;
 }
-.emotion-text-col .derivation-factors {
-  padding: 4px 8px;
-  gap: 2px;
-  margin-bottom: 0;
+.emotion-text-col .factor-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
 }
-.emotion-text-col .factor-item {
+.factor-row + .factor-row { border-top: 1px solid #f0ede6; }
+.factor-col-head {
+  font-weight: 600;
+  color: #5d4e37;
+  padding: 4px 10px 6px;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 12px;
+  border-bottom: 2px solid #d8d0c0;
+}
+.factor-table td {
+  padding: 5px 10px;
+  text-align: center;
+  vertical-align: middle;
+  line-height: 1.5;
+}
+.factor-cell { white-space: nowrap; }
+.factor-value {
+  color: #999;
   font-size: 11px;
-  gap: 4px;
-}
-.emotion-text-col .factor-label {
-  min-width: 50px;
-}
-.emotion-text-col .factor-detail {
-  max-width: 120px;
 }
 
 /* ── 主题判断卡片 ── */
@@ -2029,7 +2190,6 @@ defineExpose({
   border: 1px solid #e8e4da;
   border-radius: 8px;
   padding: 10px 12px;
-  margin-bottom: 10px;
 }
 .theme-card .section-title {
   display: flex;
@@ -2057,7 +2217,6 @@ defineExpose({
   border: 1px solid #e8e4da;
   border-radius: 8px;
   padding: 10px 12px;
-  margin-bottom: 10px;
 }
 .steps-card .section-title {
   display: flex;
@@ -2164,33 +2323,40 @@ defineExpose({
 
 /* ── 综合判断（最终结论） ── */
 .final-judgment-card {
-  padding: 12px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
   background: linear-gradient(135deg, #faf8f3 0%, #f5f0e8 100%);
   border-radius: 10px;
   border: 1px solid #e0d8c8;
-  margin-bottom: 8px;
 }
-.final-judgment-header {
+.judgment-score-col {
+  flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  justify-content: center;
+  min-width: 60px;
 }
-.judgment-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.judgment-score-col .judgment-polarity {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
 }
-.judgment-polarity {
-  font-size: 16px;
+.judgment-score {
+  font-size: 13px;
   font-weight: 700;
+  margin-top: 2px;
 }
-.judgment-reasoning {
+.judgment-info-col {
+  flex: 1;
+  min-width: 0;
+}
+.judgment-info-col .judgment-reasoning {
   font-size: 12px;
   color: #6b6356;
   line-height: 1.6;
-  padding-left: 18px;
 }
 
 /* ── 推导因素 ── */
@@ -2209,9 +2375,6 @@ defineExpose({
   align-items: center;
   gap: 6px;
   font-size: 12px;
-}
-.factor-icon {
-  flex-shrink: 0;
 }
 .factor-label {
   color: #5d4e37;
@@ -2264,6 +2427,37 @@ defineExpose({
 .seal-interp-neutral {
   font-size: 11px;
   color: #999;
+}
+
+/* ── 款识题跋白话文切换 ── */
+.inscription-note-main h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-modern-toggle {
+  margin-left: auto;
+  font-size: 10px !important;
+  color: #b0a898 !important;
+  padding: 0 6px !important;
+  height: 22px;
+  border: 1px solid #e8e4da !important;
+  border-radius: 4px;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.btn-modern-toggle:hover {
+  color: #c45a3c;
+  border-color: #d4c4b0;
+  background: #fdfaf5;
+}
+.inscription-switch {
+  min-height: 60px;
+}
+.inscription-content.modern {
+  background: #f8f6f0;
+  border-left: 3px solid #c45a3c;
+  padding-left: 10px;
 }
 .factor-arrow {
   text-align: center;

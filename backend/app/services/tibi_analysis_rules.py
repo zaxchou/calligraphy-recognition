@@ -268,5 +268,5 @@ SEAL_EMOTION_RULES = {
     },
 
     # 默认分数（未知印章）
-    "unknown_seal": {"score": 0, "desc": "未知印章，暂不纳入计算"},
+    "unknown_seal": {"score": 0, "desc": "未收录印章，按中性处理"},
 }

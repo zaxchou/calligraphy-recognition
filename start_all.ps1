@@ -16,6 +16,20 @@ $BACKEND_DIR = "$ROOT\backend"
 $FRONTEND_DIR = "$ROOT\frontend"
 $PORT = 3000
 
+# ── 端口清理：防止旧进程残留导致启动失败 ──
+$ports = @(3000, 5173, 8080, 6333)
+foreach ($p in $ports) {
+    $conn = Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue
+    if ($conn) {
+        $name = (Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue).ProcessName
+        Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
+        Write-Host "Cleaned port $p ($name)" -ForegroundColor DarkGray
+    }
+}
+# 清除所有 Python 编译缓存
+Get-ChildItem -Path $BACKEND_DIR -Filter "__pycache__" -Recurse -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "Cleaned Python bytecode cache" -ForegroundColor DarkGray
+
 Write-Host ""
 Write-Host ("=" * 50) -ForegroundColor Cyan
 Write-Host "  Molin Wiki - Quick Start" -ForegroundColor Cyan
