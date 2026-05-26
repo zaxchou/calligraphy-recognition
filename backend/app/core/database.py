@@ -443,6 +443,25 @@ def _ensure_artist_columns():
         if "verified" not in existing:
             conn.execute("UPDATE artists SET verified = 1 WHERE verified = 0")
             logger.info("Migration: set all existing artists as verified")
+
+        # ── 性能索引（db-optimization-plan Phase 1）──
+        perf_indexes = [
+            ("idx_tubi_artist_status", "tubi_analyses", "(artist, status)"),
+            ("idx_tubi_library_vis_status", "tubi_analyses", "(library_id, visibility, status)"),
+            ("idx_tubi_artist_library", "tubi_analyses", "(artist, library_id)"),
+            ("idx_tubi_updated_at", "tubi_analyses", "(updated_at DESC)"),
+            ("idx_artists_name", "artists", "(name)"),
+            ("idx_artist_rules_name", "artist_rules", "(artist_name)"),
+            ("idx_notif_user_read_time", "notifications", "(user_id, is_read, created_at DESC)"),
+            ("idx_tubi_jobs_status_time", "tubi_jobs", "(status, created_at DESC)"),
+        ]
+        for idx_name, table, cols in perf_indexes:
+            try:
+                conn.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table}{cols}")
+            except Exception as e:
+                logger.warning("Index %s skipped: %s", idx_name, e)
+        logger.info("Migration: performance indexes ensured")
+
         conn.commit()
     finally:
         conn.close()
