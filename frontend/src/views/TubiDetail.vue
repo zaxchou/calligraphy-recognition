@@ -1460,7 +1460,7 @@ function updateThemeChart() {
 
   themeChart.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 0, right: 40, top: 5, bottom: 0, containLabel: true },
+    grid: { left: 0, right: 80, top: 2, bottom: 0, containLabel: true },
     xAxis: { show: false },
     yAxis: {
       type: 'category',
@@ -2195,7 +2195,7 @@ defineExpose({
   background: #faf9f7;
   border: 1px solid #e8e4da;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 .theme-card .section-title {
   display: flex;
@@ -2204,12 +2204,11 @@ defineExpose({
   font-size: 13px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 .theme-chart-small {
   width: 100%;
-  height: 120px;
-  margin-bottom: 6px;
+  height: 80px;
 }
 .theme-card .theme-tags {
   display: flex;
