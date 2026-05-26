@@ -1992,6 +1992,7 @@ async def search_images(
     keyword: str = None,
     skip: int = 0,
     limit: int = 500,
+    artist: Optional[str] = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_optional_user),
 ):
@@ -1999,6 +2000,7 @@ async def search_images(
     搜索画作
 
     - **keyword**: 搜索关键词（支持标题、作者、年代、备注、题跋原文、题跋翻译、印章、主题标签、画材标签模糊搜索，年份精确匹配）
+    - **artist**: 限定作者（非 all 时只搜该作者，支持别名扩展）
     """
     try:
         if not keyword:
@@ -2011,6 +2013,12 @@ async def search_images(
 
         # 构建查询
         query = db.query(TubiAnalysis)
+
+        # 作者筛选
+        if artist and artist != 'all':
+            from app.services.keyword_extractor import get_artist_aliases
+            aliases = get_artist_aliases(artist)
+            query = query.filter(TubiAnalysis.artist.in_(aliases))
 
         # 关键词搜索（标题、作者、年代、备注、题跋、印章、标签、年份）
         keyword_filter = f"%{keyword}%"

@@ -179,9 +179,9 @@ export const tubiApi = {
     }
     return api.get('/tubi/results', { params })
   },
-  searchImages(keyword, skip = 0, limit = 500) {
+  searchImages(keyword, skip = 0, limit = 500, artist = null) {
     return api.get('/tubi/search', {
-      params: { keyword, skip, limit }
+      params: { keyword, skip, limit, ...(artist && artist !== 'all' ? { artist } : {}) }
     })
   },
   deleteImage(imageId) {

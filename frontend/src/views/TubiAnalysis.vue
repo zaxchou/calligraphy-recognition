@@ -1337,7 +1337,7 @@ async function handleSearch(keyword) {
   searchDialogVisible.value = true
   searchLoading.value = true
   try {
-    const response = await tubiApi.searchImages(kw)
+    const response = await tubiApi.searchImages(kw, 0, 50, currentArtist.value)
     if (response.success) {
       // 转换字段名（下划线转驼峰）
       searchResults.value = (response.data || []).map(item => ({

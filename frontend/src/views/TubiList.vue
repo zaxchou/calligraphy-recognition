@@ -420,7 +420,7 @@ async function handleSearch() {
 async function loadSearchResults() {
   try {
     const skip = (currentPage.value - 1) * pageSize.value
-    const response = await tubiApi.searchImages(searchKeyword.value.trim(), skip, pageSize.value)
+    const response = await tubiApi.searchImages(searchKeyword.value.trim(), skip, pageSize.value, selectedArtist.value)
     if (response.success) {
       const works = (response.data || []).map(item => ({
         ...item,
