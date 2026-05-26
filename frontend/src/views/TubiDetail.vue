@@ -233,17 +233,6 @@
               <div class="theme-card" v-if="currentImage.contentAnalysis?.themes?.length">
                 <h4 class="section-title"><el-icon><Collection /></el-icon> {{ $t("card.themes") }}</h4>
                 <div ref="themeChartRef" class="theme-chart-small"></div>
-                <div class="theme-tags">
-                  <el-tag
-                    v-for="theme in currentImage.contentAnalysis.themes"
-                    :key="theme.code"
-                    size="small"
-                    class="theme-tag"
-                  >
-                    {{ $t(theme.name) }}
-                    <span class="theme-confidence">({{ $t('theme.confidence') }} {{ Math.round(theme.confidence * 100) }}%)</span>
-                  </el-tag>
-                </div>
               </div>
 
                             <!-- ===== Card 3: 空间情绪解读 ===== -->
@@ -1495,7 +1484,7 @@ function updateThemeChart() {
         position: 'right',
         fontSize: 11,
         color: '#888',
-        formatter: '{c}%'
+        formatter: (params) => `${t('theme.confidence')} ${params.value}%`
       }
     }]
   }, true)
