@@ -113,81 +113,110 @@
                 <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> 情绪解读</h4>
                 <!-- 有空间分析 → 综合判断 -->
                 <template v-if="combinedSentiment">
-                  <div class="final-judgment-card">
-                    <div class="final-judgment-header">
-                      <span
-                        class="judgment-dot"
-                        :style="{ background: combinedSentiment.polarity === 'positive' ? '#4e8cff' : combinedSentiment.polarity === 'negative' ? '#ff6b35' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#b8a47e' }"
-                      ></span>
-                      <span class="judgment-polarity" :style="{
-                        color: combinedSentiment.polarity === 'positive' ? '#67c23a' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399'
-                      }">
-                        {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
-                      </span>
-                      <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase" style="margin-left:8px;">
-                        {{ currentImage.contentAnalysis.period_phase }}
-                      </el-tag>
+                  <div class="emotion-layout">
+                    <!-- 左：头脑 SVG -->
+                    <div class="emotion-brain-col">
+                      <svg viewBox="0 0 120 140" class="brain-svg">
+                        <defs>
+                          <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#fff" stop-opacity="0.25"/>
+                            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+                          </radialGradient>
+                          <filter id="softShadow">
+                            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+                          </filter>
+                        </defs>
+                        <!-- 头顶轮廓（俯视） -->
+                        <ellipse cx="60" cy="65" rx="48" ry="58" fill="#faf8f3" stroke="#d0c8b8" stroke-width="1.5" filter="url(#softShadow)"/>
+                        <!-- 大脑外形 -->
+                        <path d="M28,55 C26,32 40,16 60,12 C80,16 94,32 92,55 C90,78 78,100 60,106 C42,100 30,78 28,55Z"
+                              fill="#f2efe7" stroke="#d8d0c0" stroke-width="1"/>
+                        <!-- 脑沟纹理 -->
+                        <path d="M40,35 C50,32 58,36 52,42" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
+                        <path d="M80,38 C70,34 62,38 66,44" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
+                        <path d="M35,65 C45,62 52,64 48,72" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
+                        <path d="M85,68 C75,64 68,66 72,74" fill="none" stroke="#e8e0d4" stroke-width="0.8"/>
+                        <!-- 左脑（文字情绪） -->
+                        <path d="M30,54 C28,36 40,20 60,16 L60,105 C42,98 32,78 30,54Z"
+                              :fill="textBrainColor" opacity="0.45"/>
+                        <!-- 右脑（空间情绪） -->
+                        <path d="M90,54 C92,36 80,20 60,16 L60,105 C78,98 88,78 90,54Z"
+                              :fill="spatialBrainColor" opacity="0.45"/>
+                        <!-- 胼胝体（中线桥） -->
+                        <ellipse cx="60" cy="50" rx="5" ry="18" fill="#e8e0d0" opacity="0.6"/>
+                        <!-- 中央核心 -->
+                        <circle cx="60" cy="60" r="20" :fill="combinedBrainColor" opacity="0.75"/>
+                        <circle cx="60" cy="60" r="20" fill="url(#coreGlow)"/>
+                        <text x="60" y="57" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="system-ui">
+                          {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
+                        </text>
+                        <text x="60" y="70" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="7" font-family="system-ui">
+                          情绪
+                        </text>
+                        <!-- 脑区标签 -->
+                        <text x="30" y="118" text-anchor="middle" fill="#b0a898" font-size="7">📝 题跋</text>
+                        <text x="90" y="118" text-anchor="middle" fill="#b0a898" font-size="7">📐 空间</text>
+                      </svg>
                     </div>
-                    <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
-                  </div>
-                  <!-- 子项因素 -->
-                  <div class="derivation-factors">
-                    <div class="factor-item">
-                      <span class="factor-icon">📝</span>
-                      <span class="factor-label">题跋文字</span>
-                      <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
-                        {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
-                      </span>
-                      <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
-                        {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
-                      </span>
+                    <!-- 右：结论文字 -->
+                    <div class="emotion-text-col">
+                      <div class="final-judgment-card">
+                        <div class="final-judgment-header">
+                          <span class="judgment-dot" :style="{ background: combinedSentiment.polarity === 'positive' ? '#4e8cff' : combinedSentiment.polarity === 'negative' ? '#ff6b35' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#b8a47e' }"></span>
+                          <span class="judgment-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#67c23a' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399' }">
+                            {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
+                          </span>
+                          <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase" style="margin-left:8px;">{{ currentImage.contentAnalysis.period_phase }}</el-tag>
+                        </div>
+                        <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
+                      </div>
+                      <div class="derivation-factors">
+                        <div class="factor-item">
+                          <span class="factor-icon">📝</span>
+                          <span class="factor-label">题跋文字</span>
+                          <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
+                            {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                          </span>
+                          <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                            {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
+                          </span>
+                        </div>
+                        <div class="factor-item" v-if="spatialEmotion">
+                          <span class="factor-icon">📐</span>
+                          <span class="factor-label">空间布局</span>
+                          <span class="factor-result neutral">{{ spatialEmotion.combined_spatial_sentiment || '平稳' }}</span>
+                          <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
+                        </div>
+                        <div class="factor-item" v-if="sealEmotion?.total_seals">
+                          <span class="factor-icon">🔖</span>
+                          <span class="factor-label">钤印</span>
+                          <span class="factor-result" :class="sealEmotion.composite_score > 0.3 ? 'positive' : sealEmotion.composite_score < -0.3 ? 'negative' : 'neutral'">
+                            {{ sealEmotion.seal_emotion }}
+                          </span>
+                          <span class="factor-score" v-if="sealEmotion.composite_score !== 0">
+                            {{ sealEmotion.composite_score > 0 ? '+' : '' }}{{ sealEmotion.composite_score.toFixed(1) }}
+                          </span>
+                          <span class="factor-detail">{{ sealEmotion.signals?.filter(s => s.category !== 'identity').map(s => s.desc).join('、') || '身份标识印章为主' }}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div class="factor-item" v-if="spatialEmotion">
-                      <span class="factor-icon">📐</span>
-                      <span class="factor-label">空间布局</span>
-                      <span class="factor-result neutral">
-                        {{ spatialEmotion.combined_spatial_sentiment || '平稳' }}
-                      </span>
-                      <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
-                    </div>
-                  </div>
-                  <!-- 情绪图形占位（后续实现） -->
-                  <div class="emotion-graphic-placeholder" v-if="false">
-                    <div class="placeholder-text">情绪图形化展示（开发中）</div>
                   </div>
                 </template>
                 <!-- 无空间分析 → 纯文字结论 -->
                 <template v-else>
                   <div class="sentiment-card">
                     <div class="sentiment-header">
-                      <span
-                        class="sentiment-dot"
-                        :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"
-                      ></span>
-                      <span class="sentiment-polarity-text" :style="{
-                        color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' :
-                               currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399'
-                      }">{{
-                        currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' :
-                        currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性'
-                      }}</span>
+                      <span class="sentiment-dot" :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"></span>
+                      <span class="sentiment-polarity-text" :style="{ color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">{{ currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性' }}</span>
                       <span class="sentiment-sep">·</span>
-                      <span class="sentiment-score-text">强度 {{
-                        Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100)
-                      }}%</span>
+                      <span class="sentiment-score-text">强度 {{ Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) }}%</span>
                       <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
                         <span class="sentiment-sep">·</span>
                         <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
                       </template>
                     </div>
                     <div class="sentiment-bar-track">
-                      <div
-                        class="sentiment-bar-fill"
-                        :style="{
-                          width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
-                          background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e'
-                        }"
-                      ></div>
+                      <div class="sentiment-bar-fill" :style="{ width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%', background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"></div>
                     </div>
                   </div>
                 </template>
@@ -443,6 +472,21 @@
                   </div>
                 </div>
                 <div v-else class="seal-empty"><p>暂无钤印内容</p></div>
+                <!-- 印章情绪解读 -->
+                <div v-if="sealEmotion?.total_seals" class="seal-interp">
+                  <div class="seal-interp-header">印章情绪</div>
+                  <div class="seal-interp-signals">
+                    <template v-for="sig in sealEmotion.signals.filter(s => s.category !== 'identity')" :key="sig.seal">
+                      <span class="seal-interp-tag">{{ sig.seal }}：{{ sig.desc }}</span>
+                    </template>
+                    <span v-if="!sealEmotion.signals.filter(s => s.category !== 'identity').length" class="seal-interp-neutral">
+                      身份标识印章为主，无明显情感倾向
+                    </span>
+                  </div>
+                </div>
+                <div v-else-if="currentImage.sealContent && !sealEmotion" class="seal-interp">
+                  <span class="seal-interp-neutral">印章数据已录入，运行「全部重跑」后显示情绪解读</span>
+                </div>
               </div>
               <div v-if="currentImage && getDetailAllTags().length > 0" class="detail-tags-section">
                 <div class="detail-tags-list">
@@ -947,6 +991,41 @@ const contentAnalysis = computed(() => {
 })
 const spatialEmotion = computed(() => contentAnalysis.value?.spatial_emotion || null)
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
+const sealEmotion = computed(() => contentAnalysis.value?.seal_emotion || null)
+
+// ── 头脑 SVG 颜色计算 ──────────────────────────
+const sentimentColor = (polarity, score) => {
+  if (polarity === 'positive') return `hsl(210, ${Math.min(90, 40 + Math.abs(score || 0) * 12)}%, ${60 - Math.abs(score || 0) * 4}%)`
+  if (polarity === 'negative') return `hsl(${Math.min(15, 5 + Math.abs(score || 0) * 3)}%, ${Math.min(85, 50 + Math.abs(score || 0) * 10)}%, ${60 - Math.abs(score || 0) * 5}%)`
+  return '#b8b0a0'
+}
+const textBrainColor = computed(() => {
+  const s = contentAnalysis.value?.sentiment
+  return sentimentColor(s?.polarity || 'neutral', s?.emotion_score)
+})
+const spatialBrainColor = computed(() => {
+  const se = spatialEmotion.value
+  if (!se) return '#d8d4cc'
+  const sig = se.combined_spatial_sentiment || ''
+  if (sig.includes('压抑') || sig.includes('宣泄')) return '#e07060'
+  if (sig.includes('舒展') || sig.includes('狂放')) return '#70a8d0'
+  return '#c8c0b4'
+})
+const combinedBrainColor = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs) return '#b8b0a0'
+  if (cs.polarity === 'positive') return '#5b9bd5'
+  if (cs.polarity === 'negative') return '#e07b6a'
+  if (cs.polarity === 'ambiguous') return '#d4a84b'
+  return '#b8b0a0'
+})
+const brainStrokeColor = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs) return '#ccc'
+  if (cs.polarity === 'negative') return '#d4a090'
+  if (cs.polarity === 'positive') return '#90b8d4'
+  return '#ccc'
+})
 
 // ── Canvas 相关 ────────────────────────────────
 const canvasRef = ref(null)
@@ -1881,17 +1960,67 @@ defineExpose({
   background: linear-gradient(135deg, #fdfcf8 0%, #f7f3ea 100%);
   border: 1px solid #e0d8c8;
   border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 10px;
+  padding: 12px 14px;
 }
 .score-card .section-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #4d3e2c;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+/* 头脑图 + 结论 并排 */
+.emotion-layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.emotion-brain-col {
+  flex: 0 0 120px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.brain-svg {
+  width: 120px;
+  height: auto;
+}
+.emotion-text-col {
+  flex: 1;
+  min-width: 0;
+}
+.emotion-text-col .final-judgment-card {
+  padding: 8px 10px;
+  margin-bottom: 4px;
+}
+.emotion-text-col .final-judgment-header {
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.emotion-text-col .judgment-polarity {
+  font-size: 15px;
+}
+.emotion-text-col .judgment-reasoning {
+  font-size: 11px;
+  padding-left: 14px;
+}
+.emotion-text-col .derivation-factors {
+  padding: 4px 8px;
+  gap: 2px;
+  margin-bottom: 0;
+}
+.emotion-text-col .factor-item {
+  font-size: 11px;
+  gap: 4px;
+}
+.emotion-text-col .factor-label {
+  min-width: 50px;
+}
+.emotion-text-col .factor-detail {
+  max-width: 120px;
 }
 
 /* ── 主题判断卡片 ── */
@@ -2105,10 +2234,36 @@ defineExpose({
 .factor-detail {
   color: #999;
   font-size: 11px;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+/* ── 印章情绪解读 ── */
+.seal-interp {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e8e4da;
+}
+.seal-interp-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a7a5e;
+  margin-bottom: 4px;
+}
+.seal-interp-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.seal-interp-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #f5f0e8;
+  color: #6b5d4a;
+  line-height: 1.4;
+}
+.seal-interp-neutral {
+  font-size: 11px;
+  color: #999;
 }
 .factor-arrow {
   text-align: center;

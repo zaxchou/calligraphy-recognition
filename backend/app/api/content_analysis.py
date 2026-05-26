@@ -127,7 +127,8 @@ async def analyze_single_record(record_id: int, cur) -> dict:
 
     cur.execute("""
         SELECT id, inscription_content, year, title, analysis_note,
-               artwork_width_cm, artwork_height_cm, artist, content_analysis, period_phase
+               artwork_width_cm, artwork_height_cm, artist, content_analysis, period_phase,
+               seal_content
         FROM tubi_analyses WHERE id = ?
     """, (record_id,))
     row = cur.fetchone()
@@ -216,12 +217,12 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     new_ca["batch_reanalyze_at"] = datetime.now().isoformat()
 
     # 4. 空间情绪分析（如果已标注区域）
+    se = None  # spatial_emotion result
     try:
         cur.execute("SELECT regions, blank_percent, position_analysis, image_width, image_height FROM tubi_analyses WHERE id = ?", (record_id,))
         sr = cur.fetchone()
         if sr and sr["regions"]:
             regions_raw = sr["regions"]
-            # 处理可能的双重 JSON 编码（数据库存的是字符串，可能被多次序列化）
             if isinstance(regions_raw, str):
                 regions = json.loads(regions_raw)
                 if isinstance(regions, str):
@@ -238,30 +239,72 @@ async def analyze_single_record(record_id: int, cur) -> dict:
 
                 se = analyze_spatial_emotion(pos, sr["blank_percent"] or 50, pos.get("coverage_ratio", 0))
                 new_ca["spatial_emotion"] = se
-
-                # 合并空间+文字综合
-                text_pol = new_ca.get("sentiment", {}).get("polarity", "neutral")
-                spatial_sig = se.get("combined_spatial_sentiment", "")
-                is_sp_neg = any(kw in spatial_sig for kw in ["压抑", "宣泄", "紧张"])
-                is_sp_pos = any(kw in spatial_sig for kw in ["正面", "舒展", "狂放", "自信"])
-
-                if text_pol == "negative" and is_sp_neg:
-                    cp, cr = "negative", "文字与空间布局均传递压抑信号，情感一致偏负面"
-                elif text_pol == "positive" and is_sp_pos:
-                    cp, cr = "positive", "文字情感与空间布局均传递积极信号，情感一致偏正面"
-                elif text_pol == "negative" and is_sp_pos:
-                    cp, cr = "ambiguous", "文字表面消极，但空间布局舒展自信，可能为含蓄表达而非真正压抑"
-                elif text_pol == "positive" and is_sp_neg:
-                    cp, cr = "ambiguous", "文字表面积极，但空间布局暗含压抑，需结合时期背景判断是否为反讽"
-                elif text_pol == "negative":
-                    cp, cr = "negative", "题跋文字偏消极，空间布局则较为克制收敛，综合偏负面"
-                elif text_pol == "positive":
-                    cp, cr = "positive", "题跋文字偏积极，空间布局整体平稳，综合偏正面"
-                else:
-                    cp, cr = "neutral", "文字与空间均无明显情感倾向"
-                new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr}
     except Exception as e:
         logger.warning(f"空间情绪分析跳过 (record_id={record_id}): {e}")
+
+    # 5. 印章情感分析（独立维度，不受空间分析影响）
+    try:
+        from app.services.inscription_content_analyzer import analyze_seal_emotion
+        seal_text = row["seal_content"] or ""
+        seal_result = analyze_seal_emotion(seal_text)
+        new_ca["seal_emotion"] = seal_result
+    except Exception as e:
+        logger.warning(f"印章分析跳过 (record_id={record_id}): {e}")
+        seal_result = None
+
+    # 6. 合并文字 + 空间 + 印章三维综合
+    text_pol = new_ca.get("sentiment", {}).get("polarity", "neutral")
+    is_seal_neg = seal_result["seal_emotion"] == "偏消极" if seal_result else False
+    is_seal_pos = seal_result["seal_emotion"] == "偏积极" if seal_result else False
+    seal_score = seal_result.get("composite_score", 0) if seal_result else 0
+
+    if se:
+        spatial_sig = se.get("combined_spatial_sentiment", "")
+        is_sp_neg = any(kw in spatial_sig for kw in ["压抑", "宣泄", "紧张"])
+        is_sp_pos = any(kw in spatial_sig for kw in ["正面", "舒展", "狂放", "自信"])
+    else:
+        spatial_sig = ""
+        is_sp_neg = is_sp_pos = False
+
+    neg_count = sum([text_pol == "negative", is_sp_neg, is_seal_neg])
+    pos_count = sum([text_pol == "positive", is_sp_pos, is_seal_pos])
+
+    # 构建推理文案
+    def _seal_text():
+        if not seal_result or not seal_result.get("total_seals"):
+            return ""
+        if is_seal_neg: return "印章偏消极"
+        if is_seal_pos: return "印章偏积极"
+        return "印章中性"
+    def _space_text():
+        if not se: return ""
+        if is_sp_neg: return "空间压抑"
+        if is_sp_pos: return "空间舒展"
+        return "空间克制"
+    def _text_label():
+        return {"positive": "积极", "negative": "消极"}.get(text_pol, "中性")
+
+    parts = [f"文字{_text_label()}"]
+    st = _space_text()
+    if st: parts.append(st)
+    sl = _seal_text()
+    if sl: parts.append(sl)
+
+    if neg_count >= 2 and pos_count == 0:
+        cp, cr = "negative", "、".join(parts) + "，综合偏负面"
+    elif pos_count >= 2 and neg_count == 0:
+        cp, cr = "positive", "、".join(parts) + "，综合偏正面"
+    elif text_pol == "negative" and is_sp_pos:
+        cp, cr = "ambiguous", "文字消极但空间舒展，存在矛盾信号"
+    elif text_pol == "positive" and is_sp_neg:
+        cp, cr = "ambiguous", "文字积极但空间压抑，存在矛盾信号"
+    elif text_pol == "negative":
+        cp, cr = "negative", "、".join(parts) + "，综合偏负面"
+    elif text_pol == "positive":
+        cp, cr = "positive", "、".join(parts) + "，综合偏正面"
+    else:
+        cp, cr = "neutral", "、".join(parts) + "，无明显倾向"
+    new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr}
 
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
     cur.execute("""

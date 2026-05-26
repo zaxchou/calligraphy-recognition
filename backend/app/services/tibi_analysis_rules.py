@@ -214,3 +214,59 @@ HARDCODED_ARTIST_RULES = {
         "rules_version": RULES_VERSION,
     },
 }
+
+# ════════════════════════════════════════════════════════════════
+# 印章情感规则（第三维度：文字 + 空间 + 印章）
+# ════════════════════════════════════════════════════════════════
+
+SEAL_EMOTION_RULES = {
+    "seal_catalog": {
+        # ── 表明身份（中性，score=0）──
+        "神仙宰相之家": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "家族身份标识"},
+        "李忠定文定子孙": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "家族身份标识"},
+        "臣鳞之印": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "臣子身份"},
+        "复堂": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "号印"},
+        "懊道人": {"category": "identity", "emotion": "neutral_slight_negative", "score": -0.2, "desc": "懊悔自嘲之号"},
+        "宗杨": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "字印"},
+        "鱓印": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "名印"},
+        "鱓": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "名印"},
+        "李鱓": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "姓名印"},
+        "李鱓之印": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "姓名印"},
+        "宗杨氏": {"category": "identity", "emotion": "neutral", "score": 0, "desc": "姓氏印"},
+
+        # ── 人生经历（中等信号）──
+        "李供奉书画记": {"category": "life_experience", "emotion": "positive", "score": 0.5, "desc": "供奉内廷之荣"},
+        "金门承旨": {"category": "life_experience", "emotion": "positive", "score": 0.5, "desc": "宫廷供奉经历"},
+        "辞官卖画": {"category": "life_experience", "emotion": "negative", "score": -0.5, "desc": "辞官后卖画为生"},
+
+        # ── 精神境界（强信号，score±1.0）──
+        "臣非老画师": {"category": "spirit", "emotion": "positive_defiant", "score": 1.0, "desc": "不甘被视作画匠，傲骨抗争"},
+        "卖画不为官": {"category": "spirit", "emotion": "positive_defiant", "score": 1.0, "desc": "以画自立、不媚权贵"},
+        "不折腰": {"category": "spirit", "emotion": "positive_defiant", "score": 1.0, "desc": "不为五斗米折腰，清高自持"},
+        "苦李": {"category": "spirit", "emotion": "negative", "score": -1.0, "desc": "苦涩自况，以苦李自喻"},
+        "聊以自娱": {"category": "spirit", "emotion": "positive_calm", "score": 0.8, "desc": "自得其乐，超然物外"},
+
+        # ── 谑称/雅称（中等信号）──
+        "大笑开口": {"category": "nickname", "emotion": "positive", "score": 0.5, "desc": "豁达开朗，笑对人生"},
+        "酒后常称老画师": {"category": "nickname", "emotion": "mixed", "score": -0.3, "desc": "酒后自嘲，苦涩幽默"},
+        "墨磨人": {"category": "nickname", "emotion": "neutral_slight_negative", "score": -0.3, "desc": "笔墨消磨人生，感叹时光"},
+
+        # ── 爱好/地点（中性）──
+        "石癖": {"category": "hobby", "emotion": "neutral", "score": 0, "desc": "爱石成癖，文人雅趣"},
+        "墨池清兴": {"category": "hobby", "emotion": "positive_calm", "score": 0.3, "desc": "书画雅兴，沉浸墨池"},
+        "浮沤馆": {"category": "location", "emotion": "neutral", "score": 0, "desc": "晚年居所"},
+    },
+
+    # 类别聚合权重
+    "category_weight": {
+        "spirit": 1.0,           # 精神境界最直接反映情感
+        "life_experience": 0.7,  # 人生经历间接反映
+        "nickname": 0.5,         # 谑称有一定情感色彩
+        "identity": 0.3,         # 身份标识情感弱
+        "hobby": 0.3,            # 爱好情感弱
+        "location": 0.2,         # 地点基本中性
+    },
+
+    # 默认分数（未知印章）
+    "unknown_seal": {"score": 0, "desc": "未知印章，暂不纳入计算"},
+}

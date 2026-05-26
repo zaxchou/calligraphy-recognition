@@ -934,6 +934,99 @@ class AnalysisResult:
     top_words: List[Tuple[str, int]]  # 高频词Top20
 
 
+def analyze_seal_emotion(seal_content: str) -> dict:
+    """
+    印章情感分析 —— 第三个维度
+
+    Args:
+        seal_content: 印章文本，如 "宗杨、鱓印"
+
+    Returns:
+        {
+            "signals": [{"seal": "苦李", "category": "spirit", "emotion": "苦涩自况", "score": -1.0}, ...],
+            "composite_score": -0.8,      # 加权综合分（-2 ~ +2）
+            "seal_emotion": "偏消极",      # 综合判断
+            "dominant_category": "spirit", # 主导类别
+            "total_seals": 3,
+            "matched_seals": 2,
+        }
+    """
+    from app.services.tibi_analysis_rules import SEAL_EMOTION_RULES
+
+    if not seal_content or not seal_content.strip():
+        return {
+            "signals": [],
+            "composite_score": 0,
+            "seal_emotion": "无印章",
+            "dominant_category": None,
+            "total_seals": 0,
+            "matched_seals": 0,
+        }
+
+    catalog = SEAL_EMOTION_RULES.get("seal_catalog", {})
+    cat_weights = SEAL_EMOTION_RULES.get("category_weight", {})
+    unknown_rule = SEAL_EMOTION_RULES.get("unknown_seal", {"score": 0, "desc": "未知印章"})
+
+    # 解析印章文本（用、或,分隔）
+    import re
+    seal_names = re.split(r'[、,，\s]+', seal_content.strip())
+    seal_names = [s.strip() for s in seal_names if s.strip()]
+
+    signals = []
+    total_score = 0.0
+    category_scores = {}
+
+    for name in seal_names:
+        rule = catalog.get(name)
+        if rule:
+            weight = cat_weights.get(rule["category"], 0.5)
+            weighted = rule["score"] * weight
+            total_score += weighted
+
+            cat = rule["category"]
+            category_scores[cat] = category_scores.get(cat, 0) + weighted
+
+            signals.append({
+                "seal": name,
+                "category": rule["category"],
+                "emotion": rule["emotion"],
+                "desc": rule["desc"],
+                "raw_score": rule["score"],
+                "weighted_score": round(weighted, 2),
+            })
+        else:
+            signals.append({
+                "seal": name,
+                "category": "unknown",
+                "emotion": "neutral",
+                "desc": unknown_rule["desc"],
+                "raw_score": 0,
+                "weighted_score": 0,
+            })
+
+    # 综合判断
+    if not signals:
+        seal_emotion = "无印章"
+    elif total_score >= 0.5:
+        seal_emotion = "偏积极"
+    elif total_score <= -0.5:
+        seal_emotion = "偏消极"
+    else:
+        seal_emotion = "中性"
+
+    # 主导类别
+    dominant = max(category_scores, key=lambda k: abs(category_scores[k])) if category_scores else None
+
+    return {
+        "signals": signals,
+        "composite_score": round(total_score, 2),
+        "seal_emotion": seal_emotion,
+        "dominant_category": dominant,
+        "total_seals": len(seal_names),
+        "matched_seals": sum(1 for s in signals if s["category"] != "unknown"),
+    }
+
+
 def get_period_phase(year: int, artist: str = None) -> str:
     """
     画家艺术生涯分期（基于出生年份计算年龄阶段）
