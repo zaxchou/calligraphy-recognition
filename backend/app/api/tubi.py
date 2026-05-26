@@ -121,6 +121,14 @@ def _cached_exists(path: str) -> bool:
     if not path:
         return False
     now = time.monotonic()
+    # 防止无限增长：超 2000 条时淘汰最旧的一半
+    if len(_file_exists_cache) > 2000:
+        cutoff = now - _FILE_CACHE_TTL
+        stale = [k for k, v in _file_exists_cache.items() if v["t"] < cutoff]
+        for k in stale:
+            del _file_exists_cache[k]
+        if len(_file_exists_cache) > 2000:
+            _file_exists_cache.clear()
     cached = _file_exists_cache.get(path)
     if cached is not None and now - cached["t"] < _FILE_CACHE_TTL:
         return cached["v"]

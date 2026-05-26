@@ -16,6 +16,14 @@ logging.basicConfig(
 )
 
 from app.core.config import get_settings
+settings = get_settings()
+
+# 启动时检查 JWT Secret 是否为默认值
+if settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
+    logging.getLogger(__name__).warning(
+        "⚠️  JWT_SECRET_KEY 使用默认值，生产环境请在 .env 中修改！"
+    )
+
 from app.core.database import engine, Base, get_db
 from sqlalchemy import text
 from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications, libraries, artist_changes, artwork_artists, artworks
@@ -39,8 +47,6 @@ try:
     _qczh_router = qczh_router
 except Exception:
     _qczh_router = None
-
-settings = get_settings()
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
