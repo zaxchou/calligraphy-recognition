@@ -152,37 +152,32 @@ def combine_dimensions(
 def build_reasoning(text: DimensionScore, spatial: DimensionScore,
                     seal: DimensionScore, combined_normalized: float,
                     polarity: str) -> str:
-    """生成人类可读的推理说明"""
-    parts = []
+    """生成人类可读的推理说明 — 三维度始终全部列出"""
+    def _dim_label(dim: DimensionScore, name: str) -> str:
+        if dim.raw == 0 and dim.confidence < 0.5:
+            return f"{name}无数据"
+        p = classify_polarity(dim.normalized)
+        return f"{name}{polarity_to_chinese(p)}"
 
-    # 文字
-    if text.raw != 0:
-        t_polarity = classify_polarity(text.normalized)
-        parts.append(f"文字{polarity_to_chinese(t_polarity)}")
+    parts = [
+        _dim_label(text, "文字"),
+        _dim_label(spatial, "空间"),
+        _dim_label(seal, "印章"),
+    ]
 
-    # 空间
-    if spatial.raw != 0:
-        s_polarity = classify_polarity(spatial.normalized)
-        parts.append(f"空间{polarity_to_chinese(s_polarity)}")
+    conclusion = polarity_to_chinese(polarity)
 
-    # 印章
-    if seal.raw != 0:
-        se_polarity = classify_polarity(seal.normalized)
-        parts.append(f"印章{polarity_to_chinese(se_polarity)}")
+    # 解释为什么结论和某个维度不同
+    if polarity == "neutral":
+        has_non_neutral = any(
+            classify_polarity(d.normalized) != "neutral"
+            for d in [text, spatial, seal] if d.raw != 0
+        )
+        if has_non_neutral:
+            return "、".join(parts) + "，信号互相抵消，综合中性"
+        return "、".join(parts) + "，无明显倾向"
 
-    if not parts:
-        return "无明显情感信号"
-
-    summary = "、".join(parts)
-
-    # 如果某个维度信号弱但其他维度有信号，说明融合逻辑
-    if polarity == "neutral" and any(p != "中性" for p in [polarity_to_chinese(classify_polarity(d.normalized)) for d in [text, spatial, seal] if d.raw != 0]):
-        return f"{summary}，信号较弱，综合中性"
-    elif polarity == "neutral":
-        return f"{summary}，无明显倾向"
-    else:
-        conclusion = polarity_to_chinese(polarity)
-        return f"{summary}，综合{conclusion}"
+    return "、".join(parts) + f"，综合{conclusion}"
 
 
 def polarity_to_chinese(polarity: str) -> str:
