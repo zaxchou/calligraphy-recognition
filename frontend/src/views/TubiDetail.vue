@@ -182,19 +182,15 @@
                         </tr>
                         <tr class="factor-row">
                           <td class="factor-value">
-                            <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
-                              {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
+                            <span class="factor-score" v-if="textNorm != null">
+                              {{ textNorm > 0 ? '+' : '' }}{{ textNorm.toFixed(2) }}
                             </span>
                           </td>
                           <td class="factor-value" v-if="spatialEmotion">
-                            <span class="factor-score" v-if="combinedSentiment?.spatial_score != null">{{ combinedSentiment.spatial_score > 0 ? '+' : '' }}{{ combinedSentiment.spatial_score }}</span>
-                            <span class="factor-score" v-else>0</span>
+                            <span class="factor-score">{{ spatialNorm > 0 ? '+' : '' }}{{ spatialNorm.toFixed(2) }}</span>
                           </td>
                           <td class="factor-value" v-if="sealEmotion?.total_seals">
-                            <span class="factor-score" v-if="sealEmotion.composite_score !== 0">
-                              {{ sealEmotion.composite_score > 0 ? '+' : '' }}{{ sealEmotion.composite_score.toFixed(1) }}
-                            </span>
-                            <span class="factor-score" v-else>0</span>
+                            <span class="factor-score">{{ sealNorm > 0 ? '+' : '' }}{{ sealNorm.toFixed(2) }}</span>
                           </td>
                         </tr>
                         <tr class="factor-row">
@@ -1016,13 +1012,21 @@ const sortedSpatialSignals = computed(() => {
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
 const displayScore = computed(() => {
   const cs = combinedSentiment.value
-  // 优先使用 VADER 归一化分数 [-1, +1]
   if (cs?.vader_normalized != null) return cs.vader_normalized
-  // 向后兼容旧数据
   if (cs?.combined_score != null) return cs.combined_score
   return contentAnalysis.value?.sentiment?.emotion_score ?? 0
 })
 const isVaderScore = computed(() => combinedSentiment.value?.vader_normalized != null)
+
+// VADER 归一化函数（前端版本，α=8）
+function vaderNorm(raw) {
+  if (!raw || raw === 0) return 0
+  return raw / Math.sqrt(raw * raw + 8)
+}
+// 各维度归一化分数
+const textNorm = computed(() => vaderNorm(combinedSentiment.value?.text_score ?? contentAnalysis.value?.sentiment?.emotion_score))
+const spatialNorm = computed(() => vaderNorm(combinedSentiment.value?.spatial_score))
+const sealNorm = computed(() => vaderNorm(combinedSentiment.value?.seal_score ?? sealEmotion.value?.composite_score))
 const sealEmotion = computed(() => contentAnalysis.value?.seal_emotion || null)
 
 // 文字情绪摘要
