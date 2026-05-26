@@ -108,64 +108,111 @@
           <!-- 面积占比智能示意图 + 标签/款识/钤印 并排布局 -->
           <div v-if="analyzeStatus === 'analyzed'" class="analysis-result-layout">
             <div class="analysis-left-col">
-              <div class="annotated-image-section">
-                <h4 class="section-title">
-                  <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
-                  <el-button
-                    v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)"
-                    size="small" text
-                    class="btn-annotate"
-                    @click="$emit('open-annotator')"
-                  >手动标注</el-button>
-                </h4>
-                <div class="annotated-image-wrapper" @mouseenter="showDiagramOverlay = true" @mouseleave="showDiagramOverlay = false">
-                  <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
-                  <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
-                    <el-icon><Check /></el-icon>
-                  </div>
-                  <!-- 悬浮布局示意图 -->
-                  <transition name="fade">
-                    <div v-if="showDiagramOverlay && diagramRegions.inscription_regions?.length" class="diagram-hover-overlay">
-                      <svg
-                        class="diagram-svg"
-                        :viewBox="`0 0 100 ${(100 * (currentImage?.height || 1) / (currentImage?.width || 1)).toFixed(1)}`"
-                        preserveAspectRatio="xMidYMid meet"
-                      >
-                        <polygon
-                          v-for="(reg, idx) in diagramRegions.margin_regions"
-                          :key="'m'+idx"
-                          :points="toDiagramPoints(reg)"
-                          class="diagram-margin-poly"
-                        />
-                        <polygon
-                          v-for="(reg, idx) in diagramRegions.painting_regions"
-                          :key="'p'+idx"
-                          :points="toDiagramPoints(reg)"
-                          class="diagram-painting-poly"
-                        />
-                        <polygon
-                          v-for="(reg, idx) in diagramRegions.inscription_regions"
-                          :key="'i'+idx"
-                          :points="toDiagramPoints(reg)"
-                          class="diagram-inscription-poly"
-                        />
-                        <polygon
-                          v-for="(reg, idx) in diagramRegions.blank_regions"
-                          :key="'b'+idx"
-                          :points="toDiagramPoints(reg)"
-                          class="diagram-blank-poly"
-                        />
-                      </svg>
-                      <div class="diagram-legend-overlay">
-                        <span class="legend-item"><span class="legend-dot inscription"></span>题跋</span>
-                        <span class="legend-item"><span class="legend-dot painting"></span>绘画</span>
-                        <span class="legend-item"><span class="legend-dot blank"></span>留白</span>
-                        <span class="legend-item"><span class="legend-dot margin"></span>余边</span>
-                      </div>
+              <!-- ===== Card 1: 情绪解读 ===== -->
+              <div class="score-card" v-if="currentImage?.contentAnalysis">
+                <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> 情绪解读</h4>
+                <!-- 有空间分析 → 综合判断 -->
+                <template v-if="combinedSentiment">
+                  <div class="final-judgment-card">
+                    <div class="final-judgment-header">
+                      <span
+                        class="judgment-dot"
+                        :style="{ background: combinedSentiment.polarity === 'positive' ? '#4e8cff' : combinedSentiment.polarity === 'negative' ? '#ff6b35' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#b8a47e' }"
+                      ></span>
+                      <span class="judgment-polarity" :style="{
+                        color: combinedSentiment.polarity === 'positive' ? '#67c23a' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399'
+                      }">
+                        {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
+                      </span>
+                      <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase" style="margin-left:8px;">
+                        {{ currentImage.contentAnalysis.period_phase }}
+                      </el-tag>
                     </div>
-                  </transition>
+                    <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
+                  </div>
+                  <!-- 子项因素 -->
+                  <div class="derivation-factors">
+                    <div class="factor-item">
+                      <span class="factor-icon">📝</span>
+                      <span class="factor-label">题跋文字</span>
+                      <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
+                        {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
+                      </span>
+                      <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                        {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
+                      </span>
+                    </div>
+                    <div class="factor-item" v-if="spatialEmotion">
+                      <span class="factor-icon">📐</span>
+                      <span class="factor-label">空间布局</span>
+                      <span class="factor-result neutral">
+                        {{ spatialEmotion.combined_spatial_sentiment || '平稳' }}
+                      </span>
+                      <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
+                    </div>
+                  </div>
+                  <!-- 情绪图形占位（后续实现） -->
+                  <div class="emotion-graphic-placeholder" v-if="false">
+                    <div class="placeholder-text">情绪图形化展示（开发中）</div>
+                  </div>
+                </template>
+                <!-- 无空间分析 → 纯文字结论 -->
+                <template v-else>
+                  <div class="sentiment-card">
+                    <div class="sentiment-header">
+                      <span
+                        class="sentiment-dot"
+                        :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"
+                      ></span>
+                      <span class="sentiment-polarity-text" :style="{
+                        color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' :
+                               currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399'
+                      }">{{
+                        currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' :
+                        currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性'
+                      }}</span>
+                      <span class="sentiment-sep">·</span>
+                      <span class="sentiment-score-text">强度 {{
+                        Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100)
+                      }}%</span>
+                      <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
+                        <span class="sentiment-sep">·</span>
+                        <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
+                      </template>
+                    </div>
+                    <div class="sentiment-bar-track">
+                      <div
+                        class="sentiment-bar-fill"
+                        :style="{
+                          width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
+                          background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e'
+                        }"
+                      ></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- ===== Card 2: 主题判断 ===== -->
+              <div class="theme-card" v-if="currentImage.contentAnalysis?.themes?.length">
+                <h4 class="section-title"><el-icon><Collection /></el-icon> 主题判断</h4>
+                <div ref="themeChartRef" class="theme-chart-small"></div>
+                <div class="theme-tags">
+                  <el-tag
+                    v-for="theme in currentImage.contentAnalysis.themes"
+                    :key="theme.code"
+                    size="small"
+                    class="theme-tag"
+                  >
+                    {{ theme.name }}
+                    <span class="theme-confidence">(可信度 {{ Math.round(theme.confidence * 100) }}%)</span>
+                  </el-tag>
                 </div>
               </div>
+
+                            <!-- ===== Card 3: 空间情绪解读 ===== -->
+              <!-- (kept in place - already above this block) -->
+
               <!-- 空间情绪解读（含布局类型，默认展开） -->
               <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
                 <h4 class="section-title" @click="showSpatialEmotion = !showSpatialEmotion" style="cursor:pointer;">
@@ -242,157 +289,129 @@
                   {{ positionAnalysis.layout_description }}
                 </div>
               </div>
-              <!-- 主题与情感分析卡片 -->
-              <div class="theme-sentiment-card" v-if="currentImage?.contentAnalysis">
-                <h4 class="section-title">
-                  <el-icon><DataAnalysis /></el-icon> 主题与情感分析
-                  <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">
-                    {{ currentImage.contentAnalysis.period_phase }}
-                  </el-tag>
-                </h4>
-                <div class="theme-sentiment-content">
-                  <div class="ts-section" v-if="currentImage.contentAnalysis?.themes?.length">
-                    <div class="ts-label">主题</div>
-                    <div class="theme-tags">
-                      <el-tag
-                        v-for="theme in currentImage.contentAnalysis.themes"
-                        :key="theme.code"
-                        size="small"
-                        class="theme-tag"
-                      >
-                        {{ theme.name }}
-                        <span class="theme-confidence">({{ Math.round(theme.confidence * 100) }}%)</span>
-                      </el-tag>
+              
+<!-- ===== Card 4: 推导过程 ===== -->
+              <div class="steps-card" v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
+                <h4 class="section-title"><el-icon><MagicStick /></el-icon> 推导过程</h4>
+                <div class="reasoning-steps">
+                  <div class="reasoning-label">文字分析推导</div>
+                  <div class="steps-list">
+                    <div
+                      v-for="(step, idx) in currentImage.contentAnalysis.sentiment.reasoning_steps"
+                      :key="idx"
+                      class="step-item"
+                      :class="{ 'step-final': step.offset === null }"
+                    >
+                      <span class="step-icon">{{ step.icon }}</span>
+                      <div class="step-body">
+                        <div class="step-header">
+                          <span class="step-label">{{ step.label }}</span>
+                          <span
+                            v-if="step.offset !== null && step.offset !== 0"
+                            class="step-offset"
+                            :class="step.offset > 0 ? 'offset-pos' : 'offset-neg'"
+                          >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
+                          <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
+                        </div>
+                        <div class="step-detail" v-html="mapPolarityText(step.detail)"></div>
+                      </div>
                     </div>
                   </div>
-
-                  <div class="ts-section" v-if="currentImage.contentAnalysis?.sentiment">
-                    <!-- 有空间分析 → 综合判断作为最终结论 -->
-                    <template v-if="combinedSentiment">
-                      <div class="ts-label">综合判断</div>
-                      <div class="final-judgment-card">
-                        <div class="final-judgment-header">
-                          <span
-                            class="judgment-dot"
-                            :style="{ background: combinedSentiment.polarity === 'positive' ? '#4e8cff' : combinedSentiment.polarity === 'negative' ? '#ff6b35' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#b8a47e' }"
-                          ></span>
-                          <span class="judgment-polarity" :style="{
-                            color: combinedSentiment.polarity === 'positive' ? '#67c23a' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399'
-                          }">
-                            {{ combinedSentiment.polarity === 'positive' ? '积极' : combinedSentiment.polarity === 'negative' ? '消极' : combinedSentiment.polarity === 'ambiguous' ? '复杂' : '中性' }}
-                          </span>
-                        </div>
-                        <div class="judgment-reasoning">{{ combinedSentiment.reasoning }}</div>
-                      </div>
-                      <!-- 推导因素 -->
-                      <div class="derivation-factors">
-                        <div class="factor-item">
-                          <span class="factor-icon">📝</span>
-                          <span class="factor-label">题跋文字</span>
-                          <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
-                            {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '积极' : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '消极' : '中性' }}
-                          </span>
-                          <span class="factor-score" v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
-                            {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}
-                          </span>
-                        </div>
-                        <div class="factor-item" v-if="spatialEmotion">
-                          <span class="factor-icon">📐</span>
-                          <span class="factor-label">空间布局</span>
-                          <span class="factor-result neutral">
-                            {{ spatialEmotion.combined_spatial_sentiment || '平稳' }}
-                          </span>
-                          <span class="factor-detail">{{ spatialEmotion.signals?.map(s => s.emotion).join('、') }}</span>
-                        </div>
-                      </div>
-                      <div class="factor-arrow">
-                        <span class="arrow-text">↓ 综合判断 ↓</span>
-                      </div>
-                    </template>
-                    <!-- 无空间分析 → 纯文字结论 -->
-                    <template v-else>
-                      <div class="ts-label">情感极性</div>
-                      <div class="sentiment-card">
-                        <div class="sentiment-header">
-                          <span
-                            class="sentiment-dot"
-                            :style="{ background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e' }"
-                          ></span>
-                          <span class="sentiment-polarity-text" :style="{
-                            color: currentImage.contentAnalysis.sentiment.polarity === 'positive' ? '#67c23a' :
-                                   currentImage.contentAnalysis.sentiment.polarity === 'negative' ? '#f56c6c' : '#909399'
-                          }">{{
-                            currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '积极' :
-                            currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '消极' : '中性'
-                          }}</span>
-                          <span class="sentiment-sep">·</span>
-                          <span class="sentiment-score-text">强度 {{
-                            Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100)
-                          }}%</span>
-                          <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
-                            <span class="sentiment-sep">·</span>
-                            <span class="sentiment-score-text">分值 {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
-                          </template>
-                          <template v-if="currentImage.contentAnalysis.v4_confidence != null">
-                            <span class="sentiment-sep">·</span>
-                            <span
-                              class="sentiment-score-text confidence-tag"
-                              :class="currentImage.contentAnalysis.v4_confidence >= 0.7 ? 'conf-high' : currentImage.contentAnalysis.v4_confidence >= 0.4 ? 'conf-mid' : 'conf-low'"
-                            >
-                              可信度 {{ Math.round(currentImage.contentAnalysis.v4_confidence * 100) }}%
-                            </span>
-                          </template>
-                        </div>
-                        <div class="sentiment-bar-track">
-                          <div
-                            class="sentiment-bar-fill"
-                            :style="{
-                              width: Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) + '%',
-                              background: currentImage.contentAnalysis.sentiment.polarity === 'positive'  ? '#4e8cff' : currentImage.contentAnalysis.sentiment.polarity === 'negative'  ? '#ff6b35' : '#b8a47e'
-                            }"
-                          ></div>
-                        </div>
-                      </div>
-                    </template>
-                    <!-- 结构化推导步骤（新版） -->
-                    <div class="reasoning-steps" v-if="currentImage.contentAnalysis.sentiment.reasoning_steps?.length">
-                      <div class="reasoning-label">推导过程</div>
-                      <div class="steps-list">
-                        <div
-                          v-for="(step, idx) in currentImage.contentAnalysis.sentiment.reasoning_steps"
-                          :key="idx"
-                          class="step-item"
-                          :class="{ 'step-final': step.offset === null }"
-                        >
-                          <span class="step-icon">{{ step.icon }}</span>
-                          <div class="step-body">
-                            <div class="step-header">
-                              <span class="step-label">{{ step.label }}</span>
-                              <span
-                                v-if="step.offset !== null && step.offset !== 0"
-                                class="step-offset"
-                                :class="step.offset > 0 ? 'offset-pos' : 'offset-neg'"
-                              >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
-                              <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
-                            </div>
-                            <div class="step-detail" v-html="mapPolarityText(step.detail)"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- 兼容旧版纯文本推导 -->
-                    <div class="sentiment-reasoning" v-else-if="currentImage.contentAnalysis.sentiment.reasoning">
-                      <div class="reasoning-label">推导过程</div>
-                      <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.reasoning }}</div>
-                    </div>
-                  </div>
-                <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
-                  暂无内容分析数据
                 </div>
+                <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
+                  <div class="reasoning-label">文字维度分析</div>
+                  <div class="reasoning-text">{{ currentImage.contentAnalysis.sentiment.reasoning }}</div>
                 </div>
               </div>
+              <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
+                暂无内容分析数据
+              </div>
+
             </div>
             <div class="analysis-right-col">
+              <div class="annotated-image-section">
+                <h4 class="section-title">
+                  <el-icon><DataAnalysis /></el-icon> 面积占比智能示意图
+                  <el-button
+                    v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)"
+                    size="small" text
+                    class="btn-annotate"
+                    @click="$emit('open-annotator')"
+                  >手动标注</el-button>
+                </h4>
+                <div class="annotated-image-wrapper" @mouseenter="showDiagramOverlay = false" @mouseleave="showDiagramOverlay = true">
+                  <img :src="currentImage.annotatedImageUrl" class="annotated-image" />
+                  <div v-if="currentImage.isManualAnnotated" class="manual-annotated-badge" title="已手动标注">
+                    <el-icon><Check /></el-icon>
+                  </div>
+                  <!-- 悬浮布局示意图 -->
+                  <transition name="fade">
+                    <div v-if="showDiagramOverlay && diagramRegions.inscription_regions?.length" class="diagram-hover-overlay">
+                      <svg
+                        class="diagram-svg"
+                        :viewBox="`0 0 100 ${(100 * (currentImage?.height || 1) / (currentImage?.width || 1)).toFixed(1)}`"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.margin_regions"
+                          :key="'m'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-margin-poly"
+                        />
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.painting_regions"
+                          :key="'p'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-painting-poly"
+                        />
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.inscription_regions"
+                          :key="'i'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-inscription-poly"
+                        />
+                        <polygon
+                          v-for="(reg, idx) in diagramRegions.blank_regions"
+                          :key="'b'+idx"
+                          :points="toDiagramPoints(reg)"
+                          class="diagram-blank-poly"
+                        />
+                      </svg>
+                      <div class="diagram-legend-overlay">
+                        <span class="legend-item"><span class="legend-dot inscription"></span>题跋</span>
+                        <span class="legend-item"><span class="legend-dot painting"></span>绘画</span>
+                        <span class="legend-item"><span class="legend-dot blank"></span>留白</span>
+                        <span class="legend-item"><span class="legend-dot margin"></span>余边</span>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+              <!-- 题跋占比分析 -->
+              <div class="stats-section">
+                <h4 class="section-title"><el-icon><PieChart /></el-icon> 题跋占比分析</h4>
+                <div class="stats-content">
+                  <div ref="pieChartRef" class="pie-chart-small"></div>
+                </div>
+                <div class="stats-list">
+                  <div class="stat-item inscription">
+                    <span class="stat-dot" style="background: #d4846a;"></span>
+                    <span class="stat-name">题跋区域</span>
+                    <span class="stat-percentile" v-if="areaPercentile !== null">高于{{ currentImage.artist || '该画家' }} {{ areaPercentile }}% 的作品</span>
+                    <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
+                  </div>
+                  <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
+                    <span class="stat-dot" style="background: #7ba3c4;"></span>
+                    <span class="stat-name">绘画区域</span>
+                    <span class="stat-percent">{{ areaStats.paintingPercent }}%</span>
+                  </div>
+                  <div class="stat-item blank" v-if="areaStats.blankPercent > 0">
+                    <span class="stat-dot" style="background: #a8c97a;"></span>
+                    <span class="stat-name">留白区域</span>
+                    <span class="stat-percent">{{ areaStats.blankPercent }}%</span>
+                  </div>
+                </div>
+              </div>
               <div class="inscription-note-main">
                 <h4><el-icon><Edit /></el-icon> 款识题跋</h4>
                 <div v-if="currentImage.inscriptionContent" class="inscription-content">
@@ -430,31 +449,7 @@
                   <span v-for="(tag, idx) in getDetailAllTags()" :key="idx" class="detail-tag" @click="$emit('filter-by-tag', tag)">{{ tag }}</span>
                 </div>
               </div>
-              <!-- 题跋占比分析 -->
-              <div class="stats-section">
-                <h4 class="section-title"><el-icon><PieChart /></el-icon> 题跋占比分析</h4>
-                <div class="stats-content">
-                  <div ref="pieChartRef" class="pie-chart-small"></div>
-                </div>
-                <div class="stats-list">
-                  <div class="stat-item inscription">
-                    <span class="stat-dot" style="background: #d4846a;"></span>
-                    <span class="stat-name">题跋区域</span>
-                    <span class="stat-percentile" v-if="areaPercentile !== null">高于{{ currentImage.artist || '该画家' }} {{ areaPercentile }}% 的作品</span>
-                    <span class="stat-percent">{{ areaStats.inscriptionPercent }}%</span>
-                  </div>
-                  <div class="stat-item painting" v-if="areaStats.paintingPercent > 0">
-                    <span class="stat-dot" style="background: #7ba3c4;"></span>
-                    <span class="stat-name">绘画区域</span>
-                    <span class="stat-percent">{{ areaStats.paintingPercent }}%</span>
-                  </div>
-                  <div class="stat-item blank" v-if="areaStats.blankPercent > 0">
-                    <span class="stat-dot" style="background: #a8c97a;"></span>
-                    <span class="stat-name">留白区域</span>
-                    <span class="stat-percent">{{ areaStats.blankPercent }}%</span>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -941,7 +936,7 @@ function scrollAlbumThumbs(direction) {
 }
 
 // ── 悬浮示意图 ────────────────────────────────
-const showDiagramOverlay = ref(false)
+const showDiagramOverlay = ref(true)
 const showSpatialEmotion = ref(true)
 
 // 空间情绪数据
@@ -960,6 +955,8 @@ let ctx = null
 
 // ── 饼图相关 ──────────────────────────────────
 const pieChartRef = ref(null)
+const themeChartRef = ref(null)
+let themeChart = null
 let pieChart = null
 let pieChartUpdateRaf = 0
 
@@ -1279,35 +1276,25 @@ function updatePieChart() {
   const option = {
     tooltip: {
       trigger: 'item',
-      formatter: (p) => {
-        const orig = rawItems.find(i => i.name === p.name)
-        return `${p.name}: ${orig ? orig.value.toFixed(2).replace(/\.00$/, '') : p.value}%`
-      },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e4e7ed',
-      borderWidth: 1,
-      textStyle: { color: '#333' }
-    },
-    graphic: {
-      type: 'circle',
-      left: 'center',
-      top: 'center',
-      shape: { cx: 0, cy: 0, r: 20 },
-      style: { fill: '#fff' },
-      z: 10
+      formatter: (p) => `${p.name}: ${p.value.toFixed(2).replace(/\.00$/, '')}%`
     },
     series: [{
       type: 'pie',
-      radius: '86%',
+      radius: ['20%', '68%'],
       center: ['50%', '50%'],
+      roseType: 'area',
       selectedMode: false,
-      avoidLabelOverlap: true,
-      labelLayout: { hideOverlap: false },
-      emphasis: {
-        scale: false,
-        itemStyle: { shadowBlur: 12, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.18)' }
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: {
+        formatter: '{b}\n{d}%',
+        fontSize: 11,
+        color: '#555'
       },
-      data
+      data: rawItems.map(item => ({
+        value: item.value,
+        name: item.name,
+        itemStyle: { color: item.color }
+      }))
     }]
   }
 
@@ -1321,7 +1308,7 @@ watch(() => props.currentImage, async (newVal) => {
   initCanvas()
   if (analyzeStatus.value === 'analyzed') {
     drawRegions()
-    setTimeout(() => updatePieChart(), 300)
+    setTimeout(() => { updatePieChart(); updateThemeChart() }, 300)
   }
 }, { immediate: true })
 
@@ -1332,8 +1319,64 @@ watch(() => areaStats.value, () => {
   }
 }, { deep: true })
 
+// ── 主题柱状图 ─────────────────────────────────
+function updateThemeChart() {
+  if (!themeChartRef.value) return
+  if (!themeChart) {
+    themeChart = echarts.init(themeChartRef.value)
+  }
+  const themes = props.currentImage?.contentAnalysis?.themes
+  if (!themes?.length) return
+
+  const data = themes.map(t => ({
+    name: t.name,
+    value: Math.round(t.confidence * 100)
+  })).sort((a, b) => b.value - a.value)
+
+  themeChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 0, right: 40, top: 5, bottom: 0, containLabel: true },
+    xAxis: { show: false },
+    yAxis: {
+      type: 'category',
+      data: data.map(d => d.name),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { fontSize: 12, color: '#555' }
+    },
+    series: [{
+      type: 'bar',
+      data: data.map((d, i) => ({
+        value: d.value,
+        itemStyle: {
+          color: ['#d4846a', '#7ba3c4', '#a8c97a', '#b8a47e', '#c4a87a'][i % 5],
+          borderRadius: [0, 4, 4, 0]
+        }
+      })),
+      barWidth: 16,
+      label: {
+        show: true,
+        position: 'right',
+        fontSize: 11,
+        color: '#888',
+        formatter: '{c}%'
+      }
+    }]
+  }, true)
+}
+
+// Watch for theme changes
+watch(() => props.currentImage?.contentAnalysis?.themes, (themes) => {
+  if (themes?.length) {
+    nextTick(() => updateThemeChart())
+  }
+}, { deep: true, immediate: true })
+
+
+
 function handleResize() {
   pieChart?.resize()
+  themeChart?.resize()
   if (props.currentImage) {
     initCanvas()
     if (analyzeStatus.value === 'analyzed') drawRegions()
@@ -1347,6 +1390,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   pieChart?.dispose()
+  themeChart?.dispose()
   pieChart = null
 })
 
@@ -1832,7 +1876,87 @@ defineExpose({
   opacity: 0;
 }
 
+/* ── 情绪解读卡片 ── */
+.score-card {
+  background: linear-gradient(135deg, #fdfcf8 0%, #f7f3ea 100%);
+  border: 1px solid #e0d8c8;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.score-card .section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4d3e2c;
+  margin-bottom: 10px;
+}
+
+/* ── 主题判断卡片 ── */
+.theme-card {
+  background: #faf9f7;
+  border: 1px solid #e8e4da;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.theme-card .section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+.theme-chart-small {
+  width: 100%;
+  height: 120px;
+  margin-bottom: 6px;
+}
+.theme-card .theme-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── 推导过程卡片 ── */
+.steps-card {
+  background: #faf9f7;
+  border: 1px solid #e8e4da;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.steps-card .section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+.steps-card .sentiment-reasoning {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e8e4da;
+}
+.steps-card .reasoning-text {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+}
+.steps-card .reasoning-label {
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
 /* ── 空间情绪解读卡片 ── */
+
 .spatial-emotion-card {
   margin-top: 10px;
   padding: 10px 12px;
