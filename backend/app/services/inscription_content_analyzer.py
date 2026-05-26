@@ -874,6 +874,7 @@ def analyze_spatial_emotion(
                 "code": code,
                 "emotion": emotion_label.get(em["emotion"], em["emotion"]),
                 "emotion_key": em["emotion"],
+                "score": em.get("score", 0.0),
                 "desc": em["desc"],
             })
 
@@ -917,11 +918,18 @@ def analyze_spatial_emotion(
         else:
             combined = emotion_label.get(main_emotion, main_emotion)
 
+    # 计算综合空间分数：主信号分数 + 留白修正
+    spatial_score = 0.0
+    if signals:
+        main_signal_for_score = max(signals, key=lambda s: priority.get(s["emotion_key"], 0))
+        spatial_score = main_signal_for_score.get("score", 0.0) + blank_mod
+
     return {
         "signals": signals,
         "blank_analysis": blank_desc,
         "blank_modifier": round(blank_mod, 2),
         "combined_spatial_sentiment": combined,
+        "combined_spatial_score": round(spatial_score, 2),
         "blank_percent": round(b, 1),
         "coverage_ratio": round(c, 4),
     }

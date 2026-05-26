@@ -81,14 +81,14 @@ LLM_THEME_PROMPT_V3 = """你是一位中国古代书画题跋研究专家。请�
 # 将题跋位置类型 + 留白比例 → 情感信号
 SPATIAL_EMOTION_RULES = {
     "form_emotion_map": {
-        1: {"emotion": "neutral", "desc": "传统文人画常见的题跋方式，落款于边角，不侵入主体画面，情绪平稳克制"},
-        2: {"emotion": "neutral_controlled", "desc": "用工整的题款锁住画面边界，将漫溢的情感收聚于内，是自持与克制的表达"},
-        3: {"emotion": "positive_resolved", "desc": "题款填补大面积留白，将虚无的空间转化为实在的书法存在，从不安走向平衡与稳定"},
-        4: {"emotion": "neutral_balanced", "desc": "题款压阵平衡画面重心偏移，通过文字的视觉重量主动控制构图节奏"},
-        5: {"emotion": "positive_unrestrained", "desc": "题款穿插于物象之间随势而动，与墨竹风枝同舞，情感高涨、狂放不羁"},
-        6: {"emotion": "negative_intense", "desc": "题款极度扩张占据画面核心位置，书法反客为主成为视觉焦点，是压抑愤懑的强烈宣泄"},
-        7: {"emotion": "negative_controlled", "desc": "长篇题跋密布于物象空隙之间，将自然空隙转化为书法空间，克制中暗藏压抑"},
-        8: {"emotion": "neutral", "desc": "打破传统从右向左的书写习惯，构图形式新颖独特，不拘一格"},
+        1: {"emotion": "neutral", "score": 0.0, "desc": "传统文人画常见的题跋方式，落款于边角，不侵入主体画面，情绪平稳克制"},
+        2: {"emotion": "neutral_controlled", "score": -0.3, "desc": "用工整的题款锁住画面边界，将漫溢的情感收聚于内，是自持与克制的表达"},
+        3: {"emotion": "positive_resolved", "score": 0.4, "desc": "题款填补大面积留白，将虚无的空间转化为实在的书法存在，从不安走向平衡与稳定"},
+        4: {"emotion": "neutral_balanced", "score": 0.1, "desc": "题款压阵平衡画面重心偏移，通过文字的视觉重量主动控制构图节奏"},
+        5: {"emotion": "positive_unrestrained", "score": 0.8, "desc": "题款穿插于物象之间随势而动，与墨竹风枝同舞，情感高涨、狂放不羁"},
+        6: {"emotion": "negative_intense", "score": -1.0, "desc": "题款极度扩张占据画面核心位置，书法反客为主成为视觉焦点，是压抑愤懑的强烈宣泄"},
+        7: {"emotion": "negative_controlled", "score": -0.5, "desc": "长篇题跋密布于物象空隙之间，将自然空隙转化为书法空间，克制中暗藏压抑"},
+        8: {"emotion": "neutral", "score": 0.0, "desc": "打破传统从右向左的书写习惯，构图形式新颖独特，不拘一格"},
     },
     "blank_modifiers": [
         {"cond": lambda b, c: b >= 60 and c > 0.20, "modifier": -0.3,
