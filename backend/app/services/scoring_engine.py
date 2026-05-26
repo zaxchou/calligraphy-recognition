@@ -51,8 +51,8 @@ DEFAULT_WEIGHTS = {
 # α 越小 → 曲线越陡（小分数就能接近 ±1）
 # α 越大 → 曲线越平（需要大分数才能接近 ±1）
 # VADER 原文用 α=15，适合 -4~+4 的原始分
-# 我们的原始分范围更大（约 -10~+10），用 α=25 更合适
-VADER_ALPHA = 25.0
+# 我们的原始分范围约 -10~+10，经校准 α=8 效果最佳
+VADER_ALPHA = 8.0
 
 
 def vader_normalize(raw_score: float, alpha: float = VADER_ALPHA) -> float:
@@ -90,14 +90,14 @@ def inverse_vader(normalized: float, alpha: float = VADER_ALPHA) -> float:
 
 
 def classify_polarity(normalized_score: float,
-                      positive_threshold: float = 0.15,
-                      negative_threshold: float = -0.15) -> str:
+                      positive_threshold: float = 0.10,
+                      negative_threshold: float = -0.10) -> str:
     """
     从归一化分数判断极性
 
     阈值说明：
     - VADER 原文用 ±0.05（太敏感）
-    - 我们用 ±0.15（更保守，减少"假阳性"）
+    - 我们用 ±0.10（平衡灵敏度和可靠性）
     """
     if normalized_score >= positive_threshold:
         return "positive"
@@ -156,17 +156,17 @@ def build_reasoning(text: DimensionScore, spatial: DimensionScore,
     parts = []
 
     # 文字
-    if text.label:
+    if text.raw != 0:
         t_polarity = classify_polarity(text.normalized)
         parts.append(f"文字{polarity_to_chinese(t_polarity)}")
 
     # 空间
-    if spatial.label:
+    if spatial.raw != 0:
         s_polarity = classify_polarity(spatial.normalized)
         parts.append(f"空间{polarity_to_chinese(s_polarity)}")
 
     # 印章
-    if seal.label:
+    if seal.raw != 0:
         se_polarity = classify_polarity(seal.normalized)
         parts.append(f"印章{polarity_to_chinese(se_polarity)}")
 
@@ -174,9 +174,15 @@ def build_reasoning(text: DimensionScore, spatial: DimensionScore,
         return "无明显情感信号"
 
     summary = "、".join(parts)
-    conclusion = polarity_to_chinese(polarity)
 
-    return f"{summary}，综合{conclusion}"
+    # 如果某个维度信号弱但其他维度有信号，说明融合逻辑
+    if polarity == "neutral" and any(p != "中性" for p in [polarity_to_chinese(classify_polarity(d.normalized)) for d in [text, spatial, seal] if d.raw != 0]):
+        return f"{summary}，信号较弱，综合中性"
+    elif polarity == "neutral":
+        return f"{summary}，无明显倾向"
+    else:
+        conclusion = polarity_to_chinese(polarity)
+        return f"{summary}，综合{conclusion}"
 
 
 def polarity_to_chinese(polarity: str) -> str:

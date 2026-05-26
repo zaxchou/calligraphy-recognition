@@ -317,25 +317,14 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     if se:
         spatial_signals = se.get("signals", [])
         if spatial_signals:
-            # 取最强信号的分数
             spatial_raw = max([s.get("score", 0) for s in spatial_signals], key=abs, default=0)
 
     # 印章分数
     seal_raw = seal_result.get("composite_score", 0) if seal_result else 0
 
-    # 使用 VADER 引擎计算归一化分数
-    vader_result = quick_score(
-        text_raw=text_raw,
-        spatial_raw=spatial_raw,
-        seal_raw=seal_raw,
-        text_conf=1.0,
-        spatial_conf=0.8 if spatial_raw != 0 else 0.3,
-        seal_conf=0.6 if seal_raw != 0 else 0.2,
-    )
-
-    # 使用校准后的权重重新计算
+    # 使用校准后的权重计算 VADER 归一化分数
     calibrated_weights = {"text": 0.354, "spatial": 0.388, "seal": 0.259}
-    vader_result_calibrated = quick_score(
+    vader_result = quick_score(
         text_raw=text_raw,
         spatial_raw=spatial_raw,
         seal_raw=seal_raw,
@@ -345,9 +334,9 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         weights=calibrated_weights,
     )
 
-    # 使用 VADER 结果作为主结果
-    cp = vader_result_calibrated.polarity
-    cr = vader_result_calibrated.reasoning
+    # 使用 VADER 结果驱动结论
+    cp = vader_result.polarity
+    cr = vader_result.reasoning
 
     # 保留旧格式兼容
     new_ca["combined_sentiment"] = {
@@ -356,10 +345,9 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "text_score": text_raw,
         "spatial_score": spatial_raw,
         "seal_score": seal_raw,
-        "combined_score": round(vader_result_calibrated.combined_raw, 2),
-        # 新增：VADER 归一化分数 [-1, +1]
-        "vader_normalized": round(vader_result_calibrated.combined_normalized, 3),
-        "vader_alpha": 25.0,
+        "combined_score": round(vader_result.combined_raw, 2),
+        "vader_normalized": round(vader_result.combined_normalized, 3),
+        "vader_alpha": 8.0,
         "weights": calibrated_weights,
         "method": "vader_v1",
     }
