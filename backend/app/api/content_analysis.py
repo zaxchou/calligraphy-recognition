@@ -17,6 +17,10 @@ from pydantic import BaseModel
 
 from app.core.auth import require_editor
 from app.core.database import get_db_connection
+from app.services.scoring_engine import (
+    quick_score, vader_normalize, DimensionScore,
+    DEFAULT_WEIGHTS as VADER_DEFAULT_WEIGHTS
+)
 from app.services.inscription_content_analyzer import (
     analyze_tiba_content,
     analyze_tiba_content_dual,
@@ -304,13 +308,61 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         cp, cr = "positive", "、".join(parts) + "，综合偏正面"
     else:
         cp, cr = "neutral", "、".join(parts) + "，无明显倾向"
-    new_ca["combined_sentiment"] = {"polarity": cp, "reasoning": cr,
-        "text_score": new_ca.get("sentiment", {}).get("emotion_score") or 0,
-        "spatial_score": -1 if is_sp_neg else (1 if is_sp_pos else 0),
-        "seal_score": seal_score,
-        "combined_score": round((new_ca.get("sentiment", {}).get("emotion_score") or 0) +
-                                (-1 if is_sp_neg else (1 if is_sp_pos else 0)) +
-                                seal_score, 1)}
+    # ── VADER 风格归一化评分 ──────────────────────────────────────────
+    # 提取各维度原始分数
+    text_raw = new_ca.get("sentiment", {}).get("emotion_score") or 0
+
+    # 空间分数：从信号中提取
+    spatial_raw = 0.0
+    if se:
+        spatial_signals = se.get("signals", [])
+        if spatial_signals:
+            # 取最强信号的分数
+            spatial_raw = max([s.get("score", 0) for s in spatial_signals], key=abs, default=0)
+
+    # 印章分数
+    seal_raw = seal_result.get("composite_score", 0) if seal_result else 0
+
+    # 使用 VADER 引擎计算归一化分数
+    vader_result = quick_score(
+        text_raw=text_raw,
+        spatial_raw=spatial_raw,
+        seal_raw=seal_raw,
+        text_conf=1.0,
+        spatial_conf=0.8 if spatial_raw != 0 else 0.3,
+        seal_conf=0.6 if seal_raw != 0 else 0.2,
+    )
+
+    # 使用校准后的权重重新计算
+    calibrated_weights = {"text": 0.354, "spatial": 0.388, "seal": 0.259}
+    vader_result_calibrated = quick_score(
+        text_raw=text_raw,
+        spatial_raw=spatial_raw,
+        seal_raw=seal_raw,
+        text_conf=1.0,
+        spatial_conf=0.8 if spatial_raw != 0 else 0.3,
+        seal_conf=0.6 if seal_raw != 0 else 0.2,
+        weights=calibrated_weights,
+    )
+
+    # 使用 VADER 结果作为主结果
+    cp = vader_result_calibrated.polarity
+    cr = vader_result_calibrated.reasoning
+
+    # 保留旧格式兼容
+    new_ca["combined_sentiment"] = {
+        "polarity": cp,
+        "reasoning": cr,
+        "text_score": text_raw,
+        "spatial_score": spatial_raw,
+        "seal_score": seal_raw,
+        "combined_score": round(vader_result_calibrated.combined_raw, 2),
+        # 新增：VADER 归一化分数 [-1, +1]
+        "vader_normalized": round(vader_result_calibrated.combined_normalized, 3),
+        "vader_alpha": 25.0,
+        "weights": calibrated_weights,
+        "method": "vader_v1",
+    }
 
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
     cur.execute("""
