@@ -284,28 +284,26 @@ def build_reasoning(text: DimensionResult,
                     seal: DimensionResult,
                     theme: DimensionResult,
                     polarity: str) -> str:
-    """生成推理说明"""
+    """生成推理说明（返回 i18n key，前端用 $t() 翻译）"""
     parts = []
 
-    def _label(dim: DimensionResult, name: str) -> str:
+    def _label(dim: DimensionResult, name_key: str) -> str:
         if not dim.has_data:
-            return f"{name}无数据"
+            return f"{name_key}.no_data"
         p = classify_polarity(dim.normalized)
-        return f"{name}{_pol(p)}"
+        return f"{name_key}.{p}"
 
-    def _pol(p: str) -> str:
-        return {"positive": "积极", "negative": "消极", "neutral": "中性"}.get(p, "中性")
-
-    parts.append(_label(text, "文字"))
-    parts.append(_label(spatial, "空间"))
-    parts.append(_label(seal, "印章"))
+    parts.append(_label(text, "reasoning.text"))
+    parts.append(_label(spatial, "reasoning.spatial"))
+    parts.append(_label(seal, "reasoning.seal"))
 
     if theme.has_data:
         theme_name = theme.signals[0].get("theme", "") if theme.signals else ""
-        parts.append(f"主题{theme_name}")
+        parts.append(f"reasoning.theme.{theme_name}")
 
-    conclusion = _pol(polarity)
-    return "、".join(parts) + f"，综合{conclusion}"
+    # 组合推理：用 | 分隔维度，最后加极性
+    dimension_part = "|".join(parts)
+    return f"{dimension_part}|reasoning.conclusion.{polarity}"
 
 
 def analyze(text: str,

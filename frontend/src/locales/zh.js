@@ -417,4 +417,22 @@ export default {
   'engine.delete_title': '确认删除',
   'engine.delete_success': '删除成功',
   'engine.delete_error': '删除失败',
+
+  // Reasoning keys (from molin_engine)
+  'reasoning.text.positive': '文字积极',
+  'reasoning.text.negative': '文字消极',
+  'reasoning.text.neutral': '文字中性',
+  'reasoning.text.no_data': '文字无数据',
+  'reasoning.spatial.positive': '空间积极',
+  'reasoning.spatial.negative': '空间消极',
+  'reasoning.spatial.neutral': '空间中性',
+  'reasoning.spatial.no_data': '空间无数据',
+  'reasoning.seal.positive': '印章积极',
+  'reasoning.seal.negative': '印章消极',
+  'reasoning.seal.neutral': '印章中性',
+  'reasoning.seal.no_data': '印章无数据',
+  'reasoning.theme': '主题',
+  'reasoning.conclusion.positive': '综合积极',
+  'reasoning.conclusion.negative': '综合消极',
+  'reasoning.conclusion.neutral': '综合中性',
 }

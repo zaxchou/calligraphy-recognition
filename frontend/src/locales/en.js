@@ -423,4 +423,22 @@ export default {
   'engine.delete_title': 'Confirm Delete',
   'engine.delete_success': 'Deleted successfully',
   'engine.delete_error': 'Failed to delete',
+
+  // Reasoning keys (from molin_engine)
+  'reasoning.text.positive': 'Text positive',
+  'reasoning.text.negative': 'Text negative',
+  'reasoning.text.neutral': 'Text neutral',
+  'reasoning.text.no_data': 'Text no data',
+  'reasoning.spatial.positive': 'Spatial positive',
+  'reasoning.spatial.negative': 'Spatial negative',
+  'reasoning.spatial.neutral': 'Spatial neutral',
+  'reasoning.spatial.no_data': 'Spatial no data',
+  'reasoning.seal.positive': 'Seal positive',
+  'reasoning.seal.negative': 'Seal negative',
+  'reasoning.seal.neutral': 'Seal neutral',
+  'reasoning.seal.no_data': 'Seal no data',
+  'reasoning.theme': 'Theme',
+  'reasoning.conclusion.positive': 'Overall positive',
+  'reasoning.conclusion.negative': 'Overall negative',
+  'reasoning.conclusion.neutral': 'Overall neutral',
 }

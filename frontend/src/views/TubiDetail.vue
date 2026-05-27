@@ -682,7 +682,11 @@ const { t, locale } = useI18n()
 // 内容文本翻译：对中文分词逐个查字典翻译
 function translateContent(text) {
   if (!text) return ''
-  // 先查完整匹配
+  // 新格式：i18n key 用 | 分隔（如 "reasoning.text.negative|reasoning.spatial.no_data|reasoning.conclusion.negative"）
+  if (text.includes('|') && text.startsWith('reasoning.')) {
+    return text.split('|').map(key => t(key.trim())).join('、')
+  }
+  // 旧格式：先查完整匹配
   const full = t(text)
   if (full !== text) return full
   // 逐词替换

@@ -217,3 +217,7 @@ def _save_lexicon(lexicon):
 
     with open(lexicon_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+    # 重置单例，下次访问会重新加载
+    import app.services.emotion_lexicon_loader as loader
+    loader._lexicon = None
