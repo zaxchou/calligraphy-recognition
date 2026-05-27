@@ -166,6 +166,12 @@ const routes = [
         component: () => import('../views/admin/SystemSettings.vue'),
         meta: { title: '系统设置', requiresAuth: true },
       },
+      {
+        path: 'emotion-engine',
+        name: 'EmotionEngine',
+        component: () => import('../views/EmotionEngine.vue'),
+        meta: { title: '墨林情绪引擎', requiresAuth: true },
+      },
     ],
   },
   // 旧路由重定向
