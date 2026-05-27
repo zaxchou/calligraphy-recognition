@@ -20,12 +20,14 @@ from typing import List, Dict
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services.inscription_content_analyzer import match_painting_materials
-from app.services.tibi_analysis_rules import MATERIAL_KEYWORDS
+from app.services.tibi_analysis_rules import MATERIAL_KEYWORDS, PAINTING_MATERIAL_RULES
 
-# 从 MATERIAL_KEYWORDS 提取所有关键词用于文本匹配
+# 从两个来源提取所有关键词用于文本匹配
 ALL_MATERIAL_KEYWORDS = set()
 for keyword, _ in MATERIAL_KEYWORDS:
     ALL_MATERIAL_KEYWORDS.add(keyword)
+for rule in PAINTING_MATERIAL_RULES:
+    ALL_MATERIAL_KEYWORDS.update(rule['keywords'])
 
 
 def extract_keywords_from_text(text: str) -> List[str]:
