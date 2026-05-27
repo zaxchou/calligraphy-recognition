@@ -181,6 +181,14 @@ export default {
 
   // Scoring method
   'method.vader_tip': 'Sentiment normalized to [-1, +1] via VADER algorithm. Ref: Hutto & Gilbert (2014), ICWSM.',
+  'method.title': 'Scoring Methodology',
+  'method.formula': 'Weighted Fusion Formula:',
+  'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',
+  'method.explanation': '3-dimension confidence-weighted fusion, calibrated with LLM (MAE=0.052):',
+  'method.text_weight': 'Text sentiment weight',
+  'method.spatial_weight': 'Spatial layout weight',
+  'method.seal_weight': 'Seal emotion weight',
+  'method.reference': 'Reference: Hutto, C.J. & Gilbert, E. (2014). VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text. ICWSM.',
   'revision.rollback': 'Rollback',
   'revision.approve': 'Approved',
   'revision.edit': 'Direct Edit',

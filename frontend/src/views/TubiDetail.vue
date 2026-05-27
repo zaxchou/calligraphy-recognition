@@ -207,6 +207,22 @@
                       </table>
                     </div>
                   </div>
+                  <!-- 方法论说明 -->
+                  <el-collapse>
+                    <el-collapse-item :title="$t('method.title')" name="methodology">
+                      <div class="methodology-content">
+                        <p><strong>{{ $t('method.formula') }}</strong></p>
+                        <p class="method-formula">S = normalize(Σ wᵢ × cᵢ × sᵢ)</p>
+                        <p>{{ $t('method.explanation') }}</p>
+                        <ul>
+                          <li>{{ $t('method.text_weight') }}: {{ (calibratedWeights.text * 100).toFixed(0) }}%</li>
+                          <li>{{ $t('method.spatial_weight') }}: {{ (calibratedWeights.spatial * 100).toFixed(0) }}%</li>
+                          <li>{{ $t('method.seal_weight') }}: {{ (calibratedWeights.seal * 100).toFixed(0) }}%</li>
+                        </ul>
+                        <p class="method-ref">{{ $t('method.reference') }}</p>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
                 </template>
                 <!-- 无空间分析 → 纯文字结论 -->
                 <template v-else>
@@ -1017,6 +1033,7 @@ const displayScore = computed(() => {
   return contentAnalysis.value?.sentiment?.emotion_score ?? 0
 })
 const isVaderScore = computed(() => combinedSentiment.value?.vader_normalized != null)
+const calibratedWeights = computed(() => combinedSentiment.value?.weights || { text: 0.05, spatial: 0.569, seal: 0.381 })
 
 // VADER 归一化函数（前端版本，α=8）
 function vaderNorm(raw) {
@@ -2386,6 +2403,35 @@ defineExpose({
 }
 .score-method-badge:hover {
   opacity: 1;
+}
+.methodology-content {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+}
+.methodology-content p {
+  margin: 4px 0;
+}
+.methodology-content ul {
+  margin: 4px 0 4px 16px;
+  padding: 0;
+}
+.methodology-content li {
+  margin: 2px 0;
+}
+.method-formula {
+  font-family: 'Courier New', monospace;
+  background: #f5f3ef;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin: 4px 0;
+}
+.method-ref {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+  margin-top: 8px;
 }
 .judgment-info-col {
   flex: 1;

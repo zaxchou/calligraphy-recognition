@@ -181,6 +181,14 @@ export default {
 
   // Scoring method
   'method.vader_tip': '情绪值基于 VADER 算法归一化到 [-1, +1]。参考: Hutto & Gilbert (2014), ICWSM.',
+  'method.title': '评分方法论',
+  'method.formula': '加权融合公式：',
+  'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',
+  'method.explanation': '三维度置信度加权融合，经 LLM 校准（MAE=0.052）：',
+  'method.text_weight': '文字情感权重',
+  'method.spatial_weight': '空间布局权重',
+  'method.seal_weight': '印章情感权重',
+  'method.reference': '参考文献: Hutto, C.J. & Gilbert, E. (2014). VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text. ICWSM.',
   'revision.rollback': '回滚',
   'revision.approve': '审核通过',
   'revision.edit': '直接编辑',
