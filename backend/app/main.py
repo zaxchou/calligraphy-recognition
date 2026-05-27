@@ -281,6 +281,18 @@ except Exception:
     import logging
     logging.getLogger(__name__).exception("Failed to import content_analysis module")
 
+# 墨林情绪引擎管理路由
+try:
+    from app.api import emotion_engine as emotion_engine_router
+    app.include_router(
+        emotion_engine_router.router,
+        prefix=settings.API_V1_STR,
+        tags=["墨林情绪引擎"]
+    )
+except Exception:
+    import logging
+    logging.getLogger(__name__).exception("Failed to import emotion_engine module")
+
 # 图像相似搜索路由
 try:
     from app.api import image_search as image_search_router
