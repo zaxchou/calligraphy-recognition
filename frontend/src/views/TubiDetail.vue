@@ -2476,7 +2476,6 @@ defineExpose({
   padding-top: 8px;
   border-top: 1px solid #eee;
 }
-}
 .judgment-info-col {
   flex: 1;
   min-width: 0;
