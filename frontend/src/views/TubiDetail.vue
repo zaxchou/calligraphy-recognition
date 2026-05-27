@@ -159,6 +159,8 @@
                           </el-tooltip>
                         </div>
                       </div>
+                    </div>
+                  </div>
                   <!-- 方法论说明（仅在没有新公式时显示） -->
                   <el-collapse v-if="combinedSentiment?.method !== 'molin_v2'">
                     <el-collapse-item :title="$t('method.title')" name="methodology">
