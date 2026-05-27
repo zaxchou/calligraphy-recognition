@@ -245,7 +245,12 @@ def score_text_keywords(text: str) -> Tuple[Dict[int, float], float, List[Dict]]
     - theme_scores: {theme_code: score, ...}
     - emotion_score: 连续值（正=积极，负=消极）
     - emotion_details: [{"word": "...", "score": -1.8, "category": "negative_life"}, ...]
+
+    评分优先级：emotion_lexicon > EMOTION_SCORING（向后兼容）
     """
+    from app.services.emotion_lexicon_loader import get_lexicon
+    lexicon = get_lexicon()
+
     theme_scores = {}
     # 各主题基础分
     for code, rule in TEXT_SCORING_RULES.items():
@@ -260,18 +265,51 @@ def score_text_keywords(text: str) -> Tuple[Dict[int, float], float, List[Dict]]
             if kw in text:
                 theme_scores[code] = theme_scores.get(code, 0) + score
 
-    # 情感分值计算 + 明细记录
+    # 情感分值计算 + 明细记录（最长匹配优先，避免重复计数）
     emotion_score = 0.0
     emotion_details: List[Dict] = []
+    matched_positions = set()  # 记录已匹配的字符位置
+
+    # 收集所有候选词，按长度降序排列（最长匹配优先）
+    all_candidates = []
+    for word in lexicon.get_all_words():
+        all_candidates.append(word)
     for category, config in EMOTION_SCORING.items():
         for word in config["words"]:
-            if word in text:
-                emotion_score += config["score"]
-                emotion_details.append({
-                    "word": word,
-                    "score": config["score"],
-                    "category": category,
-                })
+            if not lexicon.has_word(word):
+                all_candidates.append(word)
+    all_candidates.sort(key=len, reverse=True)
+
+    for word in all_candidates:
+        # 检查是否与已匹配位置重叠
+        pos = text.find(word)
+        if pos >= 0:
+            word_positions = set(range(pos, pos + len(word)))
+            if not word_positions & matched_positions:  # 无重叠
+                matched_positions.update(word_positions)
+
+                # 优先用词典分数
+                lex_score = lexicon.get_score(word)
+                if lex_score is not None:
+                    emotion_score += lex_score
+                    emotion_details.append({
+                        "word": word,
+                        "score": lex_score,
+                        "category": lexicon.get_category(word) or "unknown",
+                        "source": "lexicon",
+                    })
+                else:
+                    # 回退到 EMOTION_SCORING
+                    for category, config in EMOTION_SCORING.items():
+                        if word in config["words"]:
+                            emotion_score += config["score"]
+                            emotion_details.append({
+                                "word": word,
+                                "score": config["score"],
+                                "category": category,
+                                "source": "legacy",
+                            })
+                            break
 
     # 自嘲检测：反转"笑"在自嘲语境下的正向贡献
     SELF_MOCK_PATTERNS = ["莫笑", "堪笑", "自笑", "一笑", "休笑", "人笑", "应笑", "可笑"]
