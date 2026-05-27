@@ -82,8 +82,16 @@ def classify_polarity(normalized: float,
     return "neutral"
 
 
-def analyze_text(text: str) -> DimensionResult:
-    """维度1: 文字词典分析"""
+def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
+    """维度1: 文字词典分析（v3：集成规则引擎）
+
+    流程：
+    1. 规则引擎预处理（多字词组优先匹配 → 否定词检测 → 程度副词 → 前后缀）
+    2. 词库匹配（跳过已被多字词组占用的位置）
+    3. 后处理：否定反转 × 副词加权
+    """
+    from app.services.emotion_text_preprocessor import get_preprocessor
+
     lexicon = get_lexicon()
     result = DimensionResult(name="文字")
 
@@ -94,18 +102,91 @@ def analyze_text(text: str) -> DimensionResult:
     matched = []
     positions = set()
 
-    # 最长匹配优先
-    words = sorted(lexicon.get_all_words(), key=len, reverse=True)
-    for word in words:
-        pos = text.find(word)
-        if pos >= 0:
-            word_pos = set(range(pos, pos + len(word)))
-            if not word_pos & positions:
-                positions.update(word_pos)
+    if use_rules:
+        # ── v3 规则引擎 ──────────────────────────────────
+        preprocessor = get_preprocessor(lexicon.get_multi_char_words())
+        annotated = preprocessor.preprocess(text)
+
+        # 标记被多字词组占用的位置（含否定特例边界）
+        for b in annotated.word_boundaries:
+            for p in range(b.start, b.end):
+                positions.add(p)
+            w_score = lexicon.get_score(b.word)
+            if w_score is not None:
+                score += w_score
+                matched.append({"word": b.word, "score": w_score, "method": "multi_word"})
+
+        for b in annotated.exception_boundaries:
+            for p in range(b.start, b.end):
+                positions.add(p)
+
+        # 对剩余位置进行单字/双字匹配
+        words = sorted(lexicon.get_all_words(), key=len, reverse=True)
+        for word in words:
+            if len(word) < 2:
+                continue  # 单字后面处理
+            if word in [b.word for b in annotated.word_boundaries]:
+                continue  # 已被多字词组匹配
+
+            pos = text.find(word)
+            if pos >= 0:
+                word_pos = set(range(pos, pos + len(word)))
+                if not word_pos & positions:
+                    positions.update(word_pos)
+                    w_score = lexicon.get_score(word)
+                    if w_score is not None:
+                        # 判断是否在否定作用范围内
+                        is_negated, neg_word = annotated.is_in_negation_scope(pos)
+                        if is_negated:
+                            w_score = -w_score  # 极性反转
+                        # 程度副词加权
+                        adv_mult = annotated.get_adverb_multiplier(pos)
+                        w_score = round(w_score * adv_mult)
+                        score += w_score
+                        matched.append({
+                            "word": word,
+                            "score": w_score,
+                            "method": "matched",
+                            "negated": is_negated,
+                            "adverb_mult": adv_mult if adv_mult != 1.0 else None,
+                        })
+
+        # 单字匹配（跳过已占用的位置）
+        single_words = [w for w in lexicon.get_all_words() if len(w) == 1]
+        for word in single_words:
+            pos = text.find(word)
+            if pos >= 0 and pos not in positions:
+                positions.add(pos)
                 w_score = lexicon.get_score(word)
                 if w_score is not None:
+                    # 否定 + 副词加权
+                    is_negated, neg_word = annotated.is_in_negation_scope(pos)
+                    if is_negated:
+                        w_score = -w_score
+                    adv_mult = annotated.get_adverb_multiplier(pos)
+                    w_score = round(w_score * adv_mult)
                     score += w_score
-                    matched.append({"word": word, "score": w_score})
+                    matched.append({
+                        "word": word,
+                        "score": w_score,
+                        "method": "single_char",
+                        "negated": is_negated,
+                        "adverb_mult": adv_mult if adv_mult != 1.0 else None,
+                    })
+
+    else:
+        # ── 旧版（纯词库匹配，无规则）────────────────────
+        words = sorted(lexicon.get_all_words(), key=len, reverse=True)
+        for word in words:
+            pos = text.find(word)
+            if pos >= 0:
+                word_pos = set(range(pos, pos + len(word)))
+                if not word_pos & positions:
+                    positions.update(word_pos)
+                    w_score = lexicon.get_score(word)
+                    if w_score is not None:
+                        score += w_score
+                        matched.append({"word": word, "score": w_score})
 
     result.raw = score
     result.normalized = vader_normalize(score)

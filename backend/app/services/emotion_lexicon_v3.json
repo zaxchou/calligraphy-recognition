@@ -1,0 +1,7149 @@
+{
+  "version": "3.1",
+  "generated_at": "2026-05-28T03:58:44.139210",
+  "method": "llm_rating + fccpsl",
+  "model": "deepseek-v4-flash",
+  "total_words": 1428,
+  "entries": {
+    "一味": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "一年岁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "一年岁在": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "一枝红": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "一片青": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "一种孤": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "一种孤芳": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "一笑": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "一老翁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "一般": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "一贬官": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "一鼓作气": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "七夕": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "万娇容": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "万娇容易": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "万紫千红": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "上": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "上人": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "上断肠": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "上断肠天": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "不为": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不信": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不克": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不入": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不写春": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不写春丛": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不出": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不到": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不厌": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "不及": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不可": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不合": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不同": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不如": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不安": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "不对": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不尽": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不得": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "不怕": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不成": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不易": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不是": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不爱": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不畏": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不知": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不经": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不羡五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不羡五侯": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不肯": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不能": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不能将": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "不见": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不觉": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "不许": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不负": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "世味辣": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "丛": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "丛画晚": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "丛画晚芽": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "东": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "东风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "东风拂": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "东风拂舞": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "两革科名": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "中玉糁": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "中玉糁羹": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "丰年": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "临": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "临摹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "丹青": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "主体": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "丽": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "丽人": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "之君家": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乐": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "乐游原": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "乐游原上": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "九年七": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "九年岁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "九年岁在": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "九年春": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "习气": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "乡思": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "书": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "乾隆七": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆七年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆九": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆九年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆二": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆二十": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆五年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆元": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆八年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆六": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆六年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十一": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十七": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十九": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十二": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十六": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十四": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆十年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆四": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "乾隆四年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "争妍": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "二十一": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "二十一年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "二十年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "二月春": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "于城南": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "于竹卥": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "于竹西": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "云": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "云一片": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "云一片青": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "些许": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "亡": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "亦嫌迟": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "亦有鹌": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "亦有鹌鹑": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "亭亭": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "人事": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人写意": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人刻意": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "人刻意伤": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "人情": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人李鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人李鱓写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人李鱓制": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人格": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "人笑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "人花自": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "人花自新": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "人面费": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "人面费推": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "人鱓写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "从容": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "仔细": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "仕途": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "仙子": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "仙风道骨": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "以致": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "仿": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "仿古": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "休疑水": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "休疑水盖": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "休笑": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "传移": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "传统": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "传语渊明": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "伤迟暮": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "似松枝": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "似松枝老": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "但愿": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "低头": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "何不": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "何妨": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "何意": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "何肯到": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "何肯到清": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "何苦": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "余画五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "余画五松": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "作态": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "佳作": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "佳品": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "依恋": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "依旧": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "依然": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "依稀": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "依附": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "侵入": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "便宜": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "俗": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "俗尘": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "信手": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "信手拈来": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "俨然": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "俯视百": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "俯视百卉": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "倚靠": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "倦": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "倦怠": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "倾心": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "偕老": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "健": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "催画": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "催租": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "催诗": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "傲": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "傲霜": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "傲霜意": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "傲骨": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "儒家": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "兄先生": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "先生": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "光几卧": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "光几卧游": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "光零乱": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "光黑煞": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "光黑煞时": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "入画": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "入画图": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "入神": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "全无": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "八十大庆": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "八大山": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八大山人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八年八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八年八月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八年秋": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八月写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八月复": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "八月复堂": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "六年三": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "六年三月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "六年四": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "六年四月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "六年秋": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "兰草": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "兴": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "典型": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "兽": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "写": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "写于城": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "写于城南": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "写于梦": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "写于竹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "写于竹西": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "写兰花": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "写实": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "写意": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "写春丛": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "写鹦哥": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "写鹦哥毛": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "冬": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "冬月刘": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "冬月刘海": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "冷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "冷在空": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "冷淡": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "冷淡秋": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "冷笑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "冷落": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "凄": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凄凉": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凄惨": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凉": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "凋": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凋落": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凋零": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凌": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "凌云": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "凌霄": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "凌霜": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "几卧游": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "出尘": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "分明": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "刘海勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "刚": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "刚毅": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "初绽": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "别开生面": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "别是": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "到": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "到清秋": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "到清秋日": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "到白头": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "刻": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "刻意": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "刻意伤": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "刻意伤迟": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "刻板": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "加官图": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "动人": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "劲": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "劲节": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "勇于": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "勾引": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "匆匆": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "匠": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "匠气": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "匮乏": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "十一年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十一年岁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十七年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十九年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十二年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十五年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十八年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十八年八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十八年秋": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十六年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十六年秋": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "十四年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "千万树": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "千回画": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "千秋": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "千艳万": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "千艳万娇": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "升沉": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "卖画难": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "南国": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "卧者生": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "卧者生蛟": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "原": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "原上断": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "原上断肠": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "原是后": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "原是后开": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "又带蝉": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "及时": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "反觉荒": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "反觉荒园": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "变幻": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "变幻有": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "变幻有无": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "口春移": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "口春移碧": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "口腹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "口舌": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "古臣工": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "可人": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "可以": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "可喜": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "可怜": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "可用": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "可笑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "叶荷花": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "号啕": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "叹": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "叹息": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "叹惋": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "合意": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "吉": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "吉庆": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "吉祥": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "同到白头": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "名世": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "名号": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "名将": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "名将老": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "名将老龙": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "后开花": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "向日": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "君多寿": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "君多寿子": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "君子": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "含笑": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "含苞": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "听床头": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "听床头蟋": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "听雨斋": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "听雨斋主": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "味犹苦": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "呵": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "和月写": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "和粉竟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "和粉竟成": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "哀": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "哲人": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "唤起": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "喜": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "喜悦": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "嗟": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "嘉平月": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "四季平": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "四季平安": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "团一老": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "团一老翁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "园冷淡": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "园冷淡秋": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "困": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "困苦": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "困顿": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "国色": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "国色朝": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "圣明": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "在丙子": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "在心": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "在浓烟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "在浓烟淡": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "在癸酉": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "地": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "坎坷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "坚": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "坚强": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "坚韧": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "垂绅立": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "垂绅立辟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "培植": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "堂尺素": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "堂尺素雨": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "堂懊道": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "堂懊道人": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "堂李鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "堂李鱓写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "堂李鱓制": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "堪笑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "墨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "墨晕翻": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "墨晕翻飞": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "墨法": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "墨磨人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "墨磨人李": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "壮": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "壮志": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "声轧轧": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "声轧轧月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "声音": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "复堂懊": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "复堂懊道": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "复堂李": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "复堂李鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "复堂鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "夏": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "夏六月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "外道": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "多寿": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "多寿子": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "多情": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "多样": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "多福": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "多言": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "夜掘山": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "夜掘山中": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "夜染衣": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "夜黑云": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "大厦": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "大吉": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "大夫": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "大寿": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "大山人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "大山人写": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "大庆": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "天": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "天上人间": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "天池生": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "天然": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "天香夜": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "天香夜染": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "夫子": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "失": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "失意": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "头蟋蟀": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "头蟋蟀声": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "头角": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "夺朱": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "奇异": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "好事": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "好亦嫌": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "好亦嫌迟": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "好看": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "如人面": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "如人面费": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "如今": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "如何肯": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "如何肯到": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "如名将": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "如名将老": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "如意": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "如藤蔓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "如藤蔓缠": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "如许": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "妙绝": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "娇容易": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "娇容易画": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "娟娟": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "娥眉": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "娱": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "嫦娥": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "嬉戏": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "子孙贤": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "子虚": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "季平安": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "孤": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "孤寂": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "孤独": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "孤芳傲": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "孤芳傲霜": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "孤高": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "学长兄": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "宁教豆": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "宁教豆架": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "安逸": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "安顿": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "官粮": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "宝刀": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "客要余": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "客要余画": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "容易": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "容易画": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "寂": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寂寞": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "寂寥": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寂灭": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寂静": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "富贵": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "富贵图": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "富贵花": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "富贵还": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "富贵还如": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "寒": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寒凉": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寞": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "寥落": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寻纸": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "寿": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "将粉绘": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "将老龙钟": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "小春月": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "尤物": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "尺素雨": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "尺素雨风": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "尽在浓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "尽在浓烟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "展翅": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "属意": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "山": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "山万古": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "山中玉": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "山中玉糁": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "山人写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "山人写意": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "岁在丙": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "岁在丙子": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "岁在癸": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "岁在癸酉": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "岂非": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "川小勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "州金带": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "州金带围": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "工巧": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "工笔": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "工细": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "巧合": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "差池": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "已带斜": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "已带斜阳": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "师古": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "帝清光": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "帝清光几": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "帝王": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "带斜阳": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "带斜阳又": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "平安": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "平生": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "年七月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年三月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年二月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年八月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年八月复": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年十月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年嘉平": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年嘉平月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年四月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年夏月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年学兄": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "年学长": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "年学长兄": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "年小春": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年小春月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年岁在": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年岁在丙": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年岁在癸": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年新秋": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "年正月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年清和": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年清和月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年秋八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年秋八月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "年长兄": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "并茂": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "幻有无": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "幻有无中": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "幽": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "幽静": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "幽香": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "庆": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "床头蟋": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "床头蟋蟀": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "应物": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "应笑": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "底混龙": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "底混龙蛇": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "开好亦": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "开好亦嫌": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "开怀": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "弟李鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "归隐": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "徒然": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "得中": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "得名": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "得当": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "得志": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "得法": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "得益": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "微微": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "心向": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "忆": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "志": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "志趣": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "忧": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "忧心": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "忧愁": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "忧虑": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "快": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "快乐": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "念": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "怀念": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "怅": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "怅惘": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "怒": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "怖": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "思": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "思妇": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "思念": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "怡": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "怡悦": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "性无光": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "性无光黑": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "怨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恐": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恚": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恣": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "恣肆": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "恨": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恶态": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恸": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恸哭": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恼": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "恼怒": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "悔": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "悔恨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "悠": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "悠然": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "悠远": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "悠长": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "悦": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "悲": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "悲惨": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "情怀": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "情绪": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "惆": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "惆怅": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "惊": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "惊恐": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惊觉": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "惋惜": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "惘": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "惠风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "惧": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惨烈": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惨红": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "惫": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "惶恐": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "愁": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "愉": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "愉快": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "意伤迟": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "意伤迟暮": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "意图": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "意蕴": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "感叹": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "愤": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "愤慨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "愤懑": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "慕": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "慨": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "慨叹": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "憎": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "憔悴": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "憾": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "懊恼": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "懊悔": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "懊道人": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "懊道人制": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "懊道人李": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "懊道人鱓": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "戏": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "成原是": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "成原是后": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "成空": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "我扬州": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "我扬州金": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "打破": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "扬州金": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "扬州金带": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "扶摇": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "扶摇而上": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "报恩": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "拂": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "拂舞筵": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "担忧": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "拈粉白": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "拟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "拟古": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "挥毫": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "挥毫卖": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "掘山中": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "掘山中玉": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "提格之": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "提防": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "摄提格": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "摄提格之": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "摹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "支和粉": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "支和粉竟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "放": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "放歌": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "故山": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "故山遥": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "教豆架": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "斋主人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "斑驳": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "斜阳又": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "斜阳又带": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "斤斤": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "断": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "断肠": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "断肠天": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "新年": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "新鲜": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "旗雷鼓": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "旗雷鼓鞭": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "无为": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "无人": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "无人花": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "无人花自": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "无光": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "无光黑": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "无光黑煞": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "无可": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "无奇": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "无奈": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "无望": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "无端": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "无策": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "无能": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "无计": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "无限": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "日": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "时": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "时乾隆": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "时乾隆十": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "时新": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "时雨": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "旷达": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "昂藏": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "昏昏": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "昔人画": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "春": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "春丛": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春丛画": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春光": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春光零": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "春光零乱": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春意": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春晖": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "春消息": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春移碧": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春移碧树": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "春风艳": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "昨夜黑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "昨夜黑云": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "是后开": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "是后开花": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "是我扬": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "是我扬州": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "晕翻飞": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "晕翻飞色": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "晚": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "晚节": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "晴好": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "暮年": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "更写兰": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "更写兰花": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "曾逐东": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "曾逐东风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "最爱": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "最高": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "月写于": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月写于城": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月写于竹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月刘海": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月刘海勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月初斜": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "月复堂": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月复堂懊": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "月复堂李": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "月李鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "有心": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "有无中": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "有精神": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "有蒲团": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "有蒲团一": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "有鹌鹑": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "有鹌鹑斗": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "朝阳": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "朦胧": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "木": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "本事": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "李鱓写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "李鱓写于": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "李鱓制": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "来气": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "松枝老": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "板": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "极佳": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "柳川小": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "柳川小勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "树": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "桃李": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "梦天楼": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "森森": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "森然": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "欢": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "欢乐": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "欢喜": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "欢欣": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "欣": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "正乙卯": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "正九年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "正五年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "正八年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "正甲寅": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "死": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "殁": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "殇": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "残": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "毅": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "气味": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "气韵": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "水": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "水墨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "水盖染": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "水边楼": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "求生": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "沉静": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "没处": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "泠泠": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "波澜": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "泣": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "泪": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "泰然": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "泼墨": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "洁": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "洞口春": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "洞口春移": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "流出": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "流畅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "流着": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "浅淡": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "浅绛": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "济世": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "浓烟": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "浓烟淡": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "浓烟淡墨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "浓香": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "浩荡": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "浮沉": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "浮沤馆": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "海勇写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "消受": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "消息": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "涕": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "淋漓": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "淡": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "淡墨中": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "淡妆": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "淡泊": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "淡淡": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "深化": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "混龙蛇": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "清": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "清光": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "清光几": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "清光几卧": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "清冷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "清凉": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "清和": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "清和月": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "清和月写": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "清明": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "清晖": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "清秋日": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "清逸": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "清闲": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "清雅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "清香": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "清高": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "渗入": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "温和": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "游": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "游原上": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "游行": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "游赏": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "溶溶": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "滋蔓": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "潦倒": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "灵": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "烂漫": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "烂熳": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "烟淡墨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "烟淡墨中": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "然不羡": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "然不羡五": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "爪鳞变": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "爪鳞变幻": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "爱": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "狂": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "狂怪": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "狂放": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "狂风": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "狐疑": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "独": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "狼藉": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "玉人": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "玉立": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "玉糁羹": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "玫瑰": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "珍珠": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "甜俗": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "生动": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "生命力": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "生成原": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "生成原是": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "生蛟龙": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "田亦有": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "田亦有鹌": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "甲辰冬": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "甲辰冬月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "甲辰海": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "甲辰海勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "甲辰雁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "甲辰雁荡": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "电旗雷": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "电旗雷鼓": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "画": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "画五松": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "画晚芽": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "画贱": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "畅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "畏": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "略略": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "疑水盖": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "疑水盖染": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "疲": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "疲惫": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "疾风": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "痛": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "痛快": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "白云一": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "白云一片": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "白发": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "白帝清": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "白帝清光": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "白描": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "白金": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "百事大吉": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "百卉儿": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "百结衣": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "盎然": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "盖世": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "盛产": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "相与": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "相公": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "相同": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "相宜": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "相濡以沫": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "眷眷": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "知音": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "砚": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "砚田": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "破": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "硕果": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "碧树梢": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "碧血": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "磨人李": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "磨人李鱓": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "祝寿": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "神仙": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "祥": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "祥瑞": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "禄": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "福": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "福禄": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "离奇": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "秀": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "秀丽": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "秀美": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "秋": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "秋八月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "秋八月写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "秋色": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "秋色到": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "种": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "种孤芳": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "种花": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "科名": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "称颂": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "移碧树": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "移碧树梢": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "穷": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "穷愁": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "穷期": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "空": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "空山万": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "空山万古": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "窘迫": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "立辟雍": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "端详": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "笑": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "笔": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "笔墨之": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "笔底混": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "笔底混龙": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "笔意": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "笔法": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "等闲贪墨": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "简练": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "簪缨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "粉竟成": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "粗放": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "精神": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "素雨风": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "素雨风凄": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "索画": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "累累": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "繁华": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "繁密": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "红妆": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "红杏": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "纤纤": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "纨绔": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "纨绔子弟": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "纵": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "纵横": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "纸": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "绅立辟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "绅立辟雍": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "细写鹦": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "细写鹦哥": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "经营": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "结": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "结合": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "结实": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "绘": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "绝": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "绝无": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "绝望": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "绰约": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "罢官": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "美": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "美人": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "美味": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "美景": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "羡五侯": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "群英": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "翁年学": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "翁年学长": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "翻飞水": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "翻飞水墨": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "翻飞色": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "翻飞色尽": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "老大": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "老夫卖画": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "老将": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "老将龙": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "老将龙钟": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "老年": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "老病": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "者生蛟": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "者生蛟龙": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "耿介": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "联袂": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "肠断": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "肯": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "肯到清秋": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "胭脂": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "脂粉": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "臣非老画师": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "自信": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "自在": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "自夸": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "自明": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "自是": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "自求": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "自然": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "自由": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "自立": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "自笑": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "自若": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "舆隶": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "艰难": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "色尽黧": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "艳万娇": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "艳万娇容": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "艳丽": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "艺术": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "花": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "花开好": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "花开好亦": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "花样": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "花自新": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "芳": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "芳傲霜": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "芳傲霜意": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "芳心": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "芳菲": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "芳馨": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "苍劲": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "苍天": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "苍穹": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "苍翠": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "苍老": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "苦": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "英雄": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "范本": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "茫然": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "草": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "草堂尺": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "草堂尺素": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "草草": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "荒凉": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "荒唐": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "荒园冷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "荒园冷淡": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "荡山人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "荡山人写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "荡海勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "荷花": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "莫相笑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "莫笑": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "菊无人": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "菊无人花": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "菊花开": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "菊花开好": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "萧条": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "萧瑟": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "萧疏": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "落": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "落拓": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "落魄": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "蒲团一": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "蒲团一老": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "蔚蓝": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "藤蔓缠": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "虑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "虚": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "虫": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "蚕食": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "蛾眉": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "蝉联": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "蟋蟀声": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "衣食": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "衰": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "衰年": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "衰败": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "西风": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "要余画": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "要余画五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "见解": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "视百卉": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "视百卉儿": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "觉荒园": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "觉荒园冷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "讲求": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "设色": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "识才": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "诗篇": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "请教": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "谁与从": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "调和": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "豁": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "豁达": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "豪奢": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "豪情": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "豪气": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "败": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "败絮": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "贫": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "贵还如": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "贵还如藤": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "费推敲": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "贺": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "贺寿": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "赏识": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "赢得": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "超": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "超然": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "超脱": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "趣": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "轧月初": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "轧月初斜": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "轧轧月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "轧轧月初": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "转蓬": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "辛苦": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "辜负": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "辰冬月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "辰冬月刘": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "辰海勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "辰海勇写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "辰雁荡": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "辰雁荡山": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "达": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "还如藤": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "还如藤蔓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "连理": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "迟到": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "迟暮": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "迷惘": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "追忆": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "追悔": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "逍遥": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "逐": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "逐东风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "通达": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "逢摄提": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "逢摄提格": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "逢迎": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "逸": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "遁": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "道人制": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "道人刻": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "道人刻意": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "道人李": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "道人李鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "道人鱓": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "道人鱓写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "遣兴": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "避世": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "都不同": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "酣": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "酣畅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "酣睡": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "酷好": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "野人": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "野狐": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "野菊无": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "野菊无人": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "金带围": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "金玉": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "金碧": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "铮铮": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "铺张": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "镇定": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "长于": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "长兄先": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "长兄先生": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "长兄教": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "长寿": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "长生": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "长老": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "闲": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "闲庭": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "闲愁": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "闲适": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "闷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "阳又带": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "阳又带蝉": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "阳山人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "阴翳": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "阴雨": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "隆七年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆九年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆九年岁": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆二十": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆二十一": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆二十年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆五年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆八年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆六年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十一": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十一年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十七": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十七年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十九": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十九年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十二": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十二年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十五年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十八年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十六": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十六年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十四": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十四年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆十年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "隆四年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "随类": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "隐": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "雁荡山": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雁荡山人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雁荡海": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雁荡海勇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雄": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "雄心": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "雅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "雍正乙": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正乙卯": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正九": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正九年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正五": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正五年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正八": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正八年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正甲": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雍正甲寅": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "雨斋主": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雨斋主人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "雨淋": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "雨风凄": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "雪": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "零": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "零乱": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "雷同": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "雷鼓鞭": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "雷鼓鞭雨": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "露骨": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "青绿": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "青翠": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "静": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "面费推": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "面费推敲": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "鞭雨风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "韧": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "韶华": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "顺遂": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "顿": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "风": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "风吹": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated_v3"
+    },
+    "风拂舞": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "风拂舞筵": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "风流": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "风雅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "风霜": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "风骨": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "飘舞": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "飘零": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "飘飘": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "飞水墨": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "飞色尽": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "飞色尽黧": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "餐水上": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "香夜染": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated_v3"
+    },
+    "香夜染衣": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "骨法": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "高": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "高人": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "高兴": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "高士": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "高处": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "高峰": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated_v3"
+    },
+    "高洁": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "鱓写于": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "鱼": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "鳞变幻": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "鳞变幻有": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "鸟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "鹌鹑斗": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "鹦哥毛": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3"
+    },
+    "黄金": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "黑煞时": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "鼓鞭雨": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "鼓鞭雨风": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated_v3"
+    },
+    "不俗": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "不凡": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "不群": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "不羁": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "不倦": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "不败": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "无双": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "rule_exception"
+    },
+    "无敌": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "rule_exception"
+    },
+    "无愧": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "无畏": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "不讳": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "不穷": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "不已": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "不己": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "不禁": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "不暇": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "不才": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "无穷": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "无边": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "无比": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "无异": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "无意": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "无论": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "无恙": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "无妨": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "莫如": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "莫非": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "莫不": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "莫逆": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "rule_exception"
+    },
+    "非但": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "非常": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "未曾有": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "未始": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未几": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未必": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未知": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未定": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未了": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "rule_exception"
+    },
+    "未尝": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未敢": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未能": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "不识": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未免": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "无聊": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "rule_exception"
+    },
+    "无赖": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "rule_exception"
+    },
+    "非命": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "rule_exception"
+    },
+    "未竟": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "rule_exception"
+    },
+    "未可知": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    },
+    "未可": {
+      "score": 0,
+      "category": "neutral",
+      "source": "rule_exception"
+    }
+  }
+}

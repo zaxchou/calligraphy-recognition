@@ -1,16 +1,16 @@
 """
-情感词典构建脚本
+情感词典构建脚本 v3
 ────────────────────────────────────────
 用 DeepSeek 对候选情感词在书画语境下打分（-4 到 +4）
 
 流程：
-1. 加载候选词列表
-2. 分批发送给 DeepSeek（每批 20 词）
-3. 收集评分结果
-4. 生成 emotion_lexicon.json
+1. 加载候选词列表（v3 格式，含来源标记和 FCCPSL 极性）
+2. 保留已有词库的评分，只对新增词调用 DeepSeek
+3. 分批发送给 DeepSeek（每批 20 词）
+4. 收集评分结果，合并输出 emotion_lexicon_v3.json
 
 用法：
-python -m scripts.build_emotion_lexicon --output backend/app/services/emotion_lexicon.json
+python -m scripts.build_emotion_lexicon --output backend/app/services/emotion_lexicon_v3.json
 """
 
 import asyncio
@@ -18,7 +18,7 @@ import json
 import os
 import sys
 import argparse
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -56,6 +56,17 @@ LEXICON_RATING_PROMPT = """你是中国古代书画题跋情感分析专家。�
 注意：分数必须是整数，范围 -4 到 +4。"""
 
 
+def _classification_label(score: int) -> str:
+    """根据分数返回情感分类标签"""
+    if score <= -3: return "negative_strong"
+    elif score <= -2: return "negative_moderate"
+    elif score < 0: return "negative_mild"
+    elif score == 0: return "neutral"
+    elif score <= 1: return "positive_mild"
+    elif score <= 2: return "positive_moderate"
+    else: return "positive_strong"
+
+
 async def rate_words_batch(words: List[str], api_key: str, base_url: str, model: str) -> Dict[str, int]:
     """让 LLM 对一批词语打分"""
     import httpx
@@ -73,7 +84,7 @@ async def rate_words_batch(words: List[str], api_key: str, base_url: str, model:
             {"role": "system", "content": "你是中国古代书画题跋情感分析专家。"},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.1,  # 低温度保证一致性
+        "temperature": 0.1,
         "max_tokens": 2000,
     }
 
@@ -95,84 +106,98 @@ async def rate_words_batch(words: List[str], api_key: str, base_url: str, model:
         return parsed.get("评分", parsed)
 
 
+def load_existing_scores(existing_lexicon_path: Optional[str]) -> Dict[str, int]:
+    """加载已有词库的评分，避免重复调用 API"""
+    if not existing_lexicon_path or not os.path.exists(existing_lexicon_path):
+        return {}
+    with open(existing_lexicon_path, encoding='utf-8') as f:
+        data = json.load(f)
+    entries = data.get('entries', {})
+    scores = {word: info['score'] for word, info in entries.items()}
+    print(f"  已加载 {len(scores)} 个现有词评分")
+    return scores
+
+
 async def build_lexicon(candidate_words: List[str], output_path: str,
-                        batch_size: int = 20):
+                        batch_size: int = 20,
+                        existing_scores: Dict[str, int] = None):
     """主流程：批量构建情感词典"""
     settings = get_settings()
     api_key, base_url, default_model = get_text_llm_config()
     model = settings.QWEN_TRANSLATION_MODEL
 
+    all_ratings = dict(existing_scores or {})
+
+    # 找出需要打分的词
+    words_to_rate = [w for w in candidate_words if w not in all_ratings]
+    already_have = len(candidate_words) - len(words_to_rate)
+
     print(f"\n{'='*60}")
-    print(f"情感词典构建")
+    print(f"情感词典构建 v3")
     print(f"候选词数: {len(candidate_words)}")
+    print(f"已有评分: {already_have}")
+    print(f"需调用 API: {len(words_to_rate)}")
     print(f"模型: {model}")
     print(f"批次大小: {batch_size}")
     print(f"{'='*60}\n")
 
-    # 分批处理
-    batches = [candidate_words[i:i+batch_size] for i in range(0, len(candidate_words), batch_size)]
-    print(f"分 {len(batches)} 批处理\n")
+    if not words_to_rate:
+        print("所有词已有评分，无需调用 API。")
+    else:
+        # 分批处理
+        batches = [words_to_rate[i:i+batch_size] for i in range(0, len(words_to_rate), batch_size)]
+        print(f"分 {len(batches)} 批处理\n")
 
-    all_ratings = {}
-    failed_words = []
+        failed_words = []
 
-    for i, batch in enumerate(batches):
-        print(f"[{i+1}/{len(batches)}] 评分中...", end="", flush=True)
-        try:
-            ratings = await rate_words_batch(batch, api_key, base_url, model)
-            all_ratings.update(ratings)
-            print(f" ✓ 收到 {len(ratings)} 个评分")
-        except Exception as e:
-            print(f" ✗ 失败: {e}")
-            failed_words.extend(batch)
-
-        # 避免 API 限流
-        if i < len(batches) - 1:
-            await asyncio.sleep(1)
-
-    # 处理失败的词（重试）
-    if failed_words:
-        print(f"\n重试 {len(failed_words)} 个失败的词...")
-        for word in failed_words:
+        for i, batch in enumerate(batches):
+            print(f"[{i+1}/{len(batches)}] 评分中...", end="", flush=True)
             try:
-                ratings = await rate_words_batch([word], api_key, base_url, model)
+                ratings = await rate_words_batch(batch, api_key, base_url, model)
                 all_ratings.update(ratings)
-                print(f"  ✓ {word}: {ratings.get(word, '?')}")
+                print(f" [OK] 收到 {len(ratings)} 个评分")
             except Exception as e:
-                print(f"  ✗ {word}: {e}")
-                all_ratings[word] = 0  # 默认中性
+                print(f" [FAIL] 失败: {e}")
+                failed_words.extend(batch)
 
-    # 构建完整词典
+            # 避免 API 限流
+            if i < len(batches) - 1:
+                await asyncio.sleep(1)
+
+        # 处理失败的词（重试）
+        if failed_words:
+            print(f"\n重试 {len(failed_words)} 个失败的词...")
+            for word in failed_words:
+                try:
+                    ratings = await rate_words_batch([word], api_key, base_url, model)
+                    all_ratings.update(ratings)
+                    print(f"  [OK] {word}: {ratings.get(word, '?')}")
+                except Exception as e:
+                    print(f"  [FAIL] {word}: {e}")
+                    all_ratings[word] = 0  # 默认中性
+
+    # 构建完整词典（含来源标记）
     lexicon = {
-        "version": "1.0",
+        "version": "3.0",
         "generated_at": datetime.now().isoformat(),
-        "method": "llm_rating",
+        "method": "llm_rating + fccpsl",
         "model": model,
         "total_words": len(all_ratings),
         "entries": {}
     }
 
-    for word, score in sorted(all_ratings.items()):
-        # 分类
-        if score <= -3:
-            category = "negative_strong"
-        elif score <= -2:
-            category = "negative_moderate"
-        elif score < 0:
-            category = "negative_mild"
-        elif score == 0:
-            category = "neutral"
-        elif score <= 1:
-            category = "positive_mild"
-        elif score <= 2:
-            category = "positive_moderate"
+    for word in sorted(all_ratings.keys()):
+        score = all_ratings[word]
+        # 判断来源
+        if word in (existing_scores or {}):
+            source = "llm_rated"
         else:
-            category = "positive_strong"
+            source = "llm_rated_v3"
 
         lexicon["entries"][word] = {
             "score": score,
-            "category": category,
-            "source": "llm_rated"
+            "category": _classification_label(score),
+            "source": source
         }
 
     # 保存
@@ -188,34 +213,53 @@ async def build_lexicon(candidate_words: List[str], output_path: str,
 
     # 打印统计
     categories = {}
+    sources = {}
     for entry in lexicon["entries"].values():
         cat = entry["category"]
         categories[cat] = categories.get(cat, 0) + 1
+        src = entry["source"]
+        sources[src] = sources.get(src, 0) + 1
     print("分类统计:")
     for cat, count in sorted(categories.items()):
         print(f"  {cat}: {count}")
+    print("\n来源统计:")
+    for src, count in sorted(sources.items()):
+        print(f"  {src}: {count}")
 
     return lexicon
 
 
 def main():
-    parser = argparse.ArgumentParser(description="情感词典构建脚本")
+    parser = argparse.ArgumentParser(description="情感词典构建脚本 v3")
     parser.add_argument("--output", type=str,
-                       default="backend/app/services/emotion_lexicon.json",
+                       default="backend/app/services/emotion_lexicon_v3.json",
                        help="输出路径")
     parser.add_argument("--batch-size", type=int, default=20, help="每批词数")
     parser.add_argument("--words-file", type=str,
-                       default="backend/scripts/candidate_words.json",
-                       help="候选词文件")
+                       default="backend/scripts/candidate_words_v3.json",
+                       help="候选词文件（v3 格式）")
+    parser.add_argument("--existing-lexicon", type=str,
+                       default="backend/app/services/emotion_lexicon.json",
+                       help="现有词库路径（已有评分不再重复调用 API）")
 
     args = parser.parse_args()
 
     # 加载候选词
     with open(args.words_file, "r", encoding="utf-8") as f:
         data = json.load(f)
-    words = data["words"]
+    # v3 格式: words 是对象列表，提取 word 字段
+    if isinstance(data.get('words'), list) and len(data['words']) > 0 and isinstance(data['words'][0], dict):
+        words = [w['word'] for w in data['words']]
+    else:
+        words = data['words']
 
-    asyncio.run(build_lexicon(words, args.output, args.batch_size))
+    print(f"候选词文件: {args.words_file}")
+    print(f"候选词数: {len(words)}")
+
+    # 加载已有评分
+    existing_scores = load_existing_scores(args.existing_lexicon)
+
+    asyncio.run(build_lexicon(words, args.output, args.batch_size, existing_scores))
 
 
 if __name__ == "__main__":
