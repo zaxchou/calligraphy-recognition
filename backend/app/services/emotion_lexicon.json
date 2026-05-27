@@ -1,9 +1,9 @@
 {
-  "version": "1.1",
-  "generated_at": "2026-05-27T14:13:32.532991",
-  "method": "llm_rating",
+  "version": "2.1",
+  "generated_at": "2026-05-28",
+  "method": "llm_rating + manual",
   "model": "deepseek-v4-flash",
-  "total_words": 151,
+  "total_words": 385,
   "entries": {
     "一笑": {
       "score": 1,
@@ -773,7 +773,1186 @@
       "score": -1,
       "category": "negative_mild",
       "source": "manual"
+    },
+    "临": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "临摹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "丽": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "书": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "云": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "些许": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "亡": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "人": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "从容": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "仿": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "仿古": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "传移": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "倦怠": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "兽": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "写": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "写意": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "冬": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "冷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "凄凉": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凄惨": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凋": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凋落": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "凋零": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "出尘": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "刚": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "刚毅": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "刻": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "刻板": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "匠": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "匠气": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "匮乏": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "号啕": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "叹惋": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "吉": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "吉祥": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "喜悦": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "嗟": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "困": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "地": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "坚": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "坚强": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "坚韧": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "墨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "墨法": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "壮": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "壮志": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "夏": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "外道": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "多福": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "天": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "失": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "孤寂": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "孤独": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "安逸": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "寂寞": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "寂寥": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寂灭": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寂静": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "寒凉": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "寞": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "寥落": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "山": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "工笔": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "工细": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "师古": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "年": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "幽静": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "应物": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "微微": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "忆": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "志": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "忧": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "忧心": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "忧愁": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "忧虑": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "快乐": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "念": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "怀念": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "怅": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "怅惘": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "怖": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "思": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "思念": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "恣肆": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "恸": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恸哭": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "恼怒": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "悔恨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "悠": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "悠然": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "悠远": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "悠长": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "悦": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "悲惨": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惆怅": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "惊恐": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惧": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惨烈": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "惫": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "惶恐": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "愉": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "愉快": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "感叹": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "愤慨": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "愤懑": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "慨叹": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "憎": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "懊悔": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "担忧": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "拟": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "拟古": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "摹": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "无奈": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "无望": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "无端": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "无策": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "无计": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "日": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "时": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "旷达": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "春": {
+      "score": 0,
+      "category": "positive_mild",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分1）"
+    },
+    "月": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "木": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "板": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "树": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "欢乐": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "欢欣": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "死": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "殁": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "殇": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "毅": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "气韵": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "水": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "水墨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "泣": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "泪": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "泰然": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "泼墨": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "洁": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "浅绛": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "涕": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "淋漓": {
+      "score": 1,
+      "category": "positive_moderate",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分2）"
+    },
+    "淡淡": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "清冷": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "清雅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "清高": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "狂怪": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "狂放": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "独": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "甜俗": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "画": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "畏": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "略略": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "疲": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "疲惫": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "痛": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "痛快": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "白描": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "砚": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "祥": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "禄": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "福": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "福禄": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "秀": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "秀丽": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "秀美": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "秋": {
+      "score": 0,
+      "category": "negative_mild",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分-1）"
+    },
+    "穷": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "窘迫": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "笔": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "笔法": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "简练": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "粗放": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "繁密": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "纵横": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "纸": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "经营": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "结": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "绘": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "绝": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "绝望": {
+      "score": -4,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "美": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "自若": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "花": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "草": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "荒凉": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "萧条": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "萧瑟": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "落": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "虑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "虫": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "衰败": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated"
+    },
+    "设色": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "豁": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "豁达": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "豪情": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "贫": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "超": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "超然": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "超脱": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "达": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "迷惘": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "追忆": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "追悔": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "通达": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "逸": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "遁": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "避世": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "酣畅": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "野狐": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated"
+    },
+    "金碧": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "镇定": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "长寿": {
+      "score": 4,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "闲": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "闲适": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "随类": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "隐": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "雄心": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "雨": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "雪": {
+      "score": 0,
+      "category": "positive_mild",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分1）"
+    },
+    "零": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "llm_rated"
+    },
+    "青绿": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "llm_rated"
+    },
+    "韧": {
+      "score": 2,
+      "category": "positive_moderate",
+      "source": "llm_rated"
+    },
+    "顿": {
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated"
+    },
+    "风": {
+      "score": 0,
+      "category": "positive_mild",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分1）"
+    },
+    "骨法": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "高": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "高洁": {
+      "score": 3,
+      "category": "positive_strong",
+      "source": "llm_rated"
+    },
+    "鱼": {
+      "score": 0,
+      "category": "positive_moderate",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分2）"
+    },
+    "鸟": {
+      "score": 0,
+      "category": "positive_mild",
+      "source": "llm_rated",
+      "note": "手动修正（LLM原始评分1）"
+    },
+    "莫相笑": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "manual",
+      "note": "自嘲/反讽语境"
+    },
+    "传语渊明": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "manual",
+      "note": "自嘲/反讽语境"
+    },
+    "等闲贪墨": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "manual",
+      "note": "自嘲/反讽语境"
     }
-  },
-  "note": "v1.1: 手动修正 LLM 评分不准的关键情感词"
+  }
 }

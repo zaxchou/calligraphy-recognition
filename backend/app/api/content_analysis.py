@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from app.core.auth import require_editor
 from app.core.database import get_db_connection
+from app.services.molin_engine import analyze as molin_analyze
 from app.services.scoring_engine import (
     quick_score, vader_normalize, DimensionScore,
     DEFAULT_WEIGHTS as VADER_DEFAULT_WEIGHTS
@@ -308,129 +309,49 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         cp, cr = "positive", "、".join(parts) + "，综合偏正面"
     else:
         cp, cr = "neutral", "、".join(parts) + "，无明显倾向"
-    # ── 多维度 VADER 评分 ──────────────────────────────────────────────
-    # 1. 文本情感（主维度）
+    # ── 墨林情绪引擎 v2.0 ──────────────────────────────────────────────
+    # 提取各维度数据
     text_raw = new_ca.get("sentiment", {}).get("emotion_score") or 0
-
-    # 2. 空间布局（从 spatial_emotion 提取）
-    spatial_raw = 0.0
-    spatial_has_data = False
-    if se:
-        spatial_raw = se.get("combined_spatial_score", 0) or 0
-        spatial_has_data = bool(se.get("signals"))
-
-    # 3. 印章情感
-    seal_raw = 0.0
-    seal_has_data = False
-    if seal_result:
-        seal_raw = seal_result.get("composite_score", 0) or 0
-        seal_has_data = seal_result.get("total_seals", 0) > 0
-
-    # 4. 画材情感（从 v4_signals.painting 提取）
-    painting_raw = 0.0
     v4_signals = new_ca.get("v4_signals", {})
-    for match in v4_signals.get("painting", []):
-        rule_weight = match.get("weight", 1.0)
-        # painting 信号通过 theme_tendency 间接影响，这里取 weight 作为强度信号
-        painting_raw += rule_weight * 0.3  # 画材贡献较小
+    painting_matches = v4_signals.get("painting", [])
+    year = row["year"] if "year" in row.keys() else None
+    artist = row["artist"] if "artist" in row.keys() else None
+    width_cm = row["artwork_width_cm"] if "artwork_width_cm" in row.keys() else None
+    height_cm = row["artwork_height_cm"] if "artwork_height_cm" in row.keys() else None
+    seal_content = row["seal_content"] if "seal_content" in row.keys() else None
 
-    # 5. 画家底色 + 时代背景（从 v4_signals.time 提取）
-    time_raw = 0.0
-    time_signal = v4_signals.get("time", {})
-    if time_signal:
-        time_raw = time_signal.get("emotion_offset", 0) or 0
+    # 调用墨林引擎
+    molin_result = molin_analyze(
+        text=text or "",
+        spatial_emotion=se,
+        painting_matches=painting_matches,
+        width_cm=width_cm,
+        height_cm=height_cm,
+        year=year,
+        artist=artist,
+        seal_content=seal_content,
+        themes=result.get("themes", []),
+    )
 
-    # 6. 尺寸修正（从 v4_signals.size 提取）
-    size_raw = 0.0
-    size_signal = v4_signals.get("size", {})
-    if size_signal:
-        size_raw = size_signal.get("sentiment_modifier", 0) or 0
+    cp = molin_result.polarity
+    cr = molin_result.reasoning
 
-    # 7. 主题修正（特殊规则）
-    theme_raw = 0.0
-    for rule in new_ca.get("v4_special_rules", []):
-        if isinstance(rule, dict):
-            theme_raw += rule.get("modifier", 0)
-        # 旧格式可能是字符串，跳过
-
-    # 所有维度汇总
-    all_dimensions = {
-        "text": {"raw": text_raw, "confidence": 1.0},
-        "spatial": {"raw": spatial_raw, "confidence": 0.8 if spatial_has_data else 0.3},
-        "seal": {"raw": seal_raw, "confidence": 0.6 if seal_has_data else 0.2},
-        "painting": {"raw": painting_raw, "confidence": 0.5 if painting_raw != 0 else 0.2},
-        "time": {"raw": time_raw, "confidence": 0.7 if time_raw != 0 else 0.2},
-        "size": {"raw": size_raw, "confidence": 0.4 if size_raw != 0 else 0.2},
-        "theme": {"raw": theme_raw, "confidence": 0.8 if theme_raw != 0 else 0.2},
-    }
-
-    # 校准后的权重（v2，2026-05-27，30样本，MAE=0.052）
-    # 词典分数范围变大（-4~+4），文字权重需降低
-    calibrated_weights = {
-        "text": 0.050,
-        "spatial": 0.569,
-        "seal": 0.381,
-        "painting": 0.0,  # 已融入主题判断
-        "time": 0.0,      # 已融入画家底色
-        "size": 0.0,      # 辅助信号，暂不参与
-        "theme": 0.0,     # 辅助信号，暂不参与
-    }
-
-    # 加权融合
-    weighted_sum = 0.0
-    weight_total = 0.0
-    for dim_name, dim_data in all_dimensions.items():
-        w = calibrated_weights.get(dim_name, 0.1)
-        c = dim_data["confidence"]
-        weighted_sum += w * c * dim_data["raw"]
-        weight_total += w * c
-
-    combined_raw = weighted_sum / weight_total if weight_total > 0 else 0
-    vader_normalized = combined_raw / (combined_raw ** 2 + 8) ** 0.5  # α=8
-    cp = "positive" if vader_normalized >= 0.10 else ("negative" if vader_normalized <= -0.10 else "neutral")
-
-    # 构建推理文字（始终列出所有维度）
-    def _dim_label(name, raw, has_data):
-        if not has_data:
-            return f"{name}无数据"
-        norm = raw / (raw ** 2 + 8) ** 0.5 if raw != 0 else 0
-        p = "积极" if norm >= 0.10 else ("消极" if norm <= -0.10 else "中性")
-        return f"{name}{p}"
-
-    parts = [
-        _dim_label("文字", text_raw, True),
-        _dim_label("空间", spatial_raw, spatial_has_data),
-        _dim_label("印章", seal_raw, seal_has_data),
-    ]
-    if painting_raw != 0:
-        parts.append(_dim_label("画材", painting_raw, 0.5))
-    if time_raw != 0:
-        parts.append(_dim_label("时代", time_raw, 0.7))
-
-    conclusion = "积极" if cp == "positive" else ("消极" if cp == "negative" else "中性")
-    if cp == "neutral" and any("积极" in p or "消极" in p for p in parts):
-        cr = "、".join(parts) + "，信号互相抵消，综合中性"
-    elif cp == "neutral":
-        cr = "、".join(parts) + "，无明显倾向"
-    else:
-        cr = "、".join(parts) + f"，综合{conclusion}"
-
-    # 保留旧格式兼容 + 新 VADER 数据
+    # 保留旧格式兼容 + 引擎数据
     new_ca["combined_sentiment"] = {
         "polarity": cp,
         "reasoning": cr,
-        "text_score": text_raw,
-        "spatial_score": spatial_raw,
-        "seal_score": seal_raw,
-        "painting_score": painting_raw,
-        "time_score": time_raw,
-        "size_score": size_raw,
-        "theme_score": theme_raw,
-        "combined_score": round(combined_raw, 2),
-        "vader_normalized": round(vader_normalized, 3),
+        "text_score": molin_result.text.raw,
+        "spatial_score": molin_result.spatial.raw,
+        "seal_score": molin_result.seal.raw,
+        "painting_score": molin_result.painting.raw,
+        "time_score": molin_result.period.raw,
+        "size_score": molin_result.size.raw,
+        "theme_score": molin_result.theme.raw,
+        "combined_score": round(molin_result.combined_raw, 2),
+        "vader_normalized": round(molin_result.combined_normalized, 3),
         "vader_alpha": 8.0,
-        "weights": calibrated_weights,
-        "method": "vader_v2_multidim",
+        "weights": molin_result.weights_used,
+        "method": "molin_v2",
     }
 
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
