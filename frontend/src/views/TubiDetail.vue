@@ -369,8 +369,8 @@
                   </div>
                 </div>
 
-                <!-- 旧：推理步骤（兼容旧数据） -->
-                <template v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
+                <!-- 旧：推理步骤（仅在没有新公式时显示，兼容旧数据） -->
+                <template v-if="combinedSentiment?.method !== 'molin_v2' && currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
                   <div class="reasoning-steps">
                     <div class="reasoning-label">{{ $t("derivation.text") }}</div>
                     <div class="steps-list">
