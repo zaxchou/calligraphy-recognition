@@ -1089,21 +1089,22 @@ const dimensionRows = computed(() => {
   const cs = combinedSentiment.value
   if (!cs || cs.method !== 'molin_v2') return []
   const w = cs.weights || {}
+  const hd = cs.has_data || {}
   const dims = [
-    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, confidence: 1.0, hasData: true },
-    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, confidence: cs.spatial_score ? 0.8 : 0.3, hasData: !!cs.spatial_score },
-    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, confidence: cs.painting_score ? 0.7 : 0.2, hasData: !!cs.painting_score },
-    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, confidence: cs.size_score ? 0.5 : 0.2, hasData: !!cs.size_score },
-    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, confidence: cs.time_score ? 0.8 : 0.3, hasData: !!cs.time_score },
-    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: cs.seal_score ? 0.6 : 0.2, hasData: !!cs.seal_score },
-    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: cs.theme_score ? 0.9 : 0.2, hasData: !!cs.theme_score },
+    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, hasData: hd.text ?? true },
+    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, hasData: hd.spatial ?? false },
+    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, hasData: hd.painting ?? false },
+    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, hasData: hd.size ?? false },
+    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, hasData: hd.period ?? false },
+    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, hasData: hd.seal ?? false },
+    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, hasData: hd.theme ?? false },
   ]
   // 计算每个维度的贡献和归一化分数
-  const totalWeight = dims.reduce((sum, d) => sum + d.weight * d.confidence, 0)
+  const totalWeight = dims.reduce((sum, d) => sum + d.weight * (d.hasData ? 1.0 : 0.2), 0)
   return dims.map(d => ({
     ...d,
     normalized: vaderNorm(d.raw),
-    contribution: totalWeight > 0 ? (d.weight * d.confidence * d.raw) / totalWeight : 0,
+    contribution: totalWeight > 0 ? (d.weight * (d.hasData ? 1.0 : 0.2) * d.raw) / totalWeight : 0,
   }))
 })
 

@@ -352,6 +352,16 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "vader_alpha": 8.0,
         "weights": molin_result.weights_used,
         "method": "molin_v2",
+        # 各维度是否有实际数据（区分"分数为0"和"无数据"）
+        "has_data": {
+            "text": molin_result.text.has_data,
+            "spatial": molin_result.spatial.has_data,
+            "painting": molin_result.painting.has_data,
+            "size": molin_result.size.has_data,
+            "period": molin_result.period.has_data,
+            "seal": molin_result.seal.has_data,
+            "theme": molin_result.theme.has_data,
+        },
     }
 
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
