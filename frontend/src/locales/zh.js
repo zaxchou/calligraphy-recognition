@@ -19,6 +19,10 @@ export default {
   'factor.text': '题跋文字',
   'factor.spatial': '空间布局',
   'factor.seal': '钤印',
+  'factor.painting': '画材',
+  'factor.size': '尺寸',
+  'factor.period': '时期',
+  'factor.theme': '主题',
   'factor.label': '判定',
   'factor.score': '分值',
   'factor.desc': '说明',
@@ -36,6 +40,12 @@ export default {
   // Derivation
   'derivation.text': '文字分析推导',
   'derivation.dimension': '文字维度分析',
+  'derivation.formula': '加权融合公式',
+  'derivation.raw_score': '原始分',
+  'derivation.weight': '权重',
+  'derivation.confidence': '置信度',
+  'derivation.contribution': '贡献值',
+  'derivation.normalized': '归一化结果',
 
   // Emotion labels
   'emotion.neutral': '情绪平稳',

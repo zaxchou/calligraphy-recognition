@@ -119,11 +119,17 @@ def analyze_spatial(spatial_emotion: Dict) -> DimensionResult:
     if not spatial_emotion or not spatial_emotion.get("signals"):
         return result
 
-    score = spatial_emotion.get("combined_spatial_score", 0) or 0
-    result.raw = score
-    result.normalized = vader_normalize(score)
-    result.has_data = True
-    result.confidence = 0.8
+    raw_score = spatial_emotion.get("combined_spatial_score")
+    # 旧数据可能没有 combined_spatial_score，从 signals 中提取
+    if raw_score is None:
+        signals = spatial_emotion.get("signals", [])
+        scores = [s.get("score") for s in signals if s.get("score") is not None]
+        raw_score = max(scores, key=abs) if scores else 0.0
+
+    result.raw = raw_score or 0.0
+    result.normalized = vader_normalize(result.raw)
+    result.has_data = bool(spatial_emotion.get("signals"))
+    result.confidence = 0.8 if result.has_data else 0.3
     result.signals = spatial_emotion.get("signals", [])
     return result
 

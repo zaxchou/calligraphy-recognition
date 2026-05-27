@@ -36,6 +36,18 @@ export default {
   // Derivation
   'derivation.text': 'Text Analysis Steps',
   'derivation.dimension': 'Text Dimension Analysis',
+  'derivation.formula': 'Weighted Fusion Formula',
+  'derivation.raw_score': 'Raw',
+  'derivation.weight': 'Weight',
+  'derivation.confidence': 'Conf',
+  'derivation.contribution': 'Contrib',
+  'derivation.normalized': 'Normalized',
+
+  // Factor names (for dimension table)
+  'factor.painting': 'Painting',
+  'factor.size': 'Size',
+  'factor.period': 'Period',
+  'factor.theme': 'Theme',
 
   // Emotion labels
   'emotion.neutral': 'Calm',

@@ -325,37 +325,82 @@
               </div>
               
 <!-- ===== Card 4: 推导过程 ===== -->
-              <div class="steps-card" v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
+              <div class="steps-card" v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length || combinedSentiment">
                 <h4 class="section-title"><el-icon><MagicStick /></el-icon> {{ $t("card.steps") }}</h4>
-                <div class="reasoning-steps">
-                  <div class="reasoning-label">{{ $t("derivation.text") }}</div>
-                  <div class="steps-list">
-                    <div
-                      v-for="(step, idx) in currentImage.contentAnalysis.sentiment.reasoning_steps"
-                      :key="idx"
-                      class="step-item"
-                      :class="{ 'step-final': step.offset === null }"
-                    >
-                      <span class="step-icon">{{ step.icon }}</span>
-                      <div class="step-body">
-                        <div class="step-header">
-                          <span class="step-label">{{ $t(step.label) }}</span>
-                          <span
-                            v-if="step.offset !== null && step.offset !== 0"
-                            class="step-offset"
-                            :class="step.offset > 0 ? 'offset-pos' : 'offset-neg'"
-                          >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
-                          <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
+
+                <!-- 新：七维度公式推导（有 combined_sentiment 时显示） -->
+                <div v-if="combinedSentiment?.method === 'molin_v2'" class="formula-breakdown">
+                  <div class="formula-title">{{ $t('derivation.formula') }}</div>
+                  <div class="formula-expr">S = normalize( Σ wᵢ × cᵢ × sᵢ )</div>
+
+                  <table class="formula-table">
+                    <thead>
+                      <tr>
+                        <th>{{ $t('derivation.dimension') }}</th>
+                        <th>{{ $t('derivation.raw_score') }}</th>
+                        <th>{{ $t('derivation.weight') }}</th>
+                        <th>{{ $t('derivation.confidence') }}</th>
+                        <th>{{ $t('derivation.contribution') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="dim in dimensionRows" :key="dim.name" :class="{ 'dim-active': dim.hasData }">
+                        <td class="dim-name">{{ $t(dim.nameKey) }}</td>
+                        <td class="dim-score" :class="{ 'score-pos': dim.raw > 0, 'score-neg': dim.raw < 0 }">
+                          {{ dim.raw > 0 ? '+' : '' }}{{ dim.raw.toFixed(1) }}
+                        </td>
+                        <td class="dim-weight">{{ (dim.weight * 100).toFixed(0) }}%</td>
+                        <td class="dim-conf">{{ (dim.confidence * 100).toFixed(0) }}%</td>
+                        <td class="dim-contrib" :class="{ 'score-pos': dim.contribution > 0, 'score-neg': dim.contribution < 0 }">
+                          {{ dim.contribution > 0 ? '+' : '' }}{{ dim.contribution.toFixed(3) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="formula-result">
+                    <span class="result-label">{{ $t('derivation.normalized') }}</span>
+                    <span class="result-score" :class="{ 'score-pos': combinedSentiment.vader_normalized > 0, 'score-neg': combinedSentiment.vader_normalized < 0 }">
+                      {{ combinedSentiment.vader_normalized > 0 ? '+' : '' }}{{ combinedSentiment.vader_normalized }}
+                    </span>
+                    <span class="result-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">
+                      → {{ $t(`polarity.${combinedSentiment.polarity}`) }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 旧：推理步骤（兼容旧数据） -->
+                <template v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
+                  <div class="reasoning-steps">
+                    <div class="reasoning-label">{{ $t("derivation.text") }}</div>
+                    <div class="steps-list">
+                      <div
+                        v-for="(step, idx) in currentImage.contentAnalysis.sentiment.reasoning_steps"
+                        :key="idx"
+                        class="step-item"
+                        :class="{ 'step-final': step.offset === null }"
+                      >
+                        <span class="step-icon">{{ step.icon }}</span>
+                        <div class="step-body">
+                          <div class="step-header">
+                            <span class="step-label">{{ $t(step.label) }}</span>
+                            <span
+                              v-if="step.offset !== null && step.offset !== 0"
+                              class="step-offset"
+                              :class="step.offset > 0 ? 'offset-pos' : 'offset-neg'"
+                            >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
+                            <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
+                          </div>
+                          <div class="step-detail" v-html="mapPolarityText(translateContent(step.detail))"></div>
                         </div>
-                        <div class="step-detail" v-html="mapPolarityText(translateContent(step.detail))"></div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
-                  <div class="reasoning-label">{{ $t("derivation.dimension") }}</div>
-                  <div class="reasoning-text">{{ translateContent(currentImage.contentAnalysis.sentiment.reasoning) }}</div>
-                </div>
+                  <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
+                    <div class="reasoning-label">{{ $t("derivation.dimension") }}</div>
+                    <div class="reasoning-text">{{ translateContent(currentImage.contentAnalysis.sentiment.reasoning) }}</div>
+                  </div>
+                </template>
               </div>
               <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
                 {{ $t("analysis.empty") }}
@@ -1038,6 +1083,28 @@ const displayScore = computed(() => {
 })
 const isVaderScore = computed(() => combinedSentiment.value?.vader_normalized != null)
 const calibratedWeights = computed(() => combinedSentiment.value?.weights || { text: 0.05, spatial: 0.569, seal: 0.381 })
+
+// 七维度数据行（用于推导过程公式表格）
+const dimensionRows = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs || cs.method !== 'molin_v2') return []
+  const w = cs.weights || {}
+  const dims = [
+    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, confidence: 1.0, hasData: true },
+    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, confidence: cs.spatial_score ? 0.8 : 0.3, hasData: !!cs.spatial_score },
+    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, confidence: cs.painting_score ? 0.7 : 0.2, hasData: !!cs.painting_score },
+    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, confidence: cs.size_score ? 0.5 : 0.2, hasData: !!cs.size_score },
+    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, confidence: cs.time_score ? 0.8 : 0.3, hasData: !!cs.time_score },
+    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: cs.seal_score ? 0.6 : 0.2, hasData: !!cs.seal_score },
+    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: cs.theme_score ? 0.9 : 0.2, hasData: !!cs.theme_score },
+  ]
+  // 计算每个维度的贡献
+  const totalWeight = dims.reduce((sum, d) => sum + d.weight * d.confidence, 0)
+  return dims.map(d => ({
+    ...d,
+    contribution: totalWeight > 0 ? (d.weight * d.confidence * d.raw) / totalWeight : 0,
+  }))
+})
 
 // VADER 归一化函数（前端版本，α=8）
 function vaderNorm(raw) {
@@ -2278,6 +2345,87 @@ defineExpose({
   font-size: 11px;
   color: #999;
   margin-bottom: 6px;
+}
+
+/* ── 七维度公式推导 ── */
+.formula-breakdown {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e8e4da;
+}
+.formula-title {
+  font-size: 11px;
+  color: #8a7e6b;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.formula-expr {
+  font-family: 'Courier New', 'Consolas', monospace;
+  font-size: 13px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #e8e4da;
+  border-radius: 4px;
+  padding: 6px 12px;
+  display: inline-block;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+.formula-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.formula-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #5d4e37;
+  padding: 4px 8px;
+  border-bottom: 2px solid #d8d0c0;
+  font-size: 11px;
+}
+.formula-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0ede6;
+}
+.formula-table tr.dim-active {
+  background: rgba(196, 90, 60, 0.04);
+}
+.formula-table .dim-name {
+  font-weight: 500;
+  color: #333;
+}
+.formula-table .dim-score,
+.formula-table .dim-weight,
+.formula-table .dim-conf,
+.formula-table .dim-contrib {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+.score-pos { color: #3d7a3d; }
+.score-neg { color: #a13d3d; }
+.formula-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 10px;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #e8e4da;
+}
+.result-label {
+  font-weight: 500;
+  color: #5d4e37;
+}
+.result-score {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 14px;
+}
+.result-polarity {
+  font-weight: 600;
 }
 
 /* ── 空间情绪解读卡片 ── */
