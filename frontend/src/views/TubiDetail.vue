@@ -118,23 +118,30 @@
                     <div class="emotion-brain-col">
                       <div class="brain-container">
                         <img src="/brain.svg" class="brain-base" />
-                        <div class="brain-overlay brain-left" :style="{ background: textBrainColor, width: textBrainSize + 'px', height: (textBrainSize * 1.35) + 'px' }"
+                        <!-- 文字维度：左脑 -->
+                        <div class="brain-overlay brain-left" :style="{ background: textBrainColor, width: textBrainSize + 'px', height: (textBrainSize * 1.35) + 'px', opacity: textBrainSize > 36 ? 0.85 : 0.4 }"
                           @mouseenter="brainHover = 'text'" @mouseleave="brainHover = null"
                           :class="{ 'brain-active': brainHover === 'text' }"></div>
-                        <div class="brain-overlay brain-right" :style="{ background: spatialBrainColor, width: spatialBrainSize + 'px', height: (spatialBrainSize * 1.35) + 'px' }"
+                        <!-- 空间维度：右脑 -->
+                        <div class="brain-overlay brain-right" :style="{ background: spatialBrainColor, width: spatialBrainSize + 'px', height: (spatialBrainSize * 1.35) + 'px', opacity: spatialBrainSize > 36 ? 0.85 : 0.4 }"
                           @mouseenter="brainHover = 'spatial'" @mouseleave="brainHover = null"
                           :class="{ 'brain-active': brainHover === 'spatial' }"></div>
+                        <!-- 综合结果：核心 -->
                         <div class="brain-overlay brain-core" :style="{ background: combinedBrainColor }"
                           @mouseenter="brainHover = 'combined'" @mouseleave="brainHover = null"
                           :class="{ 'brain-active': brainHover === 'combined' }"></div>
+                        <!-- 印章维度：底部 -->
                         <div class="brain-overlay brain-seal" v-if="sealEmotion?.total_seals"
-                          :style="{ background: combinedSentiment?.seal_score > 0.3 ? '#3cb88b' : combinedSentiment?.seal_score < -0.3 ? 'hsl(8, 50%, 45%)' : 'hsl(40, 15%, 65%)' }"
+                          :style="{ background: sealBrainColor, opacity: sealBrainSize > 36 ? 0.85 : 0.4 }"
                           @mouseenter="brainHover = 'seal'" @mouseleave="brainHover = null"
                           :class="{ 'brain-active': brainHover === 'seal' }"></div>
                         <!-- hover 提示 -->
                         <transition name="fade">
                           <div class="brain-tooltip" v-if="brainHover">
-                            {{ brainHover === 'text' ? $t('factor.text') : brainHover === 'spatial' ? $t('factor.spatial') : brainHover === 'combined' ? $t('judgment.combined') : $t('factor.seal') }}
+                            {{ brainHover === 'text' ? `${$t('factor.text')} (${(vaderNorm(combinedSentiment?.text_score || 0) * 100).toFixed(0)}%)` :
+                               brainHover === 'spatial' ? `${$t('factor.spatial')} (${(vaderNorm(combinedSentiment?.spatial_score || 0) * 100).toFixed(0)}%)` :
+                               brainHover === 'combined' ? `${$t('judgment.combined')} (${(displayScore * 100).toFixed(0)}%)` :
+                               `${$t('factor.seal')} (${(vaderNorm(combinedSentiment?.seal_score || 0) * 100).toFixed(0)}%)` }}
                           </div>
                         </transition>
                       </div>
@@ -1227,6 +1234,17 @@ const textBrainSize = computed(() => {
 const spatialBrainSize = computed(() => {
   const cs = combinedSentiment.value
   const norm = Math.abs(vaderNorm(cs?.spatial_score || 0))
+  return Math.round(36 + norm * 14)
+})
+const sealBrainColor = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs?.seal_score) return 'hsl(40, 15%, 70%)'
+  const norm = vaderNorm(cs.seal_score)
+  return polarityColor(norm > 0 ? 'positive' : norm < 0 ? 'negative' : 'neutral', Math.abs(norm))
+})
+const sealBrainSize = computed(() => {
+  const cs = combinedSentiment.value
+  const norm = Math.abs(vaderNorm(cs?.seal_score || 0))
   return Math.round(36 + norm * 14)
 })
 
