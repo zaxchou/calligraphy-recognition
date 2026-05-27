@@ -128,7 +128,7 @@
                           @mouseenter="brainHover = 'combined'" @mouseleave="brainHover = null"
                           :class="{ 'brain-active': brainHover === 'combined' }"></div>
                         <div class="brain-overlay brain-seal" v-if="sealEmotion?.total_seals"
-                          :style="{ background: sealEmotion?.composite_score > 0.3 ? '#3cb88b' : sealEmotion.composite_score < -0.3 ? 'hsl(8, 50%, 45%)' : 'hsl(40, 15%, 65%)' }"
+                          :style="{ background: combinedSentiment?.seal_score > 0.3 ? '#3cb88b' : combinedSentiment?.seal_score < -0.3 ? 'hsl(8, 50%, 45%)' : 'hsl(40, 15%, 65%)' }"
                           @mouseenter="brainHover = 'seal'" @mouseleave="brainHover = null"
                           :class="{ 'brain-active': brainHover === 'seal' }"></div>
                         <!-- hover 提示 -->
@@ -159,54 +159,6 @@
                           </el-tooltip>
                         </div>
                       </div>
-                      <table class="factor-table">
-                        <tr class="factor-row">
-                          <td class="factor-col-head">{{ $t("factor.text") }}</td>
-                          <td class="factor-col-head" v-if="spatialEmotion">{{ $t("factor.spatial") }}</td>
-                          <td class="factor-col-head" v-if="sealEmotion?.total_seals">{{ $t("factor.seal") }}</td>
-                        </tr>
-                        <tr class="factor-row">
-                          <td class="factor-cell">
-                            <span class="factor-result" :class="currentImage.contentAnalysis.sentiment.polarity">
-                              {{ currentImage.contentAnalysis.sentiment.polarity === 'positive' ? $t('polarity.positive') : currentImage.contentAnalysis.sentiment.polarity === 'negative' ? $t('polarity.negative') : $t('polarity.neutral') }}
-                            </span>
-                          </td>
-                          <td class="factor-cell" v-if="spatialEmotion">
-                            <span class="factor-result neutral">{{ translateContent(spatialEmotion.combined_spatial_sentiment) || $t('emotion.neutral') }}</span>
-                          </td>
-                          <td class="factor-cell" v-if="sealEmotion?.total_seals">
-                            <span class="factor-result" :class="sealEmotion.composite_score > 0.3 ? 'positive' : sealEmotion.composite_score < -0.3 ? 'negative' : 'neutral'">
-                              {{ translateContent(sealEmotion.seal_emotion) }}
-                            </span>
-                          </td>
-                        </tr>
-                        <tr class="factor-row">
-                          <td class="factor-value">
-                            <span class="factor-score" v-if="textNorm != null">
-                              {{ textNorm > 0 ? '+' : '' }}{{ textNorm.toFixed(2) }}
-                            </span>
-                          </td>
-                          <td class="factor-value" v-if="spatialEmotion">
-                            <span class="factor-score">{{ spatialNorm > 0 ? '+' : '' }}{{ spatialNorm.toFixed(2) }}</span>
-                          </td>
-                          <td class="factor-value" v-if="sealEmotion?.total_seals">
-                            <span class="factor-score">{{ sealNorm > 0 ? '+' : '' }}{{ sealNorm.toFixed(2) }}</span>
-                          </td>
-                        </tr>
-                        <tr class="factor-row">
-                          <td class="factor-value">
-                            <span class="factor-desc">{{ textSentimentSummary }}</span>
-                          </td>
-                          <td class="factor-value" v-if="spatialEmotion">
-                            <span class="factor-detail">{{ spatialEmotion.signals?.map(s => t(s.emotion)).join(', ') }}</span>
-                          </td>
-                          <td class="factor-value" v-if="sealEmotion?.total_seals">
-                            <span class="factor-detail">{{ sealEmotion.signals?.filter(s => s.raw_score !== 0).map(s => s.desc).join('、') || $t('seal.no_seal_emotion') }}</span>
-                          </td>
-                        </tr>
-                      </table>
-                    </div>
-                  </div>
                   <!-- 方法论说明（仅在没有新公式时显示） -->
                   <el-collapse v-if="combinedSentiment?.method !== 'molin_v2'">
                     <el-collapse-item :title="$t('method.title')" name="methodology">
@@ -354,7 +306,9 @@
                             {{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}
                           </td>
                           <td class="dim-weight">{{ (dim.weight * 100).toFixed(0) }}%</td>
-                          <td class="dim-conf">{{ dim.hasData ? '✓' : '—' }}</td>
+                          <td class="dim-conf" :class="{ 'conf-high': dim.confidence >= 0.7, 'conf-mid': dim.confidence >= 0.4 && dim.confidence < 0.7, 'conf-low': dim.confidence < 0.4 }">
+                          {{ (dim.confidence * 100).toFixed(0) }}%
+                        </td>
                           <td class="dim-contrib" :class="{ 'score-pos': dim.contribution > 0, 'score-neg': dim.contribution < 0 }">
                             {{ dim.contribution > 0 ? '+' : '' }}{{ dim.contribution.toFixed(3) }}
                           </td>
@@ -1112,13 +1066,13 @@ const dimensionRows = computed(() => {
   const w = cs.weights || {}
   const hd = cs.has_data || {}
   const dims = [
-    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, hasData: hd.text ?? true },
-    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, hasData: hd.spatial ?? false },
-    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, hasData: hd.painting ?? false },
-    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, hasData: hd.size ?? false },
-    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, hasData: hd.period ?? false },
-    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, hasData: hd.seal ?? false },
-    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, hasData: hd.theme ?? false },
+    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, confidence: hd.text ? 1.0 : 0.3, hasData: hd.text ?? true },
+    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, confidence: hd.spatial ? 0.8 : 0.3, hasData: hd.spatial ?? false },
+    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, confidence: hd.painting ? 0.7 : 0.2, hasData: hd.painting ?? false },
+    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, confidence: hd.size ? 0.5 : 0.2, hasData: hd.size ?? false },
+    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, confidence: hd.period ? 0.8 : 0.3, hasData: hd.period ?? false },
+    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: hd.seal ? 0.6 : 0.2, hasData: hd.seal ?? false },
+    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: hd.theme ? 0.9 : 0.2, hasData: hd.theme ?? false },
   ]
   // 计算每个维度的贡献和归一化分数
   const totalWeight = dims.reduce((sum, d) => sum + d.weight * (d.hasData ? 1.0 : 0.2), 0)
@@ -1245,37 +1199,33 @@ const polarityColor = (polarity, intensity = 0.5) => {
   return 'hsl(40, 15%, 65%)'
 }
 const textBrainColor = computed(() => {
-  const s = contentAnalysis.value?.sentiment
-  return polarityColor(s?.polarity || 'neutral', (s?.emotion_score || 0) / 5)
+  const cs = combinedSentiment.value
+  if (!cs?.vader_normalized) return 'hsl(40, 15%, 70%)'
+  const score = cs.text_score || 0
+  const norm = vaderNorm(score)
+  return polarityColor(norm > 0 ? 'positive' : norm < 0 ? 'negative' : 'neutral', Math.abs(norm))
 })
 const spatialBrainColor = computed(() => {
-  const se = spatialEmotion.value
-  if (!se) return 'hsl(40, 15%, 70%)'
-  const sig = se.combined_spatial_sentiment || ''
-  if (sig.includes('压抑') || sig.includes('宣泄')) return polarityColor('negative', 0.7)
-  if (sig.includes('舒展') || sig.includes('狂放')) return polarityColor('positive', 0.6)
-  return 'hsl(40, 15%, 70%)'
+  const cs = combinedSentiment.value
+  if (!cs?.spatial_score) return 'hsl(40, 15%, 70%)'
+  const norm = vaderNorm(cs.spatial_score)
+  return polarityColor(norm > 0 ? 'positive' : norm < 0 ? 'negative' : 'neutral', Math.abs(norm))
 })
 const combinedBrainColor = computed(() => {
   const cs = combinedSentiment.value
-  if (!cs) return 'hsl(40, 15%, 65%)'
-  if (cs.polarity === 'positive') return '#3cb88b'
-  if (cs.polarity === 'negative') return 'hsl(8, 55%, 45%)'
-  if (cs.polarity === 'ambiguous') return 'hsl(35, 50%, 50%)'
-  return 'hsl(40, 15%, 60%)'
+  if (!cs?.vader_normalized) return 'hsl(40, 15%, 65%)'
+  return polarityColor(cs.polarity || 'neutral', Math.abs(cs.vader_normalized))
 })
-// 脑区尺寸：按情感强度比例缩放（基数 44px，±12px 范围）
+// 脑区尺寸：按 VADER 归一化分数比例缩放
 const textBrainSize = computed(() => {
-  const score = Math.abs(contentAnalysis.value?.sentiment?.emotion_score || 0)
-  return Math.round(36 + Math.min(score, 4) * 2.5)
+  const cs = combinedSentiment.value
+  const norm = Math.abs(vaderNorm(cs?.text_score || 0))
+  return Math.round(36 + norm * 14)
 })
 const spatialBrainSize = computed(() => {
-  const se = spatialEmotion.value
-  if (!se) return 36
-  const sig = se.combined_spatial_sentiment || ''
-  if (sig.includes('压抑') || sig.includes('宣泄') || sig.includes('狂放')) return 42
-  if (sig.includes('舒展')) return 40
-  return 36
+  const cs = combinedSentiment.value
+  const norm = Math.abs(vaderNorm(cs?.spatial_score || 0))
+  return Math.round(36 + norm * 14)
 })
 
 // ── Canvas 相关 ────────────────────────────────
@@ -2509,6 +2459,9 @@ defineExpose({
   text-align: right;
   font-family: 'Courier New', monospace;
 }
+.conf-high { color: #3d7a3d; font-weight: 600; }
+.conf-mid { color: #b8860b; }
+.conf-low { color: #999; }
 .score-pos { color: #3d7a3d; }
 .score-neg { color: #a13d3d; }
 .formula-result {
