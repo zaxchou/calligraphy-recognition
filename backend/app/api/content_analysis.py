@@ -347,6 +347,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "time_score": molin_result.period.raw,
         "size_score": molin_result.size.raw,
         "theme_score": molin_result.theme.raw,
+        "brush_ink_score": molin_result.brush_ink.raw,
         "combined_score": round(molin_result.combined_raw, 2),
         "vader_normalized": round(molin_result.combined_normalized, 3),
         "vader_alpha": 8.0,
@@ -361,6 +362,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
             "period": molin_result.period.has_data,
             "seal": molin_result.seal.has_data,
             "theme": molin_result.theme.has_data,
+            "brush_ink": molin_result.brush_ink.has_data,
         },
         # 各维度详细信号（用于推导过程展示）
         "dimension_details": {

@@ -114,8 +114,35 @@
                 <!-- 有空间分析 → {{ $t("judgment.combined") }} -->
                 <template v-if="combinedSentiment">
                   <div class="emotion-layout-v2">
-                    <!-- 上：综合结论行 -->
-                    <div class="emotion-summary-row">
+                    <!-- VADER compound bar（融合版） -->
+                    <div class="emotion-vader-bar" v-if="combinedSentiment?.vader_normalized != null">
+                      <div class="vader-bar-header">
+                        <span class="vader-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#e07a5f' : '#999' }">
+                          {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : $t('polarity.neutral') }}
+                        </span>
+                        <span class="vader-score-big" :style="{ color: displayScore < 0 ? '#e07a5f' : displayScore > 0 ? '#3cb88b' : '#999' }">
+                          {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(4) }}
+                        </span>
+                        <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
+                        <el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light">
+                          <span class="score-method-badge">Molin Emotion</span>
+                        </el-tooltip>
+                      </div>
+                      <div class="vader-track">
+                        <div class="vader-gradient"></div>
+                        <!-- 指示器 -->
+                        <div class="vader-marker" :style="{ left: ((displayScore + 1) / 2 * 100) + '%' }">
+                          <div class="vader-marker-pin"></div>
+                          <div class="vader-marker-line"></div>
+                        </div>
+                        <span class="vader-axis vader-axis-neg">-1.0</span>
+                        <span class="vader-axis vader-axis-zero">0</span>
+                        <span class="vader-axis vader-axis-pos">+1.0</span>
+                      </div>
+                      <div class="vader-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
+                    </div>
+                    <!-- fallback：无 VADER 数据时用旧布局 -->
+                    <div class="emotion-summary-row" v-else>
                       <div class="summary-left">
                         <span class="summary-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">
                           {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? $t('polarity.ambiguous') : $t('polarity.neutral') }}
@@ -124,28 +151,8 @@
                           {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(2) }}
                         </span>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
-                        <el-tooltip v-if="isVaderScore" :content="$t('method.vader_tip')" placement="top" effect="light">
-                          <span class="score-method-badge">VADER</span>
-                        </el-tooltip>
                       </div>
                       <div class="summary-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
-                    </div>
-                    <!-- 下：头脑 + 七维度条形图（横排） -->
-                    <div class="emotion-detail-row">
-                      <div class="brain-mini">
-                        <img src="/brain.svg" class="brain-mini-img" :style="{ filter: `hue-rotate(${combinedBrainHue}deg) saturate(${combinedBrainSat})` }" />
-                      </div>
-                      <div class="dim-bars-h" v-if="combinedSentiment?.method === 'molin_v2'">
-                        <div v-for="dim in dimensionRows" :key="dim.nameKey" class="dim-bar-row-h" :title="`${$t(dim.nameKey)}: ${dim.normalized > 0 ? '+' : ''}${dim.normalized.toFixed(2)}`">
-                          <span class="dim-bar-label-h">{{ $t(dim.nameKey) }}</span>
-                          <div class="dim-bar-track-h">
-                            <div class="dim-bar-fill-h" :class="{ 'bar-pos': dim.normalized > 0, 'bar-neg': dim.normalized < 0 }"
-                              :style="{ width: Math.min(Math.abs(dim.normalized) * 50, 50) + '%', marginLeft: dim.normalized >= 0 ? '50%' : (50 - Math.min(Math.abs(dim.normalized) * 50, 50)) + '%' }"></div>
-                            <div class="dim-bar-center-h"></div>
-                          </div>
-                          <span class="dim-bar-score-h" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">{{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                   <!-- 方法论说明（仅在没有新公式时显示） -->
@@ -1030,7 +1037,6 @@ function scrollAlbumThumbs(direction) {
 // ── 悬浮示意图 ────────────────────────────────
 const showDiagramOverlay = ref(true)
 const showSpatialEmotion = ref(true)
-const brainHover = ref(null)
 const inscriptionMode = ref(locale.value === 'en' ? 'english' : 'original')
 
 // 空间情绪数据
@@ -1056,7 +1062,7 @@ const displayScore = computed(() => {
 const isVaderScore = computed(() => combinedSentiment.value?.vader_normalized != null)
 const calibratedWeights = computed(() => combinedSentiment.value?.weights || { text: 0.05, spatial: 0.569, seal: 0.381 })
 
-// 七维度数据行（用于推导过程公式表格）
+// 八维度数据行（用于推导过程公式表格）
 const dimensionRows = computed(() => {
   const cs = combinedSentiment.value
   if (!cs || cs.method !== 'molin_v2') return []
@@ -1070,6 +1076,7 @@ const dimensionRows = computed(() => {
     { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, confidence: hd.period ? 0.8 : 0.3, hasData: hd.period ?? false },
     { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: hd.seal ? 0.6 : 0.2, hasData: hd.seal ?? false },
     { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: hd.theme ? 0.9 : 0.2, hasData: hd.theme ?? false },
+    { nameKey: 'factor.brush_ink', raw: cs.brush_ink_score || 0, weight: w.brush_ink || 0.00, confidence: 0, hasData: false, placeholder: true },
   ]
   // 计算每个维度的贡献和归一化分数
   const totalWeight = dims.reduce((sum, d) => sum + d.weight * (d.hasData ? 1.0 : 0.2), 0)
@@ -1080,7 +1087,7 @@ const dimensionRows = computed(() => {
   }))
 })
 
-// 七维度展开状态
+// 八维度展开状态
 const expandedDims = ref(new Set())
 function toggleDimDetail(key) {
   if (expandedDims.value.has(key)) {
@@ -1212,41 +1219,6 @@ const combinedBrainColor = computed(() => {
   const cs = combinedSentiment.value
   if (!cs?.vader_normalized) return 'hsl(40, 15%, 65%)'
   return polarityColor(cs.polarity || 'neutral', Math.abs(cs.vader_normalized))
-})
-const combinedBrainHue = computed(() => {
-  const cs = combinedSentiment.value
-  if (!cs?.vader_normalized) return 0
-  const norm = cs.vader_normalized
-  if (norm > 0.1) return -30  // 绿色调
-  if (norm < -0.1) return 10  // 红色调
-  return 0
-})
-const combinedBrainSat = computed(() => {
-  const cs = combinedSentiment.value
-  if (!cs?.vader_normalized) return 0.3
-  return 0.5 + Math.abs(cs.vader_normalized) * 0.5
-})
-// 脑区尺寸：按 VADER 归一化分数比例缩放
-const textBrainSize = computed(() => {
-  const cs = combinedSentiment.value
-  const norm = Math.abs(vaderNorm(cs?.text_score || 0))
-  return Math.round(36 + norm * 14)
-})
-const spatialBrainSize = computed(() => {
-  const cs = combinedSentiment.value
-  const norm = Math.abs(vaderNorm(cs?.spatial_score || 0))
-  return Math.round(36 + norm * 14)
-})
-const sealBrainColor = computed(() => {
-  const cs = combinedSentiment.value
-  if (!cs?.seal_score) return 'hsl(40, 15%, 70%)'
-  const norm = vaderNorm(cs.seal_score)
-  return polarityColor(norm > 0 ? 'positive' : norm < 0 ? 'negative' : 'neutral', Math.abs(norm))
-})
-const sealBrainSize = computed(() => {
-  const cs = combinedSentiment.value
-  const norm = Math.abs(vaderNorm(cs?.seal_score || 0))
-  return Math.round(36 + norm * 14)
 })
 
 // ── Canvas 相关 ────────────────────────────────
@@ -2238,73 +2210,101 @@ defineExpose({
   line-height: 1.5;
   flex: 1;
 }
-.emotion-detail-row {
+/* ── VADER compound bar（融合版）────────────────────── */
+.emotion-vader-bar {
+  padding: 10px 14px 8px;
+  background: #faf9f7;
+  border-radius: 8px;
+  border: 1px solid #e8e4da;
+}
+.vader-bar-header {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+  height: 28px;
 }
-.brain-mini {
-  flex: 0 0 80px;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.vader-polarity {
+  position: absolute;
+  left: 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
 }
-.brain-mini-img {
-  width: 70px;
-  height: 90px;
-  object-fit: contain;
-  opacity: 0.6;
-  filter: grayscale(0.3) brightness(1.3);
-  transition: filter 0.5s;
+.vader-score-big {
+  width: 100%;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+  line-height: 1;
 }
-.dim-bars-h {
-  flex: 1;
+.vader-bar-header .el-tag,
+.vader-bar-header .score-method-badge {
+  position: absolute;
+  right: 0;
+}
+.vader-track {
+  position: relative;
+  height: 16px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.vader-gradient {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(to right,
+    #e07a5f 0%,
+    #f2c4b3 25%,
+    #faf8f3 50%,
+    #b8dcc6 75%,
+    #3cb88b 100%
+  );
+}
+/* 指示器：圆点 + 竖线 */
+.vader-marker {
+  position: absolute;
+  top: -4px;
+  transform: translateX(-50%);
+  z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-.dim-bar-row-h {
-  display: flex;
   align-items: center;
-  gap: 6px;
-  height: 18px;
 }
-.dim-bar-label-h {
-  font-size: 11px;
-  color: #666;
-  width: 48px;
-  text-align: right;
+.vader-marker-pin {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #333;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
   flex-shrink: 0;
 }
-.dim-bar-track-h {
-  flex: 1;
-  height: 8px;
-  background: #f0ede6;
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
+.vader-marker-line {
+  width: 2px;
+  height: 20px;
+  background: #333;
+  margin-top: -1px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
 }
-.dim-bar-center-h {
+.vader-axis {
   position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: #ccc;
+  bottom: -14px;
+  font-size: 9px;
+  color: #aaa;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
 }
-.dim-bar-fill-h {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.5s, margin-left 0.5s;
-}
-.dim-bar-fill-h.bar-pos {
-  background: linear-gradient(90deg, #a8e6cf, #3cb88b);
-}
-.dim-bar-fill-h.bar-neg {
-  background: linear-gradient(90deg, #e07a5f, #f5c6aa);
+.vader-axis-neg { left: 0%; }
+.vader-axis-zero { left: 50%; }
+.vader-axis-pos { left: 100%; }
+.vader-reasoning {
+  font-size: 12px;
+  color: #5a5347;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 .dim-bar-score-h {
   font-size: 10px;
@@ -2313,166 +2313,6 @@ defineExpose({
   width: 36px;
   text-align: right;
   flex-shrink: 0;
-}
-.brain-container {
-  position: relative;
-  width: 130px;
-  height: 160px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: transparent;
-}
-.brain-base {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0.5;
-  filter: grayscale(0.4) brightness(1.4) contrast(0.9);
-  mix-blend-mode: multiply;
-  transition: filter 0.5s;
-}
-
-/* ── 七维度迷你条形图 ── */
-.dim-bars {
-  width: 100%;
-  margin-top: 6px;
-  padding: 0 4px;
-}
-.dim-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 14px;
-  margin-bottom: 2px;
-}
-.dim-bar-label {
-  font-size: 9px;
-  color: #999;
-  width: 18px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.dim-bar-track {
-  flex: 1;
-  height: 6px;
-  background: #f0ede6;
-  border-radius: 3px;
-  position: relative;
-  overflow: hidden;
-}
-.dim-bar-center {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: #ccc;
-}
-.dim-bar-fill {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s, margin-left 0.5s;
-}
-.dim-bar-fill.bar-pos {
-  background: #3cb88b;
-}
-.dim-bar-fill.bar-neg {
-  background: #e07a5f;
-}
-.brain-overlay {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.72;
-  mix-blend-mode: normal;
-  pointer-events: auto;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid rgba(255,255,255,0.7);
-  box-shadow: 0 0 10px rgba(0,0,0,0.18);
-}
-.brain-overlay:hover,
-.brain-overlay.brain-active {
-  opacity: 0.95;
-  z-index: 5;
-}
-.brain-overlay.brain-left:hover,
-.brain-overlay.brain-left.brain-active { transform: scale(1.25); }
-.brain-overlay.brain-right:hover,
-.brain-overlay.brain-right.brain-active { transform: scale(1.25); }
-/* 综合核心呼吸动画 */
-@keyframes brainBreathe {
-  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
-  50% { transform: translateX(-50%) scale(1.2); opacity: 1; box-shadow: 0 0 18px rgba(0,0,0,0.3); }
-}
-.brain-tooltip {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 10;
-}
-/* 左右脑区微微呼吸 */
-@keyframes brainBreatheSoft {
-  0%, 100% { opacity: 0.68; }
-  50% { opacity: 0.92; }
-}
-.brain-overlay.brain-left {
-  top: 28px; left: 22px;
-  animation: brainBreatheSoft 4s ease-in-out infinite;
-}
-.brain-overlay.brain-right {
-  top: 28px; right: 22px;
-  animation: brainBreatheSoft 4s ease-in-out 0.5s infinite;
-}
-.brain-overlay.brain-core {
-  width: 20px; height: 20px;
-  top: 44px; left: 50%;
-  transform: translateX(-50%);
-  opacity: 0.85;
-  border-width: 2.5px;
-  z-index: 2;
-  animation: brainBreathe 2.5s ease-in-out infinite;
-}
-.brain-overlay.brain-core:hover,
-.brain-overlay.brain-core.brain-active {
-  animation: none;
-  transform: translateX(-50%) scale(1.3);
-  opacity: 0.95;
-}
-.brain-overlay.brain-seal {
-  width: 20px; height: 14px;
-  top: 20px; left: 50%;
-  transform: translateX(-50%);
-  opacity: 0.68;
-  border-width: 2px;
-  animation: brainBreatheSoft 5s ease-in-out 1s infinite;
-}
-.brain-overlay.brain-seal:hover,
-.brain-overlay.brain-seal.brain-active {
-  transform: translateX(-50%) scale(1.3);
-  opacity: 0.95;
-}
-.brain-labels {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 8px;
-  margin-top: 6px;
-}
-.brain-label {
-  font-size: 10px;
-  font-weight: 600;
-  white-space: nowrap;
 }
 .emotion-text-col {
   flex: 1;

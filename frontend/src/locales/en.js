@@ -48,6 +48,7 @@ export default {
   'factor.size': 'Size',
   'factor.period': 'Period',
   'factor.theme': 'Theme',
+  'factor.brush_ink': 'Brush & Ink',
 
   // Emotion labels
   'emotion.neutral': 'Calm',
@@ -192,7 +193,7 @@ export default {
   'ranking.no_data': 'No data — upload artworks first',
 
   // Scoring method
-  'method.vader_tip': 'Sentiment normalized to [-1, +1] via VADER algorithm. Ref: Hutto & Gilbert (2014), ICWSM.',
+  'method.vader_tip': 'Molin Emotion Engine: multi-dimensional weighted fusion (text·spatial·painting·size·period·seals·theme·brush_ink), normalized to [-1, +1]. Normalization based on: Hutto & Gilbert, "VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text", ICWSM 2014.',
   'method.title': 'Scoring Methodology',
   'method.formula': 'Weighted Fusion Formula:',
   'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',

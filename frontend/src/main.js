@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElMessage } from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import enLocale from 'element-plus/dist/locale/en.mjs'
@@ -32,6 +32,35 @@ window.fetch = function (input, init) {
   }
   return _origFetch.call(window, input, init)
 }
+
+// ── ElMessage 位置 patch：强制右上角，自动消失 ──
+const messageDefaults = { duration: 2000, offset: 16 }
+function wrapMsg(fn) {
+  return (opts) => fn.call(ElMessage, { ...messageDefaults, ...(typeof opts === 'string' ? { message: opts } : opts) })
+}
+ElMessage.success = wrapMsg(ElMessage.success.bind(ElMessage))
+ElMessage.error   = wrapMsg(ElMessage.error.bind(ElMessage))
+ElMessage.warning = wrapMsg(ElMessage.warning.bind(ElMessage))
+ElMessage.info    = wrapMsg(ElMessage.info.bind(ElMessage))
+
+// MutationObserver：任何 .el-message 出现时立即挪到右上角
+const _msgObserver = new MutationObserver((mutations) => {
+  for (const m of mutations) {
+    for (const node of m.addedNodes) {
+      if (node.nodeType !== 1) continue
+      const targets = node.classList?.contains('el-message') ? [node] : node.querySelectorAll?.('.el-message') || []
+      for (const el of targets) {
+        el.style.top = '60px'
+        el.style.right = '16px'
+        el.style.left = 'auto'
+        el.style.transform = 'none'
+        el.classList.remove('is-center')
+        el.classList.add('is-right')
+      }
+    }
+  }
+})
+_msgObserver.observe(document.body, { childList: true, subtree: true })
 
 // Element Plus locale 跟随 i18n 切换
 const epLocales = { zh: zhCn, en: enLocale }

@@ -1,7 +1,7 @@
 """
 墨林情绪引擎 v2.0
 ────────────────────────────────────────
-七维度融合情感评分系统
+八维度融合情感评分系统
 
 维度:
 1. 文字词典 (通用)
@@ -11,6 +11,7 @@
 5. 时期基线 (特化)
 6. 印章情感 (特化)
 7. 主题覆盖 (特化)
+8. 笔墨质感 (预留 — 待图形识别)
 """
 
 import math
@@ -40,6 +41,7 @@ class EngineResult:
     period: DimensionResult = field(default_factory=lambda: DimensionResult("时期"))
     seal: DimensionResult = field(default_factory=lambda: DimensionResult("印章"))
     theme: DimensionResult = field(default_factory=lambda: DimensionResult("主题"))
+    brush_ink: DimensionResult = field(default_factory=lambda: DimensionResult("笔墨"))
     combined_raw: float = 0.0
     combined_normalized: float = 0.0
     polarity: str = "neutral"
@@ -56,6 +58,7 @@ DEFAULT_WEIGHTS = {
     "period": 0.10,
     "seal": 0.10,
     "theme": 0.05,
+    "brush_ink": 0.00,  # 预留维度，当前权重为 0
 }
 
 VADER_ALPHA = 8.0
@@ -262,6 +265,11 @@ def analyze_theme(themes: List[Dict], artist: str = None) -> DimensionResult:
     return result
 
 
+def analyze_brush_ink() -> DimensionResult:
+    """维度8: 笔墨质感（预留 — 待图形识别能力接入）"""
+    return DimensionResult(name="笔墨", confidence=0.0)
+
+
 def combine_dimensions(text: DimensionResult,
                        spatial: DimensionResult,
                        painting: DimensionResult,
@@ -269,8 +277,9 @@ def combine_dimensions(text: DimensionResult,
                        period: DimensionResult,
                        seal: DimensionResult,
                        theme: DimensionResult,
+                       brush_ink: DimensionResult = None,
                        weights: Dict[str, float] = None) -> tuple:
-    """七维度加权融合"""
+    """八维度加权融合"""
     if weights is None:
         weights = DEFAULT_WEIGHTS
 
@@ -282,6 +291,7 @@ def combine_dimensions(text: DimensionResult,
         ("period", period, weights.get("period", 0.10)),
         ("seal", seal, weights.get("seal", 0.10)),
         ("theme", theme, weights.get("theme", 0.05)),
+        ("brush_ink", brush_ink or DimensionResult(name="笔墨"), weights.get("brush_ink", 0.00)),
     ]
 
     weighted_sum = 0.0
@@ -340,7 +350,7 @@ def analyze(text: str,
             themes: List = None,
             weights: Dict[str, float] = None) -> EngineResult:
     """
-    主入口：七维度情感分析
+    主入口：八维度情感分析
 
     Returns:
         EngineResult: 包含各维度分数、综合分数、极性、推理
@@ -366,10 +376,13 @@ def analyze(text: str,
     # 7. 主题
     theme_dim = analyze_theme(themes, artist)
 
+    # 8. 笔墨（预留）
+    brush_ink_dim = analyze_brush_ink()
+
     # 融合
     combined_raw, combined_normalized, polarity = combine_dimensions(
         text_dim, spatial_dim, painting_dim, size_dim,
-        period_dim, seal_dim, theme_dim, weights
+        period_dim, seal_dim, theme_dim, brush_ink_dim, weights
     )
 
     # 推理
@@ -383,6 +396,7 @@ def analyze(text: str,
         period=period_dim,
         seal=seal_dim,
         theme=theme_dim,
+        brush_ink=brush_ink_dim,
         combined_raw=combined_raw,
         combined_normalized=combined_normalized,
         polarity=polarity,

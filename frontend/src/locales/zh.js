@@ -23,6 +23,7 @@ export default {
   'factor.size': '尺寸',
   'factor.period': '时期',
   'factor.theme': '主题',
+  'factor.brush_ink': '笔墨',
   'factor.label': '判定',
   'factor.score': '分值',
   'factor.desc': '说明',
@@ -190,7 +191,7 @@ export default {
   'ranking.no_data': '暂无数据，请先上传画作',
 
   // Scoring method
-  'method.vader_tip': '情绪值基于 VADER 算法归一化到 [-1, +1]。参考: Hutto & Gilbert (2014), ICWSM.',
+  'method.vader_tip': '墨林情绪引擎：基于多维度加权融合（文字·空间·画材·尺寸·时期·印章·主题·笔墨），归一化到 [-1, +1]。归一化算法参考: Hutto & Gilbert, "VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text", ICWSM 2014.',
   'method.title': '评分方法论',
   'method.formula': '加权融合公式：',
   'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',

@@ -242,6 +242,58 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-lg) !important;
 }
 
+/* ── ElMessage 轻提示覆盖 ──────────────────────── */
+.el-message {
+  --el-message-bg-color: transparent !important;
+  --el-message-border-color: transparent !important;
+  background: rgba(255,252,245,0.92) !important;
+  border: none !important;
+  border-radius: 20px !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+  padding: 6px 16px !important;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  z-index: 9999;
+  max-width: 320px;
+}
+.el-message .el-message__icon {
+  margin-right: 4px;
+}
+.el-message .el-message__icon svg {
+  width: 14px;
+  height: 14px;
+}
+.el-message .el-message__content {
+  font-size: 12px;
+  color: #5a5347;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.el-message .el-message__closeBtn {
+  font-size: 12px;
+  color: #bbb;
+  right: 8px;
+}
+/* 不同类型的左侧色条 */
+.el-message.el-message--success {
+  border-left: 3px solid #3cb88b !important;
+  border-radius: 4px 20px 20px 4px !important;
+}
+.el-message.el-message--error {
+  border-left: 3px solid #e07a5f !important;
+  border-radius: 4px 20px 20px 4px !important;
+}
+.el-message.el-message--warning {
+  border-left: 3px solid #d4a843 !important;
+  border-radius: 4px 20px 20px 4px !important;
+}
+.el-message.el-message--info {
+  border-left: 3px solid #909399 !important;
+  border-radius: 4px 20px 20px 4px !important;
+}
+
 /* 选中文字色 */
 ::selection {
   background: var(--cinnabar);
