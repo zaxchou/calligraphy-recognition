@@ -352,7 +352,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "vader_alpha": 8.0,
         "weights": molin_result.weights_used,
         "method": "molin_v2",
-        # 各维度是否有实际数据（区分"分数为0"和"无数据"）
+        # 各维度是否有实际数据
         "has_data": {
             "text": molin_result.text.has_data,
             "spatial": molin_result.spatial.has_data,
@@ -361,6 +361,23 @@ async def analyze_single_record(record_id: int, cur) -> dict:
             "period": molin_result.period.has_data,
             "seal": molin_result.seal.has_data,
             "theme": molin_result.theme.has_data,
+        },
+        # 各维度详细信号（用于推导过程展示）
+        "dimension_details": {
+            "text": {"signals": molin_result.text.signals},
+            "spatial": {"signals": molin_result.spatial.signals},
+            "painting": {"signals": molin_result.painting.signals},
+            "size": {
+                "category": getattr(molin_result.size, 'size_category', ''),
+                "width_cm": width_cm,
+                "height_cm": height_cm,
+            },
+            "period": {
+                "year": year,
+                "stage": getattr(molin_result.period, 'stage', ''),
+            },
+            "seal": {"signals": molin_result.seal.signals},
+            "theme": {"signals": molin_result.theme.signals},
         },
     }
 

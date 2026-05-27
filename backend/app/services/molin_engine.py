@@ -221,27 +221,44 @@ def analyze_theme(themes: List[Dict], artist: str = None) -> DimensionResult:
 
     from app.services.tibi_analysis_rules import THEME_SENTIMENT_OVERRIDE
 
-    primary_theme = themes[0] if themes else None
-    if not primary_theme:
-        return result
-
-    theme_code = primary_theme.get("code")
-    theme_name = primary_theme.get("name", "")
-
-    # 查找主题覆盖规则
-    override = THEME_SENTIMENT_OVERRIDE.get(theme_code)
-    if not override:
-        return result
-
-    # 检查是否有例外关键词（暂不实现，需要原文）
-    polarity = override.get("polarity", "neutral")
-    bonus = override.get("override_bonus", 0)
-
-    result.raw = bonus
-    result.normalized = vader_normalize(bonus)
+    # 始终标记有数据（主题存在）
     result.has_data = True
+    result.signals = []
+
+    for theme in themes[:2]:  # 只看前两个主题
+        theme_code = theme.get("code")
+        theme_name = theme.get("name", "")
+        confidence = theme.get("confidence", 0)
+
+        override = THEME_SENTIMENT_OVERRIDE.get(theme_code)
+        if override:
+            polarity = override.get("polarity", "neutral")
+            bonus = override.get("override_bonus", 0)
+            result.signals.append({
+                "theme": theme_name,
+                "code": theme_code,
+                "confidence": confidence,
+                "polarity": polarity,
+                "bonus": bonus,
+                "has_override": True,
+                "note": override.get("note", ""),
+            })
+            # 只有主主题的覆盖才生效
+            if theme == themes[0]:
+                result.raw = bonus
+        else:
+            result.signals.append({
+                "theme": theme_name,
+                "code": theme_code,
+                "confidence": confidence,
+                "polarity": "neutral",
+                "bonus": 0,
+                "has_override": False,
+                "note": "无覆盖规则",
+            })
+
+    result.normalized = vader_normalize(result.raw)
     result.confidence = 0.9
-    result.signals = [{"theme": theme_name, "polarity": polarity, "bonus": bonus}]
     return result
 
 

@@ -344,17 +344,38 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="dim in dimensionRows" :key="dim.name" :class="{ 'dim-active': dim.hasData }">
-                        <td class="dim-name">{{ $t(dim.nameKey) }}</td>
-                        <td class="dim-score" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">
-                          {{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}
-                        </td>
-                        <td class="dim-weight">{{ (dim.weight * 100).toFixed(0) }}%</td>
-                        <td class="dim-conf">{{ dim.hasData ? '✓' : '—' }}</td>
-                        <td class="dim-contrib" :class="{ 'score-pos': dim.contribution > 0, 'score-neg': dim.contribution < 0 }">
-                          {{ dim.contribution > 0 ? '+' : '' }}{{ dim.contribution.toFixed(3) }}
-                        </td>
-                      </tr>
+                      <template v-for="dim in dimensionRows" :key="dim.nameKey">
+                        <tr :class="{ 'dim-active': dim.hasData }" @click="dim.hasData && toggleDimDetail(dim.nameKey)" :style="{ cursor: dim.hasData ? 'pointer' : 'default' }">
+                          <td class="dim-name">
+                            <span v-if="dim.hasData" class="dim-expand">{{ expandedDims.has(dim.nameKey) ? '▼' : '▶' }}</span>
+                            {{ $t(dim.nameKey) }}
+                          </td>
+                          <td class="dim-score" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">
+                            {{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}
+                          </td>
+                          <td class="dim-weight">{{ (dim.weight * 100).toFixed(0) }}%</td>
+                          <td class="dim-conf">{{ dim.hasData ? '✓' : '—' }}</td>
+                          <td class="dim-contrib" :class="{ 'score-pos': dim.contribution > 0, 'score-neg': dim.contribution < 0 }">
+                            {{ dim.contribution > 0 ? '+' : '' }}{{ dim.contribution.toFixed(3) }}
+                          </td>
+                        </tr>
+                        <!-- 展开详情 -->
+                        <tr v-if="expandedDims.has(dim.nameKey) && dim.hasData" class="dim-detail-row">
+                          <td colspan="5" class="dim-detail-cell">
+                            <div class="dim-detail-content">
+                              <template v-for="(item, i) in getDimDetail(dim.nameKey)" :key="i">
+                                <div class="detail-item">
+                                  <span class="detail-label">{{ item.label }}</span>
+                                  <span class="detail-value" :class="{ 'score-pos': item.score > 0, 'score-neg': item.score < 0 }">
+                                    {{ item.score > 0 ? '+' : '' }}{{ item.score }}
+                                  </span>
+                                  <span class="detail-desc" v-if="item.desc">{{ item.desc }}</span>
+                                </div>
+                              </template>
+                            </div>
+                          </td>
+                        </tr>
+                      </template>
                     </tbody>
                   </table>
 
@@ -1107,6 +1128,89 @@ const dimensionRows = computed(() => {
     contribution: totalWeight > 0 ? (d.weight * (d.hasData ? 1.0 : 0.2) * d.raw) / totalWeight : 0,
   }))
 })
+
+// 七维度展开状态
+const expandedDims = ref(new Set())
+function toggleDimDetail(key) {
+  if (expandedDims.value.has(key)) {
+    expandedDims.value.delete(key)
+  } else {
+    expandedDims.value.add(key)
+  }
+}
+
+// 获取维度详情
+function getDimDetail(dimKey) {
+  const cs = combinedSentiment.value
+  if (!cs?.dimension_details) return []
+  const key = dimKey.replace('factor.', '') // text, spatial, painting, size, period, seal, theme
+  const detail = cs.dimension_details[key] || {}
+
+  // 文字维度：显示匹配的词和分数
+  if (key === 'text' && detail.signals?.length) {
+    return detail.signals.map(s => ({
+      label: s.word,
+      score: s.score,
+      desc: s.source === 'lexicon' ? '词典' : '规则',
+    }))
+  }
+
+  // 空间维度：显示布局类型
+  if (key === 'spatial' && detail.signals?.length) {
+    return detail.signals.map(s => ({
+      label: s.type || s.emotion || '',
+      score: s.score || 0,
+      desc: s.desc || '',
+    }))
+  }
+
+  // 画材维度
+  if (key === 'painting' && detail.signals?.length) {
+    return detail.signals.map(s => ({
+      label: s.visual_emotion || '',
+      score: s.emotion_offset || 0,
+      desc: s.matched_keywords?.join('、') || '',
+    }))
+  }
+
+  // 尺寸维度
+  if (key === 'size') {
+    return [{
+      label: `${detail.width_cm || '?'}×${detail.height_cm || '?'}cm`,
+      score: cs.size_score || 0,
+      desc: detail.category || '',
+    }]
+  }
+
+  // 时期维度
+  if (key === 'period') {
+    return [{
+      label: `${detail.year || '?'}年`,
+      score: cs.time_score || 0,
+      desc: detail.stage || '',
+    }]
+  }
+
+  // 印章维度
+  if (key === 'seal' && detail.signals?.length) {
+    return detail.signals.map(s => ({
+      label: s.seal || '',
+      score: s.raw_score || 0,
+      desc: s.desc || '',
+    }))
+  }
+
+  // 主题维度
+  if (key === 'theme' && detail.signals?.length) {
+    return detail.signals.map(s => ({
+      label: s.theme || '',
+      score: s.bonus || 0,
+      desc: s.note || (s.has_override ? s.polarity : '无覆盖规则'),
+    }))
+  }
+
+  return [{ label: '无详细数据', score: 0, desc: '' }]
+}
 
 // VADER 归一化函数（前端版本，α=8）
 function vaderNorm(raw) {
@@ -2428,6 +2532,47 @@ defineExpose({
 }
 .result-polarity {
   font-weight: 600;
+}
+
+/* ── 维度展开详情 ── */
+.dim-expand {
+  font-size: 10px;
+  color: #b8a47e;
+  margin-right: 4px;
+  display: inline-block;
+  width: 10px;
+}
+.dim-detail-row {
+  background: #faf9f7;
+}
+.dim-detail-cell {
+  padding: 0 !important;
+}
+.dim-detail-content {
+  padding: 6px 12px 8px 28px;
+}
+.detail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 11px;
+}
+.detail-label {
+  color: #333;
+  font-weight: 500;
+  min-width: 60px;
+}
+.detail-value {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+.detail-desc {
+  color: #999;
+  font-size: 10px;
+  flex: 1;
 }
 
 /* ── 空间情绪解读卡片 ── */
