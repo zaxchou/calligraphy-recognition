@@ -35,7 +35,7 @@ export default {
 
   // Derivation
   'derivation.text': 'Text Analysis Steps',
-  'derivation.dimension': 'Text Dimension Analysis',
+  'derivation.dimension': 'Dimension',
   'derivation.formula': 'Weighted Fusion Formula',
   'derivation.raw_score': 'Raw',
   'derivation.weight': 'Weight',
@@ -200,7 +200,7 @@ export default {
   'method.title': 'Scoring Methodology',
   'method.formula': 'Weighted Fusion Formula:',
   'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',
-  'method.explanation': '3-dimension confidence-weighted fusion, calibrated with LLM (MAE=0.052):',
+  'method.explanation': '8-dimension confidence-weighted fusion, calibrated with LLM (MAE=0.052):',
   'method.text_weight': 'Text sentiment weight',
   'method.spatial_weight': 'Spatial layout weight',
   'method.seal_weight': 'Seal emotion weight',

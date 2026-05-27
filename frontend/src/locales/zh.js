@@ -40,7 +40,7 @@ export default {
 
   // Derivation
   'derivation.text': '文字分析推导',
-  'derivation.dimension': '文字维度分析',
+  'derivation.dimension': '维度',
   'derivation.formula': '加权融合公式',
   'derivation.raw_score': '原始分',
   'derivation.weight': '权重',
@@ -198,7 +198,7 @@ export default {
   'method.title': '评分方法论',
   'method.formula': '加权融合公式：',
   'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',
-  'method.explanation': '三维度置信度加权融合，经 LLM 校准（MAE=0.052）：',
+  'method.explanation': '八维度置信度加权融合，经 LLM 校准（MAE=0.052）：',
   'method.text_weight': '文字情感权重',
   'method.spatial_weight': '空间布局权重',
   'method.seal_weight': '印章情感权重',
