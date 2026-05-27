@@ -207,8 +207,8 @@
                       </table>
                     </div>
                   </div>
-                  <!-- 方法论说明 -->
-                  <el-collapse>
+                  <!-- 方法论说明（仅在没有新公式时显示） -->
+                  <el-collapse v-if="combinedSentiment?.method !== 'molin_v2'">
                     <el-collapse-item :title="$t('method.title')" name="methodology">
                       <div class="methodology-content">
                         <p><strong>{{ $t('method.formula') }}</strong></p>
@@ -337,7 +337,7 @@
                     <thead>
                       <tr>
                         <th>{{ $t('derivation.dimension') }}</th>
-                        <th>{{ $t('derivation.raw_score') }}</th>
+                        <th>{{ $t('derivation.normalized') }}</th>
                         <th>{{ $t('derivation.weight') }}</th>
                         <th>{{ $t('derivation.confidence') }}</th>
                         <th>{{ $t('derivation.contribution') }}</th>
@@ -346,11 +346,11 @@
                     <tbody>
                       <tr v-for="dim in dimensionRows" :key="dim.name" :class="{ 'dim-active': dim.hasData }">
                         <td class="dim-name">{{ $t(dim.nameKey) }}</td>
-                        <td class="dim-score" :class="{ 'score-pos': dim.raw > 0, 'score-neg': dim.raw < 0 }">
-                          {{ dim.raw > 0 ? '+' : '' }}{{ dim.raw.toFixed(1) }}
+                        <td class="dim-score" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">
+                          {{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}
                         </td>
                         <td class="dim-weight">{{ (dim.weight * 100).toFixed(0) }}%</td>
-                        <td class="dim-conf">{{ (dim.confidence * 100).toFixed(0) }}%</td>
+                        <td class="dim-conf">{{ dim.hasData ? '✓' : '—' }}</td>
                         <td class="dim-contrib" :class="{ 'score-pos': dim.contribution > 0, 'score-neg': dim.contribution < 0 }">
                           {{ dim.contribution > 0 ? '+' : '' }}{{ dim.contribution.toFixed(3) }}
                         </td>
@@ -1098,10 +1098,11 @@ const dimensionRows = computed(() => {
     { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: cs.seal_score ? 0.6 : 0.2, hasData: !!cs.seal_score },
     { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: cs.theme_score ? 0.9 : 0.2, hasData: !!cs.theme_score },
   ]
-  // 计算每个维度的贡献
+  // 计算每个维度的贡献和归一化分数
   const totalWeight = dims.reduce((sum, d) => sum + d.weight * d.confidence, 0)
   return dims.map(d => ({
     ...d,
+    normalized: vaderNorm(d.raw),
     contribution: totalWeight > 0 ? (d.weight * d.confidence * d.raw) / totalWeight : 0,
   }))
 })
