@@ -113,43 +113,37 @@
                 <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> {{ $t("card.emotion") }}</h4>
                 <!-- 有空间分析 → {{ $t("judgment.combined") }} -->
                 <template v-if="combinedSentiment">
-                  <div class="emotion-layout">
-                    <!-- 左：头脑 SVG（综合情绪色） -->
-                    <div class="emotion-brain-col">
-                      <div class="brain-container">
-                        <img src="/brain.svg" class="brain-base" :style="{ filter: `hue-rotate(${combinedBrainHue}deg) saturate(${combinedBrainSat})` }" />
-                        <div class="brain-overlay brain-core" :style="{ background: combinedBrainColor, opacity: 0.7 }"></div>
+                  <div class="emotion-layout-v2">
+                    <!-- 上：综合结论行 -->
+                    <div class="emotion-summary-row">
+                      <div class="summary-left">
+                        <span class="summary-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">
+                          {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? $t('polarity.ambiguous') : $t('polarity.neutral') }}
+                        </span>
+                        <span class="summary-score" :style="{ color: displayScore < 0 ? '#f56c6c' : displayScore > 0 ? '#3cb88b' : '#999' }">
+                          {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(2) }}
+                        </span>
+                        <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
+                        <el-tooltip v-if="isVaderScore" :content="$t('method.vader_tip')" placement="top" effect="light">
+                          <span class="score-method-badge">VADER</span>
+                        </el-tooltip>
                       </div>
-                      <!-- 七维度迷你条形图 -->
-                      <div class="dim-bars" v-if="combinedSentiment?.method === 'molin_v2'">
-                        <div v-for="dim in dimensionRows" :key="dim.nameKey" class="dim-bar-row" :title="`${$t(dim.nameKey)}: ${dim.normalized > 0 ? '+' : ''}${dim.normalized.toFixed(2)}`">
-                          <span class="dim-bar-label">{{ $t(dim.nameKey).slice(0, 2) }}</span>
-                          <div class="dim-bar-track">
-                            <div class="dim-bar-fill" :class="{ 'bar-pos': dim.normalized > 0, 'bar-neg': dim.normalized < 0 }"
-                              :style="{ width: Math.min(Math.abs(dim.normalized) * 50, 50) + '%', marginLeft: dim.normalized >= 0 ? '50%' : (50 - Math.min(Math.abs(dim.normalized) * 50, 50)) + '%' }"></div>
-                            <div class="dim-bar-center"></div>
-                          </div>
-                        </div>
-                      </div>
+                      <div class="summary-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
                     </div>
-                    <!-- 右：综合结论 -->
-                    <div class="emotion-text-col">
-                      <div class="final-judgment-card">
-                        <div class="judgment-info-col">
-                          <div class="judgment-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
-                          <el-tag size="small" type="info" v-if="currentImage.contentAnalysis?.period_phase">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
-                        </div>
-                        <div class="judgment-score-col">
-                          <span class="judgment-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : combinedSentiment.polarity === 'ambiguous' ? '#b8860b' : '#909399' }">
-                            {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? $t('polarity.ambiguous') : $t('polarity.neutral') }}
-                          </span>
-                          <span class="judgment-score"
-                            :style="{ color: displayScore < 0 ? '#f56c6c' : '#3cb88b' }">
-                            {{ displayScore > 0 ? '+' : '' }}{{ displayScore }}
-                          </span>
-                          <el-tooltip v-if="isVaderScore" :content="$t('method.vader_tip')" placement="top" effect="light">
-                            <span class="score-method-badge">VADER</span>
-                          </el-tooltip>
+                    <!-- 下：头脑 + 七维度条形图（横排） -->
+                    <div class="emotion-detail-row">
+                      <div class="brain-mini">
+                        <img src="/brain.svg" class="brain-mini-img" :style="{ filter: `hue-rotate(${combinedBrainHue}deg) saturate(${combinedBrainSat})` }" />
+                      </div>
+                      <div class="dim-bars-h" v-if="combinedSentiment?.method === 'molin_v2'">
+                        <div v-for="dim in dimensionRows" :key="dim.nameKey" class="dim-bar-row-h" :title="`${$t(dim.nameKey)}: ${dim.normalized > 0 ? '+' : ''}${dim.normalized.toFixed(2)}`">
+                          <span class="dim-bar-label-h">{{ $t(dim.nameKey) }}</span>
+                          <div class="dim-bar-track-h">
+                            <div class="dim-bar-fill-h" :class="{ 'bar-pos': dim.normalized > 0, 'bar-neg': dim.normalized < 0 }"
+                              :style="{ width: Math.min(Math.abs(dim.normalized) * 50, 50) + '%', marginLeft: dim.normalized >= 0 ? '50%' : (50 - Math.min(Math.abs(dim.normalized) * 50, 50)) + '%' }"></div>
+                            <div class="dim-bar-center-h"></div>
+                          </div>
+                          <span class="dim-bar-score-h" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">{{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}</span>
                         </div>
                       </div>
                     </div>
@@ -2207,11 +2201,118 @@ defineExpose({
   gap: 14px;
   align-items: flex-start;
 }
-.emotion-brain-col {
-  flex: 0 0 135px;
+/* ── 情绪解读卡片 v2 布局 ── */
+.emotion-layout-v2 {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+.emotion-summary-row {
+  display: flex;
   align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #faf9f7;
+  border-radius: 6px;
+  border: 1px solid #e8e4da;
+}
+.summary-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.summary-polarity {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+.summary-score {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+.summary-reasoning {
+  font-size: 12px;
+  color: #5a5347;
+  line-height: 1.5;
+  flex: 1;
+}
+.emotion-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.brain-mini {
+  flex: 0 0 80px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brain-mini-img {
+  width: 70px;
+  height: 90px;
+  object-fit: contain;
+  opacity: 0.6;
+  filter: grayscale(0.3) brightness(1.3);
+  transition: filter 0.5s;
+}
+.dim-bars-h {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dim-bar-row-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+}
+.dim-bar-label-h {
+  font-size: 11px;
+  color: #666;
+  width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.dim-bar-track-h {
+  flex: 1;
+  height: 8px;
+  background: #f0ede6;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.dim-bar-center-h {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #ccc;
+}
+.dim-bar-fill-h {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s, margin-left 0.5s;
+}
+.dim-bar-fill-h.bar-pos {
+  background: linear-gradient(90deg, #a8e6cf, #3cb88b);
+}
+.dim-bar-fill-h.bar-neg {
+  background: linear-gradient(90deg, #e07a5f, #f5c6aa);
+}
+.dim-bar-score-h {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
 }
 .brain-container {
   position: relative;
