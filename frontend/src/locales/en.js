@@ -42,6 +42,9 @@ export default {
   'derivation.confidence': 'Conf',
   'derivation.contribution': 'Contrib',
   'derivation.normalized': 'Normalized',
+  'derivation.llm_correction': 'LLM Correction',
+  'derivation.llm_delta': 'Delta',
+  'derivation.llm_reasoning': 'Reasoning',
 
   // Factor names (for dimension table)
   'factor.painting': 'Painting',

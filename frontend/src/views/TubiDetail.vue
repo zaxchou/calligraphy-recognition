@@ -155,8 +155,8 @@
                       <div class="summary-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
                     </div>
                   </div>
-                  <!-- 方法论说明（仅在没有新公式时显示） -->
-                  <el-collapse v-if="combinedSentiment?.method !== 'molin_v2'">
+                  <!-- 方法论说明（仅旧版无公式表格时显示） -->
+                  <el-collapse v-if="combinedSentiment?.method === 'molin_v2'">
                     <el-collapse-item :title="$t('method.title')" name="methodology">
                       <div class="methodology-content">
                         <p><strong>{{ $t('method.formula') }}</strong></p>
@@ -276,8 +276,8 @@
               <div class="steps-card" v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length || combinedSentiment">
                 <h4 class="section-title"><el-icon><MagicStick /></el-icon> {{ $t("card.steps") }}</h4>
 
-                <!-- 新：七维度公式推导（有 combined_sentiment 时显示） -->
-                <div v-if="combinedSentiment?.method === 'molin_v2'" class="formula-breakdown">
+                <!-- v2/v3 八维度公式推导（有 combined_sentiment 时显示） -->
+                <div v-if="combinedSentiment" class="formula-breakdown">
                   <div class="formula-title">{{ $t('derivation.formula') }}</div>
                   <div class="formula-expr">S = normalize( Σ wᵢ × cᵢ × sᵢ )</div>
 
@@ -340,8 +340,53 @@
                   </div>
                 </div>
 
-                <!-- 旧：推理步骤（仅在没有新公式时显示，兼容旧数据） -->
-                <template v-if="combinedSentiment?.method !== 'molin_v2' && currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
+                <!-- v3 LLM 校正详情（有 llm_analysis 时显示） -->
+                <div v-if="currentImage.contentAnalysis?.llm_analysis?.corrections" class="llm-correction-section">
+                  <el-collapse>
+                    <el-collapse-item :title="$t('derivation.llm_correction')" name="llm">
+                      <!-- 校正概览 -->
+                      <div class="llm-summary">
+                        {{ currentImage.contentAnalysis.llm_analysis.combined?.summary }}
+                      </div>
+                      <!-- 逐维度校正 -->
+                      <table class="llm-table">
+                        <thead>
+                          <tr>
+                            <th>{{ $t('derivation.dimension') }}</th>
+                            <th>{{ $t('derivation.llm_delta') }}</th>
+                            <th>{{ $t('derivation.confidence') }}</th>
+                            <th>{{ $t('derivation.llm_reasoning') }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="(corr, dimKey) in currentImage.contentAnalysis.llm_analysis.corrections" :key="dimKey">
+                            <td class="dim-name">{{ $t(`factor.${dimKey}`) }}</td>
+                            <td class="dim-delta" :class="{ 'score-pos': corr.delta > 0, 'score-neg': corr.delta < 0 }">
+                              {{ corr.delta > 0 ? '+' : '' }}{{ corr.delta.toFixed(2) }}
+                            </td>
+                            <td class="dim-conf" :class="{ 'conf-high': corr.confidence >= 0.7, 'conf-mid': corr.confidence >= 0.4 && corr.confidence < 0.7 }">
+                              {{ (corr.confidence * 100).toFixed(0) }}%
+                            </td>
+                            <td class="llm-reasoning-cell">{{ corr.reasoning }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <!-- 元信息 -->
+                      <div class="llm-meta" v-if="currentImage.contentAnalysis.llm_analysis.meta">
+                        <span class="llm-model">{{ currentImage.contentAnalysis.llm_analysis.meta.model }}</span>
+                        <span v-if="currentImage.contentAnalysis.llm_analysis.meta.token_count" class="llm-tokens">
+                          · {{ currentImage.contentAnalysis.llm_analysis.meta.token_count }} tokens
+                        </span>
+                        <span v-if="currentImage.contentAnalysis.llm_analysis.meta.time_ms" class="llm-time">
+                          · {{ (currentImage.contentAnalysis.llm_analysis.meta.time_ms / 1000).toFixed(1) }}s
+                        </span>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+                </div>
+
+                <!-- 旧：推理步骤（兼容旧数据，v3 方法有 reasoning_steps 时也显示） -->
+                <template v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
                   <div class="reasoning-steps">
                     <div class="reasoning-label">{{ $t("derivation.text") }}</div>
                     <div class="steps-list">
@@ -1062,10 +1107,10 @@ const displayScore = computed(() => {
 const isVaderScore = computed(() => combinedSentiment.value?.vader_normalized != null)
 const calibratedWeights = computed(() => combinedSentiment.value?.weights || { text: 0.05, spatial: 0.569, seal: 0.381 })
 
-// 八维度数据行（用于推导过程公式表格）
+// 八维度数据行（用于推导过程公式表格，兼容 v2/v3）
 const dimensionRows = computed(() => {
   const cs = combinedSentiment.value
-  if (!cs || cs.method !== 'molin_v2') return []
+  if (!cs) return []
   const w = cs.weights || {}
   const hd = cs.has_data || {}
   const dims = [
@@ -3032,5 +3077,62 @@ defineExpose({
   padding: 12px 0;
   border-top: 1px solid #eee;
   margin-top: 8px;
+}
+
+/* ── LLM 校正详情 ── */
+.llm-correction-section {
+  margin-top: 12px;
+}
+.llm-summary {
+  font-size: 13px;
+  color: #5d4e37;
+  padding: 8px 12px;
+  background: #f9f7f2;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.llm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.llm-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background: #f3f0e8;
+  color: #7a6b54;
+  font-weight: 500;
+  border-bottom: 1px solid #e8e4da;
+}
+.llm-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f0ede6;
+  vertical-align: top;
+}
+.llm-table .dim-name {
+  font-weight: 500;
+  color: #5d4e37;
+  white-space: nowrap;
+}
+.llm-table .dim-delta {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.llm-reasoning-cell {
+  color: #6a5b44;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 300px;
+}
+.llm-meta {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #999;
+  padding: 4px 8px;
+}
+.llm-model {
+  font-family: 'Courier New', monospace;
 }
 </style>

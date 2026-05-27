@@ -47,6 +47,9 @@ export default {
   'derivation.confidence': '置信度',
   'derivation.contribution': '贡献值',
   'derivation.normalized': '归一化结果',
+  'derivation.llm_correction': 'LLM 校正详情',
+  'derivation.llm_delta': '校正量',
+  'derivation.llm_reasoning': '推理说明',
 
   // Emotion labels
   'emotion.neutral': '情绪平稳',
