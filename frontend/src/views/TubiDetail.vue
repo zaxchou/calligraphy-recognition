@@ -114,39 +114,25 @@
                 <!-- 有空间分析 → {{ $t("judgment.combined") }} -->
                 <template v-if="combinedSentiment">
                   <div class="emotion-layout">
-                    <!-- 左：头脑 SVG 底图 + 三维度覆盖 -->
+                    <!-- 左：头脑 SVG（综合情绪色） -->
                     <div class="emotion-brain-col">
                       <div class="brain-container">
-                        <img src="/brain.svg" class="brain-base" />
-                        <!-- 文字维度：左脑 -->
-                        <div class="brain-overlay brain-left" :style="{ background: textBrainColor, width: textBrainSize + 'px', height: (textBrainSize * 1.35) + 'px', opacity: textBrainSize > 36 ? 0.85 : 0.4 }"
-                          @mouseenter="brainHover = 'text'" @mouseleave="brainHover = null"
-                          :class="{ 'brain-active': brainHover === 'text' }"></div>
-                        <!-- 空间维度：右脑 -->
-                        <div class="brain-overlay brain-right" :style="{ background: spatialBrainColor, width: spatialBrainSize + 'px', height: (spatialBrainSize * 1.35) + 'px', opacity: spatialBrainSize > 36 ? 0.85 : 0.4 }"
-                          @mouseenter="brainHover = 'spatial'" @mouseleave="brainHover = null"
-                          :class="{ 'brain-active': brainHover === 'spatial' }"></div>
-                        <!-- 综合结果：核心 -->
-                        <div class="brain-overlay brain-core" :style="{ background: combinedBrainColor }"
-                          @mouseenter="brainHover = 'combined'" @mouseleave="brainHover = null"
-                          :class="{ 'brain-active': brainHover === 'combined' }"></div>
-                        <!-- 印章维度：底部 -->
-                        <div class="brain-overlay brain-seal" v-if="sealEmotion?.total_seals"
-                          :style="{ background: sealBrainColor, opacity: sealBrainSize > 36 ? 0.85 : 0.4 }"
-                          @mouseenter="brainHover = 'seal'" @mouseleave="brainHover = null"
-                          :class="{ 'brain-active': brainHover === 'seal' }"></div>
-                        <!-- hover 提示 -->
-                        <transition name="fade">
-                          <div class="brain-tooltip" v-if="brainHover">
-                            {{ brainHover === 'text' ? `${$t('factor.text')} (${(vaderNorm(combinedSentiment?.text_score || 0) * 100).toFixed(0)}%)` :
-                               brainHover === 'spatial' ? `${$t('factor.spatial')} (${(vaderNorm(combinedSentiment?.spatial_score || 0) * 100).toFixed(0)}%)` :
-                               brainHover === 'combined' ? `${$t('judgment.combined')} (${(displayScore * 100).toFixed(0)}%)` :
-                               `${$t('factor.seal')} (${(vaderNorm(combinedSentiment?.seal_score || 0) * 100).toFixed(0)}%)` }}
+                        <img src="/brain.svg" class="brain-base" :style="{ filter: `hue-rotate(${combinedBrainHue}deg) saturate(${combinedBrainSat})` }" />
+                        <div class="brain-overlay brain-core" :style="{ background: combinedBrainColor, opacity: 0.7 }"></div>
+                      </div>
+                      <!-- 七维度迷你条形图 -->
+                      <div class="dim-bars" v-if="combinedSentiment?.method === 'molin_v2'">
+                        <div v-for="dim in dimensionRows" :key="dim.nameKey" class="dim-bar-row" :title="`${$t(dim.nameKey)}: ${dim.normalized > 0 ? '+' : ''}${dim.normalized.toFixed(2)}`">
+                          <span class="dim-bar-label">{{ $t(dim.nameKey).slice(0, 2) }}</span>
+                          <div class="dim-bar-track">
+                            <div class="dim-bar-fill" :class="{ 'bar-pos': dim.normalized > 0, 'bar-neg': dim.normalized < 0 }"
+                              :style="{ width: Math.min(Math.abs(dim.normalized) * 50, 50) + '%', marginLeft: dim.normalized >= 0 ? '50%' : (50 - Math.min(Math.abs(dim.normalized) * 50, 50)) + '%' }"></div>
+                            <div class="dim-bar-center"></div>
                           </div>
-                        </transition>
+                        </div>
                       </div>
                     </div>
-                    <!-- 右：结论文字 -->
+                    <!-- 右：综合结论 -->
                     <div class="emotion-text-col">
                       <div class="final-judgment-card">
                         <div class="judgment-info-col">
@@ -711,9 +697,17 @@ const { t, locale } = useI18n()
 // 内容文本翻译：对中文分词逐个查字典翻译
 function translateContent(text) {
   if (!text) return ''
-  // 新格式：i18n key 用 | 分隔（如 "reasoning.text.negative|reasoning.spatial.no_data|reasoning.conclusion.negative"）
+  // 新格式：i18n key 用 | 分隔
   if (text.includes('|') && text.startsWith('reasoning.')) {
-    return text.split('|').map(key => t(key.trim())).join('、')
+    return text.split('|').map(key => {
+      key = key.trim()
+      // reasoning.theme.咏物寄兴 → 翻译主题名
+      if (key.startsWith('reasoning.theme.')) {
+        const themeName = key.replace('reasoning.theme.', '')
+        return t('reasoning.theme') + t(themeName)
+      }
+      return t(key)
+    }).join('、')
   }
   // 旧格式：先查完整匹配
   const full = t(text)
@@ -1224,6 +1218,19 @@ const combinedBrainColor = computed(() => {
   const cs = combinedSentiment.value
   if (!cs?.vader_normalized) return 'hsl(40, 15%, 65%)'
   return polarityColor(cs.polarity || 'neutral', Math.abs(cs.vader_normalized))
+})
+const combinedBrainHue = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs?.vader_normalized) return 0
+  const norm = cs.vader_normalized
+  if (norm > 0.1) return -30  // 绿色调
+  if (norm < -0.1) return 10  // 红色调
+  return 0
+})
+const combinedBrainSat = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs?.vader_normalized) return 0.3
+  return 0.5 + Math.abs(cs.vader_normalized) * 0.5
 })
 // 脑区尺寸：按 VADER 归一化分数比例缩放
 const textBrainSize = computed(() => {
@@ -2221,6 +2228,57 @@ defineExpose({
   opacity: 0.5;
   filter: grayscale(0.4) brightness(1.4) contrast(0.9);
   mix-blend-mode: multiply;
+  transition: filter 0.5s;
+}
+
+/* ── 七维度迷你条形图 ── */
+.dim-bars {
+  width: 100%;
+  margin-top: 6px;
+  padding: 0 4px;
+}
+.dim-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+  margin-bottom: 2px;
+}
+.dim-bar-label {
+  font-size: 9px;
+  color: #999;
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.dim-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #f0ede6;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.dim-bar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #ccc;
+}
+.dim-bar-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s, margin-left 0.5s;
+}
+.dim-bar-fill.bar-pos {
+  background: #3cb88b;
+}
+.dim-bar-fill.bar-neg {
+  background: #e07a5f;
 }
 .brain-overlay {
   position: absolute;
