@@ -5,7 +5,7 @@
 
 set -o pipefail  # 管道中任一命令失败则整体失败（但不用 set -e）
 
-cd /opt/calligraphy-recognition || { echo "[$(date)] 目录不存在"; exit 1; }
+cd /opt/molin-wiki || { echo "[$(date)] 目录不存在"; exit 1; }
 
 LOG_TAG="[auto_deploy]"
 echo "$LOG_TAG [$(date)] 开始检查更新..."
@@ -13,7 +13,7 @@ echo "$LOG_TAG [$(date)] 开始检查更新..."
 # ── 1. 获取远程最新 commit ──────────────────────────────────
 REMOTE=""
 for i in 1 2 3; do
-  REMOTE=$(git ls-remote https://github.com/zaxchou/calligraphy-recognition.git master 2>/dev/null | awk '{print $1}')
+  REMOTE=$(git ls-remote https://github.com/zaxchou/molin-wiki.git master 2>/dev/null | awk '{print $1}')
   if [ -n "$REMOTE" ]; then break; fi
   echo "$LOG_TAG 第 ${i} 次获取远程版本失败，3 秒后重试..."
   sleep 3
@@ -55,7 +55,7 @@ if [ -d "frontend" ]; then
   else
     echo "$LOG_TAG [$(date)] 前端构建失败，跳过前端更新"
   fi
-  cd /opt/calligraphy-recognition
+  cd /opt/molin-wiki
 else
   echo "$LOG_TAG [$(date)] frontend 目录不存在，跳过前端构建"
 fi

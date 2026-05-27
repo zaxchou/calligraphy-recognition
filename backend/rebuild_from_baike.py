@@ -8,7 +8,7 @@ import sqlite3, json, re, time, os, sys
 import urllib.request, urllib.parse, urllib.error
 from datetime import datetime
 
-DB_PATH = os.environ.get('DB_PATH', '/opt/calligraphy-recognition/backend/data/calligraphy.db')
+DB_PATH = os.environ.get('DB_PATH', '/opt/molin-wiki/backend/data/calligraphy.db')
 LOG_PATH = '/tmp/rebuild_baike.log'
 
 HEADERS = {

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 # ============================================================
-# calligraphy-recognition 服务器初始化
-# 在服务器上执行: bash /opt/calligraphy-recognition/deploy/setup.sh
+# molin-wiki 服务器初始化
+# 在服务器上执行: bash /opt/molin-wiki/deploy/setup.sh
 # ============================================================
 
 cd "$(dirname "$0")"
@@ -48,4 +48,4 @@ echo "======================================"
 echo "  部署完成!  https://$DOMAIN"
 echo "======================================"
 echo "  查看日志: sudo docker compose logs -f backend"
-echo "  重新部署: cd /opt/calligraphy-recognition/deploy && sudo docker compose up -d --build backend"
+echo "  重新部署: cd /opt/molin-wiki/deploy && sudo docker compose up -d --build backend"

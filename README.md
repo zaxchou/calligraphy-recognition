@@ -1,6 +1,6 @@
-# Calligraphy Recognition
+# 墨林百科 (Molin Wiki)
 
-一个面向“书法碑帖识别 / 中国画题跋分析 / 潘天寿构图讲评”的综合实验项目。
+基于 AI 的中国书画分析与知识平台。
 
 当前仓库包含：
 - **前端**：Vue 3 + Vite + Element Plus
@@ -22,7 +22,7 @@
 ## 目录结构
 
 ```
-calligraphy-recognition/
+molin-wiki/
   backend/                          # FastAPI 后端
     app/
       api/                          # 路由聚合（recognition/steles/tubi/composition）

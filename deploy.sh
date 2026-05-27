@@ -15,7 +15,7 @@
 set -o pipefail
 cd "$(dirname "$0")" || exit 1
 
-PROJECT="calligraphy-recognition"
+PROJECT="molin-wiki"
 SSH_HOST="xcx"
 REMOTE_DIR="/opt/$PROJECT"
 LOCAL_DATA="backend/data"

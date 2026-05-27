@@ -12,8 +12,8 @@
 import sqlite3, json, re, time, sys, os
 import urllib.request, urllib.parse, urllib.error
 
-DB_PATH = os.environ.get('DB_PATH', '/opt/calligraphy-recognition/backend/data/calligraphy.db')
-REPORT_PATH = os.environ.get('REPORT_PATH', '/opt/calligraphy-recognition/backend/data/chronology_audit_v2.json')
+DB_PATH = os.environ.get('DB_PATH', '/opt/molin-wiki/backend/data/calligraphy.db')
+REPORT_PATH = os.environ.get('REPORT_PATH', '/opt/molin-wiki/backend/data/chronology_audit_v2.json')
 LOG_PATH = '/tmp/verify_v2.log'
 
 HEADERS = {

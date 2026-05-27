@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import os, sys
 
-DB = os.environ.get('DB_PATH', '/opt/calligraphy-recognition/backend/data/calligraphy.db')
+DB = os.environ.get('DB_PATH', '/opt/molin-wiki/backend/data/calligraphy.db')
 LOG = '/tmp/full_audit.log'
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',

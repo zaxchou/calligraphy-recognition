@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # ============================================================
-# calligraphy-recognition 一键部署脚本
+# molin-wiki 一键部署脚本
 # 首次运行:  bash deploy.sh init
 # 后续更新:  bash deploy.sh update
 # ============================================================
 
 DOMAIN="${DOMAIN:-zhouhouhan.com}"
-REPO_URL="https://github.com/zaxchou/calligraphy-recognition.git"
-APP_DIR="/opt/calligraphy-recognition"
+REPO_URL="https://github.com/zaxchou/molin-wiki.git"
+APP_DIR="/opt/molin-wiki"
 
 # ─── 安装 Docker ────────────────────────────────────────────
 install_docker() {
@@ -63,7 +63,7 @@ setup_ssl() {
 # ─── 初始化 ──────────────────────────────────────────────────
 do_init() {
     echo "=============================================="
-    echo "  calligraphy-recognition 首次部署"
+    echo "  molin-wiki 首次部署"
     echo "=============================================="
 
     install_docker

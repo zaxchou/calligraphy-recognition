@@ -8,7 +8,7 @@ services:
       - "127.0.0.1:8001:8001"
     volumes:
       # 代码热挂载：SCP 更新后只需 restart，无需 rebuild
-      - /opt/calligraphy-recognition/backend:/app
+      - /opt/molin-wiki/backend:/app
       # 以下子路径覆盖上面的大挂载（Docker 优先用更具体的挂载）
       - ../backend/data:/app/data
       - ../backend/.env:/app/.env:ro
@@ -34,8 +34,8 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
-      - /opt/calligraphy-recognition/frontend/dist:/opt/calligraphy-recognition/frontend/dist:ro
-      - /opt/calligraphy-recognition/backend/data:/opt/calligraphy-recognition/backend/data:ro
+      - /opt/molin-wiki/frontend/dist:/opt/molin-wiki/frontend/dist:ro
+      - /opt/molin-wiki/backend/data:/opt/molin-wiki/backend/data:ro
 
 volumes:
   qdrant_data:

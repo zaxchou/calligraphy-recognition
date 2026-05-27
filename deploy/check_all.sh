@@ -1,20 +1,20 @@
 #!/bin/bash
 export SHELLOPTS
 echo '=== DOCKER ==='
-sudo docker compose -f /opt/calligraphy-recognition/deploy/docker-compose.yml ps
+sudo docker compose -f /opt/molin-wiki/deploy/docker-compose.yml ps
 echo ''
 echo '=== FILE COUNTS ==='
-echo "PDFs_in_uploads: $(ls /opt/calligraphy-recognition/backend/data/uploads/*.pdf 2>/dev/null | wc -l)"
-echo "Upload_images: $(find /opt/calligraphy-recognition/backend/data/uploads -maxdepth 1 \( -name '*.jpg' -o -name '*.png' \) 2>/dev/null | wc -l)"
-echo "Annotated: $(ls /opt/calligraphy-recognition/backend/data/annotated/ 2>/dev/null | wc -l)"
-echo "Thumbnails: $(ls /opt/calligraphy-recognition/backend/data/thumbnails/ 2>/dev/null | wc -l)"
-echo "Comp_thumbs: $(ls /opt/calligraphy-recognition/backend/data/composition/thumbs/ 2>/dev/null | wc -l)"
-echo "Comp_reports: $(ls /opt/calligraphy-recognition/backend/data/composition/reports/*.json 2>/dev/null | wc -l)"
-echo "Comp_overlays: $(ls /opt/calligraphy-recognition/backend/data/composition/overlays/*.png 2>/dev/null | wc -l)"
-echo "Comp_pdfs: $(ls /opt/calligraphy-recognition/backend/data/composition/pdfs/ 2>/dev/null | wc -l)"
-echo "Seals: $(ls /opt/calligraphy-recognition/backend/data/seals/*.png 2>/dev/null | wc -l)"
-echo "FAISS_index: $(ls /opt/calligraphy-recognition/backend/data/.image_index/ 2>/dev/null | wc -l)"
-echo "Imported_artists: $(ls /opt/calligraphy-recognition/backend/data/imported/ 2>/dev/null)"
+echo "PDFs_in_uploads: $(ls /opt/molin-wiki/backend/data/uploads/*.pdf 2>/dev/null | wc -l)"
+echo "Upload_images: $(find /opt/molin-wiki/backend/data/uploads -maxdepth 1 \( -name '*.jpg' -o -name '*.png' \) 2>/dev/null | wc -l)"
+echo "Annotated: $(ls /opt/molin-wiki/backend/data/annotated/ 2>/dev/null | wc -l)"
+echo "Thumbnails: $(ls /opt/molin-wiki/backend/data/thumbnails/ 2>/dev/null | wc -l)"
+echo "Comp_thumbs: $(ls /opt/molin-wiki/backend/data/composition/thumbs/ 2>/dev/null | wc -l)"
+echo "Comp_reports: $(ls /opt/molin-wiki/backend/data/composition/reports/*.json 2>/dev/null | wc -l)"
+echo "Comp_overlays: $(ls /opt/molin-wiki/backend/data/composition/overlays/*.png 2>/dev/null | wc -l)"
+echo "Comp_pdfs: $(ls /opt/molin-wiki/backend/data/composition/pdfs/ 2>/dev/null | wc -l)"
+echo "Seals: $(ls /opt/molin-wiki/backend/data/seals/*.png 2>/dev/null | wc -l)"
+echo "FAISS_index: $(ls /opt/molin-wiki/backend/data/.image_index/ 2>/dev/null | wc -l)"
+echo "Imported_artists: $(ls /opt/molin-wiki/backend/data/imported/ 2>/dev/null)"
 echo ''
 echo '=== KNOWLEDGE DB ==='
 docker exec deploy-backend-1 python3 /tmp/check_db.py 2>&1
