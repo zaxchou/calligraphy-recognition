@@ -309,7 +309,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         cp, cr = "positive", "、".join(parts) + "，综合偏正面"
     else:
         cp, cr = "neutral", "、".join(parts) + "，无明显倾向"
-    # ── 墨林情绪引擎 v2.0 ──────────────────────────────────────────────
+    # ── 墨林情绪引擎 v3.0 ──────────────────────────────────────────────
     # 提取各维度数据
     text_raw = new_ca.get("sentiment", {}).get("emotion_score") or 0
     v4_signals = new_ca.get("v4_signals", {})
@@ -320,7 +320,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     height_cm = row["artwork_height_cm"] if "artwork_height_cm" in row.keys() else None
     seal_content = row["seal_content"] if "seal_content" in row.keys() else None
 
-    # 调用墨林引擎
+    # 1. 词库基线引擎（<1ms）
     molin_result = molin_analyze(
         text=text or "",
         spatial_emotion=se,
@@ -333,8 +333,64 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         themes=result.get("themes", []),
     )
 
-    cp = molin_result.polarity
-    cr = molin_result.reasoning
+    # 2. 记录词库基线分数
+    lexicon_scores = {
+        "version": "3.1",
+        "text": {"raw": molin_result.text.raw, "normalized": molin_result.text.normalized, "confidence": molin_result.text.confidence, "has_data": molin_result.text.has_data},
+        "spatial": {"raw": molin_result.spatial.raw, "normalized": molin_result.spatial.normalized, "confidence": molin_result.spatial.confidence, "has_data": molin_result.spatial.has_data},
+        "painting": {"raw": molin_result.painting.raw, "normalized": molin_result.painting.normalized, "confidence": molin_result.painting.confidence, "has_data": molin_result.painting.has_data},
+        "size": {"raw": molin_result.size.raw, "normalized": molin_result.size.normalized, "confidence": molin_result.size.confidence, "has_data": molin_result.size.has_data},
+        "period": {"raw": molin_result.period.raw, "normalized": molin_result.period.normalized, "confidence": molin_result.period.confidence, "has_data": molin_result.period.has_data},
+        "seal": {"raw": molin_result.seal.raw, "normalized": molin_result.seal.normalized, "confidence": molin_result.seal.confidence, "has_data": molin_result.seal.has_data},
+        "theme": {"raw": molin_result.theme.raw, "normalized": molin_result.theme.normalized, "confidence": molin_result.theme.confidence, "has_data": molin_result.theme.has_data},
+        "brush_ink": {"raw": molin_result.brush_ink.raw, "normalized": molin_result.brush_ink.normalized, "confidence": molin_result.brush_ink.confidence, "has_data": molin_result.brush_ink.has_data},
+        "combined_raw": molin_result.combined_raw,
+        "combined_normalized": molin_result.combined_normalized,
+    }
+    new_ca["lexicon_scores"] = lexicon_scores
+
+    # 3. LLM 逐维度校正（仅单条重分析时，批量模式跳过）
+    llm_analysis = None
+    analysis_method = "lexicon_only"
+
+    # 默认使用基线分数
+    final_cp = molin_result.polarity
+    final_cr = molin_result.reasoning
+    final_combined_raw = molin_result.combined_raw
+    final_combined_norm = molin_result.combined_normalized
+
+    try:
+        from app.services.llm_emotion_corrector import correct_dimensions, apply_corrections
+
+        engine_dict = {
+            "text": molin_result.text, "spatial": molin_result.spatial,
+            "painting": molin_result.painting, "size": molin_result.size,
+            "period": molin_result.period, "seal": molin_result.seal,
+            "theme": molin_result.theme, "brush_ink": molin_result.brush_ink,
+        }
+
+        llm_analysis = await correct_dimensions(
+            text=text or "",
+            lexicon_result=engine_dict,
+            artist=artist,
+            year=year,
+            themes=result.get("themes", []),
+        )
+
+        if llm_analysis and llm_analysis.get("corrections"):
+            new_ca["llm_analysis"] = llm_analysis
+            final_scores = await apply_corrections(molin_result, llm_analysis)
+            if final_scores and final_scores.get("analysis_method") == "llm_corrected":
+                analysis_method = "llm_corrected"
+                final_cp = final_scores["polarity"]
+                final_combined_raw = final_scores["combined_raw"]
+                final_combined_norm = final_scores["combined_normalized"]
+    except Exception as e:
+        logger.warning(f"LLM emotion corrector skipped (record_id={record_id}): {e}")
+
+    new_ca["analysis_method"] = analysis_method
+    cp = final_cp
+    cr = final_cr
 
     # 保留旧格式兼容 + 引擎数据
     new_ca["combined_sentiment"] = {
@@ -348,11 +404,11 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "size_score": molin_result.size.raw,
         "theme_score": molin_result.theme.raw,
         "brush_ink_score": molin_result.brush_ink.raw,
-        "combined_score": round(molin_result.combined_raw, 2),
-        "vader_normalized": round(molin_result.combined_normalized, 3),
+        "combined_score": round(final_combined_raw, 2),
+        "vader_normalized": round(final_combined_norm, 3),
         "vader_alpha": 8.0,
         "weights": molin_result.weights_used,
-        "method": "molin_v2",
+        "method": analysis_method,
         # 各维度是否有实际数据
         "has_data": {
             "text": molin_result.text.has_data,
