@@ -364,15 +364,16 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "theme": {"raw": theme_raw, "confidence": 0.8 if theme_raw != 0 else 0.2},
     }
 
-    # 校准后的权重（6维度，text 为主）
+    # 校准后的权重（v2，2026-05-27，30样本，MAE=0.052）
+    # 词典分数范围变大（-4~+4），文字权重需降低
     calibrated_weights = {
-        "text": 0.35,
-        "spatial": 0.20,
-        "seal": 0.10,
-        "painting": 0.10,
-        "time": 0.15,
-        "size": 0.05,
-        "theme": 0.05,
+        "text": 0.050,
+        "spatial": 0.569,
+        "seal": 0.381,
+        "painting": 0.0,  # 已融入主题判断
+        "time": 0.0,      # 已融入画家底色
+        "size": 0.0,      # 辅助信号，暂不参与
+        "theme": 0.0,     # 辅助信号，暂不参与
     }
 
     # 加权融合
