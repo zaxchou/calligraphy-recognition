@@ -2404,34 +2404,78 @@ defineExpose({
 .score-method-badge:hover {
   opacity: 1;
 }
+
+/* ── 方法论折叠面板 ── */
+.score-card :deep(.el-collapse) {
+  border: none;
+  margin-top: 8px;
+}
+.score-card :deep(.el-collapse-item__header) {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  color: #8a7e6b;
+  font-weight: 500;
+  height: 28px;
+  line-height: 28px;
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.score-card :deep(.el-collapse-item__header:hover) {
+  background: #f5f3ef;
+}
+.score-card :deep(.el-collapse-item__header .el-collapse-item__arrow) {
+  font-size: 10px;
+  color: #b8a47e;
+}
+.score-card :deep(.el-collapse-item__wrap) {
+  border: none;
+  background: transparent;
+}
+.score-card :deep(.el-collapse-item__content) {
+  padding: 0;
+}
 .methodology-content {
   font-size: 12px;
-  color: #666;
-  line-height: 1.6;
+  color: #5a5347;
+  line-height: 1.7;
+  padding: 8px 12px 12px;
+  background: #faf9f7;
+  border-radius: 6px;
+  border: 1px dashed #e0dcd3;
 }
 .methodology-content p {
-  margin: 4px 0;
+  margin: 6px 0;
 }
 .methodology-content ul {
-  margin: 4px 0 4px 16px;
+  margin: 6px 0 6px 20px;
   padding: 0;
 }
 .methodology-content li {
-  margin: 2px 0;
+  margin: 3px 0;
+  list-style: disc;
 }
 .method-formula {
-  font-family: 'Courier New', monospace;
-  background: #f5f3ef;
-  padding: 4px 8px;
+  font-family: 'Courier New', 'Consolas', monospace;
+  background: #fff;
+  border: 1px solid #e8e4da;
+  padding: 6px 12px;
   border-radius: 4px;
-  display: inline-block;
-  margin: 4px 0;
+  display: block;
+  margin: 8px 0;
+  font-size: 13px;
+  color: #333;
+  letter-spacing: 0.5px;
 }
 .method-ref {
   font-size: 11px;
   color: #999;
   font-style: italic;
-  margin-top: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
 }
 .judgment-info-col {
   flex: 1;
