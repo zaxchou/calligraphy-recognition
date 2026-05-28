@@ -632,16 +632,17 @@ async def reanalyze_emotion(
 
     # 3. Apply corrections
     if llm_result and llm_result.get("corrections"):
-        final_scores = apply_corrections(lexicon_scores, llm_result)
+        final_scores = await apply_corrections(result, llm_result, result.weights_used)
         analysis_method = "llm_corrected"
     else:
-        final_scores = {
-            dim: lexicon_scores.get(dim, {}) for dim in ["text","spatial","painting","size","period","seal","theme","brush_ink"]
-        }
-        final_scores["combined_raw"] = result.combined_raw
-        final_scores["combined_normalized"] = result.combined_normalized
         analysis_method = "lexicon_only"
         llm_result = _empty_corrections()
+        final_scores = {
+            "combined_raw": result.combined_raw,
+            "combined_normalized": result.combined_normalized,
+            "polarity": result.polarity,
+            "dimensions": {d: {"final": getattr(result, d).raw} for d in ["text","spatial","painting","size","period","seal","theme","brush_ink"]}
+        }
 
     # 4. Update DB
     new_ca = dict(ca) if isinstance(ca, dict) else {}
@@ -650,18 +651,18 @@ async def reanalyze_emotion(
     new_ca["analysis_method"] = analysis_method
     new_ca["analysis_version"] = 3
     new_ca["combined_sentiment"] = {
-        "polarity": result.polarity,
+        "polarity": final_scores.get("polarity", result.polarity),
         "reasoning": result.reasoning,
-        "text_score": result.text.raw,
-        "spatial_score": result.spatial.raw,
-        "seal_score": result.seal.raw,
-        "painting_score": result.painting.raw,
-        "time_score": result.period.raw,
-        "size_score": result.size.raw,
-        "theme_score": result.theme.raw,
-        "brush_ink_score": result.brush_ink.raw,
-        "combined_score": round(result.combined_raw, 2),
-        "vader_normalized": round(result.combined_normalized, 3),
+        "text_score": final_scores.get("dimensions", {}).get("text", {}).get("final", result.text.raw),
+        "spatial_score": final_scores.get("dimensions", {}).get("spatial", {}).get("final", result.spatial.raw),
+        "painting_score": final_scores.get("dimensions", {}).get("painting", {}).get("final", result.painting.raw),
+        "size_score": final_scores.get("dimensions", {}).get("size", {}).get("final", result.size.raw),
+        "time_score": final_scores.get("dimensions", {}).get("period", {}).get("final", result.period.raw),
+        "seal_score": final_scores.get("dimensions", {}).get("seal", {}).get("final", result.seal.raw),
+        "theme_score": final_scores.get("dimensions", {}).get("theme", {}).get("final", result.theme.raw),
+        "brush_ink_score": final_scores.get("dimensions", {}).get("brush_ink", {}).get("final", result.brush_ink.raw),
+        "combined_score": round(final_scores.get("combined_raw", result.combined_raw), 2),
+        "vader_normalized": round(final_scores.get("combined_normalized", result.combined_normalized), 3),
         "vader_alpha": 8.0,
         "weights": result.weights_used,
         "method": analysis_method,
@@ -696,8 +697,8 @@ async def reanalyze_emotion(
         "record_id": record_id,
         "analysis_method": analysis_method,
         "lexicon_combined": result.combined_normalized,
-        "final_score": round(result.combined_raw, 2),
-        "polarity": result.polarity,
+        "final_score": round(final_scores.get("combined_raw", result.combined_raw), 2),
+        "polarity": final_scores.get("polarity", result.polarity),
     }
 
 

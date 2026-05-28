@@ -395,10 +395,6 @@
                     <el-icon><MagicStick /></el-icon>
                     <span>{{ $t('derivation.llm_correction') }}</span>
                   </div>
-                  <!-- 校正概览 -->
-                  <div class="llm-summary">
-                    {{ currentImage.contentAnalysis.llm_analysis.combined?.summary }}
-                  </div>
                   <!-- 逐维度校正 -->
                   <table class="llm-table">
                     <thead>

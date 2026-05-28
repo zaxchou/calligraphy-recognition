@@ -30,19 +30,31 @@ logger = logging.getLogger(__name__)
 
 # ── Prompt 模板 ──────────────────────────────────────────────
 
-SYSTEM_PROMPT = """你是一位精通中国古代书画的鉴赏专家，负责审核情感分析引擎对书画题跋的评分结果。
+SYSTEM_PROMPT = """你是中国古代书画情感分析专家。你的首要任务是**独立解读**题跋的情感，再与机器评分对比。
 
-词库引擎已对题跋的 8 个维度给出基线分数（未归一化 raw score，范围通常在 -10 到 +10），
-你的任务是：逐维度判断词库评分是否准确，并给出校正量（delta，范围 -1.0 到 +1.0）。
+**你的解读流程**（写入 combined.summary，至少 150 字）：
 
-注意：
-1. 每维度的 delta 加到基线 raw score 上得到最终分
-2. delta 为正表示"词库得分偏低需要上调"，负表示"词库得分偏高需要下调"
-3. 置信度低于 0.5 时请返回 delta=0（不校正）
-4. 重点修复多字词组整体情感（如"枯木逢春"被拆成单字）、否定词未正确处理、
-   程度副词未加权、咏物/写景类题跋的情感误判
-5. 书画语境中"狂"、"醉"、"痴"、"顽"、"怪"等通常为正面（艺术创作的自由状态）
-6. 输出必须是合法 JSON"""
+先自己读，不要看机器分数——把你当成一个书画鉴赏家：
+1. **表层**——题跋字面在说什么
+2. **深层**——作者真正在表达什么情绪。特别注意：
+   - 反讽/对比结构："甘芳物无限，辣味嫌人餐" → 不是说甜的东西好，是说甜的到处都是，唯独我这辣的没人要。甘芳是反衬，不是正面词。
+   - 条件/让步结构："任使含咀乃得志" → 要熬得住才有出头日。重点是"熬"，不是"得志"。
+   - 书画语境隐喻："辣"可能是性格辛辣/画风冷峻，"嫌"是被世人排斥
+3. **复杂面**——有没有矛盾的信号？比如表面自嘲但底层倔强？表层洒脱但深处苍凉？
+4. **综合评价**——整体情感倾向是什么。用自然语言描述，不要只用标签。
+
+**再对比机器评分**（写入 corrections）：
+机器（词库引擎）只看单字/词组的情感值，看不懂反讽和语境。你需要判断：
+- 文字维度：机器有没有把反衬词当正面词加分？
+- 空间维度：布局是舒展还是压抑？
+- 时期维度：画家的生平阶段和这首诗匹配吗？
+- 主题维度：主题标签的默认倾向是否合理？
+
+每个需要纠正的维度给出 delta（范围 -8 到 +8，大胆修正），不需要纠正的给 0。
+置信度低于 0.5 的不纠。
+
+输出严格 JSON。combined.summary 要像鉴赏文章一样写，不要像审计报告。
+不要写"词库评分基本准确"这种话——即使分数对，也要解释为什么对。"""
 
 
 def _build_user_prompt(
@@ -54,52 +66,64 @@ def _build_user_prompt(
     spatial_info: str = None,
     seal_info: str = None,
 ) -> str:
-    """构建用户提示，包含词库基线分数和上下文"""
-    lines = [f"## 题跋文本\n{text}\n"]
+    """构建用户提示，包含题跋全文、词库分数和画家背景"""
+    lines = [f"## 题跋全文\n{text}\n"]
 
+    # 画家背景提示（帮助理解语境）
+    artist_hints = {
+        "李鱓": "扬州八怪之一。早年供奉内廷→中期扬州卖画→晚期归隐。题跋常带自嘲、不驯、苦涩中的倔强。",
+        "郑燮": "扬州八怪之一，号板桥。题跋多含为民请命、不媚权贵之意。",
+        "徐渭": "大写意开创者，一生坎坷潦倒。题跋常狂放与悲愤交织。",
+        "朱耷": "明宗室后裔，国破家亡后出家。画中鱼鸟白眼向人，题跋晦涩隐晦。",
+    }
     if artist:
         lines.append(f"## 作者\n{artist}")
+        if artist in artist_hints:
+            lines.append(f"背景：{artist_hints[artist]}")
+
     if year:
         lines.append(f"## 年代\n{year}年")
     if themes:
-        theme_names = [t.get("name", "") for t in themes[:3]]
+        theme_names = [t.get("name", "") for t in themes[:5]]
         lines.append(f"## 主题\n{'、'.join(theme_names)}")
     if spatial_info:
         lines.append(f"## 空间布局\n{spatial_info}")
     if seal_info:
         lines.append(f"## 印章\n{seal_info}")
 
-    lines.append("\n## 词库基线分数（各维度 raw score）")
+    lines.append("\n## 词库基线（供你判断是否需要校正）")
     for dim_name, dim_data in dimension_scores.items():
         raw = dim_data.get("raw", 0)
         norm = dim_data.get("normalized", 0)
         conf = dim_data.get("confidence", 1.0)
         has_data = dim_data.get("has_data", False)
-        status = "有数据" if has_data else "无数据"
-        lines.append(f"  {dim_name}: raw={raw:+.2f}, norm={norm:+.3f}, conf={conf:.1f} [{status}]")
+        status = "有信号" if has_data else "无数据"
+        lines.append(f"  {dim_name}: raw={raw:+.2f}, norm={norm:+.3f}, confidence={conf:.1f} [{status}]")
 
     lines.append(f"""
-## 输出格式（必须严格 JSON，不要附带任何解释）
+## 输出格式（严格 JSON）
+- delta 范围: -8 ~ +8（大胆修正，不要只调零点几）
+- combined.summary: 像鉴赏文章，至少 150 字，不要写"基本准确"
 ```json
 {{
   "corrections": {{
-    "text":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
-    "spatial":  {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
-    "painting": {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
-    "size":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
-    "period":   {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
-    "seal":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
-    "theme":    {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<why>"}},
+    "text":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
+    "spatial":  {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
+    "painting": {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
+    "size":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
+    "period":   {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
+    "seal":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
+    "theme":    {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
     "brush_ink":{{"delta": 0, "confidence": 0, "reasoning": "预留维度"}}
   }},
   "combined": {{
     "delta": <float>,
-    "polarity": "positive|negative|neutral",
-    "summary": "<one-sentence summary of the main correction>"
+    "polarity": "positive|negative|neutral|complex",
+    "summary": "<逐层解读：1)表层意思→2)深层隐喻→3)情感底色→4)关键信号。至少120字。>"
   }}
 }}
-```""")
-
+```
+""")
     return "\n".join(lines)
 
 
@@ -136,24 +160,31 @@ def _extract_json(text: str) -> Optional[dict]:
 def _validate_corrections(data: dict) -> bool:
     """验证 LLM 输出结构是否完整"""
     if not isinstance(data, dict):
+        logger.warning(f"_validate_corrections: not a dict, type={type(data).__name__}")
         return False
     corrections = data.get("corrections")
     if not isinstance(corrections, dict):
+        logger.warning(f"_validate_corrections: corrections not dict")
         return False
     expected_dims = {"text", "spatial", "painting", "size", "period", "seal", "theme", "brush_ink"}
     if not expected_dims.issubset(corrections.keys()):
+        logger.warning(f"_validate_corrections: missing dims {expected_dims - set(corrections.keys())}")
         return False
     for dim_name, dim_data in corrections.items():
         if not isinstance(dim_data, dict):
+            logger.warning(f"_validate_corrections: {dim_name} not dict")
             return False
         if "delta" not in dim_data or "confidence" not in dim_data:
             return False
         delta = dim_data.get("delta", 0)
-        if not isinstance(delta, (int, float)) or delta < -1.0 or delta > 1.0:
+        if not isinstance(delta, (int, float)) or delta < -10.0 or delta > 10.0:
+            logger.warning(f"_validate_corrections: {dim_name} delta={delta} out of range or bad type={type(delta).__name__}")
             return False
     combined = data.get("combined")
     if not isinstance(combined, dict) or "delta" not in combined:
+        logger.warning(f"_validate_corrections: combined missing or no delta")
         return False
+    logger.info(f"_validate_corrections: PASSED for polarity={combined.get('polarity','?')}")
     return True
 
 
@@ -235,6 +266,7 @@ async def correct_dimensions(
             dimension_scores[key] = {"raw": 0, "normalized": 0, "confidence": 0, "has_data": False}
 
     # 构建 prompt
+    logger.info(f"correct_dimensions: text_len={len(text)}, artist={artist}, year={year}, dims={list(dimension_scores.keys())}")
     user_prompt = _build_user_prompt(
         text=text,
         dimension_scores=dimension_scores,
@@ -248,7 +280,7 @@ async def correct_dimensions(
     try:
         response = await call_qwen_chat_async(
             max_tokens=2000,
-            temperature=0.1,
+            temperature=0.4,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -281,12 +313,13 @@ async def correct_dimensions(
     # 解析 JSON
     parsed = _extract_json(reply_text)
     if not parsed:
-        logger.warning(f"LLM emotion corrector: failed to parse JSON from reply")
+        logger.warning(f"LLM emotion corrector: failed to parse JSON from reply (len={len(reply_text)}). First 200 chars: {reply_text[:200]}")
         return _empty_corrections()
+    logger.info(f"LLM emotion corrector: parsed JSON OK, keys={list(parsed.keys())}")
 
     # 验证结构
     if not _validate_corrections(parsed):
-        logger.warning(f"LLM emotion corrector: invalid structure in parsed output")
+        logger.warning(f"LLM emotion corrector: invalid structure. corrections keys={list(parsed.get('corrections', {}).keys())}")
         return _empty_corrections()
 
     # 补充 meta 信息
