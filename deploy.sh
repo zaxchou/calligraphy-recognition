@@ -98,7 +98,9 @@ health_check() {
 
 do_git_push() {
   section "1. 推送到 GitHub（仅程序文件）"
-  git add -A
+  # 仅添加程序源码变更，不包含数据文件
+  git add --update
+  git add backend/app/ backend/scripts/ backend/requirements.txt frontend/src/ deploy.sh
   if git diff --cached --quiet; then
     echo "  无变更，跳过提交"
   else
