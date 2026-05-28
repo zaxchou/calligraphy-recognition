@@ -751,6 +751,40 @@ async def reanalyze_emotion(
     }
 
 
+@router.post("/emotion-logs/reanalyze-all")
+def reanalyze_all_emotion(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin_role),
+):
+    """批量重跑全部记录的情绪引擎 v3 分析（异步后台执行）"""
+    import threading
+
+    def _run_batch():
+        try:
+            from scripts.batch_reanalyze_v3 import run_batch, get_db_connection
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, inscription_content, year, artist,
+                       artwork_width_cm, artwork_height_cm, seal_content,
+                       content_analysis, regions, blank_percent, image_width, image_height,
+                       material_tags, title, analysis_note
+                FROM tubi_analyses
+                WHERE inscription_content IS NOT NULL AND LENGTH(inscription_content) > 2
+                ORDER BY id
+            """)
+            rows = cur.fetchall()
+            processed, errors = run_batch(conn, rows, batch_size=10)
+            logger.info(f"Emotion reanalyze-all complete: {processed} processed, {errors} errors")
+        except Exception as e:
+            logger.error(f"Emotion reanalyze-all failed: {e}")
+
+    t = threading.Thread(target=_run_batch, daemon=True)
+    t.start()
+
+    return {"ok": True, "message": "批量重分析已触发，后台执行中。可在分析日志页面查看进度。"}
+
+
 @router.get("/emotion-stats")
 def get_emotion_stats(
     db: Session = Depends(get_db),

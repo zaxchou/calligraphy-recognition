@@ -1,8 +1,15 @@
 <template>
   <div class="emotion-logs">
     <div class="page-header">
-      <h1 class="page-title">情绪分析日志</h1>
-      <p class="page-subtitle">墨林情绪引擎 v3 — 词库基线 vs LLM 校正全记录</p>
+      <div class="header-row">
+        <div>
+          <h1 class="page-title">情绪分析日志</h1>
+          <p class="page-subtitle">墨林情绪引擎 v3 — 词库基线 vs LLM 裁判全记录</p>
+        </div>
+        <el-button type="primary" :loading="reanalyzeAllLoading" @click="reanalyzeAll">
+          <el-icon><Refresh /></el-icon> 全部重跑
+        </el-button>
+      </div>
     </div>
 
     <!-- Stats cards -->
@@ -181,7 +188,7 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '../../api/adminApi'
 
@@ -289,6 +296,8 @@ async function showDetail(row) {
   }
 }
 
+const reanalyzeAllLoading = ref(false)
+
 async function reanalyze(row) {
   try {
     await ElMessageBox.confirm(
@@ -307,6 +316,25 @@ async function reanalyze(row) {
   }
 }
 
+async function reanalyzeAll() {
+  try {
+    await ElMessageBox.confirm(
+      '将对全部记录重新运行情绪引擎 v3 分析（词库基线 + LLM 裁判）。此操作在后台执行，可能需要几分钟。',
+      '确认全部重跑',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    reanalyzeAllLoading.value = true
+    await adminApi.reanalyzeAllEmotion()
+    ElMessage.success('批量重分析已触发，后台执行中。稍后刷新页面查看进度。')
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('触发失败: ' + (e.response?.data?.detail || e.message))
+    }
+  } finally {
+    reanalyzeAllLoading.value = false
+  }
+}
+
 onMounted(() => {
   loadLogs()
   loadStats()
@@ -322,6 +350,11 @@ onMounted(() => {
 
 .page-header {
   margin-bottom: var(--space-2xl);
+}
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .page-title {
