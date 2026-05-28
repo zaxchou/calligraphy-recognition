@@ -811,47 +811,7 @@ def reanalyze_all_emotion(
                         height_cm=row["artwork_height_cm"], year=row["year"],
                         artist=row["artist"], seal_content=row["seal_content"], themes=themes)
 
-                    # 调用 LLM 裁判（在线程中创建事件循环）
-                    judge_result = None
-                    try:
-                        import asyncio
-                        from app.services.llm_emotion_corrector import judge_independently
-                        loop = asyncio.new_event_loop()
-                        judge_result = loop.run_until_complete(
-                            judge_independently(text=row["inscription_content"],
-                                artist=row["artist"], year=row["year"], themes=themes))
-                        loop.close()
-                    except Exception as e:
-                        logger.warning(f"LLM judge failed for record {row['id']}: {e}")
-
-                    # 合并裁判结果到 combined_sentiment
-                    if judge_result and judge_result.get("dimension_scores"):
-                        jd = judge_result["dimension_scores"]
-                        jc = judge_result.get("combined", {})
-                        from app.services.molin_engine import vader_normalize, classify_polarity, compute_conflict_score, DimensionResult
-                        dim_pols = {}
-                        judge_dims = []
-                        for key in ["text","spatial","painting","size","period","seal","theme","brush_ink"]:
-                            raw = (jd.get(key) or {}).get("raw", 0) or 0
-                            dim_pols[key] = classify_polarity(vader_normalize(raw))
-                            judge_dims.append(DimensionResult(name=key, raw=raw, normalized=vader_normalize(raw)))
-                        final_polarity = jc.get("polarity", result.polarity)
-                        final_combined = jc.get("combined_raw", result.combined_raw)
-                        final_conflict = compute_conflict_score(judge_dims)
-                        method = "llm_corrected"
-                        # 裁判覆盖文字/时期/主题，其余用词库
-                        text_final = (jd.get("text") or {}).get("raw", result.text.raw)
-                        period_final = (jd.get("period") or {}).get("raw", result.period.raw)
-                        theme_final = (jd.get("theme") or {}).get("raw", result.theme.raw)
-                    else:
-                        dim_pols = result.dimension_polarities
-                        final_polarity = result.polarity
-                        final_combined = result.combined_raw
-                        final_conflict = result.conflict_score
-                        method = "lexicon_only"
-                        text_final = result.text.raw
-                        period_final = result.period.raw
-                        theme_final = result.theme.raw
+                    # 词库基线（快速稳定，LLM 裁判通过单条"重分析"按钮触发）
 
                     lexicon_scores = {
                         "version": "3.1",
@@ -869,12 +829,10 @@ def reanalyze_all_emotion(
                     new_ca = dict(old_ca) if isinstance(old_ca, dict) else {}
                     if se: new_ca["spatial_emotion"] = se
                     new_ca["lexicon_scores"] = lexicon_scores
-                    new_ca["llm_judge"] = judge_result
-                    new_ca["llm_analysis"] = judge_result
-                    new_ca["analysis_method"] = method
+                    new_ca["analysis_method"] = "lexicon_only"
                     new_ca["analysis_version"] = 3
                     new_ca["combined_sentiment"] = {
-                        "polarity": final_polarity, "reasoning": result.reasoning,
+                        "polarity": result.polarity, "reasoning": result.reasoning,
                         "text_score": text_final, "spatial_score": result.spatial.raw,
                         "seal_score": result.seal.raw, "painting_score": result.painting.raw,
                         "time_score": period_final, "size_score": result.size.raw,
