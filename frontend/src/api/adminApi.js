@@ -31,4 +31,17 @@ export const adminApi = {
   getMyPermissions() {
     return api.get('/admin/my-permissions')
   },
+  // ── 情绪引擎 v3 分析日志 ──
+  getEmotionLogs(params) {
+    return api.get('/admin/emotion-logs', { params })
+  },
+  getEmotionLogDetail(recordId) {
+    return api.get(`/admin/emotion-logs/${recordId}`)
+  },
+  reanalyzeEmotion(recordId) {
+    return api.post(`/admin/emotion-logs/${recordId}/reanalyze`)
+  },
+  getEmotionStats() {
+    return api.get('/admin/emotion-stats')
+  },
 }

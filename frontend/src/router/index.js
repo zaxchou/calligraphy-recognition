@@ -172,6 +172,12 @@ const routes = [
         component: () => import('../views/EmotionEngine.vue'),
         meta: { title: '墨林情绪引擎', requiresAuth: true },
       },
+      {
+        path: 'emotion-logs',
+        name: 'EmotionLogs',
+        component: () => import('../views/admin/EmotionLogs.vue'),
+        meta: { title: '情绪分析日志', requiresAuth: true },
+      },
     ],
   },
   // 旧路由重定向

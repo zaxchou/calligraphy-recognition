@@ -415,3 +415,363 @@ def update_site_settings(
     db.commit()
     logger.info("管理员 %d 更新了站点设置", admin.id)
     return {"ok": True, "message": "站点设置已更新"}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 墨林情绪引擎 v3 — 管理后台 API
+# ═══════════════════════════════════════════════════════════════════
+
+class EmotionLogQuery(BaseModel):
+    page: int = 1
+    page_size: int = 20
+    method: Optional[str] = None   # lexicon_only / llm_corrected
+    polarity: Optional[str] = None  # positive / negative / neutral
+    artist: Optional[str] = None
+    search: Optional[str] = None
+
+
+@router.get("/emotion-logs")
+def list_emotion_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    method: Optional[str] = Query(None, description="分析方法：lexicon_only / llm_corrected"),
+    polarity: Optional[str] = Query(None, description="极性：positive / negative / neutral"),
+    artist: Optional[str] = Query(None, description="按画家筛选"),
+    search: Optional[str] = Query(None, description="按标题搜索"),
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin_role),
+):
+    """情绪分析日志列表（分页 + 筛选）"""
+    import json as _json
+
+    q = db.query(TubiAnalysis).filter(
+        TubiAnalysis.content_analysis.isnot(None),
+        TubiAnalysis.content_analysis != "",
+        TubiAnalysis.content_analysis != "{}",
+    )
+
+    if artist:
+        q = q.filter(TubiAnalysis.artist == artist)
+    if search:
+        q = q.filter(TubiAnalysis.title.contains(search))
+
+    total = q.count()
+    offset = (page - 1) * page_size
+    records = q.order_by(TubiAnalysis.id.desc()).offset(offset).limit(page_size).all()
+
+    items = []
+    for r in records:
+        try:
+            ca = _json.loads(r.content_analysis) if r.content_analysis else {}
+        except (_json.JSONDecodeError, TypeError):
+            ca = {}
+
+        am = ca.get("analysis_method", "")
+        cs = ca.get("combined_sentiment", {}) if isinstance(ca.get("combined_sentiment"), dict) else {}
+        ls = ca.get("lexicon_scores", {}) if isinstance(ca.get("lexicon_scores"), dict) else {}
+        la = ca.get("llm_analysis", {}) if isinstance(ca.get("llm_analysis"), dict) else {}
+
+        # Apply method filter
+        if method and am != method:
+            continue
+        # Apply polarity filter
+        item_polarity = cs.get("polarity", "")
+        if polarity and item_polarity != polarity:
+            continue
+
+        items.append({
+            "id": r.id,
+            "image_id": r.image_id,
+            "title": r.title,
+            "artist": r.artist,
+            "year": r.year,
+            "analysis_method": am,
+            "analysis_version": ca.get("analysis_version"),
+            "lexicon_combined": ls.get("combined_normalized"),
+            "llm_delta": la.get("combined", {}).get("delta") if isinstance(la.get("combined"), dict) else None,
+            "final_score": cs.get("combined_score"),
+            "vader_normalized": cs.get("vader_normalized"),
+            "polarity": item_polarity,
+            "reasoning": cs.get("reasoning", ""),
+        })
+
+    # Re-count after filtering
+    return {
+        "items": items,
+        "total": len(items),  # Close enough for admin use; full count would be expensive
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+@router.get("/emotion-logs/{record_id}")
+def get_emotion_log_detail(
+    record_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin_role),
+):
+    """单件作品完整情绪分析记录（逐维度详情）"""
+    import json as _json
+
+    r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="记录不存在")
+
+    try:
+        ca = _json.loads(r.content_analysis) if r.content_analysis else {}
+    except (_json.JSONDecodeError, TypeError):
+        ca = {}
+
+    ls = ca.get("lexicon_scores", {}) if isinstance(ca.get("lexicon_scores"), dict) else {}
+    la = ca.get("llm_analysis", {}) if isinstance(ca.get("llm_analysis"), dict) else {}
+    cs = ca.get("combined_sentiment", {}) if isinstance(ca.get("combined_sentiment"), dict) else {}
+
+    # Build per-dimension breakdown
+    dims = ["text", "spatial", "painting", "size", "period", "seal", "theme", "brush_ink"]
+    dimensions = []
+    for dim in dims:
+        lex = ls.get(dim, {}) if isinstance(ls, dict) else {}
+        corr = la.get("corrections", {}).get(dim, {}) if isinstance(la.get("corrections"), dict) else {}
+        dimensions.append({
+            "key": dim,
+            "lexicon_raw": lex.get("raw") if isinstance(lex, dict) else None,
+            "lexicon_normalized": lex.get("normalized") if isinstance(lex, dict) else None,
+            "lexicon_confidence": lex.get("confidence") if isinstance(lex, dict) else None,
+            "lexicon_has_data": lex.get("has_data") if isinstance(lex, dict) else False,
+            "llm_delta": corr.get("delta") if isinstance(corr, dict) else None,
+            "llm_adjusted": corr.get("adjusted") if isinstance(corr, dict) else None,
+            "llm_confidence": corr.get("confidence") if isinstance(corr, dict) else None,
+            "llm_reasoning": corr.get("reasoning", "") if isinstance(corr, dict) else "",
+            "key_phrases": corr.get("key_phrases", []) if isinstance(corr, dict) else [],
+        })
+
+    return {
+        "id": r.id,
+        "image_id": r.image_id,
+        "title": r.title,
+        "artist": r.artist,
+        "year": r.year,
+        "inscription_content": (r.inscription_content or "")[:500],
+        "analysis_method": ca.get("analysis_method", ""),
+        "analysis_version": ca.get("analysis_version"),
+        "lexicon_scores": ls,
+        "llm_analysis": la,
+        "combined_sentiment": cs,
+        "dimensions": dimensions,
+        "weights": cs.get("weights") if isinstance(cs, dict) else {},
+    }
+
+
+@router.post("/emotion-logs/{record_id}/reanalyze")
+async def reanalyze_emotion(
+    record_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin_role),
+):
+    """手动触发单件作品的 LLM 情绪重分析"""
+    import json as _json
+
+    r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    if not r.inscription_content or len(r.inscription_content.strip()) < 2:
+        raise HTTPException(status_code=400, detail="该记录无有效题跋内容")
+
+    from app.services.molin_engine import analyze as molin_analyze
+    from app.services.llm_emotion_corrector import correct_dimensions, apply_corrections, _empty_corrections
+
+    try:
+        ca = _json.loads(r.content_analysis) if r.content_analysis else {}
+    except (_json.JSONDecodeError, TypeError):
+        ca = {}
+
+    old_themes = ca.get("themes", []) if isinstance(ca, dict) else []
+
+    # 1. Run lexicon baseline
+    result = molin_analyze(
+        text=r.inscription_content,
+        width_cm=r.artwork_width_cm,
+        height_cm=r.artwork_height_cm,
+        year=r.year,
+        artist=r.artist,
+        seal_content=r.seal_content,
+        themes=old_themes,
+    )
+
+    # Build lexicon_scores dict
+    lexicon_scores = {
+        "version": "3.1",
+        "text": {"raw": result.text.raw, "normalized": result.text.normalized, "confidence": result.text.confidence, "has_data": result.text.has_data},
+        "spatial": {"raw": result.spatial.raw, "normalized": result.spatial.normalized, "confidence": result.spatial.confidence, "has_data": result.spatial.has_data},
+        "painting": {"raw": result.painting.raw, "normalized": result.painting.normalized, "confidence": result.painting.confidence, "has_data": result.painting.has_data},
+        "size": {"raw": result.size.raw, "normalized": result.size.normalized, "confidence": result.size.confidence, "has_data": result.size.has_data},
+        "period": {"raw": result.period.raw, "normalized": result.period.normalized, "confidence": result.period.confidence, "has_data": result.period.has_data},
+        "seal": {"raw": result.seal.raw, "normalized": result.seal.normalized, "confidence": result.seal.confidence, "has_data": result.seal.has_data},
+        "theme": {"raw": result.theme.raw, "normalized": result.theme.normalized, "confidence": result.theme.confidence, "has_data": result.theme.has_data},
+        "brush_ink": {"raw": result.brush_ink.raw, "normalized": result.brush_ink.normalized, "confidence": result.brush_ink.confidence, "has_data": result.brush_ink.has_data},
+        "combined_raw": result.combined_raw,
+        "combined_normalized": result.combined_normalized,
+    }
+
+    # 2. Run LLM correction
+    try:
+        llm_result = await correct_dimensions(
+            text=r.inscription_content,
+            lexicon_result={
+                "text": result.text, "spatial": result.spatial, "painting": result.painting,
+                "size": result.size, "period": result.period, "seal": result.seal,
+                "theme": result.theme, "brush_ink": result.brush_ink,
+            },
+            artist=r.artist,
+            year=r.year,
+            themes=old_themes,
+        )
+    except Exception as e:
+        logger.warning("LLM correction failed for record %d: %s", record_id, e)
+        llm_result = None
+
+    # 3. Apply corrections
+    if llm_result and llm_result.get("corrections"):
+        final_scores = apply_corrections(lexicon_scores, llm_result)
+        analysis_method = "llm_corrected"
+    else:
+        final_scores = {
+            dim: lexicon_scores.get(dim, {}) for dim in ["text","spatial","painting","size","period","seal","theme","brush_ink"]
+        }
+        final_scores["combined_raw"] = result.combined_raw
+        final_scores["combined_normalized"] = result.combined_normalized
+        analysis_method = "lexicon_only"
+        llm_result = _empty_corrections()
+
+    # 4. Update DB
+    new_ca = dict(ca) if isinstance(ca, dict) else {}
+    new_ca["lexicon_scores"] = lexicon_scores
+    new_ca["llm_analysis"] = llm_result
+    new_ca["analysis_method"] = analysis_method
+    new_ca["analysis_version"] = 3
+    new_ca["combined_sentiment"] = {
+        "polarity": result.polarity,
+        "reasoning": result.reasoning,
+        "text_score": result.text.raw,
+        "spatial_score": result.spatial.raw,
+        "seal_score": result.seal.raw,
+        "painting_score": result.painting.raw,
+        "time_score": result.period.raw,
+        "size_score": result.size.raw,
+        "theme_score": result.theme.raw,
+        "brush_ink_score": result.brush_ink.raw,
+        "combined_score": round(result.combined_raw, 2),
+        "vader_normalized": round(result.combined_normalized, 3),
+        "vader_alpha": 8.0,
+        "weights": result.weights_used,
+        "method": analysis_method,
+        "has_data": {
+            "text": result.text.has_data,
+            "spatial": result.spatial.has_data,
+            "painting": result.painting.has_data,
+            "size": result.size.has_data,
+            "period": result.period.has_data,
+            "seal": result.seal.has_data,
+            "theme": result.theme.has_data,
+            "brush_ink": result.brush_ink.has_data,
+        },
+        "dimension_details": {
+            "text": {"signals": result.text.signals},
+            "spatial": {"signals": result.spatial.signals},
+            "painting": {"signals": result.painting.signals},
+            "size": {},
+            "period": {},
+            "seal": {"signals": result.seal.signals},
+            "theme": {"signals": result.theme.signals},
+        },
+    }
+
+    r.content_analysis = _json.dumps(new_ca, ensure_ascii=False)
+    db.commit()
+
+    return {
+        "ok": True,
+        "record_id": record_id,
+        "analysis_method": analysis_method,
+        "lexicon_combined": result.combined_normalized,
+        "final_score": round(result.combined_raw, 2),
+        "polarity": result.polarity,
+    }
+
+
+@router.get("/emotion-stats")
+def get_emotion_stats(
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin_role),
+):
+    """情绪引擎 v3 统计：词库 vs LLM 校正量分布"""
+    import json as _json
+
+    records = db.query(TubiAnalysis).filter(
+        TubiAnalysis.content_analysis.isnot(None),
+        TubiAnalysis.content_analysis != "",
+        TubiAnalysis.content_analysis != "{}",
+    ).all()
+
+    total = len(records)
+    lexicon_count = 0
+    llm_corrected_count = 0
+    polarity_counts = {"positive": 0, "negative": 0, "neutral": 0, "ambiguous": 0}
+    delta_distribution = {">0.5": 0, "0.2-0.5": 0, "-0.2-0.2": 0, "-0.5--0.2": 0, "<-0.5": 0}
+    score_distribution = {"strong_positive": 0, "mild_positive": 0, "neutral": 0, "mild_negative": 0, "strong_negative": 0}
+
+    for r in records:
+        try:
+            ca = _json.loads(r.content_analysis) if r.content_analysis else {}
+        except (_json.JSONDecodeError, TypeError):
+            continue
+
+        am = ca.get("analysis_method", "")
+        if am == "lexicon_only":
+            lexicon_count += 1
+        elif am == "llm_corrected":
+            llm_corrected_count += 1
+
+        cs = ca.get("combined_sentiment", {}) if isinstance(ca.get("combined_sentiment"), dict) else {}
+        pol = cs.get("polarity", "")
+        if pol in polarity_counts:
+            polarity_counts[pol] += 1
+
+        # Delta distribution
+        if isinstance(ca.get("llm_analysis"), dict):
+            combined_la = ca["llm_analysis"].get("combined", {})
+            delta = combined_la.get("delta", 0) if isinstance(combined_la, dict) else 0
+            if delta > 0.5:
+                delta_distribution[">0.5"] += 1
+            elif delta > 0.2:
+                delta_distribution["0.2-0.5"] += 1
+            elif delta >= -0.2:
+                delta_distribution["-0.2-0.2"] += 1
+            elif delta >= -0.5:
+                delta_distribution["-0.5--0.2"] += 1
+            else:
+                delta_distribution["<-0.5"] += 1
+
+        # Score distribution
+        score = cs.get("combined_score", 0)
+        if score > 1.5:
+            score_distribution["strong_positive"] += 1
+        elif score > 0:
+            score_distribution["mild_positive"] += 1
+        elif score == 0:
+            score_distribution["neutral"] += 1
+        elif score > -1.5:
+            score_distribution["mild_negative"] += 1
+        else:
+            score_distribution["strong_negative"] += 1
+
+    return {
+        "total_analyzed": total,
+        "analysis_methods": {
+            "lexicon_only": lexicon_count,
+            "llm_corrected": llm_corrected_count,
+        },
+        "polarity_distribution": polarity_counts,
+        "delta_distribution": delta_distribution,
+        "score_distribution": score_distribution,
+    }

@@ -3450,8 +3450,13 @@ async def get_my_stats(
         if r.content_analysis:
             try:
                 ca = json.loads(r.content_analysis) if isinstance(r.content_analysis, str) else r.content_analysis
-                sentiment = ca.get("sentiment", {})
-                polarity = sentiment.get("polarity", "neutral")
+                # 优先 v3 combined_sentiment，兼容旧 sentiment
+                cs = ca.get("combined_sentiment", {})
+                if isinstance(cs, dict) and cs.get("polarity"):
+                    polarity = cs["polarity"]
+                else:
+                    sentiment = ca.get("sentiment", {})
+                    polarity = sentiment.get("polarity", "neutral") if isinstance(sentiment, dict) else "neutral"
                 sentiment_counts[polarity] = sentiment_counts.get(polarity, 0) + 1
             except Exception:
                 pass
