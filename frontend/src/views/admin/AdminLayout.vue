@@ -190,6 +190,7 @@ const MENU_DEF = [
       { key: 'users', label: '用户管理', link: '/admin?tab=users', perm: 'system.users' },
       { key: 'permissions', label: '权限配置', link: '/admin/permissions', perm: 'system.permissions' },
       { key: 'emotion-engine', label: '情绪引擎', link: '/admin/emotion-engine', perm: 'system.config' },
+      { key: 'emotion-logs', label: '分析日志', link: '/admin/emotion-logs', perm: 'system.config' },
       { key: 'settings', label: '系统设置', link: '/admin/settings', perm: 'system.config' },
     ],
   },
@@ -207,6 +208,7 @@ function isActive(item) {
   if (item.link === '/admin/permissions') return route.path === '/admin/permissions'
   if (item.link === '/admin/settings') return route.path === '/admin/settings'
   if (item.link === '/admin/emotion-engine') return route.path === '/admin/emotion-engine'
+  if (item.link === '/admin/emotion-logs') return route.path === '/admin/emotion-logs'
   if (item.key === 'all-libraries') return activeTab.value === 'libraries' && !route.query.detail_id
   return activeTab.value === item.key
 }
