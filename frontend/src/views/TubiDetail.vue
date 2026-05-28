@@ -205,7 +205,15 @@
               <!-- ===== Card 2: 主题判断 ===== -->
               <div class="theme-card" v-if="currentImage.contentAnalysis?.themes?.length">
                 <h4 class="section-title"><el-icon><Collection /></el-icon> {{ $t("card.themes") }}</h4>
-                <div ref="themeChartRef" class="theme-chart-small"></div>
+                <div class="theme-list">
+                  <div v-for="(theme, i) in sortedThemes" :key="theme.name" class="theme-row">
+                    <span class="theme-name">{{ t(theme.name) }}</span>
+                    <div class="theme-bar-track">
+                      <div class="theme-bar-fill" :style="{ width: Math.round(theme.confidence * 100) + '%', background: themeColors[i % 5] }"></div>
+                    </div>
+                    <span class="theme-pct">{{ Math.round(theme.confidence * 100) }}%</span>
+                  </div>
+                </div>
               </div>
 
               <!-- ===== Card 4: 推导过程 ===== -->
@@ -1352,8 +1360,13 @@ let ctx = null
 
 // ── 饼图相关 ──────────────────────────────────
 const pieChartRef = ref(null)
-const themeChartRef = ref(null)
-let themeChart = null
+const themeColors = ['#d4846a', '#7ba3c4', '#a8c97a', '#b8a47e', '#c4a87a']
+
+const sortedThemes = computed(() => {
+  const themes = props.currentImage?.contentAnalysis?.themes
+  if (!themes?.length) return []
+  return [...themes].sort((a, b) => b.confidence - a.confidence)
+})
 let pieChart = null
 let pieChartUpdateRaf = 0
 
@@ -1705,7 +1718,7 @@ watch(() => props.currentImage, async (newVal) => {
   initCanvas()
   if (analyzeStatus.value === 'analyzed') {
     drawRegions()
-    setTimeout(() => { updatePieChart(); updateThemeChart() }, 300)
+    setTimeout(() => { updatePieChart() }, 300)
   }
 }, { immediate: true })
 
@@ -1716,64 +1729,8 @@ watch(() => areaStats.value, () => {
   }
 }, { deep: true })
 
-// ── 主题柱状图 ─────────────────────────────────
-function updateThemeChart() {
-  if (!themeChartRef.value) return
-  if (!themeChart) {
-    themeChart = echarts.init(themeChartRef.value)
-  }
-  const themes = props.currentImage?.contentAnalysis?.themes
-  if (!themes?.length) return
-
-  const data = themes.map(theme => ({
-    name: t(theme.name),
-    value: Math.round(theme.confidence * 100)
-  })).sort((a, b) => b.value - a.value)
-
-  themeChart.setOption({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 0, right: 80, top: 2, bottom: 0, containLabel: true },
-    xAxis: { show: false },
-    yAxis: {
-      type: 'category',
-      data: data.map(d => d.name),
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { fontSize: 12, color: '#555' }
-    },
-    series: [{
-      type: 'bar',
-      data: data.map((d, i) => ({
-        value: d.value,
-        itemStyle: {
-          color: ['#d4846a', '#7ba3c4', '#a8c97a', '#b8a47e', '#c4a87a'][i % 5],
-          borderRadius: [0, 4, 4, 0]
-        }
-      })),
-      barWidth: 16,
-      label: {
-        show: true,
-        position: 'right',
-        fontSize: 11,
-        color: '#888',
-        formatter: (params) => `${t('theme.confidence')} ${params.value}%`
-      }
-    }]
-  }, true)
-}
-
-// Watch for theme changes
-watch(() => props.currentImage?.contentAnalysis?.themes, (themes) => {
-  if (themes?.length) {
-    nextTick(() => updateThemeChart())
-  }
-}, { deep: true, immediate: true })
-
-
-
 function handleResize() {
   pieChart?.resize()
-  themeChart?.resize()
   if (props.currentImage) {
     initCanvas()
     if (analyzeStatus.value === 'analyzed') drawRegions()
@@ -1787,7 +1744,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   pieChart?.dispose()
-  themeChart?.dispose()
   pieChart = null
 })
 
@@ -2502,11 +2458,43 @@ defineExpose({
   font-size: 13px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
-.theme-chart-small {
-  width: 100%;
-  height: 100px;
+.theme-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 10px;
+}
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.theme-name {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #555;
+  min-width: 4em;
+}
+.theme-bar-track {
+  flex: 1;
+  height: 12px;
+  background: #f0eee8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.theme-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+.theme-pct {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #888;
+  width: 3em;
+  text-align: right;
 }
 .theme-card .theme-tags {
   display: flex;
