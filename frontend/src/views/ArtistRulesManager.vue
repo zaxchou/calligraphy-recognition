@@ -4,22 +4,39 @@
       <el-select v-model="selectedArtist" size="small" placeholder="选择画家" @change="loadRules" style="width: 160px;">
         <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
       </el-select>
-      <el-button size="small" type="primary" plain @click="handleAiDiscover" :loading="aiDiscoverLoading" :disabled="!selectedArtist">
+      <el-button v-if="!editing" size="small" type="primary" plain @click="handleAiDiscover" :loading="aiDiscoverLoading" :disabled="!selectedArtist">
         <el-icon><MagicStick /></el-icon>AI 规则发现
       </el-button>
-      <el-button size="small" @click="refreshRules">
+      <el-button size="small" @click="refreshRules" :disabled="editing">
         <el-icon><Refresh /></el-icon>刷新
       </el-button>
+      <div style="flex:1"></div>
+      <template v-if="editing">
+        <el-button size="small" @click="cancelEdit">取消</el-button>
+        <el-button size="small" type="primary" @click="saveRules" :loading="saving">保存</el-button>
+      </template>
+      <template v-else-if="currentRule">
+        <el-button size="small" @click="startEdit">
+          <el-icon><Edit /></el-icon>编辑
+        </el-button>
+      </template>
+      <template v-else-if="selectedArtist && !loading">
+        <el-button size="small" type="success" @click="startCreate">
+          <el-icon><Plus /></el-icon>新建规则
+        </el-button>
+      </template>
     </div>
 
     <div v-loading="loading" class="rules-content">
       <div v-if="!selectedArtist" class="empty-state">
         <el-empty description="请选择画家查看规则" />
       </div>
-      <div v-else-if="error" class="empty-state">
+      <div v-else-if="error && !editing" class="empty-state">
         <el-empty :description="error" />
       </div>
-      <div v-else-if="currentRule" class="rule-detail">
+
+      <!-- 只读展示 -->
+      <div v-else-if="currentRule && !editing" class="rule-detail">
         <!-- 基本信息 -->
         <div class="rule-section">
           <div class="section-header">
@@ -128,6 +145,125 @@
           </div>
         </div>
       </div>
+
+      <!-- 编辑模式 -->
+      <div v-else-if="editing" class="rule-edit">
+        <!-- 基本信息编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">基本信息</span>
+          </div>
+          <el-form label-width="100px" size="small">
+            <el-form-item label="画家名称" v-if="creating">
+              <el-input v-model="editForm.artist_name" placeholder="输入画家名称" style="width: 200px;" />
+            </el-form-item>
+            <el-form-item label="画家名称" v-else>
+              <span style="font-weight: 600;">{{ editForm.artist_name }}</span>
+            </el-form-item>
+            <el-form-item label="情感基线">
+              <el-input-number v-model="editForm.emotion_baseline" :min="-1" :max="1" :step="0.1" :precision="1" />
+              <span style="margin-left: 12px; font-size: 12px; color: #999;">负值=偏消极，正值=偏积极</span>
+            </el-form-item>
+            <el-form-item label="版本号">
+              <el-input v-model="editForm.rules_version" style="width: 120px;" />
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 生命周期编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">生命周期</span>
+            <el-button size="small" text type="primary" @click="addStage">+ 添加阶段</el-button>
+          </div>
+          <div v-if="editForm.life_stages.length === 0" style="color: #999; font-size: 13px;">暂无阶段，点击上方按钮添加</div>
+          <div v-for="(stage, idx) in editForm.life_stages" :key="idx" class="stage-edit-item">
+            <div class="stage-edit-row">
+              <el-input v-model="stage.name" placeholder="阶段名称" size="small" style="width: 180px;" />
+              <el-input-number v-model="stage.year_start" :min="1000" :max="2100" size="small" style="width: 100px;" />
+              <span>~</span>
+              <el-input-number v-model="stage.year_end" :min="1000" :max="2100" size="small" style="width: 100px;" />
+              <el-input-number v-model="stage.weight" :min="0" :max="10" :step="0.5" :precision="1" size="small" style="width: 100px;" placeholder="权重" />
+              <el-input-number v-model="stage.mood_offset" :min="-2" :max="2" :step="0.1" :precision="1" size="small" style="width: 100px;" placeholder="偏移" />
+              <el-button size="small" text type="danger" @click="removeStage(idx)">删除</el-button>
+            </div>
+            <el-input v-model="stage.description" placeholder="阶段描述（可选）" size="small" style="margin-top: 6px;" />
+          </div>
+        </div>
+
+        <!-- 情感提示词编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">情感倾向说明（LLM 注入）</span>
+          </div>
+          <el-input v-model="editForm.sentiment_note" type="textarea" :rows="3" placeholder="用于注入 LLM prompt 的画家情感特征描述" />
+        </div>
+
+        <!-- 主题提示词编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">主题倾向说明（LLM 注入）</span>
+          </div>
+          <el-input v-model="editForm.theme_note" type="textarea" :rows="3" placeholder="用于注入 LLM prompt 的画家主题倾向描述" />
+        </div>
+
+        <!-- 主题例外编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">主题情感例外</span>
+            <el-button size="small" text type="primary" @click="addThemeException">+ 添加</el-button>
+          </div>
+          <div v-for="(exc, idx) in editThemeExceptions" :key="idx" class="exception-edit-item">
+            <el-select v-model="exc.theme_code" size="small" style="width: 140px;" placeholder="主题">
+              <el-option v-for="t in THEMES_LIST" :key="t.code" :label="t.name" :value="t.code" />
+            </el-select>
+            <el-input v-model="exc.keywords_str" size="small" placeholder="触发词（逗号分隔）" style="flex: 1;" />
+            <el-select v-model="exc.override_to" size="small" style="width: 110px;">
+              <el-option label="→ negative" value="negative" />
+              <el-option label="→ positive" value="positive" />
+              <el-option label="→ neutral" value="neutral" />
+            </el-select>
+            <el-button size="small" text type="danger" @click="removeThemeException(idx)">删除</el-button>
+          </div>
+          <div v-if="editThemeExceptions.length === 0" style="color: #999; font-size: 13px;">暂无例外规则</div>
+        </div>
+
+        <!-- 预期主题分布编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">预期主题分布（偏差检测）</span>
+          </div>
+          <div class="dist-edit-grid">
+            <div v-for="t in THEMES_LIST" :key="t.code" class="dist-edit-item">
+              <span class="dist-theme">{{ t.name }}</span>
+              <el-input-number v-model="editForm.expected_theme_distribution[t.name][0]" :min="0" :max="100" size="small" style="width: 70px;" />
+              <span>~</span>
+              <el-input-number v-model="editForm.expected_theme_distribution[t.name][1]" :min="0" :max="100" size="small" style="width: 70px;" />
+              <span style="font-size: 12px; color: #999;">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 预期情感分布编辑 -->
+        <div class="rule-section">
+          <div class="section-header">
+            <span class="section-title">预期情感分布（偏差检测）</span>
+          </div>
+          <el-form label-width="100px" size="small" inline>
+            <el-form-item label="消极下限">
+              <el-input-number v-model="editForm.expected_sentiment_distribution.negative_min" :min="0" :max="100" />
+              <span style="margin-left: 4px;">%</span>
+            </el-form-item>
+            <el-form-item label="积极上限">
+              <el-input-number v-model="editForm.expected_sentiment_distribution.positive_max" :min="0" :max="100" />
+              <span style="margin-left: 4px;">%</span>
+            </el-form-item>
+            <el-form-item label="情感均值上限">
+              <el-input-number v-model="editForm.expected_sentiment_distribution.emotion_mean_max" :min="-2" :max="2" :step="0.1" :precision="1" />
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -135,10 +271,19 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { MagicStick, Refresh } from '@element-plus/icons-vue'
+import { MagicStick, Refresh, Edit, Plus } from '@element-plus/icons-vue'
 import { artistRulesApi } from '../api'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
+const THEMES_LIST = [
+  { code: 1, name: '身世自况' },
+  { code: 2, name: '咏物寄兴' },
+  { code: 3, name: '画理自叙' },
+  { code: 4, name: '时事讽喻' },
+  { code: 5, name: '吉语祥瑞' },
+  { code: 6, name: '交游赠答' },
+]
 
 const props = defineProps({
   artist: { type: String, default: '李鱓' }
@@ -146,17 +291,24 @@ const props = defineProps({
 
 const selectedArtist = ref(props.artist)
 const loading = ref(false)
+const saving = ref(false)
 const aiDiscoverLoading = ref(false)
 const currentRule = ref(null)
 const error = ref('')
 const artistList = ref([])
 
+// Edit state
+const editing = ref(false)
+const creating = ref(false)
+const editForm = ref(null)
+const editThemeExceptions = ref([])
+
+// ── View computed ──
 const lifeStages = computed(() => {
   if (!currentRule.value) return []
   const stages = currentRule.value.life_stages
   return Array.isArray(stages) ? stages : []
 })
-
 const lifeStageCount = computed(() => lifeStages.value.length)
 
 const themeExceptions = computed(() => {
@@ -164,7 +316,6 @@ const themeExceptions = computed(() => {
   const exc = currentRule.value.theme_exceptions
   return typeof exc === 'object' && exc !== null ? exc : {}
 })
-
 const themeExceptionCount = computed(() => Object.keys(themeExceptions.value).length)
 
 const expectedTheme = computed(() => {
@@ -182,10 +333,12 @@ const expectedSentiment = computed(() => {
 watch(() => props.artist, (val) => {
   if (val) {
     selectedArtist.value = val
+    editing.value = false
     loadRules()
   }
 })
 
+// ── Data loading ──
 async function loadArtistList() {
   try {
     const res = await fetch(`${API_BASE}/content-analysis/artists`)
@@ -197,6 +350,7 @@ async function loadArtistList() {
 async function loadRules() {
   if (!selectedArtist.value || selectedArtist.value === 'all') return
   loading.value = true
+  editing.value = false
   error.value = ''
   try {
     const res = await artistRulesApi.getByName(selectedArtist.value)
@@ -213,6 +367,149 @@ async function loadRules() {
   }
 }
 
+// ── Edit mode ──
+function makeDefaultForm() {
+  const themeDist = {}
+  for (const t of THEMES_LIST) {
+    themeDist[t.name] = [5, 15]
+  }
+  return {
+    artist_name: selectedArtist.value || '',
+    emotion_baseline: 0.0,
+    life_stages: [],
+    sentiment_note: '',
+    theme_note: '',
+    expected_theme_distribution: themeDist,
+    expected_sentiment_distribution: {
+      negative_min: 30,
+      positive_max: 45,
+      emotion_mean_max: 0.0,
+    },
+    rules_version: '5.7',
+  }
+}
+
+function startEdit() {
+  const r = currentRule.value
+  editForm.value = {
+    artist_name: r.artist_name,
+    emotion_baseline: r.emotion_baseline ?? 0,
+    life_stages: JSON.parse(JSON.stringify(r.life_stages || [])),
+    sentiment_note: r.sentiment_note || '',
+    theme_note: r.theme_note || '',
+    expected_theme_distribution: JSON.parse(JSON.stringify(r.expected_theme_distribution || {})),
+    expected_sentiment_distribution: JSON.parse(JSON.stringify(r.expected_sentiment_distribution || {})),
+    rules_version: r.rules_version || '5.7',
+  }
+  // Ensure all 6 themes exist in distribution
+  for (const t of THEMES_LIST) {
+    if (!editForm.value.expected_theme_distribution[t.name]) {
+      editForm.value.expected_theme_distribution[t.name] = [5, 15]
+    }
+  }
+  // Parse theme exceptions
+  const exc = r.theme_exceptions || {}
+  editThemeExceptions.value = Object.entries(exc).map(([code, val]) => ({
+    theme_code: Number(code),
+    keywords_str: (val.override_if_contains || []).join(', '),
+    override_to: val.override_to || 'negative',
+  }))
+  creating.value = false
+  editing.value = true
+}
+
+function startCreate() {
+  editForm.value = makeDefaultForm()
+  editThemeExceptions.value = []
+  creating.value = true
+  editing.value = true
+}
+
+function cancelEdit() {
+  editing.value = false
+  creating.value = false
+  editForm.value = null
+  editThemeExceptions.value = []
+}
+
+// ── Stage helpers ──
+function addStage() {
+  editForm.value.life_stages.push({
+    name: '', year_start: 1800, year_end: 1850,
+    weight: 1.0, mood_offset: 0.0, description: ''
+  })
+}
+
+function removeStage(idx) {
+  editForm.value.life_stages.splice(idx, 1)
+}
+
+// ── Theme exception helpers ──
+function addThemeException() {
+  editThemeExceptions.value.push({
+    theme_code: 1, keywords_str: '', override_to: 'negative'
+  })
+}
+
+function removeThemeException(idx) {
+  editThemeExceptions.value.splice(idx, 1)
+}
+
+// ── Save ──
+async function saveRules() {
+  const form = editForm.value
+  if (!form) return
+  if (creating.value && !form.artist_name) {
+    ElMessage.warning('请输入画家名称')
+    return
+  }
+
+  saving.value = true
+  try {
+    // Build theme_exceptions from edit format
+    const themeExceptions = {}
+    for (const exc of editThemeExceptions.value) {
+      const kw = exc.keywords_str.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+      if (kw.length > 0) {
+        themeExceptions[String(exc.theme_code)] = {
+          override_if_contains: kw,
+          override_to: exc.override_to,
+        }
+      }
+    }
+
+    const payload = {
+      artist_name: form.artist_name,
+      emotion_baseline: form.emotion_baseline,
+      life_stages: form.life_stages,
+      sentiment_note: form.sentiment_note,
+      theme_note: form.theme_note,
+      theme_exceptions: themeExceptions,
+      expected_theme_distribution: form.expected_theme_distribution,
+      expected_sentiment_distribution: form.expected_sentiment_distribution,
+      rules_version: form.rules_version,
+    }
+
+    if (creating.value) {
+      await artistRulesApi.create(payload)
+      ElMessage.success('画家规则创建成功')
+    } else {
+      await artistRulesApi.update(currentRule.value.id, payload)
+      ElMessage.success('画家规则保存成功')
+    }
+
+    editing.value = false
+    creating.value = false
+    await loadRules()
+  } catch (e) {
+    const msg = e.response?.data?.detail || e.message || '保存失败'
+    ElMessage.error('保存失败: ' + msg)
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── AI Discover ──
 async function handleAiDiscover() {
   if (!selectedArtist.value) return
   aiDiscoverLoading.value = true
@@ -283,4 +580,44 @@ onMounted(() => {
 .dist-item { text-align: center; padding: 6px; background: #faf9f7; border-radius: 6px; }
 .dist-theme { font-size: 12px; color: #666; display: block; margin-bottom: 2px; }
 .dist-range { font-size: 13px; font-weight: 600; color: #333; font-family: monospace; }
+
+/* Edit mode styles */
+.stage-edit-item {
+  background: #faf9f7;
+  border: 1px solid #e8e4da;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.stage-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.exception-edit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dist-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.dist-edit-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.dist-edit-item .dist-theme {
+  width: 70px;
+  font-size: 13px;
+  color: #555;
+  flex-shrink: 0;
+}
 </style>

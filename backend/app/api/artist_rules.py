@@ -14,6 +14,16 @@ from pydantic import BaseModel
 from app.core.database import get_db_connection
 from app.core.auth import require_admin_role
 
+
+def _clear_artist_rules_cache(artist_name: str):
+    """清除画家规则内存缓存，使新规则立即生效"""
+    try:
+        from app.services.inscription_content_analyzer import _cache_artist_rules
+        _cache_artist_rules.pop(artist_name, None)
+    except ImportError:
+        pass
+
+
 router = APIRouter(prefix="/artist-rules", tags=["artist-rules"])
 
 
@@ -130,6 +140,7 @@ async def create_artist_rule(rule: ArtistRuleCreate):
             )
         )
         conn.commit()
+        _clear_artist_rules_cache(rule.artist_name)
         return {"success": True, "message": f"画家 {rule.artist_name} 规则创建成功"}
     except HTTPException:
         raise
@@ -173,6 +184,7 @@ async def update_artist_rule(rule_id: int, rule: ArtistRuleUpdate):
             )
             conn.commit()
 
+        _clear_artist_rules_cache(existing.get("artist_name", ""))
         return {"success": True, "message": "规则更新成功"}
     except HTTPException:
         raise
@@ -189,11 +201,12 @@ async def delete_artist_rule(rule_id: int, admin=Depends(require_admin_role)):
     conn = get_db_connection()
     try:
         existing = conn.execute(
-            "SELECT id FROM artist_rules WHERE id = ?", (rule_id,)
+            "SELECT id, artist_name FROM artist_rules WHERE id = ?", (rule_id,)
         ).fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="规则不存在")
 
+        _clear_artist_rules_cache(existing["artist_name"])
         conn.execute("DELETE FROM artist_rules WHERE id = ?", (rule_id,))
         conn.commit()
         return {"success": True, "message": "规则已删除"}
