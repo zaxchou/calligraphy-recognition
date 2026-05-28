@@ -1242,7 +1242,7 @@ function getDimDetail(dimKey) {
   // 尺寸维度
   if (key === 'size') {
     return [{
-      label: `${detail.width_cm || '?'}×${detail.height_cm || '?'}cm`,
+      label: `${detail.width || '?'}×${detail.height || '?'}cm`,
       score: cs.size_score || 0,
       desc: detail.category || '',
     }]
@@ -1253,7 +1253,7 @@ function getDimDetail(dimKey) {
     return [{
       label: `${detail.year || '?'}年`,
       score: cs.time_score || 0,
-      desc: detail.stage || '',
+      desc: detail.period_phase || '',
     }]
   }
 

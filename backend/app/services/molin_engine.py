@@ -249,7 +249,7 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
 
     result.raw = score
     # 后处理：语境规则调整（修正反讽、条件句式的误判）
-    result.raw = _apply_context_rules(text, result.raw)
+    result.raw = _apply_context_rules(text, result.raw, matched)
     result.normalized = vader_normalize(result.raw)
     result.has_data = len(matched) > 0
     result.confidence = 1.0 if result.has_data else 0.3
@@ -257,51 +257,63 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
     return result
 
 
-def _apply_context_rules(text: str, score: float) -> float:
+def _apply_context_rules(text: str, score: float, signals: List[Dict] = None) -> float:
     """后处理规则：修正词库对反讽、条件句式的误判
 
-    在词库匹配完成后运行，基于整句的语境模式调整分数。
-    只做减法（降低被误判为正面/负面的分数），不做加法。
+    两阶段：
+    1. 精准扣分 — 识别反衬/条件句式中的特定词，选择性降分
+    2. 整体缩放 — 对无法定位到具体词的反讽模式，整体降低
     """
     import re
+    penalty = 0.0
+    signals = signals or []
 
-    # 规则1: 反讽对比结构 — "X物无限/虽多，Y嫌/弃/恶"
-    #   X 中的积极词是反衬 Y 的消极处境，应降低其正面贡献
-    #   例: "甘芳物无限，其中涵辣嫌人餐" → 甘芳是反衬，辣才是主体
-    contrast_patterns = [
-        r'(\S{1,4}(?:物|事|者|处))\s*无[限数量]\w*[，,\s]*\S{0,10}(?:嫌|弃|恶|厌|憎)',
-        r'(?:世上|人间)\S{1,6}(?:无限|虽\S)[，,\s]*\S{0,10}(?:嫌|弃|恶)',
-    ]
-    for pat in contrast_patterns:
-        if re.search(pat, text):
-            # 降低正面词贡献（反衬结构中的正面词不是主体）
-            # 保守调整: 降低 50% 的正面分量
-            if score > 2:
-                score = score * 0.5
-            break
+    # ═══ 精准扣分：针对特定词的语境修正 ═══
 
-    # 规则2: 条件让步结构 — "任使/纵使/即便...乃/方/始得志"
-    #   "得志"是有条件的、遥远的，不是当前状态
-    #   例: "任使含咀乃得志" → 得志需要先忍受
-    conditional_patterns = [
-        r'(?:任使|纵使|即便|虽使)\S{1,20}(?:乃|方|始|才)\S*[得成至]',
-    ]
-    for pat in conditional_patterns:
-        if re.search(pat, text):
-            # 降低条件性正面词的分数（条件=尚未达成）
-            if score > 0:
-                score = score * 0.6
-            break
+    # 规则1: 反讽对比 — "X无限，Y嫌/弃/恶" → X中的正面词是反衬
+    #   找到"甘芳"等在被"嫌/弃"前的正面词，降低其贡献
+    foil_match = re.search(r'(\S{1,4}(?:物|者|处)?)\s*无[限数量](?:\S{0,6})[，,\s]*\S*?(嫌|弃|恶|厌|憎)', text)
+    if foil_match:
+        foil_section = text[:foil_match.start()]
+        for sig in signals:
+            word = sig.get("word", "")
+            w_score = sig.get("score", 0) or 0
+            # 在 foil 区域中的正面多字词 → 减半
+            if len(word) >= 2 and w_score > 0 and word in foil_section:
+                penalty += w_score * 0.5
 
-    # 规则3: 自嘲式否定 — "莫嫌X少/不够"
-    #   "莫嫌辛味少" → 不是真的说辛味够，而是在自嘲辛味本来就不多
-    #   带着苦涩的自我认知
-    self_deprecation = r'莫嫌.{1,6}(?:少|不\S|无\S)'
-    if re.search(self_deprecation, text) and score > 2:
-        # 整体情感偏苦涩，降低过高正面分
+    # 规则2: 条件让步 — "任使/纵使...乃/方得志"
+    #   "得志/成名/出头"等词出现在条件结构中 → 减半
+    cond_match = re.search(r'(?:任使|纵使|即便|需使)\S{0,20}(?:乃|方|始|才)(\S{1,3}(?:志|名|头|功))', text)
+    if cond_match:
+        cond_word = cond_match.group(1)
+        for sig in signals:
+            if sig.get("word") == cond_word and sig.get("score", 0) > 0:
+                penalty += sig["score"] * 0.6
+
+    # 规则3: 转折连词 — "而/却/但/唯/独"前后情感相反
+    #   例: "甘芳物无限，其中涵辣嫌人餐" → "其中"暗示转折
+    pivot_match = re.search(r'(?:其中|唯有|独有|却是|而)(\S{0,10}(?:嫌|弃|恶|厌|憎)\S{0,6})', text)
+    if pivot_match:
+        # 转折后的负面词前面的正面词 → 反衬
+        pivot_pos = pivot_match.start()
+        before = text[:pivot_pos]
+        for sig in signals:
+            word = sig.get("word", "")
+            w_score = sig.get("score", 0) or 0
+            if len(word) >= 2 and w_score > 0 and word in before:
+                penalty += w_score * 0.4
+
+    if penalty > 0:
+        score -= penalty
+
+    # ═══ 整体缩放：对无法定位到具体词的模式 ═══
+
+    # 自嘲式否定 — "莫嫌X少" → 苦涩底色
+    if re.search(r'莫嫌.{1,6}(?:少|不\S|无\S)', text) and score > 2:
         score = score * 0.7
 
-    return score
+    return max(score, -10.0)  # 不低于 -10
 
 
 def analyze_spatial(spatial_emotion: Dict) -> DimensionResult:
