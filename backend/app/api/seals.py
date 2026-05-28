@@ -124,6 +124,9 @@ class SealUpdate(BaseModel):
     description: Optional[str] = None
     source: Optional[str] = None
     merge_on_conflict: Optional[bool] = False
+    emotion_score: Optional[float] = None
+    emotion_category: Optional[str] = None
+    emotion_desc: Optional[str] = None
 
 class BatchDeleteRequest(BaseModel):
     ids: List[int]
@@ -401,6 +404,12 @@ async def update_seal(seal_id: int, seal: SealUpdate):
             updates["description"] = seal.description
         if seal.source is not None:
             updates["source"] = seal.source
+        if seal.emotion_score is not None:
+            updates["emotion_score"] = seal.emotion_score
+        if seal.emotion_category is not None:
+            updates["emotion_category"] = seal.emotion_category
+        if seal.emotion_desc is not None:
+            updates["emotion_desc"] = seal.emotion_desc
 
         if updates:
             updates["updated_at"] = datetime.now().isoformat()

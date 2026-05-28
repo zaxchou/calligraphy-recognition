@@ -343,3 +343,73 @@ async def ai_discover_rules(artist_name: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
+
+
+@router.get("/generate-life-stages/{artist_name}")
+async def generate_life_stages(artist_name: str):
+    """
+    从百科数据自动生成生命阶段规则。
+    读取 artists 表的 birth_year + death_year + bio_events，
+    均分为早/中/晚三期。
+    """
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT birth_year, death_year, bio_events FROM artists WHERE name = ?",
+            (artist_name,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"画家「{artist_name}」不在百科中")
+
+        birth = row["birth_year"]
+        death = row["death_year"]
+        bio_events = []
+        if row["bio_events"]:
+            try:
+                bio_events = json.loads(row["bio_events"])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        if not birth:
+            raise HTTPException(status_code=400, detail=f"画家「{artist_name}」缺少出生年份，无法生成时期")
+
+        lifespan = (death - birth) if death else 70
+
+        # 三段均分
+        p1_end = birth + lifespan // 3
+        p2_end = birth + lifespan * 2 // 3
+        p3_end = death or (birth + lifespan)
+
+        # 尝试从 bio_events 找关键节点来切分
+        if bio_events:
+            years = sorted([e.get("year") for e in bio_events if isinstance(e.get("year"), int)])
+            if len(years) >= 3:
+                mid1, mid2 = years[len(years) // 3], years[len(years) * 2 // 3]
+                if mid1 > birth and mid2 > mid1:
+                    p1_end, p2_end = mid1, mid2
+
+        stages = [
+            {"name": "早期", "year_start": birth, "year_end": p1_end,
+             "weight": 1.0, "mood_offset": 0.0, "description": f"{birth}-{p1_end}"},
+            {"name": "中期", "year_start": p1_end + 1, "year_end": p2_end,
+             "weight": 1.5, "mood_offset": -0.2, "description": f"{p1_end+1}-{p2_end}"},
+            {"name": "晚期", "year_start": p2_end + 1, "year_end": p3_end,
+             "weight": 2.0, "mood_offset": -0.4, "description": f"{p2_end+1}-{p3_end}"},
+        ]
+
+        # 用 bio_events 填充描述
+        if bio_events:
+            for evt in bio_events:
+                yr, desc = evt.get("year"), evt.get("event", "")
+                if yr and desc:
+                    for s in stages:
+                        if s["year_start"] <= yr <= s["year_end"]:
+                            s["description"] = desc[:30]
+
+        return {"success": True, "stages": stages}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()

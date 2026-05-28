@@ -334,6 +334,9 @@ export const artistRulesApi = {
   },
   aiDiscover(artistName) {
     return api.post(`/artist-rules/ai-discover/${encodeURIComponent(artistName)}`)
+  },
+  generateLifeStages(artistName) {
+    return api.get(`/artist-rules/generate-life-stages/${encodeURIComponent(artistName)}`)
   }
 }
 

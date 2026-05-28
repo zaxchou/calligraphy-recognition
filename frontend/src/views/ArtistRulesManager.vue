@@ -174,6 +174,7 @@
         <div class="rule-section">
           <div class="section-header">
             <span class="section-title">生命周期</span>
+            <el-button size="small" text type="primary" @click="generateFromEncyclopedia" :loading="generatingStages">从百科生成</el-button>
             <el-button size="small" text type="primary" @click="addStage">+ 添加阶段</el-button>
           </div>
           <div v-if="editForm.life_stages.length === 0" style="color: #999; font-size: 13px;">暂无阶段，点击上方按钮添加</div>
@@ -302,6 +303,7 @@ const editing = ref(false)
 const creating = ref(false)
 const editForm = ref(null)
 const editThemeExceptions = ref([])
+const generatingStages = ref(false)
 
 // ── View computed ──
 const lifeStages = computed(() => {
@@ -442,6 +444,26 @@ function addStage() {
 
 function removeStage(idx) {
   editForm.value.life_stages.splice(idx, 1)
+}
+
+async function generateFromEncyclopedia() {
+  const name = editForm.value.artist_name
+  if (!name) { ElMessage.warning('请先输入画家名称'); return }
+  generatingStages.value = true
+  try {
+    const res = await artistRulesApi.generateLifeStages(name)
+    if (res.success && res.stages) {
+      editForm.value.life_stages = res.stages
+      ElMessage.success(`已从百科生成 ${res.stages.length} 个阶段`)
+    } else {
+      ElMessage.error(res.message || '生成失败')
+    }
+  } catch (e) {
+    const msg = e.response?.data?.detail || e.message || '生成失败'
+    ElMessage.error(msg)
+  } finally {
+    generatingStages.value = false
+  }
 }
 
 // ── Theme exception helpers ──

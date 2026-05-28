@@ -986,6 +986,19 @@ class AnalysisResult:
     top_words: List[Tuple[str, int]]  # 高频词Top20
 
 
+def _score_to_emotion_label(score: float) -> str:
+    """将印章情感分数转为情绪标签"""
+    if score >= 0.5:
+        return "positive"
+    elif score <= -0.5:
+        return "negative"
+    elif score > 0:
+        return "neutral_slight_positive"
+    elif score < 0:
+        return "neutral_slight_negative"
+    return "neutral"
+
+
 def analyze_seal_emotion(seal_content: str) -> dict:
     """
     印章情感分析 —— 第三个维度
@@ -1019,6 +1032,28 @@ def analyze_seal_emotion(seal_content: str) -> dict:
     cat_weights = SEAL_EMOTION_RULES.get("category_weight", {})
     unknown_rule = SEAL_EMOTION_RULES.get("unknown_seal", {"score": 0, "desc": "未知印章"})
 
+    # 尝试从 DB 加载印章情感数据（DB 优先 → 硬编码兜底）
+    db_seal_cache = {}
+    try:
+        from app.core.database import get_db_connection as _get_conn
+        _conn = _get_conn()
+        try:
+            rows = _conn.execute(
+                "SELECT name, emotion_score, emotion_category, emotion_desc FROM seals "
+                "WHERE emotion_score IS NOT NULL"
+            ).fetchall()
+            for r in rows:
+                db_seal_cache[r["name"]] = {
+                    "score": r["emotion_score"],
+                    "category": r["emotion_category"] or "unknown",
+                    "desc": r["emotion_desc"] or "",
+                    "emotion": _score_to_emotion_label(r["emotion_score"]),
+                }
+        finally:
+            _conn.close()
+    except Exception:
+        pass
+
     # 解析印章文本（用、或,分隔）
     import re
     seal_names = re.split(r'[、,，\s]+', seal_content.strip())
@@ -1029,20 +1064,21 @@ def analyze_seal_emotion(seal_content: str) -> dict:
     category_scores = {}
 
     for name in seal_names:
-        rule = catalog.get(name)
+        # DB 优先 → 硬编码兜底
+        rule = db_seal_cache.get(name) or catalog.get(name)
         if rule:
-            weight = cat_weights.get(rule["category"], 0.5)
+            weight = cat_weights.get(rule.get("category", "unknown"), 0.5)
             weighted = rule["score"] * weight
             total_score += weighted
 
-            cat = rule["category"]
+            cat = rule.get("category", "unknown")
             category_scores[cat] = category_scores.get(cat, 0) + weighted
 
             signals.append({
                 "seal": name,
-                "category": rule["category"],
-                "emotion": rule["emotion"],
-                "desc": rule["desc"],
+                "category": cat,
+                "emotion": rule.get("emotion", "neutral"),
+                "desc": rule.get("desc", ""),
                 "raw_score": rule["score"],
                 "weighted_score": round(weighted, 2),
             })
