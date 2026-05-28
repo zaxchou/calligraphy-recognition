@@ -128,16 +128,32 @@
       </div>
     </div>
 
-    <!-- 导入对话框 -->
-    <el-dialog v-model="showImportDialog" title="导入画家规则" width="640px">
-      <div class="import-intro">
-        粘贴 JSON 格式的画家规则。可先用「复制JSON」导出李鱓的规则，丢给 AI 生成其他画家的规则后粘贴回来。
+    <!-- 导入/AI生成对话框 -->
+    <el-dialog v-model="showImportDialog" title="导入 / AI 生成画家规则" width="640px">
+      <!-- AI 一键生成 -->
+      <div class="ai-generate-section">
+        <div class="ai-section-header">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI 一键生成</span>
+        </div>
+        <div class="ai-section-body">
+          <el-select v-model="aiTargetArtist" size="small" placeholder="选择画家" filterable allow-create style="width: 180px;">
+            <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
+          </el-select>
+          <el-button size="small" type="primary" @click="handleAiGenerate" :loading="aiGenerating" :disabled="!aiTargetArtist">
+            <el-icon><MagicStick /></el-icon>生成规则
+          </el-button>
+          <span class="ai-hint">基于该画家的题跋样本自动生成规则包</span>
+        </div>
       </div>
+
+      <el-divider content-position="left">或手动导入</el-divider>
+
       <div class="import-actions">
         <el-button size="small" @click="insertTemplate">插入模板</el-button>
         <el-button size="small" @click="pasteFromClipboard">从剪贴板粘贴</el-button>
       </div>
-      <textarea v-model="importJson" class="json-editor import-editor" spellcheck="false" @input="validateImportJson" placeholder="粘贴 JSON..."></textarea>
+      <textarea v-model="importJson" class="json-editor import-editor" spellcheck="false" @input="validateImportJson" placeholder="粘贴 JSON 或由 AI 生成..."></textarea>
       <div class="import-validation">
         <span v-if="!importJson.trim()" class="validation-idle">等待输入...</span>
         <span v-else-if="importJsonError" class="validation-error">
@@ -158,7 +174,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Edit, Plus, Upload, DocumentCopy, Check, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { Refresh, Edit, Plus, Upload, DocumentCopy, Check, CircleCheck, CircleClose, MagicStick } from '@element-plus/icons-vue'
 import { artistRulesApi } from '../api'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -191,6 +207,8 @@ const showImportDialog = ref(false)
 const importJson = ref('')
 const importJsonError = ref('')
 const importing = ref(false)
+const aiTargetArtist = ref('')
+const aiGenerating = ref(false)
 
 const importPreview = computed(() => {
   try {
@@ -375,6 +393,42 @@ function makeTemplate() {
   }
 }
 
+// Pre-fill AI target when dialog opens
+watch(showImportDialog, (val) => {
+  if (val) {
+    aiTargetArtist.value = selectedArtist.value || ''
+    importJson.value = ''
+    importJsonError.value = ''
+  }
+})
+
+async function handleAiGenerate() {
+  if (!aiTargetArtist.value) return
+  aiGenerating.value = true
+  try {
+    const res = await artistRulesApi.aiDiscover(aiTargetArtist.value)
+    if (res.success) {
+      // AI discover created the rule in DB — now load it and show in editor
+      const ruleRes = await artistRulesApi.getByName(aiTargetArtist.value)
+      if (ruleRes.rule) {
+        const data = {}
+        for (const f of RULE_SCHEMA_FIELDS) {
+          if (ruleRes.rule[f] !== undefined) data[f] = ruleRes.rule[f]
+        }
+        importJson.value = JSON.stringify(data, null, 2)
+        importJsonError.value = ''
+        ElMessage.success(`AI 已为「${aiTargetArtist.value}」生成规则，请审查后保存`)
+      }
+    } else {
+      ElMessage.error(res.message || 'AI 生成失败')
+    }
+  } catch (e) {
+    ElMessage.error('AI 生成失败: ' + (e.response?.data?.detail || e.message || e))
+  } finally {
+    aiGenerating.value = false
+  }
+}
+
 function insertTemplate() {
   importJson.value = JSON.stringify(makeTemplate(), null, 2)
   importJsonError.value = ''
@@ -546,4 +600,18 @@ onMounted(() => { loadArtistList(); loadRules() })
 .validation-idle { color: #999; }
 .validation-error { color: #f56c6c; }
 .validation-ok { color: #67c23a; }
+
+/* AI Generate */
+.ai-generate-section {
+  background: #f0f7ff; border: 1px solid #d9ecff; border-radius: 8px;
+  padding: 14px 16px; margin-bottom: 12px;
+}
+.ai-section-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  font-size: 14px; font-weight: 600; color: #409eff;
+}
+.ai-section-body {
+  display: flex; align-items: center; gap: 10px;
+}
+.ai-hint { font-size: 12px; color: #999; }
 </style>
