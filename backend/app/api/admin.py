@@ -811,6 +811,48 @@ def reanalyze_all_emotion(
                         height_cm=row["artwork_height_cm"], year=row["year"],
                         artist=row["artist"], seal_content=row["seal_content"], themes=themes)
 
+                    # 调用 LLM 裁判（在线程中创建事件循环）
+                    judge_result = None
+                    try:
+                        import asyncio
+                        from app.services.llm_emotion_corrector import judge_independently
+                        loop = asyncio.new_event_loop()
+                        judge_result = loop.run_until_complete(
+                            judge_independently(text=row["inscription_content"],
+                                artist=row["artist"], year=row["year"], themes=themes))
+                        loop.close()
+                    except Exception as e:
+                        logger.warning(f"LLM judge failed for record {row['id']}: {e}")
+
+                    # 合并裁判结果到 combined_sentiment
+                    if judge_result and judge_result.get("dimension_scores"):
+                        jd = judge_result["dimension_scores"]
+                        jc = judge_result.get("combined", {})
+                        from app.services.molin_engine import vader_normalize, classify_polarity, compute_conflict_score, DimensionResult
+                        dim_pols = {}
+                        judge_dims = []
+                        for key in ["text","spatial","painting","size","period","seal","theme","brush_ink"]:
+                            raw = (jd.get(key) or {}).get("raw", 0) or 0
+                            dim_pols[key] = classify_polarity(vader_normalize(raw))
+                            judge_dims.append(DimensionResult(name=key, raw=raw, normalized=vader_normalize(raw)))
+                        final_polarity = jc.get("polarity", result.polarity)
+                        final_combined = jc.get("combined_raw", result.combined_raw)
+                        final_conflict = compute_conflict_score(judge_dims)
+                        method = "llm_corrected"
+                        # 裁判覆盖文字/时期/主题，其余用词库
+                        text_final = (jd.get("text") or {}).get("raw", result.text.raw)
+                        period_final = (jd.get("period") or {}).get("raw", result.period.raw)
+                        theme_final = (jd.get("theme") or {}).get("raw", result.theme.raw)
+                    else:
+                        dim_pols = result.dimension_polarities
+                        final_polarity = result.polarity
+                        final_combined = result.combined_raw
+                        final_conflict = result.conflict_score
+                        method = "lexicon_only"
+                        text_final = result.text.raw
+                        period_final = result.period.raw
+                        theme_final = result.theme.raw
+
                     lexicon_scores = {
                         "version": "3.1",
                         "text": {"raw": result.text.raw, "normalized": result.text.normalized, "confidence": result.text.confidence, "has_data": result.text.has_data},
@@ -827,19 +869,27 @@ def reanalyze_all_emotion(
                     new_ca = dict(old_ca) if isinstance(old_ca, dict) else {}
                     if se: new_ca["spatial_emotion"] = se
                     new_ca["lexicon_scores"] = lexicon_scores
-                    new_ca["analysis_method"] = "lexicon_only"
+                    new_ca["llm_judge"] = judge_result
+                    new_ca["llm_analysis"] = judge_result
+                    new_ca["analysis_method"] = method
                     new_ca["analysis_version"] = 3
                     new_ca["combined_sentiment"] = {
-                        "polarity": result.polarity, "reasoning": result.reasoning,
+                        "polarity": final_polarity, "reasoning": result.reasoning,
+                        "text_score": text_final, "spatial_score": result.spatial.raw,
+                        "seal_score": result.seal.raw, "painting_score": result.painting.raw,
+                        "time_score": period_final, "size_score": result.size.raw,
+                        "theme_score": theme_final, "brush_ink_score": result.brush_ink.raw,
+                        "combined_score": round(final_combined, 2),
+                        "vader_normalized": round(vader_normalize(final_combined), 3),
                         "text_score": result.text.raw, "spatial_score": result.spatial.raw,
                         "seal_score": result.seal.raw, "painting_score": result.painting.raw,
                         "time_score": result.period.raw, "size_score": result.size.raw,
                         "theme_score": result.theme.raw, "brush_ink_score": result.brush_ink.raw,
                         "combined_score": round(result.combined_raw, 2),
                         "vader_normalized": round(result.combined_normalized, 3),
-                        "vader_alpha": 8.0, "weights": result.weights_used, "method": "lexicon_only",
-                        "dimension_polarities": result.dimension_polarities,
-                        "conflict_score": result.conflict_score,
+                        "vader_alpha": 8.0, "weights": result.weights_used, "method": method,
+                        "dimension_polarities": dim_pols,
+                        "conflict_score": final_conflict,
                         "has_data": {"text": result.text.has_data, "spatial": result.spatial.has_data,
                             "painting": result.painting.has_data, "size": result.size.has_data,
                             "period": result.period.has_data, "seal": result.seal.has_data,
