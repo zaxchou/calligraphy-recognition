@@ -1361,7 +1361,6 @@ async def get_records(
             "seal_verified": bool(row[10]),
             "filepath": row[11],
             "thumbnail_path": row[12],
-            "content_analysis": content_analysis,
             "theme_tags": themes,
             "sentiment": sentiment,
             "analysis_note": row[14],

@@ -335,28 +335,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, inject } from 'vue'
+import { ref, onMounted, watch, computed, inject, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { Refresh, Right, WarningFilled } from '@element-plus/icons-vue'
 
 import VerifyPanel from './VerifyPanel.vue'
-import AlbumManager from './AlbumManager.vue'
-import TagManager from './TagManager.vue'
-import StripManager from './StripManager.vue'
-import DimensionInput from './DimensionInput.vue'
-import AnnotationVerify from './AnnotationVerify.vue'
-import ArtistInfoManager from './ArtistInfoManager.vue'
 import ArtistRulesManager from './ArtistRulesManager.vue'
-import SealManager from './SealManager.vue'
-import ImageSearchPanel from '../components/tubi/ImageSearchPanel.vue'
-import AdminDashboard from './admin/Dashboard.vue'
-import AdminUsers from './admin/Users.vue'
-import AdminSettings from './admin/Settings.vue'
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi } from '../api/index.js'
 import { computeDiff } from '../utils/diff'
-import LibraryManage from './admin/LibraryManage.vue'
+// 懒加载非首屏组件
+const AlbumManager = defineAsyncComponent(() => import('./AlbumManager.vue'))
+const TagManager = defineAsyncComponent(() => import('./TagManager.vue'))
+const StripManager = defineAsyncComponent(() => import('./StripManager.vue'))
+const DimensionInput = defineAsyncComponent(() => import('./DimensionInput.vue'))
+const AnnotationVerify = defineAsyncComponent(() => import('./AnnotationVerify.vue'))
+const ArtistInfoManager = defineAsyncComponent(() => import('./ArtistInfoManager.vue'))
+const SealManager = defineAsyncComponent(() => import('./SealManager.vue'))
+const ImageSearchPanel = defineAsyncComponent(() => import('../components/tubi/ImageSearchPanel.vue'))
+const AdminDashboard = defineAsyncComponent(() => import('./admin/Dashboard.vue'))
+const AdminUsers = defineAsyncComponent(() => import('./admin/Users.vue'))
+const AdminSettings = defineAsyncComponent(() => import('./admin/Settings.vue'))
+const LibraryManage = defineAsyncComponent(() => import('./admin/LibraryManage.vue'))
 
 function escapeHtml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -652,7 +653,7 @@ async function fetchRecords() {
   loading.value = true
   try {
     const artistParam = selectedArtist.value === 'all' ? '' : selectedArtist.value
-    const params = new URLSearchParams({ limit: 500 })
+    const params = new URLSearchParams({ limit: 50 })
     if (artistParam) params.set('artist', artistParam)
     if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
     const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
