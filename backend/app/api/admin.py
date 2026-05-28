@@ -16,7 +16,7 @@ from sqlalchemy import func as sqlfunc, text
 
 from app.core.auth import require_admin_role, require_super_admin, get_user_permissions, ALL_PERMISSION_KEYS
 from app.core.config import get_settings
-from app.core.database import get_db
+from app.core.database import get_db, get_db_connection
 from app.models.user import User
 from app.models.tubi_analysis import TubiAnalysis
 from app.models.artist_claim import ArtistClaim
