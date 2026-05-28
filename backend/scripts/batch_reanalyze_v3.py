@@ -196,6 +196,8 @@ def run_batch(conn, rows: list, dry_run: bool = False, batch_size: int = 10, del
                 "vader_alpha": 8.0,
                 "weights": result.weights_used,
                 "method": "lexicon_only",
+                "dimension_polarities": result.dimension_polarities,
+                "conflict_score": result.conflict_score,
                 "has_data": {
                     "text": result.text.has_data,
                     "spatial": result.spatial.has_data,

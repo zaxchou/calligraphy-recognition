@@ -409,6 +409,9 @@ async def analyze_single_record(record_id: int, cur) -> dict:
         "vader_alpha": 8.0,
         "weights": molin_result.weights_used,
         "method": analysis_method,
+        # v3.1: 维度极性和冲突分数
+        "dimension_polarities": molin_result.dimension_polarities,
+        "conflict_score": molin_result.conflict_score,
         # 各维度是否有实际数据
         "has_data": {
             "text": molin_result.text.has_data,

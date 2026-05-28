@@ -665,6 +665,8 @@ async def reanalyze_emotion(
         "vader_alpha": 8.0,
         "weights": result.weights_used,
         "method": analysis_method,
+        "dimension_polarities": result.dimension_polarities,
+        "conflict_score": result.conflict_score,
         "has_data": {
             "text": result.text.has_data,
             "spatial": result.spatial.has_data,

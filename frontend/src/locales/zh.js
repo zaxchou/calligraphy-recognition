@@ -33,6 +33,9 @@ export default {
   'polarity.negative': '消极',
   'polarity.neutral': '中性',
   'polarity.ambiguous': '复杂',
+  'polarity.complex_positive': '复杂偏正',
+  'polarity.complex_negative': '复杂偏负',
+  'polarity.complex_balanced': '矛盾平衡',
 
   // Judgment
   'judgment.combined': '综合判断',
@@ -50,6 +53,12 @@ export default {
   'derivation.llm_correction': 'LLM 校正详情',
   'derivation.llm_delta': '校正量',
   'derivation.llm_reasoning': '推理说明',
+  'derivation.underResearch': '分析研究中',
+  'derivation.legendWeight': '= 权重（维度重要性）',
+  'derivation.legendConf': '= 置信度（数据可信度）',
+  'derivation.legendScore': '= 原始分（词库打分）',
+  'derivation.legendSum': '= 所有维度求和',
+  'derivation.legendNorm': '= 归一化到 -10~+10',
 
   // Emotion labels
   'emotion.neutral': '情绪平稳',

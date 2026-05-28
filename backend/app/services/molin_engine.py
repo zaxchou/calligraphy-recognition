@@ -47,6 +47,9 @@ class EngineResult:
     polarity: str = "neutral"
     reasoning: str = ""
     weights_used: Dict[str, float] = field(default_factory=dict)
+    # v3.1 新增
+    dimension_polarities: Dict[str, str] = field(default_factory=dict)  # {"text": "positive", ...}
+    conflict_score: float = 0.0  # 0~1，情感矛盾程度
 
 
 # ── 默认权重（校准后）──────────────────────────────────────
@@ -74,12 +77,68 @@ def vader_normalize(raw: float, alpha: float = VADER_ALPHA) -> float:
 def classify_polarity(normalized: float,
                       pos_threshold: float = 0.10,
                       neg_threshold: float = -0.10) -> str:
-    """判断极性"""
+    """判断极性（简单三分类）"""
     if normalized >= pos_threshold:
         return "positive"
     elif normalized <= neg_threshold:
         return "negative"
     return "neutral"
+
+
+def classify_complex_polarity(normalized: float,
+                               dimension_polarities: Dict[str, str]) -> str:
+    """六分类极性判断：考虑维度间的矛盾
+
+    返回:
+    - positive / negative / neutral          → 单一倾向，无矛盾
+    - complex_positive / complex_negative    → 矛盾但有主导方向
+    - complex_balanced                       → 矛盾且势均力敌
+    """
+    pos_count = sum(1 for p in dimension_polarities.values() if p == "positive")
+    neg_count = sum(1 for p in dimension_polarities.values() if p == "negative")
+
+    # 矛盾检测：至少有 2 个正面和 2 个负面维度
+    is_conflicted = pos_count >= 2 and neg_count >= 2
+
+    if is_conflicted:
+        if normalized > 0.05:
+            return "complex_positive"
+        elif normalized < -0.05:
+            return "complex_negative"
+        return "complex_balanced"
+
+    # 单一倾向
+    if normalized >= 0.10:
+        return "positive"
+    elif normalized <= -0.10:
+        return "negative"
+    return "neutral"
+
+
+def compute_conflict_score(dimensions: List[DimensionResult]) -> float:
+    """计算情感冲突度 0~1
+
+    考虑两个因素：
+    1. 正负维度的平衡度（越接近 50/50 越高）
+    2. 参与冲突的维度占比（越多维度参与冲突越高）
+
+    全部同号 → 0，多个维度正负对峙 → 趋近 1
+    """
+    pos = sum(1 for d in dimensions if d.normalized > 0.05)
+    neg = sum(1 for d in dimensions if d.normalized < -0.05)
+    total_dim = len(dimensions)
+
+    if pos == 0 or neg == 0:
+        return 0.0
+
+    # 平衡度：正负越接近，ratio 越高
+    balance = min(pos, neg) / max(pos, neg)  # (0, 1]
+
+    # 参与度：参与冲突的维度占比（至少 2 正 2 负才算有意义的冲突）
+    engagement = (pos + neg) / total_dim  # (0, 1]
+
+    # 组合分数：平衡度 × 参与度
+    return round(balance * engagement, 3)
 
 
 def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
@@ -360,11 +419,15 @@ def combine_dimensions(text: DimensionResult,
                        theme: DimensionResult,
                        brush_ink: DimensionResult = None,
                        weights: Dict[str, float] = None) -> tuple:
-    """八维度加权融合"""
+    """八维度加权融合
+
+    Returns:
+        (combined_raw, combined_normalized, polarity, dimension_polarities, conflict_score)
+    """
     if weights is None:
         weights = DEFAULT_WEIGHTS
 
-    dimensions = [
+    dims = [
         ("text", text, weights.get("text", 0.40)),
         ("spatial", spatial, weights.get("spatial", 0.20)),
         ("painting", painting, weights.get("painting", 0.10)),
@@ -377,20 +440,24 @@ def combine_dimensions(text: DimensionResult,
 
     weighted_sum = 0.0
     weight_total = 0.0
+    dimension_polarities = {}
 
-    for name, dim, w in dimensions:
+    for name, dim, w in dims:
         effective_weight = w * dim.confidence
         weighted_sum += effective_weight * dim.raw
         weight_total += effective_weight
+        # 记录每个维度的独立极性
+        dimension_polarities[name] = classify_polarity(dim.normalized)
 
     if weight_total == 0:
-        return 0.0, 0.0, "neutral"
+        return 0.0, 0.0, "neutral", dimension_polarities, 0.0
 
     combined_raw = weighted_sum / weight_total
     combined_normalized = vader_normalize(combined_raw)
-    polarity = classify_polarity(combined_normalized)
+    conflict_score = compute_conflict_score([d[1] for d in dims])
+    polarity = classify_complex_polarity(combined_normalized, dimension_polarities)
 
-    return combined_raw, combined_normalized, polarity
+    return combined_raw, combined_normalized, polarity, dimension_polarities, conflict_score
 
 
 def build_reasoning(text: DimensionResult,
@@ -461,7 +528,7 @@ def analyze(text: str,
     brush_ink_dim = analyze_brush_ink()
 
     # 融合
-    combined_raw, combined_normalized, polarity = combine_dimensions(
+    combined_raw, combined_normalized, polarity, dimension_polarities, conflict_score = combine_dimensions(
         text_dim, spatial_dim, painting_dim, size_dim,
         period_dim, seal_dim, theme_dim, brush_ink_dim, weights
     )
@@ -483,4 +550,6 @@ def analyze(text: str,
         polarity=polarity,
         reasoning=reasoning,
         weights_used=weights or DEFAULT_WEIGHTS,
+        dimension_polarities=dimension_polarities,
+        conflict_score=conflict_score,
     )

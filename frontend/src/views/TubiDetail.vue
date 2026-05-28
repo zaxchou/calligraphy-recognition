@@ -117,12 +117,16 @@
                     <!-- VADER compound bar（融合版） -->
                     <div class="emotion-vader-bar" v-if="combinedSentiment?.vader_normalized != null">
                       <div class="vader-bar-header">
-                        <span class="vader-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#e07a5f' : '#999' }">
-                          {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : $t('polarity.neutral') }}
+                        <span class="vader-polarity" :style="{ color: polarityLabelColor(combinedSentiment.polarity) }">
+                          {{ $t(polarityKey(combinedSentiment.polarity)) }}
                         </span>
                         <span class="vader-score-big" :style="{ color: displayScore < 0 ? '#e07a5f' : displayScore > 0 ? '#3cb88b' : '#999' }">
                           {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(4) }}
                         </span>
+                        <el-tag v-if="conflictScore != null && conflictScore > 0.2" size="small" effect="plain"
+                          :type="conflictScore > 0.6 ? 'warning' : 'info'">
+                          复杂度 {{ (conflictScore * 100).toFixed(0) }}%
+                        </el-tag>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
                         <el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light">
                           <span class="score-method-badge">Molin Emotion</span>
@@ -140,6 +144,16 @@
                         <span class="vader-axis vader-axis-pos">+1.0</span>
                       </div>
                       <div class="vader-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
+                      <!-- v3.1: 8维极性条 -->
+                      <div class="dim-polarity-strip" v-if="Object.keys(dimensionPolarities).length">
+                        <div class="polarity-strip-title">维度极性</div>
+                        <div class="polarity-dots">
+                          <el-tooltip v-for="dim in dimensionRows.filter(d => !d.placeholder)" :key="dim.nameKey"
+                            :content="$t(dim.nameKey) + ': ' + (dim.raw > 0 ? '+' : '') + dim.raw.toFixed(2)" placement="top">
+                            <span class="polarity-dot" :class="'pol-' + dim.polarity"></span>
+                          </el-tooltip>
+                        </div>
+                      </div>
                     </div>
                     <!-- fallback：无 VADER 数据时用旧布局 -->
                     <div class="emotion-summary-row" v-else>
@@ -278,8 +292,17 @@
 
                 <!-- v2/v3 八维度公式推导（有 combined_sentiment 时显示） -->
                 <div v-if="combinedSentiment" class="formula-breakdown">
-                  <div class="formula-title">{{ $t('derivation.formula') }}</div>
-                  <div class="formula-expr">S = normalize( Σ wᵢ × cᵢ × sᵢ )</div>
+                  <div class="formula-box">
+                    <div class="formula-title">{{ $t('derivation.formula') }}</div>
+                    <div class="formula-expr">S = normalize( Σ wᵢ × cᵢ × sᵢ )</div>
+                    <div class="formula-legend">
+                      <span><b>wᵢ</b> {{ $t('derivation.legendWeight') }}</span>
+                      <span><b>cᵢ</b> {{ $t('derivation.legendConf') }}</span>
+                      <span><b>sᵢ</b> {{ $t('derivation.legendScore') }}</span>
+                      <span><b>Σ</b> {{ $t('derivation.legendSum') }}</span>
+                      <span><b>normalize</b> {{ $t('derivation.legendNorm') }}</span>
+                    </div>
+                  </div>
 
                   <table class="formula-table">
                     <thead>
@@ -293,9 +316,12 @@
                     </thead>
                     <tbody>
                       <template v-for="dim in dimensionRows" :key="dim.nameKey">
-                        <tr :class="{ 'dim-active': dim.hasData }" @click="dim.hasData && toggleDimDetail(dim.nameKey)" :style="{ cursor: dim.hasData ? 'pointer' : 'default' }">
+                        <tr :class="{ 'dim-active': dim.hasData || dim.placeholder, 'dim-conflict': dim.conflicted }"
+                          @click="(dim.hasData || dim.placeholder) && toggleDimDetail(dim.nameKey)"
+                          :style="{ cursor: (dim.hasData || dim.placeholder) ? 'pointer' : 'default' }">
                           <td class="dim-name">
-                            <span v-if="dim.hasData" class="dim-expand">{{ expandedDims.has(dim.nameKey) ? '▼' : '▶' }}</span>
+                            <span v-if="dim.hasData || dim.placeholder" class="dim-expand">{{ expandedDims.has(dim.nameKey) ? '▼' : '▶' }}</span>
+                            <span class="dim-pol-dot" :class="'pol-' + dim.polarity" :title="dim.polarity"></span>
                             {{ $t(dim.nameKey) }}
                           </td>
                           <td class="dim-score" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">
@@ -310,9 +336,12 @@
                           </td>
                         </tr>
                         <!-- 展开详情 -->
-                        <tr v-if="expandedDims.has(dim.nameKey) && dim.hasData" class="dim-detail-row">
+                        <tr v-if="expandedDims.has(dim.nameKey) && (dim.hasData || dim.placeholder)" class="dim-detail-row">
                           <td colspan="5" class="dim-detail-cell">
-                            <div class="dim-detail-content">
+                            <div class="dim-detail-content" v-if="dim.placeholder">
+                              <div class="detail-item dim-placeholder">{{ $t('derivation.underResearch') }}</div>
+                            </div>
+                            <div class="dim-detail-content" v-else>
                               <template v-for="(item, i) in getDimDetail(dim.nameKey)" :key="i">
                                 <div class="detail-item">
                                   <span class="detail-label">{{ item.label }}</span>
@@ -334,89 +363,77 @@
                     <span class="result-score" :class="{ 'score-pos': combinedSentiment.vader_normalized > 0, 'score-neg': combinedSentiment.vader_normalized < 0 }">
                       {{ combinedSentiment.vader_normalized > 0 ? '+' : '' }}{{ combinedSentiment.vader_normalized }}
                     </span>
-                    <span class="result-polarity" :style="{ color: combinedSentiment.polarity === 'positive' ? '#3cb88b' : combinedSentiment.polarity === 'negative' ? '#f56c6c' : '#909399' }">
-                      → {{ $t(`polarity.${combinedSentiment.polarity}`) }}
+                    <span class="result-polarity" :style="{ color: polarityColor(combinedSentiment.polarity) }">
+                      → {{ $t(polarityKey(combinedSentiment.polarity)) }}
+                    </span>
+                  </div>
+
+                  <!-- v3.1: 冲突分数条 -->
+                  <div class="conflict-bar" v-if="conflictScore != null && conflictScore > 0">
+                    <div class="conflict-bar-label">情感复杂度</div>
+                    <div class="conflict-bar-track">
+                      <div class="conflict-bar-fill" :style="{ width: (conflictScore * 100) + '%' }"></div>
+                    </div>
+                    <span class="conflict-bar-value">{{ (conflictScore * 100).toFixed(0) }}%{{ conflictScore > 0.6 ? ' 矛盾较强' : conflictScore > 0.3 ? ' 有张力' : ' 较一致' }}</span>
+                  </div>
+                </div>
+
+                <!-- v3.1: LLM 分析叙述（DeepSeek 解读原文） -->
+                <div v-if="currentImage.contentAnalysis?.llm_analysis?.combined?.summary" class="llm-narrative-section">
+                  <div class="llm-narrative-header">
+                    <el-icon><MagicStick /></el-icon>
+                    <span>AI 解读</span>
+                  </div>
+                  <div class="llm-narrative-body">
+                    {{ currentImage.contentAnalysis.llm_analysis.combined.summary }}
+                  </div>
+                </div>
+
+                <!-- v3 LLM 校正详情 -->
+                <div v-if="currentImage.contentAnalysis?.llm_analysis?.corrections" class="llm-correction-section">
+                  <div class="llm-section-header">
+                    <el-icon><MagicStick /></el-icon>
+                    <span>{{ $t('derivation.llm_correction') }}</span>
+                  </div>
+                  <!-- 校正概览 -->
+                  <div class="llm-summary">
+                    {{ currentImage.contentAnalysis.llm_analysis.combined?.summary }}
+                  </div>
+                  <!-- 逐维度校正 -->
+                  <table class="llm-table">
+                    <thead>
+                      <tr>
+                        <th>{{ $t('derivation.dimension') }}</th>
+                        <th>{{ $t('derivation.llm_delta') }}</th>
+                        <th>{{ $t('derivation.confidence') }}</th>
+                        <th>{{ $t('derivation.llm_reasoning') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(corr, dimKey) in currentImage.contentAnalysis.llm_analysis.corrections" :key="dimKey">
+                        <td class="dim-name">{{ $t(`factor.${dimKey}`) }}</td>
+                        <td class="dim-delta" :class="{ 'score-pos': corr.delta > 0, 'score-neg': corr.delta < 0 }">
+                          {{ corr.delta > 0 ? '+' : '' }}{{ corr.delta.toFixed(2) }}
+                        </td>
+                        <td class="dim-conf" :class="{ 'conf-high': corr.confidence >= 0.7, 'conf-mid': corr.confidence >= 0.4 && corr.confidence < 0.7 }">
+                          {{ (corr.confidence * 100).toFixed(0) }}%
+                        </td>
+                        <td class="llm-reasoning-cell">{{ corr.reasoning }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <!-- 元信息 -->
+                  <div class="llm-meta" v-if="currentImage.contentAnalysis.llm_analysis.meta">
+                    <span class="llm-model">{{ currentImage.contentAnalysis.llm_analysis.meta.model }}</span>
+                    <span v-if="currentImage.contentAnalysis.llm_analysis.meta.token_count" class="llm-tokens">
+                      · {{ currentImage.contentAnalysis.llm_analysis.meta.token_count }} tokens
+                    </span>
+                    <span v-if="currentImage.contentAnalysis.llm_analysis.meta.time_ms" class="llm-time">
+                      · {{ (currentImage.contentAnalysis.llm_analysis.meta.time_ms / 1000).toFixed(1) }}s
                     </span>
                   </div>
                 </div>
 
-                <!-- v3 LLM 校正详情（有 llm_analysis 时显示） -->
-                <div v-if="currentImage.contentAnalysis?.llm_analysis?.corrections" class="llm-correction-section">
-                  <el-collapse>
-                    <el-collapse-item :title="$t('derivation.llm_correction')" name="llm">
-                      <!-- 校正概览 -->
-                      <div class="llm-summary">
-                        {{ currentImage.contentAnalysis.llm_analysis.combined?.summary }}
-                      </div>
-                      <!-- 逐维度校正 -->
-                      <table class="llm-table">
-                        <thead>
-                          <tr>
-                            <th>{{ $t('derivation.dimension') }}</th>
-                            <th>{{ $t('derivation.llm_delta') }}</th>
-                            <th>{{ $t('derivation.confidence') }}</th>
-                            <th>{{ $t('derivation.llm_reasoning') }}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-for="(corr, dimKey) in currentImage.contentAnalysis.llm_analysis.corrections" :key="dimKey">
-                            <td class="dim-name">{{ $t(`factor.${dimKey}`) }}</td>
-                            <td class="dim-delta" :class="{ 'score-pos': corr.delta > 0, 'score-neg': corr.delta < 0 }">
-                              {{ corr.delta > 0 ? '+' : '' }}{{ corr.delta.toFixed(2) }}
-                            </td>
-                            <td class="dim-conf" :class="{ 'conf-high': corr.confidence >= 0.7, 'conf-mid': corr.confidence >= 0.4 && corr.confidence < 0.7 }">
-                              {{ (corr.confidence * 100).toFixed(0) }}%
-                            </td>
-                            <td class="llm-reasoning-cell">{{ corr.reasoning }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <!-- 元信息 -->
-                      <div class="llm-meta" v-if="currentImage.contentAnalysis.llm_analysis.meta">
-                        <span class="llm-model">{{ currentImage.contentAnalysis.llm_analysis.meta.model }}</span>
-                        <span v-if="currentImage.contentAnalysis.llm_analysis.meta.token_count" class="llm-tokens">
-                          · {{ currentImage.contentAnalysis.llm_analysis.meta.token_count }} tokens
-                        </span>
-                        <span v-if="currentImage.contentAnalysis.llm_analysis.meta.time_ms" class="llm-time">
-                          · {{ (currentImage.contentAnalysis.llm_analysis.meta.time_ms / 1000).toFixed(1) }}s
-                        </span>
-                      </div>
-                    </el-collapse-item>
-                  </el-collapse>
-                </div>
-
-                <!-- 旧：推理步骤（兼容旧数据，v3 方法有 reasoning_steps 时也显示） -->
-                <template v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length">
-                  <div class="reasoning-steps">
-                    <div class="reasoning-label">{{ $t("derivation.text") }}</div>
-                    <div class="steps-list">
-                      <div
-                        v-for="(step, idx) in currentImage.contentAnalysis.sentiment.reasoning_steps"
-                        :key="idx"
-                        class="step-item"
-                        :class="{ 'step-final': step.offset === null }"
-                      >
-                        <span class="step-icon">{{ step.icon }}</span>
-                        <div class="step-body">
-                          <div class="step-header">
-                            <span class="step-label">{{ $t(step.label) }}</span>
-                            <span
-                              v-if="step.offset !== null && step.offset !== 0"
-                              class="step-offset"
-                              :class="step.offset > 0 ? 'offset-pos' : 'offset-neg'"
-                            >{{ step.offset > 0 ? '+' : '' }}{{ step.offset }}</span>
-                            <span v-else-if="step.offset === 0" class="step-offset offset-zero">0</span>
-                          </div>
-                          <div class="step-detail" v-html="mapPolarityText(translateContent(step.detail))"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="sentiment-reasoning" v-if="currentImage.contentAnalysis.sentiment.reasoning">
-                    <div class="reasoning-label">{{ $t("derivation.dimension") }}</div>
-                    <div class="reasoning-text">{{ translateContent(currentImage.contentAnalysis.sentiment.reasoning) }}</div>
-                  </div>
-                </template>
               </div>
               <div class="ts-empty" v-if="!currentImage.contentAnalysis?.themes?.length && !currentImage.contentAnalysis?.sentiment">
                 {{ $t("analysis.empty") }}
@@ -1098,6 +1115,8 @@ const sortedSpatialSignals = computed(() => {
   return [...signals].sort((a, b) => (priority[b.emotion_key] || 0) - (priority[a.emotion_key] || 0))
 })
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
+const dimensionPolarities = computed(() => combinedSentiment.value?.dimension_polarities || {})
+const conflictScore = computed(() => combinedSentiment.value?.conflict_score ?? null)
 const displayScore = computed(() => {
   const cs = combinedSentiment.value
   if (cs?.vader_normalized != null) return cs.vader_normalized
@@ -1123,13 +1142,23 @@ const dimensionRows = computed(() => {
     { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: hd.theme ? 0.9 : 0.2, hasData: hd.theme ?? false },
     { nameKey: 'factor.brush_ink', raw: cs.brush_ink_score || 0, weight: w.brush_ink || 0.00, confidence: 0, hasData: false, placeholder: true },
   ]
-  // 计算每个维度的贡献和归一化分数
+  const dp = cs.dimension_polarities || {}
+  const combinedPol = cs.polarity || 'neutral'
+  // 计算每个维度的贡献、归一化分数和极性
   const totalWeight = dims.reduce((sum, d) => sum + d.weight * (d.hasData ? 1.0 : 0.2), 0)
-  return dims.map(d => ({
-    ...d,
-    normalized: vaderNorm(d.raw),
-    contribution: totalWeight > 0 ? (d.weight * (d.hasData ? 1.0 : 0.2) * d.raw) / totalWeight : 0,
-  }))
+  return dims.map(d => {
+    const dimKey = d.nameKey.replace('factor.', '')
+    const dimPol = dp[dimKey] || 'neutral'
+    return {
+      ...d,
+      normalized: vaderNorm(d.raw),
+      contribution: totalWeight > 0 ? (d.weight * (d.hasData ? 1.0 : 0.2) * d.raw) / totalWeight : 0,
+      polarity: dimPol,
+      conflicted: d.hasData && dimPol !== 'neutral' && combinedPol !== 'neutral' &&
+        ((dimPol === 'positive' && combinedPol.includes('negative')) ||
+         (dimPol === 'negative' && combinedPol.includes('positive'))),
+    }
+  })
 })
 
 // 八维度展开状态
@@ -1220,6 +1249,24 @@ function vaderNorm(raw) {
   if (!raw || raw === 0) return 0
   return raw / Math.sqrt(raw * raw + 8)
 }
+
+// ── v3.1: 复杂极性辅助函数 ──
+function polarityKey(polarity) {
+  const map = {
+    positive: 'polarity.positive', negative: 'polarity.negative', neutral: 'polarity.neutral',
+    complex_positive: 'polarity.complex_positive', complex_negative: 'polarity.complex_negative',
+    complex_balanced: 'polarity.complex_balanced', ambiguous: 'polarity.ambiguous',
+  }
+  return map[polarity] || 'polarity.neutral'
+}
+function polarityLabelColor(polarity) {
+  if (polarity?.startsWith('complex_')) return '#e6a23c'
+  if (polarity === 'positive') return '#3cb88b'
+  if (polarity === 'negative') return '#e07a5f'
+  if (polarity === 'ambiguous') return '#e6a23c'
+  return '#999'
+}
+
 // 各维度归一化分数
 const textNorm = computed(() => vaderNorm(combinedSentiment.value?.text_score ?? contentAnalysis.value?.sentiment?.emotion_score))
 const spatialNorm = computed(() => vaderNorm(combinedSentiment.value?.spatial_score))
@@ -2473,23 +2520,45 @@ defineExpose({
   padding-bottom: 10px;
   border-bottom: 1px solid #e8e4da;
 }
+.formula-box {
+  background: #fcfaf6;
+  border: 1px solid #e8e4da;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
 .formula-title {
   font-size: 11px;
   color: #8a7e6b;
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .formula-expr {
   font-family: 'Courier New', 'Consolas', monospace;
-  font-size: 13px;
-  color: #333;
+  font-size: 15px;
+  font-weight: 600;
+  color: #3a3530;
   background: #fff;
-  border: 1px solid #e8e4da;
+  border: 1px solid #ddd8cc;
   border-radius: 4px;
-  padding: 6px 12px;
-  display: inline-block;
-  margin-bottom: 8px;
-  letter-spacing: 0.5px;
+  padding: 8px 14px;
+  display: block;
+  text-align: center;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.formula-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: #7a6b54;
+  line-height: 1.7;
+}
+.formula-legend b {
+  color: #5d4e37;
 }
 .formula-table {
   width: 100%;
@@ -2567,6 +2636,11 @@ defineExpose({
 }
 .dim-detail-content {
   padding: 6px 12px 8px 28px;
+}
+.dim-placeholder {
+  color: #9b8a6e;
+  font-style: italic;
+  padding: 4px 0;
 }
 .detail-item {
   display: flex;
@@ -3079,18 +3153,104 @@ defineExpose({
   margin-top: 8px;
 }
 
+/* ── v3.1: LLM 分析叙述 ── */
+.llm-narrative-section {
+  margin-top: 12px;
+  border: 1px solid #e8e4da;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.llm-narrative-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  background: #fdf6ee;
+  border-bottom: 1px solid #e8e4da;
+  font-size: 13px; font-weight: 500; color: #c45a3c;
+}
+.llm-narrative-body {
+  padding: 10px 12px;
+  font-size: 13px; line-height: 1.7;
+  color: #4a4438; background: #fefefe;
+  white-space: pre-wrap;
+}
+
+/* ── v3.1: 维度极性条 ── */
+.dim-polarity-strip {
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.polarity-strip-title {
+  font-size: 11px; color: #999; white-space: nowrap;
+}
+.polarity-dots {
+  display: flex; gap: 6px; align-items: center;
+}
+.polarity-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  cursor: pointer; transition: transform 0.15s;
+}
+.polarity-dot:hover { transform: scale(1.4); }
+.pol-positive { background: #67c23a; }
+.pol-negative { background: #f56c6c; }
+.pol-neutral { background: #c0c4cc; }
+.pol-complex_positive, .pol-complex_negative, .pol-complex_balanced { background: #e6a23c; }
+
+/* ── v3.1: 推导表极性点 ── */
+.dim-pol-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 4px; vertical-align: middle;
+}
+
+/* ── v3.1: 冲突高亮行 ── */
+.dim-conflict {
+  background: #fdf6ee !important;
+}
+
+/* ── v3.1: 冲突分数条 ── */
+.conflict-bar {
+  margin-top: 10px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px;
+}
+.conflict-bar-label { color: #999; white-space: nowrap; }
+.conflict-bar-track {
+  flex: 1; height: 6px; background: #f0ebe0;
+  border-radius: 3px; overflow: hidden;
+}
+.conflict-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #67c23a, #e6a23c, #f56c6c);
+  border-radius: 3px; transition: width 0.4s ease;
+}
+.conflict-bar-value { color: #666; white-space: nowrap; }
+
 /* ── LLM 校正详情 ── */
 .llm-correction-section {
   margin-top: 12px;
+  border: 1px solid #e8e4da;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.llm-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5d4e37;
+  background: #f8f5ee;
+  border-bottom: 1px solid #e8e4da;
+}
+.llm-section-header .el-icon {
+  color: #9b7b4a;
 }
 .llm-summary {
   font-size: 13px;
   color: #5d4e37;
-  padding: 8px 12px;
-  background: #f9f7f2;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  line-height: 1.5;
+  padding: 10px 14px;
+  background: #fcfaf6;
+  line-height: 1.6;
+  border-bottom: 1px solid #f0ede6;
 }
 .llm-table {
   width: 100%;
@@ -3099,16 +3259,25 @@ defineExpose({
 }
 .llm-table th {
   text-align: left;
-  padding: 6px 8px;
-  background: #f3f0e8;
+  padding: 8px 10px;
+  background: #f8f5ee;
   color: #7a6b54;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   border-bottom: 1px solid #e8e4da;
 }
 .llm-table td {
-  padding: 6px 8px;
-  border-bottom: 1px solid #f0ede6;
+  padding: 8px 10px;
+  border-bottom: 1px solid #f5f2ea;
   vertical-align: top;
+}
+.llm-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.llm-table tbody tr:hover {
+  background: #fcfaf6;
 }
 .llm-table .dim-name {
   font-weight: 500;
@@ -3118,21 +3287,34 @@ defineExpose({
 .llm-table .dim-delta {
   font-family: 'Courier New', monospace;
   font-weight: 600;
+  font-size: 12px;
   white-space: nowrap;
 }
+.llm-table .dim-conf {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.conf-high { color: #4a7c59; }
+.conf-mid { color: #b8953a; }
 .llm-reasoning-cell {
   color: #6a5b44;
   font-size: 12px;
-  line-height: 1.4;
-  max-width: 300px;
+  line-height: 1.5;
+  max-width: 320px;
 }
 .llm-meta {
-  margin-top: 8px;
+  padding: 8px 14px;
   font-size: 11px;
-  color: #999;
-  padding: 4px 8px;
+  color: #b0a590;
+  background: #fcfaf6;
+  border-top: 1px solid #f0ede6;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 .llm-model {
   font-family: 'Courier New', monospace;
+  color: #9b8a6e;
 }
 </style>

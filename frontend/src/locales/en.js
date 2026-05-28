@@ -28,6 +28,9 @@ export default {
   'polarity.negative': 'Negative',
   'polarity.neutral': 'Neutral',
   'polarity.ambiguous': 'Complex',
+  'polarity.complex_positive': 'Complex+',
+  'polarity.complex_negative': 'Complex−',
+  'polarity.complex_balanced': 'Balanced Conflict',
 
   // Judgment
   'judgment.combined': 'Combined Judgment',
