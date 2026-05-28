@@ -368,13 +368,17 @@
                     </span>
                   </div>
 
-                  <!-- v3.1: 冲突分数条 -->
+                  <!-- v3.1: 维度分歧条 — 8个维度之间的一致性 -->
                   <div class="conflict-bar" v-if="conflictScore != null && conflictScore > 0">
-                    <div class="conflict-bar-label">情感复杂度</div>
+                    <el-tooltip content="8个维度情感方向的一致程度。低=各维度同向，高=正负面维度同时存在" placement="top">
+                      <div class="conflict-bar-label">维度分歧</div>
+                    </el-tooltip>
                     <div class="conflict-bar-track">
                       <div class="conflict-bar-fill" :style="{ width: (conflictScore * 100) + '%' }"></div>
                     </div>
-                    <span class="conflict-bar-value">{{ (conflictScore * 100).toFixed(0) }}%{{ conflictScore > 0.6 ? ' 矛盾较强' : conflictScore > 0.3 ? ' 有张力' : ' 较一致' }}</span>
+                    <span class="conflict-bar-value">
+                      {{ conflictScore < 0.25 ? '各维度倾向一致' : conflictScore < 0.5 ? '存在部分分歧' : conflictScore < 0.75 ? '正负面信号并存' : '维度间明显矛盾' }}
+                    </span>
                   </div>
                 </div>
 
