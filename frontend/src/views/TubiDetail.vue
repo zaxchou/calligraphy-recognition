@@ -128,7 +128,7 @@
                           复杂度 {{ (conflictScore * 100).toFixed(0) }}%
                         </el-tag>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
-                        <el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light">
+                        <el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light" :show-after="500" popper-class="method-tooltip">
                           <span class="score-method-badge">Molin Emotion</span>
                         </el-tooltip>
                       </div>
@@ -3405,5 +3405,14 @@ defineExpose({
 .llm-model {
   font-family: 'Courier New', monospace;
   color: #9b8a6e;
+}
+</style>
+
+<style>
+/* 方法论 tooltip 宽度限制 */
+.method-tooltip {
+  max-width: 300px !important;
+  font-size: 12px;
+  line-height: 1.6;
 }
 </style>

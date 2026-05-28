@@ -203,7 +203,7 @@ export default {
   'ranking.no_data': '暂无数据，请先上传画作',
 
   // Scoring method
-  'method.vader_tip': '墨林情绪引擎：基于多维度加权融合（文字·空间·画材·尺寸·时期·印章·主题·笔墨），归一化到 [-1, +1]。归一化算法参考: Hutto & Gilbert, "VADER: A Parsimonious Rule-based Model for Sentiment Analysis of Social Media Text", ICWSM 2014.',
+  'method.vader_tip': '墨林情绪引擎：8维度加权融合（文字·空间·画材·尺寸·时期·印章·主题·笔墨），归一化到 [-1, +1]',
   'method.title': '评分方法论',
   'method.formula': '加权融合公式：',
   'method.formula_text': 'S = normalize(Σ wᵢ × cᵢ × sᵢ)',
