@@ -275,23 +275,22 @@ function _findItemIndex(id) {
 const prevImage = computed(() => {
   if (!currentImage.value) return null
   const found = _findItemIndex(currentImage.value.id)
-  if (!found || found.idx <= 0) return null
-  return found.list[found.idx - 1]
+  if (found && found.idx > 0) return found.list[found.idx - 1]
+  // 列表无上下文时，用 API 返回的相邻 ID
+  const pid = currentImage.value.prev_image_id
+  return pid ? { id: pid, image_id: pid } : null
 })
 
 const nextImage = computed(() => {
   if (!currentImage.value) return null
   const found = _findItemIndex(currentImage.value.id)
-  if (!found) return null
-  // 如果当前不是所在列表的最后一条，直接返回下一条
-  if (found.idx < found.list.length - 1) {
-    return found.list[found.idx + 1]
+  if (found) {
+    if (found.idx < found.list.length - 1) return found.list[found.idx + 1]
+    if (!found.isFullList && historyHasMore.value) return { _placeholder: true, id: '__next_page__' }
   }
-  // 如果是最后一条但还有更多页（仅限 historyList），返回翻页占位符
-  if (!found.isFullList && historyHasMore.value) {
-    return { _placeholder: true, id: '__next_page__' }
-  }
-  return null
+  // 列表无上下文时，用 API 返回的相邻 ID
+  const nid = currentImage.value.next_image_id
+  return nid ? { id: nid, image_id: nid } : null
 })
 
 // 导航到指定作品
@@ -1547,7 +1546,9 @@ async function loadHistoryItem(row) {
           page_role: data.page_role,
           period_phase: data.period_phase,
           material_tags: data.material_tags,
-          computed_tags: data.computed_tags
+          computed_tags: data.computed_tags,
+          prev_image_id: data.prev_image_id,
+          next_image_id: data.next_image_id
         }
 
         // 添加到当前会话
@@ -1621,7 +1622,9 @@ async function loadAndSelectImage(imageId) {
         album_index: data.album_index,
         period_phase: data.period_phase,
         material_tags: data.material_tags,
-        computed_tags: data.computed_tags
+        computed_tags: data.computed_tags,
+          prev_image_id: data.prev_image_id,
+          next_image_id: data.next_image_id
       }
 
       // 添加到当前会话
@@ -2206,7 +2209,9 @@ onMounted(async () => {
           page_role: data.page_role,
           period_phase: data.period_phase,
           material_tags: data.material_tags,
-          computed_tags: data.computed_tags
+          computed_tags: data.computed_tags,
+          prev_image_id: data.prev_image_id,
+          next_image_id: data.next_image_id
         }
         // 先保存数据到 uploadedImages（供后续使用）
         const exists = uploadedImages.value.find(img => img.id === historyImage.id)

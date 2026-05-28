@@ -267,7 +267,18 @@
     <el-drawer v-model="showDetailDrawer" title="作品详情" size="600px">
       <template v-if="selectedArtwork">
         <div class="drawer-thumb">
-          <img v-if="selectedArtwork.thumbnail_url" :src="selectedArtwork.thumbnail_url" style="max-width:100%;max-height:300px;object-fit:contain" />
+          <el-image
+            v-if="selectedArtwork.url || selectedArtwork.thumbnail_url"
+            :src="selectedArtwork.url || selectedArtwork.thumbnail_url"
+            :preview-src-list="[selectedArtwork.url || selectedArtwork.thumbnail_url]"
+            :initial-index="0"
+            fit="contain"
+            style="max-width:100%;max-height:400px"
+          >
+            <template #error>
+              <img v-if="selectedArtwork.thumbnail_url" :src="selectedArtwork.thumbnail_url" style="max-width:100%;max-height:400px;object-fit:contain" />
+            </template>
+          </el-image>
         </div>
         <el-descriptions :column="2" border style="margin-top:16px">
           <el-descriptions-item label="标题">{{ selectedArtwork.title || '-' }}</el-descriptions-item>
@@ -341,7 +352,7 @@
         <div class="mode-option" @click="startBatchTranslate('untranslated')">
           <div class="mode-icon"><el-icon><Bottom /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">仅翻译未翻译的</div>
+            <div class="mode-title">仅翻译未翻译的（白话文）</div>
             <div class="mode-desc">跳过已有翻译的记录</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
@@ -349,8 +360,24 @@
         <div class="mode-option" @click="startBatchTranslate('all')">
           <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">重新翻译全部</div>
+            <div class="mode-title">重新翻译全部（白话文）</div>
             <div class="mode-desc">覆盖已有翻译</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+        <div class="mode-option" @click="startBatchTranslate('en_untranslated')">
+          <div class="mode-icon" style="background:#e8f0f8;"><el-icon><Bottom /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">仅翻译未翻译的（English）</div>
+            <div class="mode-desc">跳过已有英文翻译的记录</div>
+          </div>
+          <el-icon class="mode-arrow"><Right /></el-icon>
+        </div>
+        <div class="mode-option" @click="startBatchTranslate('en_all')">
+          <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
+          <div class="mode-info">
+            <div class="mode-title">重新翻译全部（English）</div>
+            <div class="mode-desc">覆盖已有英文翻译</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
@@ -678,7 +705,8 @@ function onSwitchLibrary(newLibId) {
 
 // ── Batch translate ──
 async function startBatchTranslate(mode) {
-  const forceRetranslate = mode === 'all'
+  const isEnglish = mode === 'en_untranslated' || mode === 'en_all'
+  const forceRetranslate = mode === 'all' || mode === 'en_all'
   showTranslateModeDialog.value = false
   batchTranslating.value = true
   showTranslateProgress.value = true
@@ -687,6 +715,7 @@ async function startBatchTranslate(mode) {
     const params = new URLSearchParams()
     params.set('library_id', String(libraryId.value))
     params.set('force_retranslate', String(forceRetranslate))
+    if (isEnglish) params.set('target', 'english')
     const response = await fetch(`${API_BASE}/content-analysis/translate/batch/stream?${params.toString()}`, { method: 'POST' })
     const { streamSSE, cancel } = useSSEStream()
     translateCancelFn = cancel
