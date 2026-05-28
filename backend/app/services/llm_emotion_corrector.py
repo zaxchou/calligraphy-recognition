@@ -418,3 +418,172 @@ async def apply_corrections(
         "polarity": polarity,
         "analysis_method": analysis_method,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v3.2: LLM 主裁判模式 — 独立解读，不看词库分数
+# ═══════════════════════════════════════════════════════════════════
+
+JUDGE_SYSTEM_PROMPT = """你是中国古代书画情感分析专家。你的任务是独立阅读题跋，给出情感判断。
+
+**你不会看到任何机器评分**——你需要完全依靠自己的文学鉴赏能力来解读。
+
+**输出格式**（严格 JSON）：
+
+1. **combined.summary**（至少 150 字）：
+   逐层文学解读：表层意思 → 深层隐喻 → 情感底色 → 关键信号
+   - 特别注意反讽、对比、条件句式
+   - "甘芳物无限，辣味嫌人餐" → 不是说甜的东西好，是说甜的到处都是，唯独我这辣的没人要。甘芳是反衬。
+   - "任使含咀乃得志" → 要忍着苦才有出头日。重点是"忍受"，不是"得志"。
+   - 书画语境："狂""醉""痴""顽""怪"常为正面（艺术自由）；"辣""拙""丑""枯"可能是艺术主张
+
+2. **dimension_scores**（每个维度独立评分，raw 范围 -10 到 +10）：
+   - text: 题跋文字的情感倾向（**看反讽！看语境！不要只看单个词的字面意思**）
+   - spatial: 从题跋用词中推断空间感（舒展/压抑/克制/狂放），无信息给 0
+   - painting: 画材/题材的情感暗示，无信息给 0
+   - size: 对作品体量的暗示，无信息给 0
+   - period: 基于画家该时期的情感基调
+   - seal: 印章的情感信号，无信息给 0
+   - theme: 主题的情感倾向
+   - brush_ink: 通常无数据，给 0
+   每个维度附 confidence（0-1）和 reasoning（一句话为什么）
+
+3. **combined**：
+   - polarity: positive / negative / neutral / complex
+   - combined_raw: 加权综合分（text 权 0.40，spatial 权 0.20，其余平分）
+   - summary: 完整逐层解读
+
+大胆判断，不要模棱两可。用鉴赏家的语言，不要用工程师的语言。"""
+
+
+JUDGE_OUTPUT_FORMAT = """
+## 输出格式（严格 JSON，不用 markdown 包裹）
+{
+  "dimension_scores": {
+    "text":      {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "spatial":   {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "painting":  {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "size":      {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "period":    {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "seal":      {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "theme":     {"raw": <float -10~+10>, "confidence": <float 0-1>, "reasoning": "<为什么>"},
+    "brush_ink": {"raw": 0, "confidence": 0, "reasoning": "无数据"}
+  },
+  "combined": {
+    "polarity": "positive|negative|neutral|complex",
+    "combined_raw": <float>,
+    "summary": "<逐层解读，至少 150 字>"
+  }
+}
+"""
+
+
+def _build_judge_prompt(
+    text: str,
+    artist: str = None,
+    year: int = None,
+    themes: List = None,
+    spatial_info: str = None,
+    seal_info: str = None,
+) -> str:
+    """构建 LLM 裁判的输入提示——只给题跋和上下文，不给词库分数"""
+    lines = [f"## 题跋全文\n{text}\n"]
+
+    artist_hints = {
+        "李鱓": "扬州八怪之一。早年供奉内廷→中期扬州卖画→晚期归隐。题跋常带自嘲、不驯、苦涩中的倔强。",
+        "郑燮": "扬州八怪之一，号板桥。题跋多含为民请命、不媚权贵之意。",
+        "徐渭": "大写意开创者，一生坎坷潦倒。题跋常狂放与悲愤交织。",
+        "朱耷": "明宗室后裔，国破家亡后出家。画中鱼鸟白眼向人，题跋晦涩隐晦。",
+    }
+    if artist:
+        lines.append(f"## 作者\n{artist}")
+        if artist in artist_hints:
+            lines.append(f"背景：{artist_hints[artist]}")
+
+    if year:
+        lines.append(f"## 年代\n{year}年")
+    if themes:
+        theme_names = [t.get("name", "") for t in themes[:5]]
+        lines.append(f"## 主题标签\n{'、'.join(theme_names)}")
+    if spatial_info:
+        lines.append(f"## 空间布局参考\n{spatial_info}")
+    if seal_info:
+        lines.append(f"## 印章参考\n{seal_info}")
+
+    lines.append(JUDGE_OUTPUT_FORMAT)
+    return "\n".join(lines)
+
+
+async def judge_independently(
+    text: str,
+    artist: str = None,
+    year: int = None,
+    themes: List = None,
+    spatial_info: str = None,
+    seal_info: str = None,
+) -> dict:
+    """
+    v3.2: LLM 主裁判模式——独立解读题跋，不受词库分数影响。
+
+    只接收题跋和元数据，不接收词库基线分。
+    返回独立的情感判断（dimension_scores + combined）。
+    失败时返回 None（调用方降级到词库）。
+    """
+    start = time.time()
+    user_prompt = _build_judge_prompt(
+        text=text, artist=artist, year=year,
+        themes=themes, spatial_info=spatial_info, seal_info=seal_info,
+    )
+
+    try:
+        response = await call_qwen_chat_async(
+            max_tokens=2000,
+            temperature=0.4,
+            messages=[
+                {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+    except Exception as e:
+        logger.warning(f"LLM judge call failed: {e}")
+        return None
+
+    if "error" in response:
+        logger.warning(f"LLM judge returned error: {response['error']}")
+        return None
+
+    choices = response.get("choices", [])
+    if not choices:
+        logger.warning("LLM judge: no choices in response")
+        return None
+
+    reply_text = choices[0].get("message", {}).get("content", "")
+    if not reply_text:
+        logger.warning("LLM judge: empty reply")
+        return None
+
+    parsed = _extract_json(reply_text)
+    if not parsed:
+        logger.warning(f"LLM judge: failed to parse JSON (len={len(reply_text)}). First 200: {reply_text[:200]}")
+        return None
+
+    dims = parsed.get("dimension_scores")
+    if not isinstance(dims, dict) or len(dims) < 7:
+        logger.warning(f"LLM judge: invalid dimension_scores")
+        return None
+
+    combined = parsed.get("combined")
+    if not isinstance(combined, dict) or "summary" not in combined:
+        logger.warning("LLM judge: invalid combined")
+        return None
+
+    elapsed = time.time() - start
+    usage = response.get("usage", {})
+    parsed["meta"] = {
+        "model": response.get("model", "unknown"),
+        "token_count": usage.get("total_tokens", 0),
+        "time_ms": int(elapsed * 1000),
+    }
+
+    logger.info(f"LLM judge: polarity={combined.get('polarity')}, text_raw={dims.get('text',{}).get('raw')}, elapsed={elapsed:.1f}s")
+    return parsed

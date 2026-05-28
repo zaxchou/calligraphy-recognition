@@ -578,7 +578,7 @@ async def reanalyze_emotion(
         raise HTTPException(status_code=400, detail="该记录无有效题跋内容")
 
     from app.services.molin_engine import analyze as molin_analyze
-    from app.services.llm_emotion_corrector import correct_dimensions, apply_corrections, _empty_corrections
+    from app.services.llm_emotion_corrector import judge_independently
 
     try:
         ca = _json.loads(r.content_analysis) if r.content_analysis else {}
@@ -613,61 +613,77 @@ async def reanalyze_emotion(
         "combined_normalized": result.combined_normalized,
     }
 
-    # 2. Run LLM correction
+    # 2. Run LLM 裁判（独立解读，不看词库分）
+    from app.services.molin_engine import vader_normalize, classify_complex_polarity, compute_conflict_score, DimensionResult
     try:
-        llm_result = await correct_dimensions(
+        judge_result = await judge_independently(
             text=r.inscription_content,
-            lexicon_result={
-                "text": result.text, "spatial": result.spatial, "painting": result.painting,
-                "size": result.size, "period": result.period, "seal": result.seal,
-                "theme": result.theme, "brush_ink": result.brush_ink,
-            },
             artist=r.artist,
             year=r.year,
             themes=old_themes,
         )
     except Exception as e:
-        logger.warning("LLM correction failed for record %d: %s", record_id, e)
-        llm_result = None
+        logger.warning("LLM judge failed for record %d: %s", record_id, e)
+        judge_result = None
 
-    # 3. Apply corrections
-    if llm_result and llm_result.get("corrections"):
-        final_scores = await apply_corrections(result, llm_result, result.weights_used)
+    # 3. 用 LLM 裁判结果覆盖词库
+    if judge_result and judge_result.get("dimension_scores"):
+        jd = judge_result["dimension_scores"]
+        jc = judge_result.get("combined", {})
+
+        # 直接用裁判的 combined 分数和极性
+        llm_polarity = jc.get("polarity", result.polarity)
+        llm_combined_raw = jc.get("combined_raw", result.combined_raw)
+        from app.services.molin_engine import vader_normalize, classify_polarity, compute_conflict_score, DimensionResult
+        llm_combined_norm = vader_normalize(llm_combined_raw)
+
+        # 从裁判的 dimension_scores 计算极性和冲突
+        dim_pols = {}
+        judge_dims = []
+        for key in ["text","spatial","painting","size","period","seal","theme","brush_ink"]:
+            raw = (jd.get(key) or {}).get("raw", 0) or 0
+            norm = vader_normalize(raw)
+            dim_pols[key] = classify_polarity(norm)
+            judge_dims.append(DimensionResult(name=key, raw=raw, normalized=norm, has_data=abs(raw) > 0.01))
+        conflict = compute_conflict_score(judge_dims)
+
         analysis_method = "llm_corrected"
     else:
+        # LLM 失败 → 降级到词库
+        jd = {}
+        jc = {"summary": "LLM裁判不可用，使用词库基线分", "polarity": result.polarity}
+        llm_combined_raw = result.combined_raw
+        llm_combined_norm = result.combined_normalized
+        llm_polarity = result.polarity
+        dim_pols = result.dimension_polarities
+        conflict = result.conflict_score
         analysis_method = "lexicon_only"
-        llm_result = _empty_corrections()
-        final_scores = {
-            "combined_raw": result.combined_raw,
-            "combined_normalized": result.combined_normalized,
-            "polarity": result.polarity,
-            "dimensions": {d: {"final": getattr(result, d).raw} for d in ["text","spatial","painting","size","period","seal","theme","brush_ink"]}
-        }
 
     # 4. Update DB
     new_ca = dict(ca) if isinstance(ca, dict) else {}
     new_ca["lexicon_scores"] = lexicon_scores
-    new_ca["llm_analysis"] = llm_result
+    new_ca["llm_judge"] = judge_result  # v3.2: 存储完整裁判结果
+    new_ca["llm_analysis"] = judge_result  # 兼容旧字段名
     new_ca["analysis_method"] = analysis_method
     new_ca["analysis_version"] = 3
     new_ca["combined_sentiment"] = {
-        "polarity": final_scores.get("polarity", result.polarity),
+        "polarity": llm_polarity,
         "reasoning": result.reasoning,
-        "text_score": final_scores.get("dimensions", {}).get("text", {}).get("final", result.text.raw),
-        "spatial_score": final_scores.get("dimensions", {}).get("spatial", {}).get("final", result.spatial.raw),
-        "painting_score": final_scores.get("dimensions", {}).get("painting", {}).get("final", result.painting.raw),
-        "size_score": final_scores.get("dimensions", {}).get("size", {}).get("final", result.size.raw),
-        "time_score": final_scores.get("dimensions", {}).get("period", {}).get("final", result.period.raw),
-        "seal_score": final_scores.get("dimensions", {}).get("seal", {}).get("final", result.seal.raw),
-        "theme_score": final_scores.get("dimensions", {}).get("theme", {}).get("final", result.theme.raw),
-        "brush_ink_score": final_scores.get("dimensions", {}).get("brush_ink", {}).get("final", result.brush_ink.raw),
-        "combined_score": round(final_scores.get("combined_raw", result.combined_raw), 2),
-        "vader_normalized": round(final_scores.get("combined_normalized", result.combined_normalized), 3),
+        "text_score": jd.get("text", {}).get("raw", result.text.raw) if jd else result.text.raw,
+        "spatial_score": jd.get("spatial", {}).get("raw", result.spatial.raw) if jd else result.spatial.raw,
+        "painting_score": jd.get("painting", {}).get("raw", result.painting.raw) if jd else result.painting.raw,
+        "size_score": jd.get("size", {}).get("raw", result.size.raw) if jd else result.size.raw,
+        "time_score": jd.get("period", {}).get("raw", result.period.raw) if jd else result.period.raw,
+        "seal_score": jd.get("seal", {}).get("raw", result.seal.raw) if jd else result.seal.raw,
+        "theme_score": jd.get("theme", {}).get("raw", result.theme.raw) if jd else result.theme.raw,
+        "brush_ink_score": jd.get("brush_ink", {}).get("raw", result.brush_ink.raw) if jd else result.brush_ink.raw,
+        "combined_score": round(llm_combined_raw, 2),
+        "vader_normalized": round(llm_combined_norm, 3),
         "vader_alpha": 8.0,
         "weights": result.weights_used,
         "method": analysis_method,
-        "dimension_polarities": result.dimension_polarities,
-        "conflict_score": result.conflict_score,
+        "dimension_polarities": dim_pols,
+        "conflict_score": conflict,
         "has_data": {
             "text": result.text.has_data,
             "spatial": result.spatial.has_data,
@@ -697,8 +713,8 @@ async def reanalyze_emotion(
         "record_id": record_id,
         "analysis_method": analysis_method,
         "lexicon_combined": result.combined_normalized,
-        "final_score": round(final_scores.get("combined_raw", result.combined_raw), 2),
-        "polarity": final_scores.get("polarity", result.polarity),
+        "final_score": round(llm_combined_raw, 2),
+        "polarity": llm_polarity,
     }
 
 
