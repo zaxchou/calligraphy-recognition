@@ -3191,71 +3191,51 @@ defineExpose({
 .llm-narrative-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
-}
-.narrative-card {
-  padding: 16px 18px;
-  border-radius: 8px;
-  position: relative;
+  gap: 1px;
+  background: #e8e4da;
+  border: 1px solid #e8e4da;
+  border-radius: 6px;
   overflow: hidden;
 }
-.narrative-positive {
-  background: linear-gradient(135deg, #f0faf0 0%, #f8fdf6 100%);
-  border: 1px solid #c8e6c9;
+.narrative-card {
+  padding: 18px 22px;
+  background: #fefefe;
 }
-.narrative-positive::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: #67c23a;
-  border-radius: 4px 0 0 4px;
+.narrative-positive {
+  border-bottom: 2px solid #a3c9a1;
 }
 .narrative-negative {
-  background: linear-gradient(135deg, #fef5f3 0%, #fdfaf9 100%);
-  border: 1px solid #f5d5cc;
-}
-.narrative-negative::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: #e07a5f;
-  border-radius: 4px 0 0 4px;
+  border-bottom: 2px solid #d4a899;
 }
 .narrative-verdict {
   grid-column: 1 / -1;
-  background: linear-gradient(135deg, #fdf7ee 0%, #fefdfa 100%);
-  border: 1px solid #e8d5b0;
-}
-.narrative-verdict::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: #c45a3c;
-  border-radius: 4px 0 0 4px;
+  background: #faf9f5;
+  border-top: 1px solid #e8e4da;
+  padding: 20px 24px;
 }
 .narrative-card-header {
   font-family: 'Noto Serif SC', 'KaiTi', serif;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0ebe0;
 }
-.narrative-positive .narrative-card-header { color: #3e8e29; }
-.narrative-positive .narrative-card-header::before { content: '🟢'; font-size: 14px; }
-.narrative-negative .narrative-card-header { color: #c4563a; }
-.narrative-negative .narrative-card-header::before { content: '🔴'; font-size: 14px; }
-.narrative-verdict .narrative-card-header { color: #9b5e2e; }
-.narrative-verdict .narrative-card-header::before { content: '⚖️'; font-size: 14px; }
+.narrative-positive .narrative-card-header {
+  color: #5a8a4a;
+}
+.narrative-negative .narrative-card-header {
+  color: #b8634a;
+}
+.narrative-verdict .narrative-card-header {
+  color: #8b6914;
+  border-bottom-color: #e8d5b0;
+}
 .narrative-card-body {
   font-size: 13px;
   line-height: 1.85;
-  color: #4a4438;
+  color: #5c5346;
 }
 
 /* ── v3.1: LLM 分析叙述（旧格式 plain text fallback）── */
