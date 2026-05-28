@@ -123,10 +123,6 @@
                         <span class="vader-score-big" :style="{ color: displayScore < 0 ? '#e07a5f' : displayScore > 0 ? '#3cb88b' : '#999' }">
                           {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(4) }}
                         </span>
-                        <el-tag v-if="conflictScore != null && conflictScore > 0.2" size="small" effect="plain"
-                          :type="conflictScore > 0.6 ? 'warning' : 'info'">
-                          复杂度 {{ (conflictScore * 100).toFixed(0) }}%
-                        </el-tag>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
                         <el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light" :show-after="500" popper-class="method-tooltip">
                           <span class="score-method-badge">Molin Emotion</span>
