@@ -90,6 +90,20 @@
           </div>
         </div>
 
+        <!-- 印章规则 -->
+        <div class="json-section" v-if="Object.keys(sealRules).length">
+          <div class="json-section-title">印章情感规则</div>
+          <div class="seal-rules-grid">
+            <div v-for="(rule, name) in sealRules" :key="name" class="seal-rule-item"
+              :class="{ positive: rule.score > 0, negative: rule.score < 0 }">
+              <span class="seal-rule-name">{{ name }}</span>
+              <span class="seal-rule-score">{{ rule.score > 0 ? '+' : '' }}{{ rule.score.toFixed(1) }}</span>
+              <span class="seal-rule-cat">{{ rule.category }}</span>
+              <span class="seal-rule-desc" v-if="rule.desc">{{ rule.desc }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- 预期分布 -->
         <div class="json-section" v-if="Object.keys(expectedTheme).length">
           <div class="json-section-title">预期分布</div>
@@ -181,8 +195,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const RULE_SCHEMA_FIELDS = [
   'artist_name', 'emotion_baseline', 'life_stages', 'sentiment_note',
-  'theme_note', 'theme_exceptions', 'expected_theme_distribution',
-  'expected_sentiment_distribution', 'rules_version'
+  'theme_note', 'theme_exceptions', 'seal_rules',
+  'expected_theme_distribution', 'expected_sentiment_distribution', 'rules_version'
 ]
 
 const props = defineProps({
@@ -229,6 +243,12 @@ const themeExceptions = computed(() => {
   if (!currentRule.value) return {}
   const exc = currentRule.value.theme_exceptions
   return typeof exc === 'object' && exc !== null ? exc : {}
+})
+
+const sealRules = computed(() => {
+  if (!currentRule.value) return {}
+  const sr = currentRule.value.seal_rules
+  return typeof sr === 'object' && sr !== null ? sr : {}
 })
 
 const expectedTheme = computed(() => {
@@ -384,6 +404,10 @@ function makeTemplate() {
     sentiment_note: "",
     theme_note: "",
     theme_exceptions: {},
+    seal_rules: {
+      "苦李": { "score": -1.0, "category": "spirit", "desc": "苦涩自况" },
+      "卖画不为官": { "score": 1.0, "category": "spirit", "desc": "以画自立" }
+    },
     expected_theme_distribution: {
       "身世自况": [5, 15], "咏物寄兴": [35, 55], "画理自叙": [3, 10],
       "时事讽喻": [3, 10], "吉语祥瑞": [3, 10], "交游赠答": [3, 10]
@@ -542,6 +566,22 @@ onMounted(() => { loadArtistList(); loadRules() })
 .exc-theme { font-weight: 600; color: #c96442; min-width: 60px; }
 .exc-keywords { color: #666; flex: 1; }
 .exc-arrow { color: #ccc; }
+
+/* Seal rules */
+.seal-rules-grid { display: flex; flex-direction: column; gap: 4px; }
+.seal-rule-item {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  background: #faf9f7; border-radius: 6px; font-size: 13px;
+  border-left: 3px solid #ddd;
+}
+.seal-rule-item.positive { border-left-color: #67c23a; }
+.seal-rule-item.negative { border-left-color: #f56c6c; }
+.seal-rule-name { font-weight: 600; color: #333; min-width: 90px; }
+.seal-rule-score { font-family: monospace; font-weight: 600; min-width: 40px; }
+.seal-rule-item.positive .seal-rule-score { color: #67c23a; }
+.seal-rule-item.negative .seal-rule-score { color: #f56c6c; }
+.seal-rule-cat { color: #999; font-size: 11px; min-width: 90px; }
+.seal-rule-desc { color: #666; font-size: 12px; }
 
 /* Distribution bars */
 .dist-bars { display: flex; flex-direction: column; gap: 6px; }

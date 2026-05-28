@@ -420,15 +420,15 @@ def analyze_period(year: int, artist: str) -> DimensionResult:
     return result
 
 
-def analyze_seal(seal_content: str) -> DimensionResult:
-    """维度6: 印章情感分析"""
+def analyze_seal(seal_content: str, artist: str = None) -> DimensionResult:
+    """维度6: 印章情感分析（从画家规则读取印章规则）"""
     result = DimensionResult(name="印章")
 
     if not seal_content:
         return result
 
     from app.services.inscription_content_analyzer import analyze_seal_emotion
-    seal_emotion = analyze_seal_emotion(seal_content)
+    seal_emotion = analyze_seal_emotion(seal_content, artist)
 
     score = seal_emotion.get("composite_score", 0) or 0
     result.raw = score
@@ -603,7 +603,7 @@ def analyze(text: str,
     period_dim = analyze_period(year, artist)
 
     # 6. 印章
-    seal_dim = analyze_seal(seal_content)
+    seal_dim = analyze_seal(seal_content, artist)
 
     # 7. 主题
     theme_dim = analyze_theme(themes, artist)

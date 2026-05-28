@@ -1029,12 +1029,17 @@ def _score_to_emotion_label(score: float) -> str:
     return "neutral"
 
 
-def analyze_seal_emotion(seal_content: str) -> dict:
+def analyze_seal_emotion(seal_content: str, artist: str = None) -> dict:
     """
     印章情感分析 —— 第三个维度
 
+    数据来源优先级：
+    1. 画家规则中的 seal_rules（画家特定的印章情感规则）
+    2. 硬编码 SEAL_EMOTION_RULES（全局兜底）
+
     Args:
         seal_content: 印章文本，如 "宗杨、鱓印"
+        artist: 画家名称（用于加载画家特定的印章规则）
 
     Returns:
         {
@@ -1062,7 +1067,19 @@ def analyze_seal_emotion(seal_content: str) -> dict:
     cat_weights = SEAL_EMOTION_RULES.get("category_weight", {})
     unknown_rule = SEAL_EMOTION_RULES.get("unknown_seal", {"score": 0, "desc": "未知印章"})
 
-    # 从 DB 加载印章情感数据（带缓存，避免每次调用都查 DB）
+    # 从画家规则加载印章情感数据（优先级最高）
+    artist_seal_rules = {}
+    if artist:
+        try:
+            artist_name = get_artist_display_name(artist) if artist else ""
+            rules = _load_artist_rules(artist_name)
+            seal_rules = rules.get("seal_rules", {})
+            if isinstance(seal_rules, dict):
+                artist_seal_rules = seal_rules
+        except Exception:
+            pass
+
+    # 兜底：从 DB seals 表加载
     db_seal_cache = _load_seal_emotion_cache()
 
     # 解析印章文本（用、或,分隔）
@@ -1075,8 +1092,8 @@ def analyze_seal_emotion(seal_content: str) -> dict:
     category_scores = {}
 
     for name in seal_names:
-        # DB 优先 → 硬编码兜底
-        rule = db_seal_cache.get(name) or catalog.get(name)
+        # 画家规则 → DB seals 表 → 硬编码兜底
+        rule = artist_seal_rules.get(name) or db_seal_cache.get(name) or catalog.get(name)
         if rule:
             weight = cat_weights.get(rule.get("category", "unknown"), 0.5)
             weighted = rule["score"] * weight

@@ -36,6 +36,7 @@ class ArtistRuleCreate(BaseModel):
     sentiment_note: Optional[str] = ""
     theme_note: Optional[str] = ""
     theme_exceptions: Optional[Dict] = None
+    seal_rules: Optional[Dict] = None
     expected_theme_distribution: Optional[Dict] = None
     expected_sentiment_distribution: Optional[Dict] = None
     rules_version: str = "5.4"
@@ -48,6 +49,7 @@ class ArtistRuleUpdate(BaseModel):
     sentiment_note: Optional[str] = None
     theme_note: Optional[str] = None
     theme_exceptions: Optional[Dict] = None
+    seal_rules: Optional[Dict] = None
     expected_theme_distribution: Optional[Dict] = None
     expected_sentiment_distribution: Optional[Dict] = None
     rules_version: Optional[str] = None
@@ -56,8 +58,8 @@ class ArtistRuleUpdate(BaseModel):
 def _row_to_dict(row) -> Dict:
     """将数据库行转为字典，解析 JSON 字段"""
     d = dict(row)
-    for field in ["life_stages", "theme_exceptions", "expected_theme_distribution",
-                   "expected_sentiment_distribution"]:
+    for field in ["life_stages", "theme_exceptions", "seal_rules",
+                   "expected_theme_distribution", "expected_sentiment_distribution"]:
         if d.get(field) and isinstance(d[field], str):
             try:
                 d[field] = json.loads(d[field])
@@ -123,9 +125,10 @@ async def create_artist_rule(rule: ArtistRuleCreate):
         conn.execute(
             """INSERT INTO artist_rules (
                 artist_name, emotion_baseline, life_stages, sentiment_note,
-                theme_note, theme_exceptions, expected_theme_distribution,
+                theme_note, theme_exceptions, seal_rules,
+                expected_theme_distribution,
                 expected_sentiment_distribution, rules_version, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 rule.artist_name,
                 rule.emotion_baseline,
@@ -133,6 +136,7 @@ async def create_artist_rule(rule: ArtistRuleCreate):
                 rule.sentiment_note or "",
                 rule.theme_note or "",
                 json.dumps(rule.theme_exceptions or {}, ensure_ascii=False),
+                json.dumps(rule.seal_rules or {}, ensure_ascii=False),
                 json.dumps(rule.expected_theme_distribution or {}, ensure_ascii=False),
                 json.dumps(rule.expected_sentiment_distribution or {}, ensure_ascii=False),
                 rule.rules_version,
@@ -169,7 +173,8 @@ async def update_artist_rule(rule_id: int, rule: ArtistRuleUpdate):
             if val is not None:
                 updates[field] = val
 
-        for field in ["life_stages", "theme_exceptions", "expected_theme_distribution",
+        for field in ["life_stages", "theme_exceptions", "seal_rules",
+                       "expected_theme_distribution",
                        "expected_sentiment_distribution"]:
             val = getattr(rule, field, None)
             if val is not None:
