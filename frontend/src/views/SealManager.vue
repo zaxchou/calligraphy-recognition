@@ -43,6 +43,11 @@
             <el-tag v-if="seal.seal_type" size="small" :type="seal.seal_type === '名章' ? undefined : 'info'" class="seal-type-tag">
               {{ seal.seal_type }}
             </el-tag>
+            <el-tag v-if="seal.emotion_score != null" size="small"
+              :type="seal.emotion_score > 0 ? 'success' : seal.emotion_score < 0 ? 'danger' : 'info'"
+              class="seal-type-tag">
+              {{ seal.emotion_score > 0 ? '+' : '' }}{{ seal.emotion_score.toFixed(1) }}
+            </el-tag>
           </div>
         </div>
         <div class="seal-actions">
@@ -87,6 +92,30 @@
         <el-form-item label="来源出处">
           <el-input v-model="editForm.source" type="textarea" :rows="2" placeholder="如：上海博物馆编《中国书画家印鉴款识》（文物出版社，1987.12）" />
         </el-form-item>
+
+        <!-- 印章情感规则 -->
+        <div class="emotion-section">
+          <div class="emotion-section-title">情感规则（用于情绪引擎）</div>
+          <div class="form-row">
+            <el-form-item label="情感分数" class="form-item-half">
+              <el-input-number v-model="editForm.emotion_score" :min="-1" :max="1" :step="0.1" :precision="1" style="width: 100%;" />
+              <div class="form-hint">-1=消极，0=中性，+1=积极</div>
+            </el-form-item>
+            <el-form-item label="类别" class="form-item-half">
+              <el-select v-model="editForm.emotion_category" placeholder="选择类别" clearable style="width: 100%;">
+                <el-option label="identity（身份标识）" value="identity" />
+                <el-option label="spirit（精神境界）" value="spirit" />
+                <el-option label="life_experience（人生经历）" value="life_experience" />
+                <el-option label="nickname（谑称/雅号）" value="nickname" />
+                <el-option label="hobby（爱好/雅趣）" value="hobby" />
+                <el-option label="location（地点/居所）" value="location" />
+              </el-select>
+            </el-form-item>
+          </div>
+          <el-form-item label="情感说明">
+            <el-input v-model="editForm.emotion_desc" placeholder="如：苦涩自况，以苦李自喻" />
+          </el-form-item>
+        </div>
 
         <template v-if="editingSeal">
           <el-form-item label="印章图片">
@@ -183,7 +212,10 @@ const editForm = ref({
   seal_type: '名章',
   description: '',
   source: '',
-  images: []
+  images: [],
+  emotion_score: null,
+  emotion_category: '',
+  emotion_desc: ''
 })
 const uploadInput = ref(null)
 const pendingFiles = ref([])
@@ -234,7 +266,10 @@ function openEdit(seal) {
       path: typeof img === 'string' ? img : (img.path || ''),
       description: typeof img === 'string' ? '' : (img.description || ''),
       sort_order: img.sort_order || 0
-    }))
+    })),
+    emotion_score: seal.emotion_score ?? null,
+    emotion_category: seal.emotion_category || '',
+    emotion_desc: seal.emotion_desc || ''
   }
   showEditDialog.value = true
 }
@@ -251,7 +286,10 @@ async function handleSave() {
     artist_name: editForm.value.artist_name || null,
     seal_type: editForm.value.seal_type || '名章',
     description: editForm.value.description || '',
-    source: editForm.value.source || ''
+    source: editForm.value.source || '',
+    emotion_score: editForm.value.emotion_score,
+    emotion_category: editForm.value.emotion_category || null,
+    emotion_desc: editForm.value.emotion_desc || null
   }
 
   try {
@@ -785,5 +823,22 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.emotion-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e4da;
+}
+.emotion-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 12px;
+}
+.form-hint {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
 }
 </style>
