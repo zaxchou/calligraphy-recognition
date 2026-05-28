@@ -34,6 +34,8 @@ from app.services.tibi_analysis_rules import (
 
 
 _cache_artist_rules: Dict[str, Dict] = {}
+_cache_seal_emotion: Dict[str, Dict] = {}
+_cache_seal_emotion_loaded: bool = False
 
 
 def _load_artist_rules(artist_name: str) -> Dict:
@@ -69,6 +71,34 @@ def _load_artist_rules(artist_name: str) -> Dict:
     rules = HARDCODED_ARTIST_RULES.get(artist_name, dict(DEFAULT_ARTIST_RULES))
     _cache_artist_rules[artist_name] = rules
     return rules
+
+
+def _load_seal_emotion_cache() -> Dict[str, Dict]:
+    """加载印章情感数据（带内存缓存，只查一次 DB）"""
+    global _cache_seal_emotion_loaded
+    if _cache_seal_emotion_loaded:
+        return _cache_seal_emotion
+    try:
+        from app.core.database import get_db_connection
+        conn = get_db_connection()
+        try:
+            rows = conn.execute(
+                "SELECT name, emotion_score, emotion_category, emotion_desc FROM seals "
+                "WHERE emotion_score IS NOT NULL"
+            ).fetchall()
+            for r in rows:
+                _cache_seal_emotion[r["name"]] = {
+                    "score": r["emotion_score"],
+                    "category": r["emotion_category"] or "unknown",
+                    "desc": r["emotion_desc"] or "",
+                    "emotion": _score_to_emotion_label(r["emotion_score"]),
+                }
+            _cache_seal_emotion_loaded = True
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    return _cache_seal_emotion
 
 
 def _get_artist_sentiment_note(artist: str = None) -> str:
@@ -1032,27 +1062,8 @@ def analyze_seal_emotion(seal_content: str) -> dict:
     cat_weights = SEAL_EMOTION_RULES.get("category_weight", {})
     unknown_rule = SEAL_EMOTION_RULES.get("unknown_seal", {"score": 0, "desc": "未知印章"})
 
-    # 尝试从 DB 加载印章情感数据（DB 优先 → 硬编码兜底）
-    db_seal_cache = {}
-    try:
-        from app.core.database import get_db_connection as _get_conn
-        _conn = _get_conn()
-        try:
-            rows = _conn.execute(
-                "SELECT name, emotion_score, emotion_category, emotion_desc FROM seals "
-                "WHERE emotion_score IS NOT NULL"
-            ).fetchall()
-            for r in rows:
-                db_seal_cache[r["name"]] = {
-                    "score": r["emotion_score"],
-                    "category": r["emotion_category"] or "unknown",
-                    "desc": r["emotion_desc"] or "",
-                    "emotion": _score_to_emotion_label(r["emotion_score"]),
-                }
-        finally:
-            _conn.close()
-    except Exception:
-        pass
+    # 从 DB 加载印章情感数据（带缓存，避免每次调用都查 DB）
+    db_seal_cache = _load_seal_emotion_cache()
 
     # 解析印章文本（用、或,分隔）
     import re

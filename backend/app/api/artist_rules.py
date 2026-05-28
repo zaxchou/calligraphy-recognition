@@ -373,12 +373,12 @@ async def generate_life_stages(artist_name: str):
         if not birth:
             raise HTTPException(status_code=400, detail=f"画家「{artist_name}」缺少出生年份，无法生成时期")
 
-        lifespan = (death - birth) if death else 70
+        lifespan = (death - birth) if death else (2026 - birth)
 
         # 三段均分
         p1_end = birth + lifespan // 3
         p2_end = birth + lifespan * 2 // 3
-        p3_end = death or (birth + lifespan)
+        p3_end = death or 2026
 
         # 尝试从 bio_events 找关键节点来切分
         if bio_events:

@@ -420,6 +420,14 @@ async def update_seal(seal_id: int, seal: SealUpdate):
             )
 
         conn.commit()
+        # 清除印章情感缓存，使新规则立即生效
+        try:
+            from app.services.inscription_content_analyzer import _cache_seal_emotion, _cache_seal_emotion_loaded
+            _cache_seal_emotion.clear()
+            import app.services.inscription_content_analyzer as _ica
+            _ica._cache_seal_emotion_loaded = False
+        except ImportError:
+            pass
         return {"success": True, "message": "印章更新成功"}
     except HTTPException:
         raise

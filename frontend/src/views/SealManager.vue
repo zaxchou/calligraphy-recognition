@@ -12,6 +12,9 @@
           <el-icon><Check /></el-icon>批量操作
         </el-button>
         <template v-if="batchMode">
+          <el-button type="primary" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchAiEmotion" :loading="aiEmotionLoading">
+            <el-icon><MagicStick /></el-icon>AI 分析情感（{{ selectedIds.length }}）
+          </el-button>
           <el-button type="danger" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchDelete">
             <el-icon><Delete /></el-icon>删除选中（{{ selectedIds.length }}）
           </el-button>
@@ -180,7 +183,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Download, Picture, Stamp, Check } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Picture, Stamp, Check, MagicStick } from '@element-plus/icons-vue'
 import { sealsApi } from '../api'
 import { useRouter } from 'vue-router'
 
@@ -197,6 +200,7 @@ const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const extracting = ref(false)
+const aiEmotionLoading = ref(false)
 
 const batchMode = ref(false)
 const selectedIds = ref([])
@@ -395,6 +399,28 @@ function toggleSelect(id) {
 function cancelBatch() {
   batchMode.value = false
   selectedIds.value = []
+}
+
+async function handleBatchAiEmotion() {
+  if (selectedIds.value.length === 0) return
+  const count = selectedIds.value.length
+  aiEmotionLoading.value = true
+  try {
+    const res = await sealsApi.aiAnalyzeEmotion(selectedIds.value)
+    if (res.success) {
+      const analyzed = res.analyzed || 0
+      ElMessage.success(`AI 分析完成：${analyzed}/${count} 个印章已更新情感`)
+      batchMode.value = false
+      selectedIds.value = []
+      await loadSeals()
+    } else {
+      ElMessage.error('AI 分析失败')
+    }
+  } catch (e) {
+    ElMessage.error('AI 分析失败: ' + (e.response?.data?.detail || e.message || e))
+  } finally {
+    aiEmotionLoading.value = false
+  }
 }
 
 async function handleBatchDelete() {
