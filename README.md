@@ -1,21 +1,56 @@
 # 墨林百科 (Molin Wiki)
 
-基于 AI 的中国书画分析与知识平台。
-
-当前仓库包含：
-- **前端**：Vue 3 + Vite + Element Plus
-- **后端**：FastAPI + SQLAlchemy（默认 SQLite）
-- **异步任务**：Celery + Redis（用于构图分析等长耗时任务）
-- **向量检索（可选）**：Qdrant（用于构图案例/规则检索）
-- **AI 能力（按需）**：SiliconFlow / Qwen（OpenAI Compatible）等
+基于 AI 的中国书画知识平台——集艺术家百科、作品收录、题跋分析、书法溯源、构图讲评与知识检索于一体。
 
 ---
 
-## 功能概览
+## 技术栈
 
-- **书法碑帖识别**：上传单字/局部图，匹配碑帖字形，返回相似度与候选。
-- **题跋分析（Tubi）**：题跋区域/画面结构的可视化与统计分析（见 [README_TUBI_ANALYSIS.md](README_TUBI_ANALYSIS.md)）。
-- **潘天寿教你构图（Composition）**：上传国画作品，异步分析构图特征，生成报告与 PDF，支持进度与 ETA。
+- **前端**：Vue 3 + Vite + Element Plus
+- **后端**：FastAPI + SQLAlchemy（SQLite）
+- **异步任务**：Celery + Redis（构图分析等长耗时任务）
+- **向量检索**：Qdrant（知识库语义搜索、构图案例检索）
+- **AI 能力**：SiliconFlow / Qwen（OpenAI Compatible）
+
+---
+
+## 功能模块
+
+### 艺术家百科
+历代书画名家的生平、作品、印章、题跋、游历与艺术风格档案，支持多维度浏览与检索。
+
+### 作品收录与管理
+支持批量上传、册页关联、作品标签、封面截选（Strip）、作品归属（Artwork-Artist）等，并提供完整的审核与修订历史。
+
+### 题跋空间分析 (Tubi)
+AI 自动识别画作中的题跋、绘画、留白区域，生成可视化空间分析图与统计数据。
+
+### 书法字体识别 (Recognition)
+上传书法单字，智能匹配碑帖字形来源，返回相似度与候选列表。
+
+### 知识检索 (Knowledge Search)
+基于 Qdrant 的语义搜索，支持对历代名家题跋、印章、绘画理论进行自然语言检索。
+
+### 潘天寿构图体系 (Composition)
+基于潘天寿教学理论，异步分析国画构图特征，生成讲评报告与 PDF（含热力图、起承转合分析）。
+
+### 起承转合分析 (Qczh)
+运用多模态 AI 对国画构图的起承转合进行深度解读。
+
+### 内容大数据分析 (Content Analysis)
+批量分析题跋内容，统计主题、情感、时期、艺术家等多维度数据，支持审核流程。
+
+### 情感分析引擎 (Emotion Engine)
+多维度情感/意境分析，为画作生成多向量情感卡片。
+
+### 印鉴管理 (Seals)
+管理艺术家印鉴库，支持多版本合并与缩略图展示。
+
+### 地图模式 (Map Mode)
+以地理信息维度呈现艺术家的游历轨迹与创作分布。
+
+### 用户与权限管理
+角色包括 super_admin / admin / editor / reader / guest，支持 JWT 登录，操作审计与通知系统。
 
 ---
 
@@ -23,24 +58,20 @@
 
 ```
 molin-wiki/
-  backend/                          # FastAPI 后端
+  backend/
     app/
-      api/                          # 路由聚合（recognition/steles/tubi/composition）
+      api/                          # 路由（artists/artworks/tubi/recognition/knowledge/composition/…）
       core/                         # 配置、数据库、Celery
       models/                       # 数据表模型
       modules/
         pantianshou_composition/    # 构图模块（任务、报告、Qdrant、知识库等）
-      services/                     # 识别/题跋等服务
+      services/                     # 各业务服务（识别/题跋/情感/内容分析等）
     data/                           # SQLite、上传、静态输出（本地运行生成）
-    requirements.txt
-    .env.example
-  frontend/                         # Vue3 前端
+  frontend/
     src/
-      views/                        # 主页面
+      views/                        # 主页面（artist/tubi/knowledge/composition/…）
       modules/pantianshou-composition/  # 构图模块页面与组件
-    vite.config.js
-  README.md
-  README_TUBI_ANALYSIS.md
+  deploy.sh                         # 服务器部署脚本
 ```
 
 ---
@@ -59,7 +90,7 @@ molin-wiki/
 
 ---
 
-## 本地启动（推荐流程）
+## 本地启动
 
 ### 一键启动（推荐）
 
@@ -67,10 +98,7 @@ molin-wiki/
 
 **Windows:**
 ```powershell
-# 一键启动 Redis + Celery + FastAPI
 .\start_all.ps1
-
-# 按需跳过
 .\start_all.ps1 -SkipFastAPI      # 只启动 Redis + Celery
 .\start_all.ps1 -SkipRedis        # 只启动 Celery + FastAPI
 ```
@@ -78,11 +106,12 @@ molin-wiki/
 **Linux / macOS:**
 ```bash
 chmod +x start_all.sh stop_all.sh
-./start_all.sh                    # 启动全部
-./stop_all.sh                     # 停止全部
+./start_all.sh
+./stop_all.sh
 ```
 
 启动后：
+
 | 服务 | 地址 |
 |------|------|
 | FastAPI 后端 | `http://localhost:8001` |
@@ -97,20 +126,14 @@ chmod +x start_all.sh stop_all.sh
 
 #### 1) Redis（构图分析必需）
 ```powershell
-# Windows - 首次自动下载
-.\start_redis_windows.ps1
-
-# Linux
-sudo apt install redis-server && redis-server --daemonize yes
+.\start_redis_windows.ps1    # Windows
+sudo apt install redis-server && redis-server --daemonize yes   # Linux
 ```
 
 #### 2) Celery Worker（构图分析必需）
 ```powershell
-# Windows - 一键启动
-.\start_celery_windows.ps1
-
-# Linux
-cd backend && celery -A app.core.celery_app worker --loglevel=info --pool=prefork
+.\start_celery_windows.ps1   # Windows
+cd backend && celery -A app.core.celery_app worker --loglevel=info --pool=prefork   # Linux
 ```
 
 #### 3) 后端
@@ -119,8 +142,6 @@ cd backend
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
-
-健康检查：`http://localhost:8001/health`
 
 #### 4) 前端
 ```bash
@@ -133,47 +154,38 @@ npm run dev -- --host 0.0.0.0 --port 3000
 
 ---
 
-## 构图模块（潘天寿教你构图）说明
-
-### 进度与 ETA
-
-构图分析为异步任务：
-- 上传后生成 `task_id`
-- 前端可轮询 `/api/v1/composition/task/{task_id}` 或订阅 SSE `/api/v1/composition/task/{task_id}/events`
-
-服务端实现：
-- Celery + Redis 可用时：异步执行 + 进度/ETA 持续更新
-- Redis 不可用时：自动降级为线程执行（仍会落库更新状态）
-
-### 关键产物
-
-- 热力图：`/static/composition/overlays/*_heatmap.png`
-- 报告 JSON：`/static/composition/reports/*.json`
-- PDF：`/static/composition/pdfs/*.pdf`
-
----
-
 ## 环境变量
 
 后端示例见：`backend/.env.example`。
 
 常用配置：
 - `REDIS_URL`：Redis 地址（Celery broker/backend、进度 PubSub）
-- `QDRANT_URL` / `QDRANT_API_KEY`：启用构图规则/案例检索
-- `SILICONFLOW_API_KEY`：题跋分析与识别相关 AI
+- `QDRANT_URL` / `QDRANT_API_KEY`：启用知识库语义搜索与构图规则检索
+- `SILICONFLOW_API_KEY`：题跋分析、书法识别、内容分析等 AI 调用
 - `QWEN_API_KEY` / `QWEN_BASE_URL` / `COMPOSITION_LLM_MODEL`：构图讲评 LLM
-- `CORS_ALLOW_ORIGINS`：后端 CORS 白名单（逗号分隔；默认 `*`）
+- `CORS_ALLOW_ORIGINS`：后端 CORS 白名单（默认 `*`）
 
 ---
 
-## 开发约定（建议）
+## 部署
 
-- 使用分支 + PR：避免直接在 `master` 上提交。
-- 已提供 `.gitattributes`，用于统一换行与二进制文件处理。
+```bash
+bash deploy.sh
+```
 
+自动检测变更，前端 build + SCP，后端源码热挂载秒级生效。
+
+---
+
+## 开发约定
+
+- 使用分支 + PR：避免直接在 `master` 上提交
+- 已提供 `.gitattributes`，统一换行与二进制文件处理
+
+---
 
 MIT License
 
 ## 联系方式
 
-如有问题或建议，欢迎提交Issue。
+如有问题或建议，欢迎提交 Issue。
