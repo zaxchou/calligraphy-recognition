@@ -22,6 +22,21 @@
       </el-col>
     </el-row>
 
+    <!-- 批量重跑进度条 -->
+    <el-card class="progress-card" shadow="never" v-if="reanalyzeAllProgress?.running">
+      <div class="progress-info">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>正在批量重分析... {{ reanalyzeAllProgress.processed }}/{{ reanalyzeAllProgress.total }}</span>
+        <span v-if="reanalyzeAllProgress.errors" class="progress-errors">（{{ reanalyzeAllProgress.errors }} 错误）</span>
+      </div>
+      <el-progress
+        :percentage="reanalyzeAllProgress.total ? Math.round(reanalyzeAllProgress.processed / reanalyzeAllProgress.total * 100) : 0"
+        :stroke-width="8"
+        :show-text="false"
+        style="margin-top: 8px;"
+      />
+    </el-card>
+
     <!-- Filter bar -->
     <el-card class="filter-card" shadow="never">
       <el-row :gutter="12" align="middle">
@@ -297,6 +312,7 @@ async function showDetail(row) {
 }
 
 const reanalyzeAllLoading = ref(false)
+const reanalyzeAllProgress = ref(null)
 
 async function reanalyze(row) {
   try {
@@ -325,12 +341,26 @@ async function reanalyzeAll() {
     )
     reanalyzeAllLoading.value = true
     await adminApi.reanalyzeAllEmotion()
-    ElMessage.success('批量重分析已触发，后台执行中。稍后刷新页面查看进度。')
+    ElMessage.success('批量重分析已触发')
+
+    // 轮询进度
+    let pollTimer = setInterval(async () => {
+      try {
+        const status = await adminApi.reanalyzeAllStatus()
+        reanalyzeAllProgress.value = status
+        if (!status.running) {
+          clearInterval(pollTimer)
+          reanalyzeAllLoading.value = false
+          ElMessage.success(`完成：${status.processed} 条，错误 ${status.errors} 条`)
+          loadLogs()
+          loadStats()
+        }
+      } catch { clearInterval(pollTimer); reanalyzeAllLoading.value = false }
+    }, 2000)
   } catch (e) {
     if (e !== 'cancel') {
       ElMessage.error('触发失败: ' + (e.response?.data?.detail || e.message))
     }
-  } finally {
     reanalyzeAllLoading.value = false
   }
 }

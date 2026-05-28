@@ -47,4 +47,7 @@ export const adminApi = {
   reanalyzeAllEmotion() {
     return api.post('/admin/emotion-logs/reanalyze-all')
   },
+  reanalyzeAllStatus() {
+    return api.get('/admin/emotion-logs/reanalyze-all/status')
+  },
 }

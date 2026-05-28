@@ -751,6 +751,10 @@ async def reanalyze_emotion(
     }
 
 
+# 批量重跑进度（模块级变量，简单共享）
+_batch_progress = {"running": False, "total": 0, "processed": 0, "errors": 0}
+
+
 @router.post("/emotion-logs/reanalyze-all")
 def reanalyze_all_emotion(
     db: Session = Depends(get_db),
@@ -759,9 +763,14 @@ def reanalyze_all_emotion(
     """批量重跑全部记录的情绪引擎 v3 分析（异步后台执行）"""
     import threading
 
+    if _batch_progress["running"]:
+        return {"ok": False, "message": "已有批量重分析正在执行中"}
+
     def _run_batch():
+        global _batch_progress
+        _batch_progress = {"running": True, "total": 0, "processed": 0, "errors": 0}
         try:
-            from scripts.batch_reanalyze_v3 import run_batch, get_db_connection
+            from scripts.batch_reanalyze_v3 import get_db_connection
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("""
@@ -774,15 +783,99 @@ def reanalyze_all_emotion(
                 ORDER BY id
             """)
             rows = cur.fetchall()
-            processed, errors = run_batch(conn, rows, batch_size=10)
-            logger.info(f"Emotion reanalyze-all complete: {processed} processed, {errors} errors")
+            _batch_progress["total"] = len(rows)
+
+            # Inline the batch processing (avoid import to keep it self-contained)
+            import json as _json
+            cur2 = conn.cursor()
+            for i, row in enumerate(rows):
+                if not row["inscription_content"] or len(row["inscription_content"].strip()) < 2:
+                    continue
+                try:
+                    old_ca = {}
+                    if row["content_analysis"]:
+                        try: old_ca = _json.loads(row["content_analysis"])
+                        except: pass
+
+                    from app.services.molin_engine import analyze as molin_analyze
+                    themes = old_ca.get("themes", []) if isinstance(old_ca, dict) else []
+                    se = old_ca.get("spatial_emotion") if isinstance(old_ca, dict) else None
+                    v4s = old_ca.get("v4_signals", {}) if isinstance(old_ca, dict) else {}
+                    pm = v4s.get("painting", []) if isinstance(v4s, dict) else []
+                    if not pm:
+                        sigs = old_ca.get("signals", {}) if isinstance(old_ca, dict) else {}
+                        pm = sigs.get("painting", []) if isinstance(sigs, dict) else []
+
+                    result = molin_analyze(text=row["inscription_content"], spatial_emotion=se,
+                        painting_matches=pm, width_cm=row["artwork_width_cm"],
+                        height_cm=row["artwork_height_cm"], year=row["year"],
+                        artist=row["artist"], seal_content=row["seal_content"], themes=themes)
+
+                    lexicon_scores = {
+                        "version": "3.1",
+                        "text": {"raw": result.text.raw, "normalized": result.text.normalized, "confidence": result.text.confidence, "has_data": result.text.has_data},
+                        "spatial": {"raw": result.spatial.raw, "normalized": result.spatial.normalized, "confidence": result.spatial.confidence, "has_data": result.spatial.has_data},
+                        "painting": {"raw": result.painting.raw, "normalized": result.painting.normalized, "confidence": result.painting.confidence, "has_data": result.painting.has_data},
+                        "size": {"raw": result.size.raw, "normalized": result.size.normalized, "confidence": result.size.confidence, "has_data": result.size.has_data},
+                        "period": {"raw": result.period.raw, "normalized": result.period.normalized, "confidence": result.period.confidence, "has_data": result.period.has_data},
+                        "seal": {"raw": result.seal.raw, "normalized": result.seal.normalized, "confidence": result.seal.confidence, "has_data": result.seal.has_data},
+                        "theme": {"raw": result.theme.raw, "normalized": result.theme.normalized, "confidence": result.theme.confidence, "has_data": result.theme.has_data},
+                        "brush_ink": {"raw": result.brush_ink.raw, "normalized": result.brush_ink.normalized, "confidence": result.brush_ink.confidence, "has_data": result.brush_ink.has_data},
+                        "combined_raw": result.combined_raw, "combined_normalized": result.combined_normalized,
+                    }
+
+                    new_ca = dict(old_ca) if isinstance(old_ca, dict) else {}
+                    if se: new_ca["spatial_emotion"] = se
+                    new_ca["lexicon_scores"] = lexicon_scores
+                    new_ca["analysis_method"] = "lexicon_only"
+                    new_ca["analysis_version"] = 3
+                    new_ca["combined_sentiment"] = {
+                        "polarity": result.polarity, "reasoning": result.reasoning,
+                        "text_score": result.text.raw, "spatial_score": result.spatial.raw,
+                        "seal_score": result.seal.raw, "painting_score": result.painting.raw,
+                        "time_score": result.period.raw, "size_score": result.size.raw,
+                        "theme_score": result.theme.raw, "brush_ink_score": result.brush_ink.raw,
+                        "combined_score": round(result.combined_raw, 2),
+                        "vader_normalized": round(result.combined_normalized, 3),
+                        "vader_alpha": 8.0, "weights": result.weights_used, "method": "lexicon_only",
+                        "dimension_polarities": result.dimension_polarities,
+                        "conflict_score": result.conflict_score,
+                        "has_data": {"text": result.text.has_data, "spatial": result.spatial.has_data,
+                            "painting": result.painting.has_data, "size": result.size.has_data,
+                            "period": result.period.has_data, "seal": result.seal.has_data,
+                            "theme": result.theme.has_data, "brush_ink": result.brush_ink.has_data},
+                        "dimension_details": {"text": {"signals": result.text.signals},
+                            "spatial": {"signals": result.spatial.signals},
+                            "painting": {"signals": result.painting.signals},
+                            "size": {"width": row["artwork_width_cm"], "height": row["artwork_height_cm"]},
+                            "period": {"year": row["year"]}, "seal": {"signals": result.seal.signals},
+                            "theme": {"signals": result.theme.signals}},
+                    }
+                    cur2.execute("UPDATE tubi_analyses SET content_analysis = ? WHERE id = ?",
+                                (_json.dumps(new_ca, ensure_ascii=False), row["id"]))
+                    if (i + 1) % 10 == 0: conn.commit()
+                except Exception as e:
+                    _batch_progress["errors"] += 1
+                _batch_progress["processed"] = i + 1
+            conn.commit()
+            conn.close()
         except Exception as e:
             logger.error(f"Emotion reanalyze-all failed: {e}")
+        finally:
+            _batch_progress["running"] = False
 
     t = threading.Thread(target=_run_batch, daemon=True)
     t.start()
 
-    return {"ok": True, "message": "批量重分析已触发，后台执行中。可在分析日志页面查看进度。"}
+    return {"ok": True, "message": "批量重分析已触发", "total": 0}  # total will be updated async
+
+
+@router.get("/emotion-logs/reanalyze-all/status")
+def reanalyze_all_status(
+    admin_user: User = Depends(require_admin_role),
+):
+    """查询批量重跑的进度"""
+    return _batch_progress
 
 
 @router.get("/emotion-stats")
