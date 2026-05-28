@@ -172,8 +172,12 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
                 positions.add(p)
             w_score = lexicon.get_score(b.word)
             if w_score is not None:
+                # v3.2 fix: 多字词也要检查否定范围
+                is_negated, neg_word = annotated.is_in_negation_scope(b.start)
+                if is_negated:
+                    w_score = -w_score
                 score += w_score
-                matched.append({"word": b.word, "score": w_score, "method": "multi_word"})
+                matched.append({"word": b.word, "score": w_score, "method": "multi_word", "negated": is_negated})
 
         for b in annotated.exception_boundaries:
             for p in range(b.start, b.end):
@@ -248,6 +252,16 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
                         matched.append({"word": word, "score": w_score})
 
     result.raw = score
+    # v3.2 fix: 单字匹配分数上限（±8），防止长文本中大量单字堆叠
+    single_total = sum(s.get("score", 0) or 0 for s in matched if s.get("method") == "single_char")
+    if abs(single_total) > 8:
+        ratio = 8.0 / abs(single_total)
+        for s in matched:
+            if s.get("method") == "single_char":
+                original = s["score"]
+                s["score"] = round(original * ratio)
+        result.raw = sum(s.get("score", 0) or 0 for s in matched)
+
     # 后处理：语境规则调整（修正反讽、条件句式的误判）
     result.raw = _apply_context_rules(text, result.raw, matched)
     result.normalized = vader_normalize(result.raw)
@@ -312,6 +326,12 @@ def _apply_context_rules(text: str, score: float, signals: List[Dict] = None) ->
     # 自嘲式否定 — "莫嫌X少" → 苦涩底色
     if re.search(r'莫嫌.{1,6}(?:少|不\S|无\S)', text) and score > 2:
         score = score * 0.7
+
+    # 笑杀/笑倒/笑破 — 苦涩/讽刺的笑，不是愉快的笑
+    if re.search(r'笑[杀倒破讽]', text):
+        for sig in signals:
+            if sig.get("word") in ("笑", "一笑", "可笑") and sig.get("score", 0) > 0:
+                score -= sig["score"] * 0.6  # 笑的分值减少 60%
 
     return max(score, -10.0)  # 不低于 -10
 

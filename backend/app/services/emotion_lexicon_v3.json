@@ -1,9 +1,9 @@
 {
-  "version": "3.1",
-  "generated_at": "2026-05-28T03:58:44.139210",
+  "version": "3.2",
+  "generated_at": "2026-05-28T03:58:44.139210 (manual_fix: multi-word negation, 莫, 那得, context rules)",
   "method": "llm_rating + fccpsl",
   "model": "deepseek-v4-flash",
-  "total_words": 1428,
+  "total_words": 1430,
   "entries": {
     "一味": {
       "score": -1,
@@ -1151,9 +1151,9 @@
       "source": "llm_rated"
     },
     "写": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "manual_fix: too_generic"
     },
     "写于城": {
       "score": 0,
@@ -3041,7 +3041,7 @@
       "source": "llm_rated"
     },
     "志": {
-      "score": 1,
+      "score": 0,
       "category": "positive_mild",
       "source": "llm_rated"
     },
@@ -3411,19 +3411,19 @@
       "source": "llm_rated"
     },
     "懊恼": {
-      "score": -2,
-      "category": "negative_moderate",
+      "score": -1,
+      "category": "negative_mild",
       "source": "llm_rated_v3"
     },
     "懊悔": {
-      "score": -2,
-      "category": "negative_moderate",
+      "score": -1,
+      "category": "negative_mild",
       "source": "llm_rated"
     },
     "懊道人": {
-      "score": -3,
-      "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "manual_fix: artist_signature"
     },
     "懊道人制": {
       "score": -2,
@@ -4606,7 +4606,7 @@
       "source": "llm_rated"
     },
     "狂": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
       "source": "llm_rated"
     },
@@ -6006,7 +6006,7 @@
       "source": "llm_rated"
     },
     "超然": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
       "source": "llm_rated"
     },
@@ -6811,9 +6811,9 @@
       "source": "llm_rated"
     },
     "高": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated"
+      "source": "llm_rated+manual_fix"
     },
     "高人": {
       "score": 3,
@@ -7144,6 +7144,16 @@
       "score": 0,
       "category": "neutral",
       "source": "rule_exception"
+    },
+    "莫": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "manual_fix"
+    },
+    "那得": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "manual_fix"
     }
   }
 }
