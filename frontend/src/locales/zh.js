@@ -458,4 +458,8 @@ export default {
   'reasoning.conclusion.positive': '综合积极',
   'reasoning.conclusion.negative': '综合消极',
   'reasoning.conclusion.neutral': '综合中性',
+  'reasoning.conclusion.complex_positive': '复杂正面',
+  'reasoning.conclusion.complex_negative': '复杂负面',
+  'reasoning.conclusion.complex_balanced': '矛盾平衡',
+  'reasoning.conclusion.ambiguous': '模棱两可',
 }

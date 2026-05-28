@@ -110,12 +110,18 @@
             <div class="analysis-left-col">
               <!-- ===== Card 1: 情绪解读 ===== -->
               <div class="score-card" v-if="currentImage?.contentAnalysis">
-                <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> {{ $t("card.emotion") }}</h4>
+                <h4 class="section-title"><el-icon><DataAnalysis /></el-icon> {{ $t("card.emotion") }}<span class="section-title-spacer"></span><el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light" :show-after="500" popper-class="method-tooltip"><span class="score-method-badge">Molin Emotion</span></el-tooltip></h4>
                 <!-- 有空间分析 → {{ $t("judgment.combined") }} -->
                 <template v-if="combinedSentiment">
                   <div class="emotion-layout-v2">
-                    <!-- VADER compound bar（融合版） -->
-                    <div class="emotion-vader-bar" v-if="combinedSentiment?.vader_normalized != null">
+                    <!-- 左：3D 情绪核心 -->
+                    <div class="emotion-core-left">
+                      <EmotionCore3D :mood="coreMood" />
+                    </div>
+                    <!-- 右：VADER bar + 文字 -->
+                    <div class="emotion-core-right">
+                      <!-- VADER compound bar（融合版） -->
+                      <div class="emotion-vader-bar" v-if="combinedSentiment?.vader_normalized != null">
                       <div class="vader-bar-header">
                         <span class="vader-polarity" :style="{ color: polarityLabelColor(combinedSentiment.polarity) }">
                           {{ $t(polarityKey(combinedSentiment.polarity)) }}
@@ -124,9 +130,6 @@
                           {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(4) }}
                         </span>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
-                        <el-tooltip :content="$t('method.vader_tip')" placement="top" effect="light" :show-after="500" popper-class="method-tooltip">
-                          <span class="score-method-badge">Molin Emotion</span>
-                        </el-tooltip>
                       </div>
                       <div class="vader-track">
                         <div class="vader-gradient"></div>
@@ -164,6 +167,7 @@
                       </div>
                       <div class="summary-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
                     </div>
+                    </div><!-- /emotion-core-right -->
                   </div>
                   <!-- 方法论说明（仅旧版无公式表格时显示） -->
                   <el-collapse v-if="combinedSentiment?.method === 'molin_v2'">
@@ -320,11 +324,11 @@
                   </div>
                   <div class="llm-narrative-grid">
                     <div class="narrative-card narrative-positive" v-if="llmNarrativeSections.positive">
-                      <div class="narrative-card-header">积极面</div>
+                      <div class="narrative-card-header">积极面 <span class="split-pct" v-if="sentimentSplit?.positive">{{ sentimentSplit.positive }}%</span></div>
                       <div class="narrative-card-body">{{ llmNarrativeSections.positive }}</div>
                     </div>
                     <div class="narrative-card narrative-negative" v-if="llmNarrativeSections.negative">
-                      <div class="narrative-card-header">消极面</div>
+                      <div class="narrative-card-header">消极面 <span class="split-pct" v-if="sentimentSplit?.negative">{{ sentimentSplit.negative }}%</span></div>
                       <div class="narrative-card-body">{{ llmNarrativeSections.negative }}</div>
                     </div>
                     <div class="narrative-card narrative-verdict" v-if="llmNarrativeSections.verdict">
@@ -814,6 +818,7 @@ import { sealsApi } from '../api'
 import api from '../api'
 import TubiDeepZoomDialog from '../components/tubi/TubiDeepZoomDialog.vue'
 import SealLightbox from '../components/seal/SealLightbox.vue'
+import EmotionCore3D from '../components/tubi/EmotionCore3D.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -1140,6 +1145,39 @@ const sortedSpatialSignals = computed(() => {
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
 const dimensionPolarities = computed(() => combinedSentiment.value?.dimension_polarities || {})
 const conflictScore = computed(() => combinedSentiment.value?.conflict_score ?? null)
+// vader_normalized (-1~+1) → 3D core mood (0~1)
+const coreMood = computed(() => {
+  const vn = combinedSentiment.value?.vader_normalized
+  if (vn == null) return 0.5
+  return Math.max(0, Math.min(1, (vn + 1) / 2))
+})
+
+// 从各维度加权信号推算积极/消极百分比
+const sentimentSplit = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs?.weights || !cs?.has_data) return null
+  const weights = cs.weights
+  // 维度名 → combined_sentiment 中对应的 score key
+  const dimKeys = {
+    text: 'text_score', spatial: 'spatial_score', painting: 'painting_score',
+    size: 'size_score', period: 'time_score', seal: 'seal_score',
+    theme: 'theme_score', brush_ink: 'brush_ink_score'
+  }
+  let posSum = 0, negSum = 0
+  for (const [dim, scoreKey] of Object.entries(dimKeys)) {
+    if (!cs.has_data?.[dim]) continue
+    const score = cs[scoreKey] ?? 0
+    const weight = weights[dim] ?? 0
+    if (score > 0) posSum += weight * score
+    else if (score < 0) negSum += weight * Math.abs(score)
+  }
+  const total = posSum + negSum
+  if (total === 0) return null
+  return {
+    positive: Math.round(posSum / total * 100),
+    negative: Math.round(negSum / total * 100)
+  }
+})
 
 // v3.2: 解析 LLM 三段式解读文本
 const llmNarrativeSections = computed(() => {
@@ -2246,6 +2284,9 @@ defineExpose({
   color: #4d3e2c;
   margin-bottom: 8px;
 }
+.score-card .section-title .section-title-spacer {
+  flex: 1;
+}
 
 /* 头脑图 + 结论 并排 */
 .emotion-layout {
@@ -2256,8 +2297,28 @@ defineExpose({
 /* ── 情绪解读卡片 v2 布局 ── */
 .emotion-layout-v2 {
   display: flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: stretch;
+}
+.emotion-core-left {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  min-height: 180px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(250,240,220,0.5) 0%, transparent 100%);
+  border-radius: 12px;
+}
+.emotion-core-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
-  gap: 10px;
+}
+.emotion-core-right .emotion-vader-bar {
+  flex: 1;
 }
 .emotion-summary-row {
   display: flex;
@@ -2292,7 +2353,7 @@ defineExpose({
 }
 /* ── VADER compound bar（融合版）────────────────────── */
 .emotion-vader-bar {
-  padding: 10px 14px 8px;
+  padding: 12px 14px 14px;
   background: #faf9f7;
   border-radius: 8px;
   border: 1px solid #e8e4da;
@@ -2313,15 +2374,14 @@ defineExpose({
 }
 .vader-score-big {
   width: 100%;
-  text-align: center;
+  text-align: right;
   font-size: 26px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.3px;
   line-height: 1;
 }
-.vader-bar-header .el-tag,
-.vader-bar-header .score-method-badge {
+.vader-bar-header .el-tag {
   position: absolute;
   right: 0;
 }
@@ -2806,7 +2866,6 @@ defineExpose({
   border: 1px solid #d8d0c0;
   border-radius: 3px;
   padding: 1px 4px;
-  margin-top: 3px;
   cursor: help;
   opacity: 0.7;
   transition: opacity 0.2s;
@@ -3177,9 +3236,7 @@ defineExpose({
 .llm-narrative-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: #e8e4da;
-  border: 1px solid #e8e4da;
+  gap: 0;
   border-radius: 6px;
   overflow: hidden;
 }
@@ -3192,12 +3249,14 @@ defineExpose({
 }
 .narrative-negative {
   border-bottom: 2px solid #d4a899;
+  background: #fdfafa;
 }
 .narrative-verdict {
   grid-column: 1 / -1;
   background: #faf9f5;
   border-top: 1px solid #e8e4da;
   padding: 20px 24px;
+  margin-top: 8px;
 }
 .narrative-card-header {
   font-family: 'Noto Serif SC', 'KaiTi', serif;
@@ -3222,6 +3281,12 @@ defineExpose({
   font-size: 13px;
   line-height: 1.85;
   color: #5c5346;
+}
+.split-pct {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.5;
+  margin-left: 4px;
 }
 
 /* ── v3.1: LLM 分析叙述（旧格式 plain text fallback）── */

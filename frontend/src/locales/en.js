@@ -460,4 +460,8 @@ export default {
   'reasoning.conclusion.positive': 'Overall positive',
   'reasoning.conclusion.negative': 'Overall negative',
   'reasoning.conclusion.neutral': 'Overall neutral',
+  'reasoning.conclusion.complex_positive': 'Complex positive',
+  'reasoning.conclusion.complex_negative': 'Complex negative',
+  'reasoning.conclusion.complex_balanced': 'Ambivalent',
+  'reasoning.conclusion.ambiguous': 'Ambiguous',
 }
