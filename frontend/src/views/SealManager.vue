@@ -11,6 +11,12 @@
         <el-button v-if="!batchMode" plain size="small" @click="batchMode = true">
           <el-icon><Check /></el-icon>批量操作
         </el-button>
+        <el-button v-if="!batchMode" plain size="small" @click="exportSealEmotions">
+          <el-icon><Upload /></el-icon>导出情感
+        </el-button>
+        <el-button v-if="!batchMode" plain size="small" @click="showSealImportDialog = true">
+          <el-icon><Download /></el-icon>导入情感
+        </el-button>
         <template v-if="batchMode">
           <el-button type="primary" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchAiEmotion" :loading="aiEmotionLoading">
             <el-icon><MagicStick /></el-icon>AI 分析情感（{{ selectedIds.length }}）
@@ -177,6 +183,19 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 导入印章情感对话框 -->
+    <el-dialog v-model="showSealImportDialog" title="导入印章情感规则" width="600px">
+      <div style="margin-bottom: 12px; font-size: 13px; color: #666;">
+        粘贴 JSON 格式的印章情感数据。格式：<code>[{"name":"苦李","emotion_score":-1.0,"emotion_category":"spirit","emotion_desc":"苦涩自况"}]</code>
+      </div>
+      <el-input v-model="sealImportJson" type="textarea" :rows="14" placeholder='粘贴 JSON 数组...' style="font-family: monospace; font-size: 12px;" />
+      <div v-if="sealImportError" style="color: #c45a3c; font-size: 12px; margin-top: 8px;">{{ sealImportError }}</div>
+      <template #footer>
+        <el-button @click="showSealImportDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSealImport" :loading="sealImporting">导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -201,6 +220,10 @@ const loading = ref(false)
 const saving = ref(false)
 const extracting = ref(false)
 const aiEmotionLoading = ref(false)
+const showSealImportDialog = ref(false)
+const sealImportJson = ref('')
+const sealImportError = ref('')
+const sealImporting = ref(false)
 
 const batchMode = ref(false)
 const selectedIds = ref([])
@@ -559,6 +582,72 @@ watch(showCreateDialog, (val) => {
     showCreateDialog.value = false
   }
 })
+
+// ── Seal Emotion Export / Import ──
+function exportSealEmotions() {
+  const withEmotion = seals.value.filter(s => s.emotion_score != null)
+  if (withEmotion.length === 0) {
+    ElMessage.warning('没有已配置情感的印章')
+    return
+  }
+  const data = withEmotion.map(s => ({
+    name: s.name,
+    emotion_score: s.emotion_score,
+    emotion_category: s.emotion_category || '',
+    emotion_desc: s.emotion_desc || '',
+  }))
+  const json = JSON.stringify(data, null, 2)
+  navigator.clipboard.writeText(json).then(() => {
+    ElMessage.success(`已复制 ${data.length} 条印章情感规则到剪贴板`)
+  }).catch(() => {
+    const ta = document.createElement('textarea')
+    ta.value = json; document.body.appendChild(ta)
+    ta.select(); document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success(`已复制 ${data.length} 条印章情感规则`)
+  })
+}
+
+async function handleSealImport() {
+  sealImportError.value = ''
+  if (!sealImportJson.value.trim()) {
+    sealImportError.value = '请粘贴 JSON 数据'
+    return
+  }
+  let data
+  try {
+    data = JSON.parse(sealImportJson.value)
+    if (!Array.isArray(data)) data = [data]
+  } catch (e) {
+    sealImportError.value = 'JSON 格式错误: ' + e.message
+    return
+  }
+
+  sealImporting.value = true
+  let updated = 0, notFound = 0
+  try {
+    for (const item of data) {
+      if (!item.name) continue
+      // Find seal by name
+      const seal = seals.value.find(s => s.name === item.name)
+      if (!seal) { notFound++; continue }
+      await sealsApi.update(seal.id, {
+        emotion_score: item.emotion_score ?? null,
+        emotion_category: item.emotion_category || null,
+        emotion_desc: item.emotion_desc || null,
+      })
+      updated++
+    }
+    ElMessage.success(`导入完成：${updated} 条已更新${notFound ? `，${notFound} 条未找到` : ''}`)
+    showSealImportDialog.value = false
+    sealImportJson.value = ''
+    await loadSeals()
+  } catch (e) {
+    sealImportError.value = '导入失败: ' + (e.message || e)
+  } finally {
+    sealImporting.value = false
+  }
+}
 
 watch(() => props.artist, () => { loadSeals() })
 

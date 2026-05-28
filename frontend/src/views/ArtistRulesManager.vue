@@ -19,10 +19,16 @@
         <el-button size="small" @click="startEdit">
           <el-icon><Edit /></el-icon>编辑
         </el-button>
+        <el-button size="small" @click="exportRule">
+          <el-icon><Download /></el-icon>导出
+        </el-button>
       </template>
       <template v-else-if="selectedArtist && !loading">
         <el-button size="small" type="success" @click="startCreate">
           <el-icon><Plus /></el-icon>新建规则
+        </el-button>
+        <el-button size="small" @click="showImportDialog = true">
+          <el-icon><Upload /></el-icon>导入规则
         </el-button>
       </template>
     </div>
@@ -266,13 +272,27 @@
         </div>
       </div>
     </div>
+
+    <!-- 导入规则对话框 -->
+    <el-dialog v-model="showImportDialog" title="导入画家规则" width="600px">
+      <div style="margin-bottom: 12px; font-size: 13px; color: #666;">
+        粘贴 JSON 格式的画家规则，或从导出的文件中复制。格式参考：
+        <el-button size="small" text type="primary" @click="copyTemplate">复制模板</el-button>
+      </div>
+      <el-input v-model="importJson" type="textarea" :rows="16" placeholder='粘贴 JSON...' style="font-family: monospace; font-size: 12px;" />
+      <div v-if="importError" style="color: #c45a3c; font-size: 12px; margin-top: 8px;">{{ importError }}</div>
+      <template #footer>
+        <el-button @click="showImportDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleImport" :loading="importing">导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { MagicStick, Refresh, Edit, Plus } from '@element-plus/icons-vue'
+import { MagicStick, Refresh, Edit, Plus, Download, Upload } from '@element-plus/icons-vue'
 import { artistRulesApi } from '../api'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -304,6 +324,10 @@ const creating = ref(false)
 const editForm = ref(null)
 const editThemeExceptions = ref([])
 const generatingStages = ref(false)
+const showImportDialog = ref(false)
+const importJson = ref('')
+const importError = ref('')
+const importing = ref(false)
 
 // ── View computed ──
 const lifeStages = computed(() => {
@@ -547,6 +571,98 @@ async function handleAiDiscover() {
     ElMessage.error('AI 规则发现失败: ' + (e.message || e))
   } finally {
     aiDiscoverLoading.value = false
+  }
+}
+
+// ── Export / Import ──
+function exportRule() {
+  if (!currentRule.value) return
+  const data = {
+    artist_name: currentRule.value.artist_name,
+    emotion_baseline: currentRule.value.emotion_baseline,
+    life_stages: currentRule.value.life_stages || [],
+    sentiment_note: currentRule.value.sentiment_note || '',
+    theme_note: currentRule.value.theme_note || '',
+    theme_exceptions: currentRule.value.theme_exceptions || {},
+    expected_theme_distribution: currentRule.value.expected_theme_distribution || {},
+    expected_sentiment_distribution: currentRule.value.expected_sentiment_distribution || {},
+    rules_version: currentRule.value.rules_version || '5.7',
+  }
+  const json = JSON.stringify(data, null, 2)
+  navigator.clipboard.writeText(json).then(() => {
+    ElMessage.success('规则已复制到剪贴板，可直接粘贴给 AI')
+  }).catch(() => {
+    // Fallback: copy via textarea
+    const ta = document.createElement('textarea')
+    ta.value = json; document.body.appendChild(ta)
+    ta.select(); document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('规则已复制到剪贴板')
+  })
+}
+
+function copyTemplate() {
+  const template = {
+    artist_name: "画家名称",
+    emotion_baseline: 0.0,
+    life_stages: [
+      { name: "早期", year_start: 1700, year_end: 1730, weight: 1.0, mood_offset: 0.0, description: "描述" },
+      { name: "中期", year_start: 1731, year_end: 1760, weight: 1.5, mood_offset: -0.2, description: "描述" },
+      { name: "晚期", year_start: 1761, year_end: 1790, weight: 2.0, mood_offset: -0.4, description: "描述" }
+    ],
+    sentiment_note: "该画家的情感特征描述（注入 LLM prompt）",
+    theme_note: "该画家的主题倾向描述（注入 LLM prompt）",
+    theme_exceptions: {},
+    expected_theme_distribution: {
+      "身世自况": [5, 15], "咏物寄兴": [35, 55], "画理自叙": [3, 10],
+      "时事讽喻": [3, 10], "吉语祥瑞": [3, 10], "交游赠答": [3, 10]
+    },
+    expected_sentiment_distribution: { negative_min: 30, positive_max: 45, emotion_mean_max: 0.0 },
+    rules_version: "5.7"
+  }
+  importJson.value = JSON.stringify(template, null, 2)
+  importError.value = ''
+}
+
+async function handleImport() {
+  importError.value = ''
+  if (!importJson.value.trim()) {
+    importError.value = '请粘贴 JSON 数据'
+    return
+  }
+  let data
+  try {
+    data = JSON.parse(importJson.value)
+  } catch (e) {
+    importError.value = 'JSON 格式错误: ' + e.message
+    return
+  }
+  if (!data.artist_name) {
+    importError.value = '缺少 artist_name 字段'
+    return
+  }
+
+  importing.value = true
+  try {
+    // Check if rule already exists
+    const existing = await artistRulesApi.getByName(data.artist_name)
+    if (existing.rule) {
+      // Update existing
+      await artistRulesApi.update(existing.rule.id, data)
+      ElMessage.success(`画家「${data.artist_name}」规则已更新`)
+    } else {
+      // Create new
+      await artistRulesApi.create(data)
+      ElMessage.success(`画家「${data.artist_name}」规则已创建`)
+    }
+    showImportDialog.value = false
+    importJson.value = ''
+    selectedArtist.value = data.artist_name
+    await loadRules()
+  } catch (e) {
+    importError.value = '导入失败: ' + (e.response?.data?.detail || e.message || e)
+  } finally {
+    importing.value = false
   }
 }
 
