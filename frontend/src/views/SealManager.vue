@@ -11,16 +11,7 @@
         <el-button v-if="!batchMode" plain size="small" @click="batchMode = true">
           <el-icon><Check /></el-icon>批量操作
         </el-button>
-        <el-button v-if="!batchMode" plain size="small" @click="exportSealEmotions">
-          <el-icon><Upload /></el-icon>导出情感
-        </el-button>
-        <el-button v-if="!batchMode" plain size="small" @click="showSealImportDialog = true">
-          <el-icon><Download /></el-icon>导入情感
-        </el-button>
         <template v-if="batchMode">
-          <el-button type="primary" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchAiEmotion" :loading="aiEmotionLoading">
-            <el-icon><MagicStick /></el-icon>AI 分析情感（{{ selectedIds.length }}）
-          </el-button>
           <el-button type="danger" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchDelete">
             <el-icon><Delete /></el-icon>删除选中（{{ selectedIds.length }}）
           </el-button>
@@ -51,11 +42,6 @@
             <span v-if="seal.artist_name" class="seal-artist">{{ seal.artist_name }}</span>
             <el-tag v-if="seal.seal_type" size="small" :type="seal.seal_type === '名章' ? undefined : 'info'" class="seal-type-tag">
               {{ seal.seal_type }}
-            </el-tag>
-            <el-tag v-if="seal.emotion_score != null" size="small"
-              :type="seal.emotion_score > 0 ? 'success' : seal.emotion_score < 0 ? 'danger' : 'info'"
-              class="seal-type-tag">
-              {{ seal.emotion_score > 0 ? '+' : '' }}{{ seal.emotion_score.toFixed(1) }}
             </el-tag>
           </div>
         </div>
@@ -101,30 +87,6 @@
         <el-form-item label="来源出处">
           <el-input v-model="editForm.source" type="textarea" :rows="2" placeholder="如：上海博物馆编《中国书画家印鉴款识》（文物出版社，1987.12）" />
         </el-form-item>
-
-        <!-- 印章情感规则 -->
-        <div class="emotion-section">
-          <div class="emotion-section-title">情感规则（用于情绪引擎）</div>
-          <div class="form-row">
-            <el-form-item label="情感分数" class="form-item-half">
-              <el-input-number v-model="editForm.emotion_score" :min="-1" :max="1" :step="0.1" :precision="1" style="width: 100%;" />
-              <div class="form-hint">-1=消极，0=中性，+1=积极</div>
-            </el-form-item>
-            <el-form-item label="类别" class="form-item-half">
-              <el-select v-model="editForm.emotion_category" placeholder="选择类别" clearable style="width: 100%;">
-                <el-option label="identity（身份标识）" value="identity" />
-                <el-option label="spirit（精神境界）" value="spirit" />
-                <el-option label="life_experience（人生经历）" value="life_experience" />
-                <el-option label="nickname（谑称/雅号）" value="nickname" />
-                <el-option label="hobby（爱好/雅趣）" value="hobby" />
-                <el-option label="location（地点/居所）" value="location" />
-              </el-select>
-            </el-form-item>
-          </div>
-          <el-form-item label="情感说明">
-            <el-input v-model="editForm.emotion_desc" placeholder="如：苦涩自况，以苦李自喻" />
-          </el-form-item>
-        </div>
 
         <template v-if="editingSeal">
           <el-form-item label="印章图片">
@@ -183,26 +145,13 @@
         </div>
       </div>
     </el-dialog>
-
-    <!-- 导入印章情感对话框 -->
-    <el-dialog v-model="showSealImportDialog" title="导入印章情感规则" width="600px">
-      <div style="margin-bottom: 12px; font-size: 13px; color: #666;">
-        粘贴 JSON 格式的印章情感数据。格式：<code>[{"name":"苦李","emotion_score":-1.0,"emotion_category":"spirit","emotion_desc":"苦涩自况"}]</code>
-      </div>
-      <el-input v-model="sealImportJson" type="textarea" :rows="14" placeholder='粘贴 JSON 数组...' style="font-family: monospace; font-size: 12px;" />
-      <div v-if="sealImportError" style="color: #c45a3c; font-size: 12px; margin-top: 8px;">{{ sealImportError }}</div>
-      <template #footer>
-        <el-button @click="showSealImportDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSealImport" :loading="sealImporting">导入</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Download, Picture, Stamp, Check, MagicStick } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Picture, Stamp, Check } from '@element-plus/icons-vue'
 import { sealsApi } from '../api'
 import { useRouter } from 'vue-router'
 
@@ -219,11 +168,6 @@ const total = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const extracting = ref(false)
-const aiEmotionLoading = ref(false)
-const showSealImportDialog = ref(false)
-const sealImportJson = ref('')
-const sealImportError = ref('')
-const sealImporting = ref(false)
 
 const batchMode = ref(false)
 const selectedIds = ref([])
@@ -239,10 +183,7 @@ const editForm = ref({
   seal_type: '名章',
   description: '',
   source: '',
-  images: [],
-  emotion_score: null,
-  emotion_category: '',
-  emotion_desc: ''
+  images: []
 })
 const uploadInput = ref(null)
 const pendingFiles = ref([])
@@ -293,10 +234,7 @@ function openEdit(seal) {
       path: typeof img === 'string' ? img : (img.path || ''),
       description: typeof img === 'string' ? '' : (img.description || ''),
       sort_order: img.sort_order || 0
-    })),
-    emotion_score: seal.emotion_score ?? null,
-    emotion_category: seal.emotion_category || '',
-    emotion_desc: seal.emotion_desc || ''
+    }))
   }
   showEditDialog.value = true
 }
@@ -313,10 +251,7 @@ async function handleSave() {
     artist_name: editForm.value.artist_name || null,
     seal_type: editForm.value.seal_type || '名章',
     description: editForm.value.description || '',
-    source: editForm.value.source || '',
-    emotion_score: editForm.value.emotion_score,
-    emotion_category: editForm.value.emotion_category || null,
-    emotion_desc: editForm.value.emotion_desc || null
+    source: editForm.value.source || ''
   }
 
   try {
@@ -422,28 +357,6 @@ function toggleSelect(id) {
 function cancelBatch() {
   batchMode.value = false
   selectedIds.value = []
-}
-
-async function handleBatchAiEmotion() {
-  if (selectedIds.value.length === 0) return
-  const count = selectedIds.value.length
-  aiEmotionLoading.value = true
-  try {
-    const res = await sealsApi.aiAnalyzeEmotion(selectedIds.value)
-    if (res.success) {
-      const analyzed = res.analyzed || 0
-      ElMessage.success(`AI 分析完成：${analyzed}/${count} 个印章已更新情感`)
-      batchMode.value = false
-      selectedIds.value = []
-      await loadSeals()
-    } else {
-      ElMessage.error('AI 分析失败')
-    }
-  } catch (e) {
-    ElMessage.error('AI 分析失败: ' + (e.response?.data?.detail || e.message || e))
-  } finally {
-    aiEmotionLoading.value = false
-  }
 }
 
 async function handleBatchDelete() {
@@ -582,72 +495,6 @@ watch(showCreateDialog, (val) => {
     showCreateDialog.value = false
   }
 })
-
-// ── Seal Emotion Export / Import ──
-function exportSealEmotions() {
-  const withEmotion = seals.value.filter(s => s.emotion_score != null)
-  if (withEmotion.length === 0) {
-    ElMessage.warning('没有已配置情感的印章')
-    return
-  }
-  const data = withEmotion.map(s => ({
-    name: s.name,
-    emotion_score: s.emotion_score,
-    emotion_category: s.emotion_category || '',
-    emotion_desc: s.emotion_desc || '',
-  }))
-  const json = JSON.stringify(data, null, 2)
-  navigator.clipboard.writeText(json).then(() => {
-    ElMessage.success(`已复制 ${data.length} 条印章情感规则到剪贴板`)
-  }).catch(() => {
-    const ta = document.createElement('textarea')
-    ta.value = json; document.body.appendChild(ta)
-    ta.select(); document.execCommand('copy')
-    document.body.removeChild(ta)
-    ElMessage.success(`已复制 ${data.length} 条印章情感规则`)
-  })
-}
-
-async function handleSealImport() {
-  sealImportError.value = ''
-  if (!sealImportJson.value.trim()) {
-    sealImportError.value = '请粘贴 JSON 数据'
-    return
-  }
-  let data
-  try {
-    data = JSON.parse(sealImportJson.value)
-    if (!Array.isArray(data)) data = [data]
-  } catch (e) {
-    sealImportError.value = 'JSON 格式错误: ' + e.message
-    return
-  }
-
-  sealImporting.value = true
-  let updated = 0, notFound = 0
-  try {
-    for (const item of data) {
-      if (!item.name) continue
-      // Find seal by name
-      const seal = seals.value.find(s => s.name === item.name)
-      if (!seal) { notFound++; continue }
-      await sealsApi.update(seal.id, {
-        emotion_score: item.emotion_score ?? null,
-        emotion_category: item.emotion_category || null,
-        emotion_desc: item.emotion_desc || null,
-      })
-      updated++
-    }
-    ElMessage.success(`导入完成：${updated} 条已更新${notFound ? `，${notFound} 条未找到` : ''}`)
-    showSealImportDialog.value = false
-    sealImportJson.value = ''
-    await loadSeals()
-  } catch (e) {
-    sealImportError.value = '导入失败: ' + (e.message || e)
-  } finally {
-    sealImporting.value = false
-  }
-}
 
 watch(() => props.artist, () => { loadSeals() })
 
@@ -940,20 +787,4 @@ onMounted(async () => {
   gap: 4px;
 }
 
-.emotion-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e8e4da;
-}
-.emotion-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #666;
-  margin-bottom: 12px;
-}
-.form-hint {
-  font-size: 11px;
-  color: #999;
-  margin-top: 2px;
-}
 </style>
