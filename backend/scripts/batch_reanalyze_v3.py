@@ -88,8 +88,52 @@ def run_batch(conn, rows: list, dry_run: bool = False, batch_size: int = 10, del
             except Exception:
                 old_ca = {}
 
-        # 从旧数据中提取主题（如果有）
+        # 从旧数据中提取各维度辅助数据
         themes = old_ca.get("themes", []) if isinstance(old_ca, dict) else []
+        spatial_emotion = old_ca.get("spatial_emotion") if isinstance(old_ca, dict) else None
+        v4_signals = old_ca.get("v4_signals", {}) if isinstance(old_ca, dict) else {}
+        painting_matches = v4_signals.get("painting", []) if isinstance(v4_signals, dict) else []
+        # 兼容：有些旧数据把 painting_matches 存在 signals 字段里
+        if not painting_matches:
+            signals = old_ca.get("signals", {}) if isinstance(old_ca, dict) else {}
+            painting_matches = signals.get("painting", []) if isinstance(signals, dict) else []
+
+        # 兜底：从 regions 数据计算 spatial_emotion（数据库重建后丢失的情况）
+        if not spatial_emotion:
+            regions_raw = row["regions"]
+            if regions_raw:
+                try:
+                    if isinstance(regions_raw, str):
+                        regions = json.loads(regions_raw)
+                        # 处理双重 JSON 编码
+                        if isinstance(regions, str):
+                            regions = json.loads(regions)
+                    else:
+                        regions = regions_raw
+                except Exception:
+                    regions = None
+                if regions and isinstance(regions, dict) and regions.get("inscription_regions"):
+                    try:
+                        from app.services.inscription_position_analyzer import analyze_inscription_position_simple
+                        from app.services.inscription_content_analyzer import analyze_spatial_emotion
+                        pos = analyze_inscription_position_simple(
+                            regions, row["image_width"] or 1000, row["image_height"] or 1000)
+                        spatial_emotion = analyze_spatial_emotion(
+                            pos, row["blank_percent"] or 50, pos.get("coverage_ratio", 0))
+                    except Exception:
+                        spatial_emotion = None
+
+        # 兜底：从 material_tags/题跋/标题 计算 painting_matches
+        if not painting_matches:
+            try:
+                from app.services.inscription_content_analyzer import match_painting_materials
+                painting_matches = match_painting_materials(
+                    title=row["title"],
+                    analysis_note=row["analysis_note"],
+                    inscription_content=text,
+                )
+            except Exception:
+                painting_matches = []
 
         if dry_run:
             print(f"  [DRY RUN] ID={record_id} year={year} artist={artist} text={text[:40]}...")
@@ -98,6 +142,8 @@ def run_batch(conn, rows: list, dry_run: bool = False, batch_size: int = 10, del
         try:
             result = molin_analyze(
                 text=text,
+                spatial_emotion=spatial_emotion,
+                painting_matches=painting_matches,
                 width_cm=width_cm,
                 height_cm=height_cm,
                 year=year,
@@ -126,6 +172,12 @@ def run_batch(conn, rows: list, dry_run: bool = False, batch_size: int = 10, del
             new_ca["lexicon_scores"] = lexicon_scores
             new_ca["analysis_method"] = "lexicon_only"
             new_ca["analysis_version"] = 3
+            # 保存计算出的 spatial_emotion 和 painting_matches
+            if spatial_emotion:
+                new_ca["spatial_emotion"] = spatial_emotion
+            if painting_matches:
+                new_ca["v4_signals"] = dict(new_ca.get("v4_signals", {}) or {})
+                new_ca["v4_signals"]["painting"] = painting_matches
 
             # 更新 combined_sentiment（保持与 analyze_single_record 一致的格式）
             new_ca["combined_sentiment"] = {
@@ -210,32 +262,26 @@ def main():
     print(f"无分析: {status['no_analysis']}")
 
     # 查询需要分析的记录
+    base_sql = """
+        SELECT id, inscription_content, year, artist,
+               artwork_width_cm, artwork_height_cm, seal_content,
+               content_analysis, regions, blank_percent, image_width, image_height,
+               material_tags, title, analysis_note
+        FROM tubi_analyses
+        WHERE inscription_content IS NOT NULL AND LENGTH(inscription_content) > 2
+    """
     if args.force:
-        # 强制：所有有题跋的记录
-        cur.execute("""
-            SELECT id, inscription_content, year, artist,
-                   artwork_width_cm, artwork_height_cm, seal_content,
-                   content_analysis
-            FROM tubi_analyses
-            WHERE inscription_content IS NOT NULL AND LENGTH(inscription_content) > 2
-            ORDER BY id
-        """)
+        cur.execute(base_sql + " ORDER BY id")
     else:
-        # 增量：content_analysis 为空或无 analysis_method=3
-        cur.execute("""
-            SELECT id, inscription_content, year, artist,
-                   artwork_width_cm, artwork_height_cm, seal_content,
-                   content_analysis
-            FROM tubi_analyses
-            WHERE inscription_content IS NOT NULL AND LENGTH(inscription_content) > 2
-              AND (content_analysis IS NULL
-                   OR content_analysis = ''
-                   OR content_analysis = '{}'
-                   OR json_extract(content_analysis, '$.analysis_method') IS NULL
-                   OR json_extract(content_analysis, '$.analysis_method') = ''
-                   OR json_extract(content_analysis, '$.analysis_version') IS NULL
-                   OR json_extract(content_analysis, '$.analysis_version') < 3)
-            ORDER BY id
+        cur.execute(base_sql + """
+          AND (content_analysis IS NULL
+               OR content_analysis = ''
+               OR content_analysis = '{}'
+               OR json_extract(content_analysis, '$.analysis_method') IS NULL
+               OR json_extract(content_analysis, '$.analysis_method') = ''
+               OR json_extract(content_analysis, '$.analysis_version') IS NULL
+               OR json_extract(content_analysis, '$.analysis_version') < 3)
+        ORDER BY id
         """)
 
     rows = cur.fetchall()
