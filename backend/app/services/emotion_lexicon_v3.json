@@ -1,9 +1,9 @@
 {
   "version": "3.2",
-  "generated_at": "2026-05-28T03:58:44.139210 (manual_fix: multi-word negation, 莫, 那得, context rules)",
+  "generated_at": "2026-05-28 (manual_add: 百宝, 新诗, 久耐风霜, 甘香, 大嚼)",
   "method": "llm_rating + fccpsl",
   "model": "deepseek-v4-flash",
-  "total_words": 1430,
+  "total_words": 1446,
   "entries": {
     "一味": {
       "score": -1,
@@ -306,9 +306,9 @@
       "source": "llm_rated_v3"
     },
     "东风": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: reduce_2_to_0"
     },
     "东风拂": {
       "score": 1,
@@ -316,9 +316,9 @@
       "source": "llm_rated_v3"
     },
     "东风拂舞": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "两革科名": {
       "score": -3,
@@ -336,9 +336,9 @@
       "source": "llm_rated_v3"
     },
     "丰年": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "临": {
       "score": 0,
@@ -796,9 +796,9 @@
       "source": "llm_rated_v3"
     },
     "似松枝老": {
-      "score": 2,
+      "score": 1,
       "category": "positive_moderate",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_2_to_1"
     },
     "但愿": {
       "score": 1,
@@ -981,9 +981,9 @@
       "source": "llm_rated"
     },
     "傲": {
-      "score": 2,
+      "score": 1,
       "category": "positive_moderate",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: reduce_2_to_1"
     },
     "傲霜": {
       "score": 3,
@@ -1226,9 +1226,9 @@
       "source": "llm_rated_v3"
     },
     "冷": {
-      "score": -2,
-      "category": "negative_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "冷在空": {
       "score": -2,
@@ -1271,9 +1271,9 @@
       "source": "llm_rated"
     },
     "凉": {
-      "score": -1,
-      "category": "negative_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "凋": {
       "score": -3,
@@ -1291,9 +1291,9 @@
       "source": "llm_rated"
     },
     "凌": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "凌云": {
       "score": 3,
@@ -1331,9 +1331,9 @@
       "source": "llm_rated_v3"
     },
     "刚": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "刚毅": {
       "score": 3,
@@ -1411,9 +1411,9 @@
       "source": "llm_rated_v3"
     },
     "劲": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "劲节": {
       "score": 3,
@@ -1711,14 +1711,14 @@
       "source": "llm_rated"
     },
     "吉庆": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_2"
     },
     "吉祥": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: calibrate_3_to_2"
     },
     "同到白头": {
       "score": 2,
@@ -1761,14 +1761,14 @@
       "source": "llm_rated_v3"
     },
     "君多寿": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_2"
     },
     "君多寿子": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_2"
     },
     "君子": {
       "score": 3,
@@ -1871,9 +1871,9 @@
       "source": "llm_rated_v3"
     },
     "四季平安": {
-      "score": 4,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_4_to_2"
     },
     "团一老": {
       "score": 0,
@@ -2001,14 +2001,14 @@
       "source": "llm_rated_v3"
     },
     "堂懊道": {
-      "score": -3,
-      "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "堂懊道人": {
-      "score": -3,
-      "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "堂李鱓": {
       "score": 0,
@@ -2086,14 +2086,14 @@
       "source": "llm_rated_v3"
     },
     "复堂懊": {
-      "score": -3,
-      "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "复堂懊道": {
-      "score": -3,
-      "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "复堂李": {
       "score": 0,
@@ -2131,9 +2131,9 @@
       "source": "llm_rated"
     },
     "多寿子": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_2"
     },
     "多情": {
       "score": 1,
@@ -2146,9 +2146,9 @@
       "source": "llm_rated_v3"
     },
     "多福": {
-      "score": 4,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: calibrate_4_to_2"
     },
     "多言": {
       "score": -2,
@@ -2226,9 +2226,9 @@
       "source": "llm_rated_v3"
     },
     "天然": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "天香夜": {
       "score": 1,
@@ -2496,9 +2496,9 @@
       "source": "llm_rated_v3"
     },
     "寂": {
-      "score": -2,
+      "score": -1,
       "category": "negative_moderate",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: reduce_-2_to_-1"
     },
     "寂寞": {
       "score": -3,
@@ -2531,14 +2531,14 @@
       "source": "llm_rated_v3"
     },
     "富贵花": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_1"
     },
     "富贵还": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_1"
     },
     "富贵还如": {
       "score": 2,
@@ -2546,9 +2546,9 @@
       "source": "llm_rated_v3"
     },
     "寒": {
-      "score": -2,
-      "category": "negative_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "寒凉": {
       "score": -2,
@@ -2761,9 +2761,9 @@
       "source": "llm_rated_v3"
     },
     "平安": {
-      "score": 4,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: reduce_4_to_2"
     },
     "平生": {
       "score": 0,
@@ -2916,9 +2916,9 @@
       "source": "llm_rated_v3"
     },
     "幽": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "幽静": {
       "score": 2,
@@ -3211,9 +3211,9 @@
       "source": "llm_rated"
     },
     "悠": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "悠然": {
       "score": 2,
@@ -3418,7 +3418,7 @@
     "懊悔": {
       "score": -1,
       "category": "negative_mild",
-      "source": "llm_rated"
+      "source": "llm_rated_v3"
     },
     "懊道人": {
       "score": 0,
@@ -3426,19 +3426,19 @@
       "source": "manual_fix: artist_signature"
     },
     "懊道人制": {
-      "score": -2,
-      "category": "negative_moderate",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "懊道人李": {
-      "score": -3,
-      "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "懊道人鱓": {
-      "score": -1,
-      "category": "negative_mild",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "戏": {
       "score": 1,
@@ -3496,9 +3496,9 @@
       "source": "llm_rated_v3"
     },
     "报恩": {
-      "score": 2,
+      "score": 1,
       "category": "positive_moderate",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_2_to_1"
     },
     "拂": {
       "score": 1,
@@ -3586,9 +3586,9 @@
       "source": "llm_rated_v3"
     },
     "放": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "放歌": {
       "score": 2,
@@ -3636,9 +3636,9 @@
       "source": "llm_rated_v3"
     },
     "断": {
-      "score": -2,
+      "score": -1,
       "category": "negative_moderate",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_-2_to_-1"
     },
     "断肠": {
       "score": -4,
@@ -3651,9 +3651,9 @@
       "source": "llm_rated_v3"
     },
     "新年": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "新鲜": {
       "score": 2,
@@ -3801,9 +3801,9 @@
       "source": "llm_rated_v3"
     },
     "春": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "春丛": {
       "score": 2,
@@ -3836,9 +3836,9 @@
       "source": "llm_rated_v3"
     },
     "春晖": {
-      "score": 3,
+      "score": 0,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_0"
     },
     "春消息": {
       "score": 2,
@@ -3856,9 +3856,9 @@
       "source": "llm_rated_v3"
     },
     "春风": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: reduce_2_to_0"
     },
     "春风艳": {
       "score": 2,
@@ -3996,9 +3996,9 @@
       "source": "llm_rated_v3"
     },
     "月复堂懊": {
-      "score": -2,
-      "category": "negative_moderate",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: artist_signature_variant"
     },
     "月复堂李": {
       "score": 0,
@@ -4201,9 +4201,9 @@
       "source": "llm_rated"
     },
     "残": {
-      "score": -2,
+      "score": -1,
       "category": "negative_moderate",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: reduce_-2_to_-1"
     },
     "毅": {
       "score": 3,
@@ -4391,9 +4391,9 @@
       "source": "llm_rated"
     },
     "淡": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "淡墨中": {
       "score": 0,
@@ -4426,9 +4426,9 @@
       "source": "llm_rated_v3"
     },
     "清": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "清光": {
       "score": 2,
@@ -4556,9 +4556,9 @@
       "source": "llm_rated"
     },
     "灵": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "烂漫": {
       "score": 2,
@@ -4766,9 +4766,9 @@
       "source": "llm_rated"
     },
     "畅": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "畏": {
       "score": -2,
@@ -4851,9 +4851,9 @@
       "source": "llm_rated_v3"
     },
     "百事大吉": {
-      "score": 4,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: calibrate_4_to_2"
     },
     "百卉儿": {
       "score": 1,
@@ -4971,9 +4971,9 @@
       "source": "llm_rated"
     },
     "祥瑞": {
-      "score": 3,
+      "score": 2,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: calibrate_3_to_2"
     },
     "禄": {
       "score": 2,
@@ -4996,9 +4996,9 @@
       "source": "llm_rated_v3"
     },
     "秀": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "秀丽": {
       "score": 2,
@@ -5086,9 +5086,9 @@
       "source": "llm_rated_v3"
     },
     "空": {
-      "score": -1,
-      "category": "negative_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "空山万": {
       "score": -1,
@@ -5236,9 +5236,9 @@
       "source": "llm_rated"
     },
     "纵": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "纵横": {
       "score": 3,
@@ -5296,9 +5296,9 @@
       "source": "llm_rated"
     },
     "绝": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "绝无": {
       "score": 2,
@@ -5471,9 +5471,9 @@
       "source": "llm_rated_v3"
     },
     "自在": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "自夸": {
       "score": -1,
@@ -5581,9 +5581,9 @@
       "source": "llm_rated_v3"
     },
     "芳": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: scenery_word"
     },
     "芳傲霜": {
       "score": 3,
@@ -5646,9 +5646,9 @@
       "source": "llm_rated_v3"
     },
     "范本": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: calibrate_2_to_0"
     },
     "茫然": {
       "score": -2,
@@ -5851,9 +5851,9 @@
       "source": "llm_rated"
     },
     "西风": {
-      "score": -3,
+      "score": 0,
       "category": "negative_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_-3_to_0"
     },
     "要余画": {
       "score": 0,
@@ -6001,9 +6001,9 @@
       "source": "llm_rated_v3"
     },
     "超": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "超然": {
       "score": 2,
@@ -6086,9 +6086,9 @@
       "source": "llm_rated_v3"
     },
     "达": {
-      "score": 2,
-      "category": "positive_moderate",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "还如藤": {
       "score": 0,
@@ -6166,9 +6166,9 @@
       "source": "llm_rated_v3"
     },
     "逸": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "遁": {
       "score": -1,
@@ -6331,9 +6331,9 @@
       "source": "llm_rated_v3"
     },
     "闲": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "闲庭": {
       "score": 1,
@@ -6521,9 +6521,9 @@
       "source": "llm_rated"
     },
     "隐": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "雁荡山": {
       "score": 0,
@@ -6546,9 +6546,9 @@
       "source": "llm_rated_v3"
     },
     "雄": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "雄心": {
       "score": 2,
@@ -6556,9 +6556,9 @@
       "source": "llm_rated"
     },
     "雅": {
-      "score": 2,
+      "score": 1,
       "category": "positive_moderate",
-      "source": "llm_rated"
+      "source": "llm_rated; manual_fix: reduce_2_to_1"
     },
     "雍正乙": {
       "score": 0,
@@ -6681,9 +6681,9 @@
       "source": "llm_rated_v3"
     },
     "静": {
-      "score": 1,
-      "category": "positive_mild",
-      "source": "llm_rated"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated; manual_fix: scenery_word"
     },
     "面费推": {
       "score": -1,
@@ -6811,14 +6811,14 @@
       "source": "llm_rated"
     },
     "高": {
-      "score": 2,
-      "category": "positive_strong",
-      "source": "llm_rated+manual_fix"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated+manual_fix; manual_fix: scenery_word"
     },
     "高人": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "高兴": {
       "score": 2,
@@ -6826,9 +6826,9 @@
       "source": "llm_rated_v3"
     },
     "高士": {
-      "score": 3,
+      "score": 1,
       "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_1"
     },
     "高处": {
       "score": 2,
@@ -6836,9 +6836,9 @@
       "source": "llm_rated_v3"
     },
     "高峰": {
-      "score": 3,
-      "category": "positive_strong",
-      "source": "llm_rated_v3"
+      "score": 0,
+      "category": "neutral",
+      "source": "llm_rated_v3; manual_fix: reduce_3_to_0"
     },
     "高洁": {
       "score": 3,
@@ -7154,6 +7154,86 @@
       "score": -1,
       "category": "negative_mild",
       "source": "manual_fix"
+    },
+    "噩懊道": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "噩懊道人": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "复噩懊": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "复噩懊道": {
+      "score": -3,
+      "category": "negative_strong",
+      "source": "llm_rated_v3"
+    },
+    "月复噩懊": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "llm_rated_v3"
+    },
+    "期不来": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "manual_fix: poetry"
+    },
+    "暝色": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "manual_fix: poetry"
+    },
+    "空江": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "manual_fix: poetry"
+    },
+    "不来": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "manual_fix: poetry"
+    },
+    "便休": {
+      "score": -1,
+      "category": "negative_mild",
+      "source": "manual_fix: poetry"
+    },
+    "奈何": {
+      "score": -2,
+      "category": "negative_moderate",
+      "source": "manual_fix: common"
+    },
+    "百宝": {
+      "score": 2,
+      "category": "positive_strong",
+      "source": "manual_add"
+    },
+    "新诗": {
+      "score": 2,
+      "category": "positive_strong",
+      "source": "manual_add"
+    },
+    "久耐风霜": {
+      "score": 2,
+      "category": "positive_strong",
+      "source": "manual_add"
+    },
+    "甘香": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "manual_add"
+    },
+    "大嚼": {
+      "score": 1,
+      "category": "positive_mild",
+      "source": "manual_add"
     }
   }
 }

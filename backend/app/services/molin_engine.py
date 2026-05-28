@@ -173,9 +173,12 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
             w_score = lexicon.get_score(b.word)
             if w_score is not None:
                 # v3.2 fix: 多字词也要检查否定范围
+                # v3.2.1: 如果多字词本身以否定词开头（如"不惜"以"不"开头），
+                #          它是正确标注的复合词，不应用否定反转
                 is_negated, neg_word = annotated.is_in_negation_scope(b.start)
                 if is_negated:
-                    w_score = -w_score
+                    if not (neg_word and b.word.startswith(neg_word)):
+                        w_score = -w_score
                 score += w_score
                 matched.append({"word": b.word, "score": w_score, "method": "multi_word", "negated": is_negated})
 
@@ -252,14 +255,14 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
                         matched.append({"word": word, "score": w_score})
 
     result.raw = score
-    # v3.2 fix: 单字匹配分数上限（±8），防止长文本中大量单字堆叠
+    # v3.2 fix: 单字匹配分数上限（±5），防止长文本中大量单字堆叠
+    # 用 int() 向零截断，确保上限真正生效（round 对 1~2 分无效）
     single_total = sum(s.get("score", 0) or 0 for s in matched if s.get("method") == "single_char")
-    if abs(single_total) > 8:
-        ratio = 8.0 / abs(single_total)
+    if abs(single_total) > 5:
+        ratio = 5.0 / abs(single_total)
         for s in matched:
             if s.get("method") == "single_char":
-                original = s["score"]
-                s["score"] = round(original * ratio)
+                s["score"] = int(s["score"] * ratio)
         result.raw = sum(s.get("score", 0) or 0 for s in matched)
 
     # 后处理：语境规则调整（修正反讽、条件句式的误判）

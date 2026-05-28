@@ -37,9 +37,11 @@ def query_records(artist_filter="李鱓", limit=15, all_artists=False):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    where = "inscription_content IS NOT NULL AND LENGTH(inscription_content) > 10"
+    where = "inscription_content IS NOT NULL AND LENGTH(inscription_content) > 0"
     if not all_artists and artist_filter:
         where += f" AND artist = '{artist_filter}'"
+    # 只取还没跑 LLM judge 的
+    where += " AND (content_analysis IS NULL OR json_extract(content_analysis, '$.llm_judge') IS NULL)"
 
     # 先统计
     cur.execute(f"SELECT COUNT(*) FROM tubi_analyses WHERE {where}")

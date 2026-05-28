@@ -208,81 +208,7 @@
                 <div ref="themeChartRef" class="theme-chart-small"></div>
               </div>
 
-                            <!-- ===== Card 3: 空间情绪解读 ===== -->
-              <!-- (kept in place - already above this block) -->
-
-              <!-- 空间情绪解读（含布局类型，默认展开） -->
-              <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
-                <h4 class="section-title">
-                  <el-icon><MagicStick /></el-icon> {{ $t("card.spatial") }}
-                  <!-- 布局类型标签（始终可见） -->
-                  <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
-                    <el-tooltip
-                      v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
-                      :key="ft.code"
-                      :content="ft.description"
-                      placement="bottom"
-                      effect="dark"
-                    >
-                      <span class="form-type-tag" :class="`tag-code-${ft.code}`">
-                        {{ $t(ft.name) }}
-                      </span>
-                    </el-tooltip>
-                  </div>
-                </h4>
-                <div class="spatial-detail">
-                    <div v-for="(sig, idx) in sortedSpatialSignals" :key="idx" class="spatial-item">
-                      <span class="spatial-dot" :class="'emotion-' + sig.emotion_key"></span>
-                      <span class="spatial-type">{{ $t(sig.type) }}</span>
-                      <span class="spatial-emotion-tag">{{ $t(sig.emotion) }}</span>
-                      <p class="spatial-desc">{{ translateContent(sig.desc) }}</p>
-                    </div>
-                    <div class="spatial-item">
-                      <span class="spatial-dot blank-dot"></span>
-                      <span class="spatial-type">{{ $t('spatial.blank') }} {{ spatialEmotion.blank_percent }}%</span>
-                      <p class="spatial-desc">{{ translateContent(spatialEmotion.blank_analysis) }}</p>
-                    </div>
-                    <div v-if="spatialEmotion?.combined_spatial_sentiment" class="spatial-combined">
-                      <span class="spatial-combined-label">{{ $t('spatial.combined') }}</span>
-                      <span class="spatial-combined-text">{{ translateContent(spatialEmotion.combined_spatial_sentiment) }}</span>
-                    </div>
-                  </div>
-              </div>
-              <!-- 无空间情绪数据时，回退显示纯布局类型 -->
-              <div class="spatial-analysis-card" v-else-if="analyzeStatus === 'analyzed' && positionAnalysis">
-                <h4 class="section-title">
-                  <el-icon><DataAnalysis /></el-icon> {{ $t("card.layout") }}
-                  <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
-                    <el-tooltip
-                      v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
-                      :key="ft.code"
-                      :content="ft.description"
-                      placement="bottom"
-                      effect="dark"
-                    >
-                      <span class="form-type-tag" :class="`tag-code-${ft.code}`">
-                        {{ $t(ft.name) }}
-                      </span>
-                    </el-tooltip>
-                    <span v-if="positionAnalysis.vl_overall_status === 'partial_timeout'" class="vl-timeout-badge">VL Timeout</span>
-                  </div>
-                </h4>
-                <div class="spatial-description" v-if="positionAnalysis?.form_types?.length">
-                  <div
-                    v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
-                    :key="ft.code"
-                    class="form-type-desc-row"
-                  >
-                    <span class="desc-tag" :class="`desc-tag-${ft.code}`">{{ ft.code }}</span>
-                    <span class="desc-text">{{ ft.description }}</span>
-                  </div>
-                </div>
-                <div class="spatial-description" v-else>
-                  {{ positionAnalysis.layout_description }}
-                </div>
-              </div>
-              
-<!-- ===== Card 4: 推导过程 ===== -->
+              <!-- ===== Card 4: 推导过程 ===== -->
               <div class="steps-card" v-if="currentImage.contentAnalysis?.sentiment?.reasoning_steps?.length || combinedSentiment">
                 <h4 class="section-title"><el-icon><MagicStick /></el-icon> {{ $t("card.steps") }}</h4>
 
@@ -541,6 +467,78 @@
                   </div>
                 </div>
               </div>
+
+              <!-- ===== Card 3: 空间情绪解读 ===== -->
+              <div class="spatial-emotion-card" v-if="spatialEmotion && spatialEmotion.signals?.length">
+                <h4 class="section-title">
+                  <el-icon><MagicStick /></el-icon> {{ $t("card.spatial") }}
+                  <!-- 布局类型标签（始终可见） -->
+                  <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
+                    <el-tooltip
+                      v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
+                      :key="ft.code"
+                      :content="ft.description"
+                      placement="bottom"
+                      effect="dark"
+                    >
+                      <span class="form-type-tag" :class="`tag-code-${ft.code}`">
+                        {{ $t(ft.name) }}
+                      </span>
+                    </el-tooltip>
+                  </div>
+                </h4>
+                <div class="spatial-detail">
+                    <div v-for="(sig, idx) in sortedSpatialSignals" :key="idx" class="spatial-item">
+                      <span class="spatial-dot" :class="'emotion-' + sig.emotion_key"></span>
+                      <span class="spatial-type">{{ $t(sig.type) }}</span>
+                      <span class="spatial-emotion-tag">{{ $t(sig.emotion) }}</span>
+                      <p class="spatial-desc">{{ translateContent(sig.desc) }}</p>
+                    </div>
+                    <div class="spatial-item">
+                      <span class="spatial-dot blank-dot"></span>
+                      <span class="spatial-type">{{ $t('spatial.blank') }} {{ spatialEmotion.blank_percent }}%</span>
+                      <p class="spatial-desc">{{ translateContent(spatialEmotion.blank_analysis) }}</p>
+                    </div>
+                    <div v-if="spatialEmotion?.combined_spatial_sentiment" class="spatial-combined">
+                      <span class="spatial-combined-label">{{ $t('spatial.combined') }}</span>
+                      <span class="spatial-combined-text">{{ translateContent(spatialEmotion.combined_spatial_sentiment) }}</span>
+                    </div>
+                  </div>
+              </div>
+              <!-- 无空间情绪数据时，回退显示纯布局类型 -->
+              <div class="spatial-analysis-card" v-else-if="analyzeStatus === 'analyzed' && positionAnalysis">
+                <h4 class="section-title">
+                  <el-icon><DataAnalysis /></el-icon> {{ $t("card.layout") }}
+                  <div class="form-types-inline" v-if="positionAnalysis?.form_types?.length">
+                    <el-tooltip
+                      v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
+                      :key="ft.code"
+                      :content="ft.description"
+                      placement="bottom"
+                      effect="dark"
+                    >
+                      <span class="form-type-tag" :class="`tag-code-${ft.code}`">
+                        {{ $t(ft.name) }}
+                      </span>
+                    </el-tooltip>
+                    <span v-if="positionAnalysis.vl_overall_status === 'partial_timeout'" class="vl-timeout-badge">VL Timeout</span>
+                  </div>
+                </h4>
+                <div class="spatial-description" v-if="positionAnalysis?.form_types?.length">
+                  <div
+                    v-for="ft in positionAnalysis.form_types.filter(f => f.matched)"
+                    :key="ft.code"
+                    class="form-type-desc-row"
+                  >
+                    <span class="desc-tag" :class="`desc-tag-${ft.code}`">{{ ft.code }}</span>
+                    <span class="desc-text">{{ ft.description }}</span>
+                  </div>
+                </div>
+                <div class="spatial-description" v-else>
+                  {{ positionAnalysis.layout_description }}
+                </div>
+              </div>
+
               <div class="inscription-note-main">
                 <h4>
                   <el-icon><Edit /></el-icon> {{ $t('card.inscription') }}
