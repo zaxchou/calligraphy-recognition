@@ -587,9 +587,16 @@ async def reanalyze_emotion(
 
     old_themes = ca.get("themes", []) if isinstance(ca, dict) else []
 
-    # 1. Run lexicon baseline
+    # 1. Run lexicon baseline (include spatial/painting data from old analysis)
+    spatial_emotion = (ca.get("spatial_emotion") if isinstance(ca, dict) else None)
+    painting_matches = ((ca.get("v4_signals") or {}).get("painting", []) if isinstance(ca, dict) else [])
+    if not painting_matches:
+        painting_matches = ((ca.get("signals") or {}).get("painting", []) if isinstance(ca, dict) else [])
+
     result = molin_analyze(
         text=r.inscription_content,
+        spatial_emotion=spatial_emotion,
+        painting_matches=painting_matches,
         width_cm=r.artwork_width_cm,
         height_cm=r.artwork_height_cm,
         year=r.year,
@@ -626,26 +633,52 @@ async def reanalyze_emotion(
         logger.warning("LLM judge failed for record %d: %s", record_id, e)
         judge_result = None
 
-    # 3. 用 LLM 裁判结果覆盖词库
+    # 3. 用 LLM 裁判结果覆盖词库（裁判擅长文字/时期/主题，空间/画材/尺寸/印章用词库）
     if judge_result and judge_result.get("dimension_scores"):
         jd = judge_result["dimension_scores"]
         jc = judge_result.get("combined", {})
 
-        # 直接用裁判的 combined 分数和极性
-        llm_polarity = jc.get("polarity", result.polarity)
-        llm_combined_raw = jc.get("combined_raw", result.combined_raw)
+        # 裁判擅长的维度：文字、时期、主题
+        # 词库擅长的维度：空间、画材、尺寸、印章（有结构化数据支撑）
         from app.services.molin_engine import vader_normalize, classify_polarity, compute_conflict_score, DimensionResult
-        llm_combined_norm = vader_normalize(llm_combined_raw)
 
-        # 从裁判的 dimension_scores 计算极性和冲突
+        # 逐维度决策：裁判有明确判断就用裁判，否则用词库
+        def _best_raw(key, lexicon_raw):
+            j = jd.get(key) or {}
+            jr = j.get("raw", 0) or 0
+            jc_val = j.get("confidence", 0) or 0
+            # 裁判置信度高且非零 → 用裁判；否则用词库
+            if abs(jr) > 0.1 and jc_val >= 0.5:
+                return jr
+            return lexicon_raw
+
+        dim_raws = {}
         dim_pols = {}
         judge_dims = []
+        dim_map = {"text": result.text, "spatial": result.spatial, "painting": result.painting,
+                    "size": result.size, "period": result.period, "seal": result.seal,
+                    "theme": result.theme, "brush_ink": result.brush_ink}
         for key in ["text","spatial","painting","size","period","seal","theme","brush_ink"]:
-            raw = (jd.get(key) or {}).get("raw", 0) or 0
+            lexicon_raw = getattr(dim_map[key], "raw", 0) or 0
+            raw = _best_raw(key, lexicon_raw)
+            dim_raws[key] = raw
             norm = vader_normalize(raw)
             dim_pols[key] = classify_polarity(norm)
-            judge_dims.append(DimensionResult(name=key, raw=raw, normalized=norm, has_data=abs(raw) > 0.01))
+            judge_dims.append(DimensionResult(name=key, raw=raw, normalized=norm,
+                has_data=dim_map[key].has_data or abs(raw) > 0.01))
+
         conflict = compute_conflict_score(judge_dims)
+
+        # 重新加权计算综合分
+        w = result.weights_used
+        ws, wt = 0.0, 0.0
+        for key in dim_raws:
+            ew = w.get(key, 0) * getattr(dim_map[key], "confidence", 0.5)
+            ws += ew * dim_raws[key]
+            wt += ew
+        llm_combined_raw = ws / wt if wt > 0 else 0
+        llm_combined_norm = vader_normalize(llm_combined_raw)
+        llm_polarity = classify_complex_polarity(llm_combined_norm, dim_pols)
 
         analysis_method = "llm_corrected"
     else:

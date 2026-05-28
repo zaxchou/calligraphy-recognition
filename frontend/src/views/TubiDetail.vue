@@ -379,7 +379,28 @@
                 </div>
 
                 <!-- v3.1: LLM 分析叙述（DeepSeek 解读原文） -->
-                <div v-if="currentImage.contentAnalysis?.llm_analysis?.combined?.summary" class="llm-narrative-section">
+                <div v-if="llmNarrativeSections" class="llm-narrative-section">
+                  <div class="llm-narrative-header">
+                    <el-icon><MagicStick /></el-icon>
+                    <span>AI 解读</span>
+                  </div>
+                  <div class="llm-narrative-grid">
+                    <div class="narrative-card narrative-positive" v-if="llmNarrativeSections.positive">
+                      <div class="narrative-card-header">积极面</div>
+                      <div class="narrative-card-body">{{ llmNarrativeSections.positive }}</div>
+                    </div>
+                    <div class="narrative-card narrative-negative" v-if="llmNarrativeSections.negative">
+                      <div class="narrative-card-header">消极面</div>
+                      <div class="narrative-card-body">{{ llmNarrativeSections.negative }}</div>
+                    </div>
+                    <div class="narrative-card narrative-verdict" v-if="llmNarrativeSections.verdict">
+                      <div class="narrative-card-header">综合判断</div>
+                      <div class="narrative-card-body">{{ llmNarrativeSections.verdict }}</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- fallback: old format plain text -->
+                <div v-else-if="currentImage.contentAnalysis?.llm_analysis?.combined?.summary" class="llm-narrative-section">
                   <div class="llm-narrative-header">
                     <el-icon><MagicStick /></el-icon>
                     <span>AI 解读</span>
@@ -1113,6 +1134,23 @@ const sortedSpatialSignals = computed(() => {
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
 const dimensionPolarities = computed(() => combinedSentiment.value?.dimension_polarities || {})
 const conflictScore = computed(() => combinedSentiment.value?.conflict_score ?? null)
+
+// v3.2: 解析 LLM 三段式解读文本
+const llmNarrativeSections = computed(() => {
+  const summary = contentAnalysis.value?.llm_analysis?.combined?.summary
+  if (!summary) return null
+  const text = String(summary)
+  // 匹配 "积极面：" 或 "消极面：" 或 "综合判断：" 或 "复杂面："
+  const positive = text.match(/积极面[：:]\s*([\s\S]*?)(?=消极面[：:]|综合判断[：:]|复杂面[：:]|$)/)
+  const negative = text.match(/消极面[：:]\s*([\s\S]*?)(?=积极面[：:]|综合判断[：:]|复杂面[：:]|$)/)
+  const verdict = text.match(/(?:综合判断|复杂面)[：:]\s*([\s\S]*?)$/)
+  if (!positive && !negative && !verdict) return null
+  return {
+    positive: positive ? positive[1].trim() : '',
+    negative: negative ? negative[1].trim() : '',
+    verdict: verdict ? verdict[1].trim() : '',
+  }
+})
 const displayScore = computed(() => {
   const cs = combinedSentiment.value
   if (cs?.vader_normalized != null) return cs.vader_normalized
@@ -3149,7 +3187,78 @@ defineExpose({
   margin-top: 8px;
 }
 
-/* ── v3.1: LLM 分析叙述 ── */
+/* ── v3.2: 三段式辩论卡片 ── */
+.llm-narrative-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px;
+}
+.narrative-card {
+  padding: 16px 18px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.narrative-positive {
+  background: linear-gradient(135deg, #f0faf0 0%, #f8fdf6 100%);
+  border: 1px solid #c8e6c9;
+}
+.narrative-positive::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: #67c23a;
+  border-radius: 4px 0 0 4px;
+}
+.narrative-negative {
+  background: linear-gradient(135deg, #fef5f3 0%, #fdfaf9 100%);
+  border: 1px solid #f5d5cc;
+}
+.narrative-negative::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: #e07a5f;
+  border-radius: 4px 0 0 4px;
+}
+.narrative-verdict {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #fdf7ee 0%, #fefdfa 100%);
+  border: 1px solid #e8d5b0;
+}
+.narrative-verdict::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: #c45a3c;
+  border-radius: 4px 0 0 4px;
+}
+.narrative-card-header {
+  font-family: 'Noto Serif SC', 'KaiTi', serif;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.narrative-positive .narrative-card-header { color: #3e8e29; }
+.narrative-positive .narrative-card-header::before { content: '🟢'; font-size: 14px; }
+.narrative-negative .narrative-card-header { color: #c4563a; }
+.narrative-negative .narrative-card-header::before { content: '🔴'; font-size: 14px; }
+.narrative-verdict .narrative-card-header { color: #9b5e2e; }
+.narrative-verdict .narrative-card-header::before { content: '⚖️'; font-size: 14px; }
+.narrative-card-body {
+  font-size: 13px;
+  line-height: 1.85;
+  color: #4a4438;
+}
+
+/* ── v3.1: LLM 分析叙述（旧格式 plain text fallback）── */
 .llm-narrative-section {
   margin-top: 12px;
   border: 1px solid #e8e4da;

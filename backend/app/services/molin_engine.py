@@ -248,11 +248,60 @@ def analyze_text(text: str, use_rules: bool = True) -> DimensionResult:
                         matched.append({"word": word, "score": w_score})
 
     result.raw = score
-    result.normalized = vader_normalize(score)
+    # 后处理：语境规则调整（修正反讽、条件句式的误判）
+    result.raw = _apply_context_rules(text, result.raw)
+    result.normalized = vader_normalize(result.raw)
     result.has_data = len(matched) > 0
     result.confidence = 1.0 if result.has_data else 0.3
     result.signals = matched
     return result
+
+
+def _apply_context_rules(text: str, score: float) -> float:
+    """后处理规则：修正词库对反讽、条件句式的误判
+
+    在词库匹配完成后运行，基于整句的语境模式调整分数。
+    只做减法（降低被误判为正面/负面的分数），不做加法。
+    """
+    import re
+
+    # 规则1: 反讽对比结构 — "X物无限/虽多，Y嫌/弃/恶"
+    #   X 中的积极词是反衬 Y 的消极处境，应降低其正面贡献
+    #   例: "甘芳物无限，其中涵辣嫌人餐" → 甘芳是反衬，辣才是主体
+    contrast_patterns = [
+        r'(\S{1,4}(?:物|事|者|处))\s*无[限数量]\w*[，,\s]*\S{0,10}(?:嫌|弃|恶|厌|憎)',
+        r'(?:世上|人间)\S{1,6}(?:无限|虽\S)[，,\s]*\S{0,10}(?:嫌|弃|恶)',
+    ]
+    for pat in contrast_patterns:
+        if re.search(pat, text):
+            # 降低正面词贡献（反衬结构中的正面词不是主体）
+            # 保守调整: 降低 50% 的正面分量
+            if score > 2:
+                score = score * 0.5
+            break
+
+    # 规则2: 条件让步结构 — "任使/纵使/即便...乃/方/始得志"
+    #   "得志"是有条件的、遥远的，不是当前状态
+    #   例: "任使含咀乃得志" → 得志需要先忍受
+    conditional_patterns = [
+        r'(?:任使|纵使|即便|虽使)\S{1,20}(?:乃|方|始|才)\S*[得成至]',
+    ]
+    for pat in conditional_patterns:
+        if re.search(pat, text):
+            # 降低条件性正面词的分数（条件=尚未达成）
+            if score > 0:
+                score = score * 0.6
+            break
+
+    # 规则3: 自嘲式否定 — "莫嫌X少/不够"
+    #   "莫嫌辛味少" → 不是真的说辛味够，而是在自嘲辛味本来就不多
+    #   带着苦涩的自我认知
+    self_deprecation = r'莫嫌.{1,6}(?:少|不\S|无\S)'
+    if re.search(self_deprecation, text) and score > 2:
+        # 整体情感偏苦涩，降低过高正面分
+        score = score * 0.7
+
+    return score
 
 
 def analyze_spatial(spatial_emotion: Dict) -> DimensionResult:
