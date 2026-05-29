@@ -214,6 +214,50 @@
         </el-card>
       </div>
 
+      <!-- 情绪时间线 -->
+      <div class="aa-charts-row aa-one-col" v-if="emotionTimeline.points?.length">
+        <el-card shadow="hover" class="aa-chart-card">
+          <template #header>
+            <div class="card-header-title">
+              <span>情绪时间线</span>
+              <el-tag size="small" type="info">{{ emotionTimeline.total }} 幅作品</el-tag>
+            </div>
+          </template>
+          <div ref="timelineChartRef" class="aa-chart-container" style="height: 320px;" />
+          <div class="aa-chart-note">X轴=年份 Y轴=VADER情感分 点击散点查看作品详情</div>
+        </el-card>
+      </div>
+
+      <!-- 情感正负排行榜 -->
+      <div class="aa-charts-row aa-two-col" v-if="emotionRanking.top_negative?.length || emotionRanking.top_positive?.length">
+        <el-card shadow="hover" class="aa-chart-card">
+          <template #header><div class="card-header-title"><span style="color:#f56c6c">▼</span><span>最消极 Top 10</span></div></template>
+          <div class="aa-rank-list">
+            <div v-for="(item, idx) in emotionRanking.top_negative" :key="item.id" class="aa-rank-item" @click="openPaintingDetail(item)">
+              <span class="aa-rank-idx">{{ idx + 1 }}</span>
+              <div class="aa-rank-info">
+                <span class="aa-rank-title">{{ item.title }}</span>
+                <span class="aa-rank-meta">{{ item.year }}年 · {{ item.period_phase }}</span>
+              </div>
+              <span class="aa-rank-score negative">{{ (item.emotion_score * 100).toFixed(0) }}%</span>
+            </div>
+          </div>
+        </el-card>
+        <el-card shadow="hover" class="aa-chart-card">
+          <template #header><div class="card-header-title"><span style="color:#67c23a">▲</span><span>最积极 Top 10</span></div></template>
+          <div class="aa-rank-list">
+            <div v-for="(item, idx) in emotionRanking.top_positive" :key="item.id" class="aa-rank-item" @click="openPaintingDetail(item)">
+              <span class="aa-rank-idx">{{ idx + 1 }}</span>
+              <div class="aa-rank-info">
+                <span class="aa-rank-title">{{ item.title }}</span>
+                <span class="aa-rank-meta">{{ item.year }}年 · {{ item.period_phase }}</span>
+              </div>
+              <span class="aa-rank-score positive">+{{ (item.emotion_score * 100).toFixed(0) }}%</span>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
       <div class="aa-charts-row aa-two-col">
         <el-card shadow="hover" class="aa-chart-card">
           <template #header><div class="card-header-title"><span>题跋面积分布</span></div></template>
@@ -312,13 +356,15 @@ const reportData = ref(null)
 const activeReportTab = ref('')
 const artistRules = ref(null)
 const dimensionStats = ref(null)
+const emotionRanking = ref({ top_negative: [], top_positive: [] })
+const emotionTimeline = ref({ points: [], trend: [] })
 
 // chart refs
 const themeChartRef = ref(null); const sentimentChartRef = ref(null); const charCountChartRef = ref(null)
 const themePieChartRef = ref(null); const sentimentPieChartRef = ref(null); const periodPieChartRef = ref(null)
 const materialChartRef = ref(null); const sizeChartRef = ref(null)
-const areaDistChartRef = ref(null); const areaSizeChartRef = ref(null); const radarChartRef = ref(null)
-const ALL_CHART_REFS = [themeChartRef, sentimentChartRef, charCountChartRef, themePieChartRef, sentimentPieChartRef, periodPieChartRef, materialChartRef, sizeChartRef, areaDistChartRef, areaSizeChartRef, radarChartRef]
+const areaDistChartRef = ref(null); const areaSizeChartRef = ref(null); const radarChartRef = ref(null); const timelineChartRef = ref(null)
+const ALL_CHART_REFS = [themeChartRef, sentimentChartRef, charCountChartRef, themePieChartRef, sentimentPieChartRef, periodPieChartRef, materialChartRef, sizeChartRef, areaDistChartRef, areaSizeChartRef, radarChartRef, timelineChartRef]
 
 // dialogs
 const themeDialogVisible = ref(false); const themeDialogLoading = ref(false); const themeDialogLoadingMore = ref(false)
@@ -435,6 +481,26 @@ async function loadDimensionStats() {
   } catch (e) { console.error('加载维度统计失败', e) }
 }
 
+async function loadEmotionRanking() {
+  try {
+    const res = await fetch(`${API_BASE}/content-analysis/emotion-ranking?artist=${encodeURIComponent(selectedArtist.value)}&limit=10`)
+    const data = await res.json()
+    if (data.success) emotionRanking.value = data
+  } catch (e) { console.error('加载情感排行失败', e) }
+}
+
+async function loadEmotionTimeline() {
+  try {
+    const res = await fetch(`${API_BASE}/content-analysis/emotion-timeline?artist=${encodeURIComponent(selectedArtist.value)}`)
+    const data = await res.json()
+    if (data.success) {
+      emotionTimeline.value = data
+      await nextTick()
+      renderTimelineChart()
+    }
+  } catch (e) { console.error('加载情绪时间线失败', e) }
+}
+
 async function loadCachedSummary() {
   try {
     const res = await fetch(`${API_BASE}/content-analysis/summary`, {
@@ -514,6 +580,63 @@ function renderRadarChart() {
     }],
   })
   chart.resize()
+}
+
+function renderTimelineChart() {
+  if (!timelineChartRef.value || !emotionTimeline.value.points?.length) return
+  const chart = getOrCreateChart(timelineChartRef)
+  const { points, trend } = emotionTimeline.value
+  const periodColors = { '早期': '#c96442', '中期': '#547a8c', '晚期': '#4a4a5a', '未分期': '#ccc' }
+  const periodGroups = {}
+  points.forEach(p => {
+    const per = p.period_phase || '未分期'
+    if (!periodGroups[per]) periodGroups[per] = []
+    periodGroups[per].push(p)
+  })
+  const series = Object.entries(periodGroups).map(([per, pts]) => ({
+    name: per,
+    type: 'scatter',
+    symbolSize: 8,
+    itemStyle: { color: periodColors[per] || '#ccc', opacity: 0.8, borderColor: '#fff', borderWidth: 1 },
+    data: pts.map(p => ({
+      value: [p.year, p.emotion_score],
+      title: p.title,
+      id: p.id,
+    })),
+  }))
+  if (trend.length >= 2) {
+    series.push({
+      name: '趋势',
+      type: 'line',
+      showSymbol: false,
+      lineStyle: { color: '#c96442', width: 2, type: 'dashed' },
+      data: trend.map(t => [t.year, t.emotion_score]),
+      z: 10,
+    })
+  }
+  chart.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: (p) => {
+        if (p.seriesName === '趋势') return `趋势: ${p.value[1].toFixed(2)}`
+        const d = p.data
+        return `<b>${d.title}</b><br/>${d.value[0]}年<br/>情感: ${d.value[1] > 0 ? '+' : ''}${(d.value[1] * 100).toFixed(0)}%`
+      },
+    },
+    legend: { data: Object.keys(periodColors).filter(k => periodGroups[k]), bottom: 0 },
+    grid: { left: '8%', right: '5%', bottom: '14%', top: '8%', containLabel: true },
+    xAxis: { type: 'value', name: '年份', nameLocation: 'middle', nameGap: 30, axisLabel: { formatter: '{value}' } },
+    yAxis: { type: 'value', name: '情感', nameLocation: 'middle', nameGap: 40, min: -1, max: 1, axisLabel: { formatter: (v) => (v > 0 ? '+' : '') + (v * 100).toFixed(0) + '%' }, splitLine: { lineStyle: { type: 'dashed', color: 'rgba(0,0,0,0.06)' } } },
+    series,
+  })
+  chart.resize()
+  chart.off('click')
+  chart.on('click', (params) => {
+    if (params.data?.id) {
+      const resolved = router.resolve({ name: 'TubiAnalysis', params: { id: params.data.id } })
+      window.open(resolved.href, '_blank')
+    }
+  })
 }
 
 function renderCharts() { renderThemeChart(); renderSentimentChart(); renderCharCountChart(); renderMaterialChart(); renderSizeChart(); renderPieCharts(); renderAreaCharts() }
@@ -716,6 +839,8 @@ function onStatsArtistChange(artist) {
   loadStats()
   loadArtistRules()
   loadDimensionStats()
+  loadEmotionRanking()
+  loadEmotionTimeline()
   fetchArtistBirthYear()
   fetchRankingData()
 }
@@ -764,7 +889,7 @@ async function fetchRankingData() {
 
 onMounted(async () => {
   await fetchArtistList()
-  if (selectedArtist.value) { loadStats(); loadCachedSummary(); loadArtistRules(); loadDimensionStats(); fetchRankingData(); fetchArtistBirthYear() }
+  if (selectedArtist.value) { loadStats(); loadCachedSummary(); loadArtistRules(); loadDimensionStats(); loadEmotionRanking(); loadEmotionTimeline(); fetchRankingData(); fetchArtistBirthYear() }
   window.addEventListener('resize', handleChartResize)
 })
 
@@ -890,6 +1015,21 @@ function handleChartResize() {
 .aa-pol-pos { color: #67c23a; }
 .aa-pol-neu { color: #909399; }
 .aa-pol-neg { color: #f56c6c; }
+
+/* 情感排行榜 */
+.aa-rank-list { display: flex; flex-direction: column; }
+.aa-rank-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #f5f0e8; cursor: pointer; transition: background 0.15s; }
+.aa-rank-item:hover { background: #faf9f7; }
+.aa-rank-item:last-child { border-bottom: none; }
+.aa-rank-idx { font-size: 12px; color: #999; font-weight: 600; min-width: 20px; text-align: center; }
+.aa-rank-info { flex: 1; min-width: 0; }
+.aa-rank-title { font-size: 13px; color: #333; font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aa-rank-meta { font-size: 11px; color: #999; }
+.aa-rank-score { font-family: monospace; font-weight: 700; font-size: 14px; min-width: 45px; text-align: right; }
+.aa-rank-score.negative { color: #f56c6c; }
+.aa-rank-score.positive { color: #67c23a; }
+
+.aa-one-col { grid-template-columns: 1fr; }
 
 .aa-dialog-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: #87867f; }
 .aa-dialog-info { font-size: 14px; color: #5e5d59; margin-bottom: 12px; }

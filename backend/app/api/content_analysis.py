@@ -3983,3 +3983,123 @@ async def get_dimension_stats(
 
     conn.close()
     return {"success": True, "artist": artist, "total_analyzed": len(rows), "dimensions": dimensions}
+
+
+# ── 情感排行榜 ──────────────────────────────────────────────
+
+@router.get("/emotion-ranking")
+async def get_emotion_ranking(
+    artist: str = Query(default="all", description="画家名称"),
+    limit: int = Query(default=10, ge=1, le=50),
+):
+    """返回该画家 emotion_score 最高和最低的 N 幅作品"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    artist_where, artist_params = build_artist_condition(artist)
+
+    cur.execute(f"""
+        SELECT id, title, year, period_phase, content_analysis, inscription_content
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+          AND year IS NOT NULL
+    """, artist_params)
+
+    rows = cur.fetchall()
+    scored = []
+    for row in rows:
+        try:
+            ca = json.loads(row[4])
+            sent = ca.get("sentiment", {})
+            es = sent.get("emotion_score")
+            if es is not None:
+                normalized = es / math.sqrt(es ** 2 + 8.0)
+                scored.append({
+                    "id": row[0],
+                    "title": row[1] or "未命名",
+                    "year": row[2],
+                    "period_phase": row[3] or "未分期",
+                    "emotion_score": round(normalized, 3),
+                    "raw_score": round(es, 2),
+                    "polarity": sent.get("polarity", "neutral"),
+                    "inscription_excerpt": (row[5] or "")[:60],
+                })
+        except:
+            continue
+
+    conn.close()
+
+    sorted_by_score = sorted(scored, key=lambda x: x["emotion_score"])
+    return {
+        "success": True,
+        "artist": artist,
+        "total": len(scored),
+        "top_negative": sorted_by_score[:limit],
+        "top_positive": list(reversed(sorted_by_score[-limit:])),
+    }
+
+
+# ── 情绪时间线 ──────────────────────────────────────────────
+
+@router.get("/emotion-timeline")
+async def get_emotion_timeline(
+    artist: str = Query(default="all", description="画家名称"),
+):
+    """返回该画家所有有年份的作品的 emotion_score，按年份排序"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    artist_where, artist_params = build_artist_condition(artist)
+
+    cur.execute(f"""
+        SELECT id, title, year, period_phase, content_analysis
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+          AND year IS NOT NULL
+        ORDER BY year
+    """, artist_params)
+
+    rows = cur.fetchall()
+    points = []
+    for row in rows:
+        try:
+            ca = json.loads(row[4])
+            sent = ca.get("sentiment", {})
+            es = sent.get("emotion_score")
+            if es is not None:
+                normalized = es / math.sqrt(es ** 2 + 8.0)
+                points.append({
+                    "id": row[0],
+                    "title": row[1] or "未命名",
+                    "year": row[2],
+                    "period_phase": row[3] or "未分期",
+                    "emotion_score": round(normalized, 3),
+                    "polarity": sent.get("polarity", "neutral"),
+                })
+        except:
+            continue
+
+    conn.close()
+
+    # 线性回归趋势线
+    trend = []
+    if len(points) >= 2:
+        n = len(points)
+        sum_x = sum(p["year"] for p in points)
+        sum_y = sum(p["emotion_score"] for p in points)
+        sum_xy = sum(p["year"] * p["emotion_score"] for p in points)
+        sum_x2 = sum(p["year"] ** 2 for p in points)
+        denom = n * sum_x2 - sum_x ** 2
+        if denom != 0:
+            slope = (n * sum_xy - sum_x * sum_y) / denom
+            intercept = (sum_y - slope * sum_x) / n
+            years = sorted(set(p["year"] for p in points))
+            trend = [{"year": y, "emotion_score": round(slope * y + intercept, 3)} for y in years]
+
+    return {
+        "success": True,
+        "artist": artist,
+        "total": len(points),
+        "points": points,
+        "trend": trend,
+    }
