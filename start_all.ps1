@@ -70,7 +70,7 @@ if (-not $SkipCelery) {
 # Backend (port 3000)
 Write-Host "[3/5] Starting FastAPI Backend (port $PORT)..." -ForegroundColor Yellow
 Push-Location $BACKEND_DIR
-Start-Process -FilePath $PYTHON -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$PORT","--workers","2" -WindowStyle Normal
+Start-Process -FilePath $PYTHON -ArgumentList "-m","uvicorn","app.main:app","--host","0.0.0.0","--port","$PORT" -WindowStyle Normal
 Pop-Location
 Write-Host "  OK - Backend window opened" -ForegroundColor Green
 
