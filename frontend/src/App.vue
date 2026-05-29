@@ -3,13 +3,13 @@
     <!-- 顶部导航（annotate 页面隐藏） -->
     <header v-if="!$route.path.startsWith('/annotate')" class="main-header" :class="{ 'home-header': $route.path === '/' }">
       <div class="header-content">
-        <div class="logo">
+        <router-link to="/" class="logo">
           <img src="/logo.png" alt="墨" class="logo-img">
           <div class="logo-text">
             <span class="logo-main">{{ siteConfig.title }}</span>
             <span class="logo-sub">{{ siteConfig.subtitle }}</span>
           </div>
-        </div>
+        </router-link>
         <nav class="main-nav">
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
@@ -349,6 +349,8 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: var(--space-md);
   cursor: pointer;
+  text-decoration: none;
+  color: inherit;
   transition: opacity var(--transition-normal);
   text-decoration: none;
 }
