@@ -190,10 +190,11 @@
       </div>
 
       <!-- 维度分解雷达图 -->
-      <div class="aa-charts-row aa-two-col" v-if="dimensionStats">
+      <div class="aa-charts-row aa-two-col" v-if="dimensionStats || dimensionStatsError">
         <el-card shadow="hover" class="aa-chart-card">
           <template #header><div class="card-header-title"><span>引擎维度分解</span></div></template>
-          <div ref="radarChartRef" class="aa-chart-container" style="height: 300px;" />
+          <div v-if="dimensionStatsError" class="aa-chart-empty">加载失败，请刷新重试</div>
+          <div v-else ref="radarChartRef" class="aa-chart-container" style="height: 300px;" />
         </el-card>
         <el-card shadow="hover" class="aa-chart-card">
           <template #header><div class="card-header-title"><span>维度详情</span></div></template>
@@ -215,15 +216,16 @@
       </div>
 
       <!-- 情绪时间线 -->
-      <div class="aa-charts-row aa-one-col" v-if="emotionTimeline.points?.length">
+      <div class="aa-charts-row aa-one-col" v-if="emotionTimeline.points?.length || emotionTimelineError">
         <el-card shadow="hover" class="aa-chart-card">
           <template #header>
             <div class="card-header-title">
               <span>情绪时间线</span>
-              <el-tag size="small" type="info">{{ emotionTimeline.total }} 幅作品</el-tag>
+              <el-tag v-if="emotionTimeline.total" size="small" type="info">{{ emotionTimeline.total }} 幅作品</el-tag>
             </div>
           </template>
-          <div ref="timelineChartRef" class="aa-chart-container" style="height: 320px;" />
+          <div v-if="emotionTimelineError" class="aa-chart-empty">加载失败，请刷新重试</div>
+          <div v-else ref="timelineChartRef" class="aa-chart-container" style="height: 320px;" />
           <div class="aa-chart-note">X轴=年份 Y轴=VADER情感分 点击散点查看作品详情</div>
         </el-card>
       </div>
@@ -361,8 +363,10 @@ const reportData = ref(null)
 const activeReportTab = ref('')
 const artistRules = ref(null)
 const dimensionStats = ref(null)
+const dimensionStatsError = ref(false)
 const emotionRanking = ref({ top_negative: [], top_positive: [] })
 const emotionTimeline = ref({ points: [], trend: [] })
+const emotionTimelineError = ref(false)
 
 // chart refs
 const themeChartRef = ref(null); const sentimentChartRef = ref(null); const charCountChartRef = ref(null)
@@ -475,35 +479,50 @@ async function loadArtistRules() {
 }
 
 async function loadDimensionStats() {
-  try {
-    const res = await fetch(`${API_BASE}/content-analysis/dimension-stats?artist=${encodeURIComponent(selectedArtist.value)}`)
-    const data = await res.json()
-    if (data.success) {
-      dimensionStats.value = data.dimensions
-      await nextTick()
-      renderRadarChart()
-    }
-  } catch (e) { console.error('加载维度统计失败', e) }
+  dimensionStatsError.value = false
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/content-analysis/dimension-stats?artist=${encodeURIComponent(selectedArtist.value)}`)
+      const data = await res.json()
+      if (data.success) {
+        dimensionStats.value = data.dimensions
+        await nextTick()
+        renderRadarChart()
+        return
+      }
+    } catch (e) { if (attempt === 1) console.error('加载维度统计失败', e) }
+    if (attempt === 0) await new Promise(r => setTimeout(r, 500))
+  }
+  dimensionStatsError.value = true
 }
 
 async function loadEmotionRanking() {
-  try {
-    const res = await fetch(`${API_BASE}/content-analysis/emotion-ranking?artist=${encodeURIComponent(selectedArtist.value)}&limit=10`)
-    const data = await res.json()
-    if (data.success) emotionRanking.value = data
-  } catch (e) { console.error('加载情感排行失败', e) }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/content-analysis/emotion-ranking?artist=${encodeURIComponent(selectedArtist.value)}&limit=10`)
+      const data = await res.json()
+      if (data.success) { emotionRanking.value = data; return }
+    } catch (e) { if (attempt === 1) console.error('加载情感排行失败', e) }
+    if (attempt === 0) await new Promise(r => setTimeout(r, 500))
+  }
 }
 
 async function loadEmotionTimeline() {
-  try {
-    const res = await fetch(`${API_BASE}/content-analysis/emotion-timeline?artist=${encodeURIComponent(selectedArtist.value)}`)
-    const data = await res.json()
-    if (data.success) {
-      emotionTimeline.value = data
-      await nextTick()
-      renderTimelineChart()
-    }
-  } catch (e) { console.error('加载情绪时间线失败', e) }
+  emotionTimelineError.value = false
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/content-analysis/emotion-timeline?artist=${encodeURIComponent(selectedArtist.value)}`)
+      const data = await res.json()
+      if (data.success) {
+        emotionTimeline.value = data
+        await nextTick()
+        renderTimelineChart()
+        return
+      }
+    } catch (e) { if (attempt === 1) console.error('加载情绪时间线失败', e) }
+    if (attempt === 0) await new Promise(r => setTimeout(r, 500))
+  }
+  emotionTimelineError.value = true
 }
 
 async function loadCachedSummary() {
@@ -1035,6 +1054,7 @@ function handleChartResize() {
 .aa-rank-score.positive { color: #67c23a; }
 
 .aa-one-col { grid-template-columns: 1fr; }
+.aa-chart-empty { text-align: center; padding: 40px 0; color: #999; font-size: 14px; }
 
 .aa-dialog-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: #87867f; }
 .aa-dialog-info { font-size: 14px; color: #5e5d59; margin-bottom: 12px; }
