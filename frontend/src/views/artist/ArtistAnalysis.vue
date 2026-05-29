@@ -283,11 +283,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts/core'
-import { PieChart, BarChart, ScatterChart, RadarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
-echarts.use([PieChart, BarChart, ScatterChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, CanvasRenderer])
+import * as echarts from 'echarts'
 import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
 import ArtistStatsCard from '@/tubi/ArtistStatsCard.vue'
 import TubiRankingCard from '@/components/tubi/TubiRankingCard.vue'
@@ -536,7 +532,7 @@ function renderThemePieChart() {
   const themeTotals = {}
   themeDist.forEach(item => { themeTotals[item.theme_name] = (themeTotals[item.theme_name] || 0) + item.count })
   const data = Object.entries(themeTotals).map(([name, value]) => {
-    const theme = THEMES.find(t => t.name === name)
+    const theme = THEMES.value.find(t => t.name === name)
     return { name, value, itemStyle: { color: theme?.color } }
   }).sort((a, b) => b.value - a.value)
   chart.setOption({ tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' }, legend: { bottom: 0, type: 'scroll' }, series: [{ type: 'pie', radius: ['40%', '70%'], center: ['50%', '45%'], avoidLabelOverlap: false, itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 }, label: { show: true, formatter: '{b}\n{d}%' }, emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } }, data }] })
@@ -575,7 +571,7 @@ function renderThemeChart() {
   const themeDist = statsData.value.theme_distribution || []
   const periodOrder = { '早期': 0, '中期': 1, '晚期': 2 }
   const periods = [...new Set(themeDist.map(t => t.period))].sort((a, b) => periodOrder[a] - periodOrder[b])
-  const series = THEMES.map(t => ({ name: t.name, type: 'bar', stack: 'total', itemStyle: { color: t.color }, data: periods.map(p => { const item = themeDist.find(d => d.period === p && d.theme_name === t.name); return item ? parseFloat(item.percentage.toFixed(1)) : 0 }) }))
+  const series = THEMES.value.map(t => ({ name: t.name, type: 'bar', stack: 'total', itemStyle: { color: t.color }, data: periods.map(p => { const item = themeDist.find(d => d.period === p && d.theme_name === t.name); return item ? parseFloat(item.percentage.toFixed(1)) : 0 }) }))
   chart.setOption({ tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (params) => { let r = params[0].name + '<br/>'; params.forEach(p => { r += p.marker + ' ' + p.seriesName + ': ' + p.value + '%<br/>' }); return r } }, legend: { bottom: 0, type: 'scroll' }, grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true }, xAxis: { type: 'category', data: periods }, yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } }, series })
   chart.resize()
 }
@@ -662,7 +658,7 @@ function computeAreaSizeInsight(corrData) {
 }
 
 async function openThemeDialog(themeName) {
-  const theme = THEMES.find(t => t.name === themeName)
+  const theme = THEMES.value.find(t => t.name === themeName)
   if (!theme) return
   themeDialogVisible.value = true; themeDialogLoading.value = true
   themeDialogData.value = { paintings: [], total: 0, theme_name: themeName, theme_code: theme.code }; themeDialogOffset = 0

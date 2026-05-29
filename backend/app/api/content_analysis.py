@@ -3868,7 +3868,6 @@ async def get_dimension_stats(
     # 各维度累积
     text_scores = []
     theme_scores = []
-    sentiment_scores = []
     seal_scores = []
     period_scores = []
     spatial_scores = []
@@ -3890,7 +3889,7 @@ async def get_dimension_stats(
 
         # 主题维度：主题置信度
         try:
-            ca = ca if 'ca' in dir() else json.loads(ca_json) if ca_json else {}
+            ca = json.loads(ca_json) if ca_json else {}
             themes = ca.get("themes", [])
             if themes:
                 top = themes[0]
