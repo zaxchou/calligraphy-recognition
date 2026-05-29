@@ -11,7 +11,9 @@
           </div>
         </div>
         <nav class="main-nav">
-          <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
+          <!-- 备案审核模式：隐藏首页导航
+        <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
+        备案审核模式结束 -->
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
           <router-link to="/tubi" class="nav-item" :class="{ active: $route.path.startsWith('/tubi') }"><span class="nav-text">题跋分析</span></router-link>
@@ -19,6 +21,7 @@
           <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
+        <!-- 备案审核模式：隐藏用户区域
         <div class="user-area">
           <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
             {{ locale === 'zh' ? 'EN' : '中' }}
@@ -44,6 +47,7 @@
             <span class="nav-text">登录</span>
           </router-link>
         </div>
+        备案审核模式结束 -->
         <!-- 移动端汉堡菜单按钮 -->
         <button class="mobile-menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
           <el-icon :size="22"><Menu /></el-icon>
@@ -71,9 +75,11 @@
           </button>
         </div>
         <nav class="drawer-nav">
+          <!-- 备案审核模式：隐藏首页
           <router-link to="/" class="drawer-nav-item" exact-active-class="active" @click="closeMobileMenu">
             <span class="nav-text">首页</span>
           </router-link>
+          备案审核模式结束 -->
           <router-link to="/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">写意知识库</span>
           </router-link>
@@ -90,6 +96,7 @@
           <router-link to="/qczh" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">起承转合</span>
           </router-link>
+          <!-- 备案审核模式：隐藏用户区域
           <template v-if="authStore.isLoggedIn">
             <div class="drawer-section-label">个人中心</div>
             <router-link v-if="authStore.isEditor" to="/admin" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/admin') }" @click="closeMobileMenu">
@@ -111,6 +118,7 @@
           <router-link v-else to="/login" class="drawer-nav-item" @click="closeMobileMenu">
             <span class="nav-text">登录</span>
           </router-link>
+          备案审核模式结束 -->
         </nav>
       </div>
     </transition>
