@@ -3,11 +3,6 @@ import { siteConfig } from '../config'
 import api from '@/api'
 
 const routes = [
-  // 备案审核模式：首页重定向到题跋分析
-  {
-    path: '/',
-    redirect: '/artist/李鱓/analysis'
-  },
   {
     path: '/',
     name: 'Home',
