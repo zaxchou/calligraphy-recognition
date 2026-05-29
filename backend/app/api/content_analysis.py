@@ -3887,8 +3887,6 @@ async def get_dimension_stats(
             text_scores.append(round(normalized, 3))
         except:
             text_scores.append(0)
-        except:
-            text_scores.append(0)
 
         # 主题维度：主题置信度
         try:
@@ -3980,4 +3978,5 @@ async def get_dimension_stats(
         "尺寸": {"mean": avg(size_scores), "count": len(size_scores), "polarity": count_polarity(size_scores)},
     }
 
+    conn.close()
     return {"success": True, "artist": artist, "total_analyzed": len(rows), "dimensions": dimensions}

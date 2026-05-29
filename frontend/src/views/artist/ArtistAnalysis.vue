@@ -713,10 +713,11 @@ function getDisplayAge(item) {
 
 function onStatsArtistChange(artist) {
   selectedArtist.value = artist
-  fetchArtistBirthYear()
-  fetchRankingData()
+  loadStats()
   loadArtistRules()
   loadDimensionStats()
+  fetchArtistBirthYear()
+  fetchRankingData()
 }
 
 async function fetchArtistBirthYear() {
