@@ -46,10 +46,6 @@
           <el-icon size="18"><Refresh /></el-icon>
           <span class="nav-label">起承转合</span>
         </div>
-        <div class="nav-item" @click="navigateToContentAnalysis">
-          <el-icon size="18"><DataAnalysis /></el-icon>
-          <span class="nav-label">大数据分析</span>
-        </div>
       </div>
 
       <div class="nav-section">
@@ -102,7 +98,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Collection, HomeFilled, Picture, Edit, Document,
-  ChatDotSquare, Refresh, DataAnalysis, FolderOpened,
+  ChatDotSquare, Refresh, FolderOpened,
   Switch, Star, User
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -138,10 +134,6 @@ function navigateTo(path) {
 
 function navigateToQCZH() {
   router.push('/qczh')
-}
-
-function navigateToContentAnalysis() {
-  router.push('/content-analysis')
 }
 
 function showComingSoon() {

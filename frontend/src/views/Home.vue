@@ -231,15 +231,6 @@ const features = [
     bgClass: 'bg-qczh',
     tag: '多模态',
   },
-  { 
-    title: '题跋大数据分析', 
-    desc: '批量分析题跋内容，统计主题、情感、时期等多维度数据', 
-    path: '/content-analysis', 
-    icon: 'Histogram', 
-    iconClass: 'analytics',
-    bgClass: 'bg-analytics',
-    tag: '数据洞察',
-  },
 ]
 
 // ── 响应式数据 ────────────────────────────────────
