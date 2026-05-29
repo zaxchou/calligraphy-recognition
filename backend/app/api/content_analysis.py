@@ -1271,6 +1271,7 @@ async def get_records(
     artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
     period: Optional[str] = Query(default=None, description="分期筛选"),
     verified_only: bool = Query(default=False, description="仅已校验"),
+    unverified_only: bool = Query(default=False, description="仅未校验"),
     keyword: Optional[str] = Query(default=None, description="搜索关键词（作品名/年份/题跋文字）"),
     annotated_status: Optional[str] = Query(default=None, description="标注状态筛选: all/unannotated/annotated"),
     library_id: Optional[int] = Query(default=None, description="按作品库筛选"),
@@ -1301,6 +1302,8 @@ async def get_records(
 
     if verified_only:
         where_clauses.append("inscription_verified = 1")
+    elif unverified_only:
+        where_clauses.append("(inscription_verified = 0 OR inscription_verified IS NULL)")
 
     if keyword:
         where_clauses.append("(title LIKE ? OR CAST(year AS TEXT) LIKE ? OR inscription_content LIKE ?)")

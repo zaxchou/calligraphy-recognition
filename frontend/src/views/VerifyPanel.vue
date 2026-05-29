@@ -242,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position, WarningFilled } from '@element-plus/icons-vue'
 import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
@@ -263,7 +263,7 @@ const props = defineProps({
 const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title', 'reanalyze'])
 
 const filterPeriod = ref('')
-const verifyFilter = ref('unverified')
+const verifyFilter = inject('verifyFilterState', ref('unverified'))
 const currentIndex = ref(0)
 const editContent = ref('')
 const editSealContent = ref('')

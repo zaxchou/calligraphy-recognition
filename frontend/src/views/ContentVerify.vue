@@ -340,7 +340,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, inject, defineAsyncComponent } from 'vue'
+import { ref, onMounted, watch, computed, inject, defineAsyncComponent, provide } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { Refresh, Right, WarningFilled } from '@element-plus/icons-vue'
@@ -434,6 +434,11 @@ const annotatedCount = ref(0)
 const selectedLibraryId = ref(null)
 const selectedArtist = ref('all')
 const artistList = ref([])
+const verifyFilterState = ref('unverified')
+provide('verifyFilterState', verifyFilterState)
+
+// 筛选变化时重新加载
+watch(verifyFilterState, () => { fetchRecords() })
 
 // URL → artist 同步（浏览器后退/前进时刷新）
 watch(() => route.query.artist, (newArtist) => {
@@ -659,9 +664,16 @@ async function fetchRecords() {
   loading.value = true
   try {
     const artistParam = selectedArtist.value === 'all' ? '' : selectedArtist.value
-    const params = new URLSearchParams({ limit: 50, offset: 0 })
+    const isUnverified = verifyFilterState.value === 'unverified'
+    const isVerified = verifyFilterState.value === 'verified'
+    const params = new URLSearchParams({
+      limit: isUnverified ? 500 : 50,
+      offset: 0,
+    })
     if (artistParam) params.set('artist', artistParam)
     if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
+    if (isUnverified) params.set('unverified_only', 'true')
+    if (isVerified) params.set('verified_only', 'true')
     const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
     const data = await res.json()
     records.value = data.records || []
