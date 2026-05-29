@@ -54,7 +54,7 @@ def _load_artist_rules(artist_name: str) -> Dict:
             ).fetchone()
             if row:
                 rules = dict(row)
-                for field in ["life_stages", "theme_exceptions",
+                for field in ["life_stages", "theme_exceptions", "seal_rules",
                                "expected_theme_distribution", "expected_sentiment_distribution"]:
                     if rules.get(field) and isinstance(rules[field], str):
                         try:
