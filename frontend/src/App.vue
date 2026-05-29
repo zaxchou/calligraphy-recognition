@@ -15,9 +15,8 @@
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
           <router-link to="/tubi" class="nav-item" :class="{ active: $route.path.startsWith('/tubi') }"><span class="nav-text">题跋分析</span></router-link>
-          <!-- 字体识别模块暂不开放 -->
-          <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
-          <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
         <div class="user-area" v-if="siteConfig.readonly !== 'true'">
           <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
@@ -83,11 +82,10 @@
           <router-link to="/tubi" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tubi') }" @click="closeMobileMenu">
             <span class="nav-text">题跋分析</span>
           </router-link>
-          <!-- 字体识别模块暂不开放 -->
-          <router-link to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="closeMobileMenu">
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="closeMobileMenu">
             <span class="nav-text">潘天寿教你构图</span>
           </router-link>
-          <router-link to="/qczh" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">起承转合</span>
           </router-link>
           <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
