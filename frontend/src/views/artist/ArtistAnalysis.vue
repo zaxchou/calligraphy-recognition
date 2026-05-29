@@ -100,6 +100,53 @@
         <div class="aa-stat-card" v-for="ps in statsData.period_stats" :key="ps.period"><div class="aa-stat-val">{{ ps.count }}</div><div class="aa-stat-lbl">{{ ps.period }}</div><div class="aa-stat-sub">均 {{ ps.avg_char_count }} 字</div></div>
       </div>
 
+      <!-- 引擎规则卡片 -->
+      <el-card v-if="artistRules" shadow="never" class="aa-rules-card">
+        <template #header>
+          <div class="card-header-title">
+            <span class="aa-insight-icon">⚙</span>
+            <span>引擎规则</span>
+            <el-tag size="small" type="info">v{{ artistRules.rules_version || '5.7' }}</el-tag>
+            <el-tag size="small" :type="artistRules.emotion_baseline < 0 ? 'danger' : artistRules.emotion_baseline > 0 ? 'success' : 'info'">
+              基线 {{ (artistRules.emotion_baseline ?? 0).toFixed(1) }}
+            </el-tag>
+          </div>
+        </template>
+        <div class="aa-rules-grid">
+          <!-- 生命阶段 -->
+          <div class="aa-rules-section" v-if="artistRules.life_stages?.length">
+            <div class="aa-rules-title">生命阶段</div>
+            <div class="aa-rules-timeline">
+              <div v-for="(s, i) in artistRules.life_stages" :key="i" class="aa-timeline-item"
+                :style="{ borderLeftColor: s.mood_offset > 0 ? '#67c23a' : s.mood_offset < 0 ? '#f56c6c' : '#909399' }">
+                <span class="aa-tl-name">{{ s.name }}</span>
+                <span class="aa-tl-years">{{ s.year_start }}–{{ s.year_end }}</span>
+                <span class="aa-tl-offset">{{ (s.mood_offset ?? 0).toFixed(1) }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- 印章规则 -->
+          <div class="aa-rules-section" v-if="Object.keys(artistRules.seal_rules || {}).length">
+            <div class="aa-rules-title">印章规则</div>
+            <div class="aa-seal-tags">
+              <el-tag v-for="(rule, name) in artistRules.seal_rules" :key="name" size="small"
+                :type="rule.score > 0 ? 'success' : rule.score < 0 ? 'danger' : 'info'" class="aa-seal-tag">
+                {{ name }} {{ rule.score > 0 ? '+' : '' }}{{ rule.score.toFixed(1) }}
+              </el-tag>
+            </div>
+          </div>
+          <!-- 主题例外 -->
+          <div class="aa-rules-section" v-if="Object.keys(artistRules.theme_exceptions || {}).length">
+            <div class="aa-rules-title">主题例外</div>
+            <div class="aa-exc-list">
+              <div v-for="(exc, code) in artistRules.theme_exceptions" :key="code" class="aa-exc-item">
+                主题{{ code }}: {{ exc.override_if_contains?.join(', ') }} → {{ exc.override_to }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-card>
+
       <div class="aa-charts-row aa-three-col">
         <el-card shadow="hover" class="aa-chart-card">
           <template #header><div class="card-header-title"><span>主题分布（分期对比）</span></div></template>
@@ -139,6 +186,31 @@
             </tbody>
           </table>
           <div class="aa-inv-conclusion">{{ correlationData.significant ? (correlationData.highly_significant ? '✓ 不同主题的闯入率确实不同（p<0.01）' : '✓ 不同主题的闯入率可能不同（p<0.05）') : '✗ 样本偏少，差异可能只是巧合' }}</div>
+        </el-card>
+      </div>
+
+      <!-- 维度分解雷达图 -->
+      <div class="aa-charts-row aa-two-col" v-if="dimensionStats">
+        <el-card shadow="hover" class="aa-chart-card">
+          <template #header><div class="card-header-title"><span>引擎维度分解</span></div></template>
+          <div ref="radarChartRef" class="aa-chart-container" style="height: 300px;" />
+        </el-card>
+        <el-card shadow="hover" class="aa-chart-card">
+          <template #header><div class="card-header-title"><span>维度详情</span></div></template>
+          <div class="aa-dim-details">
+            <div v-for="(data, dim) in dimensionStats" :key="dim" class="aa-dim-row">
+              <span class="aa-dim-name">{{ dim }}</span>
+              <el-progress :percentage="Math.abs(data.mean * 100)" :stroke-width="8"
+                :color="data.mean > 0.05 ? '#67c23a' : data.mean < -0.05 ? '#f56c6c' : '#909399'"
+                :format="() => (data.mean > 0 ? '+' : '') + (data.mean * 100).toFixed(0) + '%'" />
+              <span class="aa-dim-count">{{ data.count }} 作品</span>
+              <span class="aa-dim-polarity">
+                <span class="aa-pol-pos">{{ data.polarity.positive }}+</span>
+                <span class="aa-pol-neu">{{ data.polarity.neutral }}○</span>
+                <span class="aa-pol-neg">{{ data.polarity.negative }}−</span>
+              </span>
+            </div>
+          </div>
         </el-card>
       </div>
 
@@ -211,11 +283,15 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { PieChart, BarChart, ScatterChart, RadarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+echarts.use([PieChart, BarChart, ScatterChart, RadarChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, CanvasRenderer])
 import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
 import ArtistStatsCard from '@/tubi/ArtistStatsCard.vue'
 import TubiRankingCard from '@/components/tubi/TubiRankingCard.vue'
-import { tubiApi } from '@/api'
+import { tubiApi, artistRulesApi } from '@/api'
 import { artistsApi } from '@/api/artists'
 
 const route = useRoute()
@@ -238,13 +314,15 @@ const summaryCached = ref(false)
 const summaryLoading = ref(false)
 const reportData = ref(null)
 const activeReportTab = ref('')
+const artistRules = ref(null)
+const dimensionStats = ref(null)
 
 // chart refs
 const themeChartRef = ref(null); const sentimentChartRef = ref(null); const charCountChartRef = ref(null)
 const themePieChartRef = ref(null); const sentimentPieChartRef = ref(null); const periodPieChartRef = ref(null)
 const materialChartRef = ref(null); const sizeChartRef = ref(null)
-const areaDistChartRef = ref(null); const areaSizeChartRef = ref(null)
-const ALL_CHART_REFS = [themeChartRef, sentimentChartRef, charCountChartRef, themePieChartRef, sentimentPieChartRef, periodPieChartRef, materialChartRef, sizeChartRef, areaDistChartRef, areaSizeChartRef]
+const areaDistChartRef = ref(null); const areaSizeChartRef = ref(null); const radarChartRef = ref(null)
+const ALL_CHART_REFS = [themeChartRef, sentimentChartRef, charCountChartRef, themePieChartRef, sentimentPieChartRef, periodPieChartRef, materialChartRef, sizeChartRef, areaDistChartRef, areaSizeChartRef, radarChartRef]
 
 // dialogs
 const themeDialogVisible = ref(false); const themeDialogLoading = ref(false); const themeDialogLoadingMore = ref(false)
@@ -266,14 +344,32 @@ const invasiveItems = computed(() => {
 const areaSizeInsight = ref('')
 const areaDistInsight = ref('')
 
-const THEMES = [
-  { code: 1, name: '身世自况', color: '#c96442' },
-  { code: 2, name: '咏物寄兴', color: '#547a8c' },
-  { code: 3, name: '画理自叙', color: '#a65d3f' },
-  { code: 4, name: '时事讽喻', color: '#4a4a5a' },
-  { code: 5, name: '吉语祥瑞', color: '#8b6f8e' },
-  { code: 6, name: '交游赠答', color: '#b8a47e' },
-]
+const THEME_COLOR_MAP = {
+  '身世自况': '#c96442', '咏物寄兴': '#547a8c', '画理自叙': '#a65d3f',
+  '时事讽喻': '#4a4a5a', '吉语祥瑞': '#8b6f8e', '交游赠答': '#b8a47e',
+}
+
+const THEMES = computed(() => {
+  const dist = statsData.value?.theme_distribution || []
+  const seen = new Map()
+  dist.forEach(item => {
+    if (!seen.has(item.theme_name)) {
+      seen.set(item.theme_name, {
+        code: item.theme_code || seen.size + 1,
+        name: item.theme_name,
+        color: THEME_COLOR_MAP[item.theme_name] || '#909399',
+      })
+    }
+  })
+  return seen.size > 0 ? [...seen.values()] : [
+    { code: 1, name: '身世自况', color: '#c96442' },
+    { code: 2, name: '咏物寄兴', color: '#547a8c' },
+    { code: 3, name: '画理自叙', color: '#a65d3f' },
+    { code: 4, name: '时事讽喻', color: '#4a4a5a' },
+    { code: 5, name: '吉语祥瑞', color: '#8b6f8e' },
+    { code: 6, name: '交游赠答', color: '#b8a47e' },
+  ]
+})
 
 function sentimentLabel(p) { return { positive: '积极', negative: '消极', neutral: '中性' }[p] || p }
 function sentimentTagType(p) { return { positive: 'success', negative: 'danger', neutral: 'info' }[p] || 'info' }
@@ -324,6 +420,25 @@ async function loadStats() {
   finally { loading.value = false }
 }
 
+async function loadArtistRules() {
+  try {
+    const res = await artistRulesApi.getByName(selectedArtist.value)
+    artistRules.value = res.rule || null
+  } catch (e) { artistRules.value = null }
+}
+
+async function loadDimensionStats() {
+  try {
+    const res = await fetch(`${API_BASE}/content-analysis/dimension-stats?artist=${encodeURIComponent(selectedArtist.value)}`)
+    const data = await res.json()
+    if (data.success) {
+      dimensionStats.value = data.dimensions
+      await nextTick()
+      renderRadarChart()
+    }
+  } catch (e) { console.error('加载维度统计失败', e) }
+}
+
 async function loadCachedSummary() {
   try {
     const res = await fetch(`${API_BASE}/content-analysis/summary`, {
@@ -368,6 +483,46 @@ function getOrCreateChart(domRef) {
   let chart = echarts.getInstanceByDom(domRef.value)
   if (!chart) chart = echarts.init(domRef.value)
   return chart
+}
+
+function renderRadarChart() {
+  if (!radarChartRef.value || !dimensionStats.value) return
+  const chart = getOrCreateChart(radarChartRef)
+  const dims = dimensionStats.value
+  const labels = Object.keys(dims)
+  const values = labels.map(l => Math.abs(dims[l].mean) * 100)
+  const colors = labels.map(l => {
+    const m = dims[l].mean
+    if (m > 0.05) return '#67c23a'
+    if (m < -0.05) return '#f56c6c'
+    return '#909399'
+  })
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    radar: {
+      indicator: labels.map(l => ({ name: l, max: 50 })),
+      shape: 'polygon',
+      splitArea: { areaStyle: { color: ['rgba(201,100,66,0.02)', 'rgba(201,100,66,0.05)', 'rgba(201,100,66,0.02)', 'rgba(201,100,66,0.05)'] } },
+      axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },
+      splitLine: { lineStyle: { color: 'rgba(0,0,0,0.06)' } },
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: values,
+        name: '情感强度',
+        areaStyle: { color: 'rgba(201,100,66,0.15)' },
+        lineStyle: { color: '#c96442', width: 2 },
+        itemStyle: { color: '#c96442' },
+        label: { show: true, formatter: (p) => {
+          const dim = labels[p.dimensionIndex]
+          const m = dims[dim].mean
+          return `${dim}\n${m > 0 ? '+' : ''}${(m * 100).toFixed(0)}%`
+        }, fontSize: 11, color: '#555' },
+      }],
+    }],
+  })
+  chart.resize()
 }
 
 function renderCharts() { renderThemeChart(); renderSentimentChart(); renderCharCountChart(); renderMaterialChart(); renderSizeChart(); renderPieCharts(); renderAreaCharts() }
@@ -569,6 +724,8 @@ function onStatsArtistChange(artist) {
   selectedArtist.value = artist
   fetchArtistBirthYear()
   fetchRankingData()
+  loadArtistRules()
+  loadDimensionStats()
 }
 
 async function fetchArtistBirthYear() {
@@ -597,15 +754,14 @@ function onRankingMore() {
 async function fetchRankingData() {
   rankingLoading.value = true
   try {
-    const res = await tubiApi.getAllResults(0, 2000)
+    const res = await tubiApi.getAllResults(0, 200, selectedArtist.value)
     if (res.success) {
-      const data = (res.data || []).map(item => ({
+      rankingList.value = (res.data || []).map(item => ({
         ...item,
         inscriptionPercent: item.inscription_percent,
         paintingPercent: item.painting_percent,
         thumbnailUrl: item.thumbnail_url,
       }))
-      rankingList.value = data.filter(item => item.artist === selectedArtist.value)
     }
   } catch (e) {
     console.error('加载排行榜数据失败', e)
@@ -616,7 +772,7 @@ async function fetchRankingData() {
 
 onMounted(async () => {
   await fetchArtistList()
-  if (selectedArtist.value) { loadStats(); loadCachedSummary(); fetchRankingData(); fetchArtistBirthYear() }
+  if (selectedArtist.value) { loadStats(); loadCachedSummary(); loadArtistRules(); loadDimensionStats(); fetchRankingData(); fetchArtistBirthYear() }
   window.addEventListener('resize', handleChartResize)
 })
 
@@ -714,6 +870,34 @@ function handleChartResize() {
 .aa-rate-high { color: #c96442; font-weight: 600; }
 .aa-rate-mid { color: #b8a47e; }
 .aa-rate-low { color: #87867f; }
+
+/* 引擎规则卡片 */
+.aa-rules-card { margin-bottom: 24px; border-radius: 12px; border: 1px solid #e8e6dc; background: #fffdf8; border-left: 4px solid #547a8c; }
+.aa-rules-card :deep(.el-card__header) { padding: 14px 20px; border-bottom: 1px solid #f0eee6; }
+.aa-rules-card :deep(.el-card__body) { padding: 16px 20px; }
+.aa-rules-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+.aa-rules-section { flex: 1; min-width: 200px; }
+.aa-rules-title { font-size: 12px; color: #87867f; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.aa-rules-timeline { display: flex; flex-direction: column; gap: 6px; }
+.aa-timeline-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: #faf9f7; border-radius: 6px; border-left: 3px solid #ddd; font-size: 13px; }
+.aa-tl-name { font-weight: 600; color: #333; min-width: 50px; }
+.aa-tl-years { color: #999; font-family: monospace; font-size: 12px; }
+.aa-tl-offset { font-family: monospace; font-weight: 600; font-size: 12px; }
+.aa-seal-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.aa-seal-tag { font-size: 12px; }
+.aa-exc-list { font-size: 13px; color: #555; }
+.aa-exc-item { padding: 4px 0; }
+
+/* 维度详情 */
+.aa-dim-details { display: flex; flex-direction: column; gap: 10px; }
+.aa-dim-row { display: flex; align-items: center; gap: 10px; }
+.aa-dim-name { font-size: 13px; font-weight: 600; color: #333; min-width: 40px; }
+.aa-dim-row .el-progress { flex: 1; }
+.aa-dim-count { font-size: 11px; color: #999; min-width: 50px; text-align: right; }
+.aa-dim-polarity { display: flex; gap: 4px; font-size: 11px; min-width: 70px; }
+.aa-pol-pos { color: #67c23a; }
+.aa-pol-neu { color: #909399; }
+.aa-pol-neg { color: #f56c6c; }
 
 .aa-dialog-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: #87867f; }
 .aa-dialog-info { font-size: 14px; color: #5e5d59; margin-bottom: 12px; }

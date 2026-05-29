@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import os
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -3830,3 +3831,149 @@ async def get_area_theme_stats(
         period_trend=period_trend,
         insights=insights,
     )
+
+
+# ── 维度统计（八维度雷达图）─────────────────────────────────────
+
+@router.get("/dimension-stats")
+async def get_dimension_stats(
+    artist: str = Query(default="all", description="画家名称"),
+):
+    """
+    统计该画家所有已分析作品的引擎维度分数，
+    用于前端雷达图展示。
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    artist_where, artist_params = build_artist_condition(artist)
+
+    cur.execute(f"""
+        SELECT content_analysis, position_analysis, seal_content,
+               period_phase, artwork_height_cm, artwork_width_cm,
+               material_tags, inscription_percent
+        FROM tubi_analyses
+        WHERE {artist_where}
+          AND content_analysis IS NOT NULL
+    """, artist_params)
+
+    rows = cur.fetchall()
+
+    # 从画家规则获取印章规则
+    from app.services.inscription_content_analyzer import _load_artist_rules, get_artist_display_name
+    artist_display = get_artist_display_name(artist) if artist and artist != "all" else ""
+    rules = _load_artist_rules(artist_display)
+    seal_rules = rules.get("seal_rules", {})
+    life_stages = rules.get("life_stages", [])
+
+    # 各维度累积
+    text_scores = []
+    theme_scores = []
+    sentiment_scores = []
+    seal_scores = []
+    period_scores = []
+    spatial_scores = []
+    size_scores = []
+
+    for row in rows:
+        ca_json, pa_json, seal_content, period, h_cm, w_cm, mat_tags, insc_pct = row
+
+        # 文字维度：情感极性强度
+        try:
+            ca = json.loads(ca_json) if ca_json else {}
+            sent = ca.get("sentiment", {})
+            intensity = sent.get("polarity_score", sent.get("intensity", 0)) or 0
+            polarity = sent.get("polarity", "neutral")
+            score = intensity if polarity == "positive" else (-intensity if polarity == "negative" else 0)
+            text_scores.append(score)
+        except:
+            text_scores.append(0)
+
+        # 主题维度：主题置信度
+        try:
+            ca = ca if 'ca' in dir() else json.loads(ca_json) if ca_json else {}
+            themes = ca.get("themes", [])
+            if themes:
+                top = themes[0]
+                conf = top.get("confidence", 0.5)
+                theme_name = top.get("name", "")
+                # 身世自况/时事讽喻偏消极，吉语祥瑞偏积极
+                neg_themes = {"身世自况", "时事讽喻"}
+                pos_themes = {"吉语祥瑞", "交游赠答"}
+                if theme_name in neg_themes:
+                    theme_scores.append(-conf)
+                elif theme_name in pos_themes:
+                    theme_scores.append(conf)
+                else:
+                    theme_scores.append(0)
+            else:
+                theme_scores.append(0)
+        except:
+            theme_scores.append(0)
+
+        # 印章维度
+        if seal_content and seal_rules:
+            seals = re.split(r'[、,，\s]+', seal_content.strip()) if seal_content else []
+            seal_score = 0
+            matched = 0
+            for s in seals:
+                s = s.strip()
+                if s in seal_rules:
+                    seal_score += seal_rules[s].get("score", 0)
+                    matched += 1
+            seal_scores.append(seal_score / max(matched, 1))
+        else:
+            seal_scores.append(0)
+
+        # 时期维度（基于画家规则的 mood_offset）
+        if period and life_stages:
+            for stage in life_stages:
+                if stage.get("name") == period or period in stage.get("name", ""):
+                    period_scores.append(stage.get("mood_offset", 0))
+                    break
+            else:
+                period_scores.append(0)
+        else:
+            period_scores.append(0)
+
+        # 空间维度
+        if pa_json:
+            try:
+                pa = json.loads(pa_json)
+                inv = pa.get("invasive_score", 0) or 0
+                spatial_scores.append(inv)
+            except:
+                spatial_scores.append(0)
+        else:
+            spatial_scores.append(0)
+
+        # 尺寸维度
+        if h_cm and w_cm:
+            area = h_cm * w_cm
+            if area < 2000:
+                size_scores.append(-0.2)
+            elif area > 10000:
+                size_scores.append(0.2)
+            else:
+                size_scores.append(0)
+        else:
+            size_scores.append(0)
+
+    def avg(lst):
+        return round(sum(lst) / len(lst), 3) if lst else 0
+
+    def count_polarity(lst, threshold=0.1):
+        pos = sum(1 for x in lst if x > threshold)
+        neg = sum(1 for x in lst if x < -threshold)
+        neu = len(lst) - pos - neg
+        return {"positive": pos, "negative": neg, "neutral": neu}
+
+    dimensions = {
+        "文字": {"mean": avg(text_scores), "count": len(text_scores), "polarity": count_polarity(text_scores)},
+        "主题": {"mean": avg(theme_scores), "count": len(theme_scores), "polarity": count_polarity(theme_scores)},
+        "印章": {"mean": avg(seal_scores), "count": len(seal_scores), "polarity": count_polarity(seal_scores)},
+        "时期": {"mean": avg(period_scores), "count": len(period_scores), "polarity": count_polarity(period_scores)},
+        "空间": {"mean": avg(spatial_scores), "count": len(spatial_scores), "polarity": count_polarity(spatial_scores)},
+        "尺寸": {"mean": avg(size_scores), "count": len(size_scores), "polarity": count_polarity(size_scores)},
+    }
+
+    return {"success": True, "artist": artist, "total_analyzed": len(rows), "dimensions": dimensions}
