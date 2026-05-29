@@ -241,7 +241,7 @@
                 <span class="aa-rank-title">{{ item.title }}</span>
                 <span class="aa-rank-meta">{{ item.year }}年 · {{ item.period_phase }}</span>
               </div>
-              <span class="aa-rank-score negative">{{ (item.emotion_score * 100).toFixed(0) }}%</span>
+              <span class="aa-rank-score negative">{{ item.emotion_score.toFixed(2) }}</span>
             </div>
           </div>
         </el-card>
@@ -254,7 +254,7 @@
                 <span class="aa-rank-title">{{ item.title }}</span>
                 <span class="aa-rank-meta">{{ item.year }}年 · {{ item.period_phase }}</span>
               </div>
-              <span class="aa-rank-score positive">+{{ (item.emotion_score * 100).toFixed(0) }}%</span>
+              <span class="aa-rank-score positive">+{{ item.emotion_score.toFixed(2) }}</span>
             </div>
           </div>
         </el-card>
