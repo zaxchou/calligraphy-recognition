@@ -52,6 +52,11 @@
       @update-title="onTitleUpdated"
       @reanalyze="onReanalyze"
     />
+    <div v-if="records.length < totalCount" class="load-more-bar">
+      <el-button size="small" @click="loadMoreRecords" :loading="loadingMore">
+        加载更多（{{ records.length }} / {{ totalCount }}）
+      </el-button>
+    </div>
       </el-tab-pane>
 
       <!-- 标注图校对 -->
@@ -417,6 +422,7 @@ watch(adminSelectedLibraryId, (newLibId) => {
 // ── 状态 ──
 const records = ref([])
 const loading = ref(false)
+const loadingMore = ref(false)
 const saving = ref(false)
 const translating = ref(false)
 const analyzing = ref(false)
@@ -653,7 +659,7 @@ async function fetchRecords() {
   loading.value = true
   try {
     const artistParam = selectedArtist.value === 'all' ? '' : selectedArtist.value
-    const params = new URLSearchParams({ limit: 50 })
+    const params = new URLSearchParams({ limit: 50, offset: 0 })
     if (artistParam) params.set('artist', artistParam)
     if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
     const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
@@ -676,6 +682,24 @@ async function fetchRecords() {
     ElMessage.error('获取记录失败: ' + e.message)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMoreRecords() {
+  if (records.value.length >= totalCount.value) return
+  loadingMore.value = true
+  try {
+    const artistParam = selectedArtist.value === 'all' ? '' : selectedArtist.value
+    const params = new URLSearchParams({ limit: 50, offset: records.value.length })
+    if (artistParam) params.set('artist', artistParam)
+    if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
+    const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
+    const data = await res.json()
+    records.value.push(...(data.records || []))
+  } catch (e) {
+    ElMessage.error('加载更多失败: ' + e.message)
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -1288,5 +1312,9 @@ function onImageSearchItemClick(recordId) {
   margin: 4px 0;
   font-size: 13px;
   color: #555;
+}
+.load-more-bar {
+  text-align: center;
+  padding: 16px 0 8px;
 }
 </style>
