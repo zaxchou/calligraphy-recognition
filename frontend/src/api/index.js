@@ -309,9 +309,6 @@ export const sealsApi = {
   },
   batchDelete(ids) {
     return api.post('/seals/batch-delete', { ids })
-  },
-  aiAnalyzeEmotion(sealIds) {
-    return api.post('/seals/ai-analyze-emotion', { seal_ids: sealIds })
   }
 }
 

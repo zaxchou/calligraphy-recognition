@@ -124,9 +124,6 @@ class SealUpdate(BaseModel):
     description: Optional[str] = None
     source: Optional[str] = None
     merge_on_conflict: Optional[bool] = False
-    emotion_score: Optional[float] = None
-    emotion_category: Optional[str] = None
-    emotion_desc: Optional[str] = None
 
 class BatchDeleteRequest(BaseModel):
     ids: List[int]
@@ -404,12 +401,6 @@ async def update_seal(seal_id: int, seal: SealUpdate):
             updates["description"] = seal.description
         if seal.source is not None:
             updates["source"] = seal.source
-        if seal.emotion_score is not None:
-            updates["emotion_score"] = seal.emotion_score
-        if seal.emotion_category is not None:
-            updates["emotion_category"] = seal.emotion_category
-        if seal.emotion_desc is not None:
-            updates["emotion_desc"] = seal.emotion_desc
 
         if updates:
             updates["updated_at"] = datetime.now().isoformat()
@@ -420,14 +411,6 @@ async def update_seal(seal_id: int, seal: SealUpdate):
             )
 
         conn.commit()
-        # 清除印章情感缓存，使新规则立即生效
-        try:
-            from app.services.inscription_content_analyzer import _cache_seal_emotion, _cache_seal_emotion_loaded
-            _cache_seal_emotion.clear()
-            import app.services.inscription_content_analyzer as _ica
-            _ica._cache_seal_emotion_loaded = False
-        except ImportError:
-            pass
         return {"success": True, "message": "印章更新成功"}
     except HTTPException:
         raise
@@ -659,92 +642,5 @@ async def get_seal_by_name(name: str):
         seal = dict(row)
         seal["images"] = _get_seal_images(conn, seal["id"])
         return {"success": True, "seal": seal}
-    finally:
-        conn.close()
-
-
-# ── AI 印章情感分析 ────────────────────────────────────────────
-
-class BatchEmotionRequest(BaseModel):
-    seal_ids: List[int]
-
-
-@router.post("/ai-analyze-emotion")
-async def ai_analyze_seal_emotion(req: BatchEmotionRequest):
-    """
-    AI 一键分析印章情感。
-    读取印章文字，用 LLM 判断情感分数、类别和描述，
-    写回 seals 表的 emotion_score/emotion_category/emotion_desc 字段。
-    """
-    try:
-        from app.services.qwen_llm_client import call_qwen_chat
-    except ImportError:
-        raise HTTPException(status_code=503, detail="AI 服务不可用")
-
-    conn = get_db_connection()
-    try:
-        results = []
-        for seal_id in req.seal_ids:
-            row = conn.execute(
-                "SELECT id, name, artist_name, description FROM seals WHERE id = ?",
-                (seal_id,)
-            ).fetchone()
-            if not row:
-                continue
-
-            seal_name = row["name"]
-            artist = row["artist_name"] or ""
-            desc = row["description"] or ""
-
-            prompt = f"""你是一位中国古代书画印章研究专家。请分析以下印章文字的情感倾向。
-
-印章文字：{seal_name}
-画家：{artist}
-印章说明：{desc}
-
-分析规则：
-- 名印/字号印（如"李鱓""复堂""宗杨"）→ emotion_score=0, category="identity"
-- 表达精神境界的印章（如"苦李""卖画不为官""臣非老画师"）→ 根据含义打分
-- 人生经历相关（如"辞官卖画""李供奉书画记"）→ 根据情感打分
-- score 范围 -1.0 到 +1.0，负值偏消极，正值偏积极
-
-返回严格JSON（不要markdown包裹）：
-{{"score": 0.0, "category": "identity", "emotion": "neutral", "desc": "简要说明"}}
-
-只返回JSON，不要其他文字。"""
-
-            try:
-                response = call_qwen_chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1,
-                    max_tokens=200,
-                )
-                content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
-                json_match = re.search(r'\{[\s\S]*?\}', content)
-                if json_match:
-                    info = json.loads(json_match.group())
-                    score = float(info.get("score", 0))
-                    category = info.get("category", "unknown")
-                    desc_text = info.get("desc", "")
-
-                    conn.execute(
-                        "UPDATE seals SET emotion_score=?, emotion_category=?, emotion_desc=? WHERE id=?",
-                        (score, category, desc_text, seal_id)
-                    )
-                    results.append({
-                        "id": seal_id, "name": seal_name,
-                        "score": score, "category": category,
-                        "desc": desc_text,
-                    })
-                else:
-                    results.append({"id": seal_id, "name": seal_name, "error": "AI 返回无法解析"})
-            except Exception as e:
-                results.append({"id": seal_id, "name": seal_name, "error": str(e)})
-
-        conn.commit()
-        return {"success": True, "results": results, "analyzed": len([r for r in results if "score" in r])}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
