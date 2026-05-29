@@ -341,7 +341,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { Refresh, Right, WarningFilled } from '@element-plus/icons-vue'
 
 import VerifyPanel from './VerifyPanel.vue'
-import ArtistRulesManager from './ArtistRulesManager.vue'
 import { useAuthStore } from '../stores/authStore'
 import { libraryApi } from '../api/index.js'
 import { computeDiff } from '../utils/diff'
@@ -352,6 +351,7 @@ const StripManager = defineAsyncComponent(() => import('./StripManager.vue'))
 const DimensionInput = defineAsyncComponent(() => import('./DimensionInput.vue'))
 const AnnotationVerify = defineAsyncComponent(() => import('./AnnotationVerify.vue'))
 const ArtistInfoManager = defineAsyncComponent(() => import('./ArtistInfoManager.vue'))
+const ArtistRulesManager = defineAsyncComponent(() => import('./ArtistRulesManager.vue'))
 const SealManager = defineAsyncComponent(() => import('./SealManager.vue'))
 const ImageSearchPanel = defineAsyncComponent(() => import('../components/tubi/ImageSearchPanel.vue'))
 const AdminDashboard = defineAsyncComponent(() => import('./admin/Dashboard.vue'))
