@@ -3998,7 +3998,7 @@ async def get_emotion_ranking(
     artist_where, artist_params = build_artist_condition(artist)
 
     cur.execute(f"""
-        SELECT id, title, year, period_phase, content_analysis, inscription_content
+        SELECT id, image_id, title, year, period_phase, content_analysis, inscription_content
         FROM tubi_analyses
         WHERE {artist_where}
           AND content_analysis IS NOT NULL
@@ -4009,20 +4009,20 @@ async def get_emotion_ranking(
     scored = []
     for row in rows:
         try:
-            ca = json.loads(row[4])
+            ca = json.loads(row[5])
             sent = ca.get("sentiment", {})
             es = sent.get("emotion_score")
             if es is not None:
                 normalized = es / math.sqrt(es ** 2 + 8.0)
                 scored.append({
-                    "id": row[0],
-                    "title": row[1] or "未命名",
-                    "year": row[2],
-                    "period_phase": row[3] or "未分期",
+                    "id": row[1] or str(row[0]),
+                    "title": row[2] or "未命名",
+                    "year": row[3],
+                    "period_phase": row[4] or "未分期",
                     "emotion_score": round(normalized, 3),
                     "raw_score": round(es, 2),
                     "polarity": sent.get("polarity", "neutral"),
-                    "inscription_excerpt": (row[5] or "")[:60],
+                    "inscription_excerpt": (row[6] or "")[:60],
                 })
         except:
             continue
@@ -4051,7 +4051,7 @@ async def get_emotion_timeline(
     artist_where, artist_params = build_artist_condition(artist)
 
     cur.execute(f"""
-        SELECT id, title, year, period_phase, content_analysis
+        SELECT id, image_id, title, year, period_phase, content_analysis
         FROM tubi_analyses
         WHERE {artist_where}
           AND content_analysis IS NOT NULL
@@ -4063,16 +4063,16 @@ async def get_emotion_timeline(
     points = []
     for row in rows:
         try:
-            ca = json.loads(row[4])
+            ca = json.loads(row[5])
             sent = ca.get("sentiment", {})
             es = sent.get("emotion_score")
             if es is not None:
                 normalized = es / math.sqrt(es ** 2 + 8.0)
                 points.append({
-                    "id": row[0],
-                    "title": row[1] or "未命名",
-                    "year": row[2],
-                    "period_phase": row[3] or "未分期",
+                    "id": row[1] or str(row[0]),
+                    "title": row[2] or "未命名",
+                    "year": row[3],
+                    "period_phase": row[4] or "未分期",
                     "emotion_score": round(normalized, 3),
                     "polarity": sent.get("polarity", "neutral"),
                 })
