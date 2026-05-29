@@ -689,6 +689,9 @@ def _dynasty_from_year(birth_year) -> str:
     return "当代"
 
 
+_stats_cache = {}
+_stats_cache_ttl = 300  # 5 minutes
+
 @router.get("/stats", response_model=StatsResponse)
 async def get_stats(
     artist: str = Query(default="all", description="画家名称，'all'表示所有画家"),
@@ -696,6 +699,14 @@ async def get_stats(
     """
     获取分期统计：字数、词频、主题分布、情感分布
     """
+    import time
+    cache_key = artist
+    now = time.time()
+    if cache_key in _stats_cache:
+        cached_time, cached_data = _stats_cache[cache_key]
+        if now - cached_time < _stats_cache_ttl:
+            return cached_data
+
     conn = get_db_connection()
     cur = conn.cursor()
     
@@ -973,7 +984,7 @@ async def get_stats(
 
     conn.close()
 
-    return StatsResponse(
+    result = StatsResponse(
         artist=artist,
         total_count=total_count,
         period_stats=period_stats,
@@ -987,6 +998,8 @@ async def get_stats(
         area_theme_stats=area_theme_stats,
         area_size_correlation=area_size_correlation,
     )
+    _stats_cache[cache_key] = (now, result)
+    return result
 
 
 @router.get("/correlation")

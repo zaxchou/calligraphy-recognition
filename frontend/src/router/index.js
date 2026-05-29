@@ -244,7 +244,7 @@ const nameCache = new Map()
 
 router.beforeEach((to, _from, next) => {
   if (to.path === '/' && siteConfig.readonly === 'true') {
-    next('/artist/李鱓/analysis')
+    next('/tubi')
   } else {
     next()
   }
