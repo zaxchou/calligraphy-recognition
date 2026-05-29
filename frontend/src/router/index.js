@@ -242,6 +242,14 @@ const router = createRouter({
 
 const nameCache = new Map()
 
+router.beforeEach((to, _from, next) => {
+  if (to.path === '/' && siteConfig.readonly === 'true') {
+    next('/artist/李鱓/analysis')
+  } else {
+    next()
+  }
+})
+
 router.beforeResolve(async (to, _from) => {
   const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistMap']
   if (artistRoutes.includes(to.name) && to.params.name) {

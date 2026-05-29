@@ -16,6 +16,7 @@ const DEFAULTS = {
   domain: 'molin.wiki',
   footer: '墨林百科 © 2026',
   author: '周豪 Zax',
+  readonly: 'false',
 }
 
 // 从 DEFAULTS 派生前端需要的驼峰别名

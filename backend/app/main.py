@@ -321,7 +321,9 @@ def get_public_site_settings(db: Session = Depends(get_db)):
     rows = db.execute(
         text("SELECT key, value FROM site_settings ORDER BY key")
     ).fetchall()
-    return {"settings": {r[0]: r[1] for r in rows}}
+    result = {r[0]: r[1] for r in rows}
+    result["readonly"] = "true" if settings.SITE_READONLY else "false"
+    return {"settings": result}
 
 
 @app.get("/health")

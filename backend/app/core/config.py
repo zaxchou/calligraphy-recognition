@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # CV-First 新流程开关
     USE_CV_FIRST_PIPELINE: bool = os.getenv("USE_CV_FIRST_PIPELINE", "false").lower() in ("1", "true", "yes", "y")
 
+    # 站点只读模式（true 时隐藏登录/注册/互动功能）
+    SITE_READONLY: bool = os.getenv("SITE_READONLY", "false").lower() in ("1", "true", "yes", "y")
+
     TUBI_PAINT_BG_SAMPLE_RATIO: float = float(os.getenv("TUBI_PAINT_BG_SAMPLE_RATIO", "0.06"))
     TUBI_PAINT_BG_DELTAE: float = float(os.getenv("TUBI_PAINT_BG_DELTAE", "12.0"))
     TUBI_PAINT_BG_GRAD_MAX: float = float(os.getenv("TUBI_PAINT_BG_GRAD_MAX", "8.0"))

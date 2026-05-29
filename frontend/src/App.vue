@@ -19,7 +19,7 @@
           <router-link to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
-        <div class="user-area">
+        <div class="user-area" v-if="siteConfig.readonly !== 'true'">
           <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
             {{ locale === 'zh' ? 'EN' : '中' }}
           </button>
@@ -90,7 +90,7 @@
           <router-link to="/qczh" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
             <span class="nav-text">起承转合</span>
           </router-link>
-          <template v-if="authStore.isLoggedIn">
+          <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
             <div class="drawer-section-label">个人中心</div>
             <router-link v-if="authStore.isEditor" to="/admin" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/admin') }" @click="closeMobileMenu">
               <span class="nav-text">📂 管理后台</span>
@@ -108,7 +108,7 @@
               <span class="nav-text">退出登录</span>
             </div>
           </template>
-          <router-link v-else to="/login" class="drawer-nav-item" @click="closeMobileMenu">
+          <router-link v-else-if="siteConfig.readonly !== 'true'" to="/login" class="drawer-nav-item" @click="closeMobileMenu">
             <span class="nav-text">登录</span>
           </router-link>
         </nav>
