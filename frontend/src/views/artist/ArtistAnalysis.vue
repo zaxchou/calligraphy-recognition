@@ -487,16 +487,11 @@ function renderRadarChart() {
   const dims = dimensionStats.value
   const labels = Object.keys(dims)
   const values = labels.map(l => Math.abs(dims[l].mean) * 100)
-  const colors = labels.map(l => {
-    const m = dims[l].mean
-    if (m > 0.05) return '#67c23a'
-    if (m < -0.05) return '#f56c6c'
-    return '#909399'
-  })
+  const maxVal = Math.max(...values, 10)
   chart.setOption({
     tooltip: { trigger: 'item' },
     radar: {
-      indicator: labels.map(l => ({ name: l, max: 50 })),
+      indicator: labels.map(l => ({ name: l, max: maxVal })),
       shape: 'polygon',
       splitArea: { areaStyle: { color: ['rgba(201,100,66,0.02)', 'rgba(201,100,66,0.05)', 'rgba(201,100,66,0.02)', 'rgba(201,100,66,0.05)'] } },
       axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },

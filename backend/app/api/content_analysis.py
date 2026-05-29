@@ -11,6 +11,7 @@ from datetime import datetime
 import os
 import json
 import re
+import math
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -3859,8 +3860,8 @@ async def get_dimension_stats(
     rows = cur.fetchall()
 
     # 从画家规则获取印章规则
-    from app.services.inscription_content_analyzer import _load_artist_rules, get_artist_display_name
-    artist_display = get_artist_display_name(artist) if artist and artist != "all" else ""
+    from app.services.inscription_content_analyzer import _load_artist_rules
+    artist_display = artist if artist and artist != "all" else ""
     rules = _load_artist_rules(artist_display)
     seal_rules = rules.get("seal_rules", {})
     life_stages = rules.get("life_stages", [])
@@ -3876,14 +3877,16 @@ async def get_dimension_stats(
     for row in rows:
         ca_json, pa_json, seal_content, period, h_cm, w_cm, mat_tags, insc_pct = row
 
-        # 文字维度：情感极性强度
+        # 文字维度：情感分数（VADER 归一化到 [-1, +1]）
         try:
             ca = json.loads(ca_json) if ca_json else {}
             sent = ca.get("sentiment", {})
-            intensity = sent.get("polarity_score", sent.get("intensity", 0)) or 0
-            polarity = sent.get("polarity", "neutral")
-            score = intensity if polarity == "positive" else (-intensity if polarity == "negative" else 0)
-            text_scores.append(score)
+            emotion_score = sent.get("emotion_score", 0) or 0
+            # VADER 归一化: raw / sqrt(raw^2 + alpha)
+            normalized = emotion_score / math.sqrt(emotion_score ** 2 + 8.0) if emotion_score else 0
+            text_scores.append(round(normalized, 3))
+        except:
+            text_scores.append(0)
         except:
             text_scores.append(0)
 
@@ -3934,12 +3937,14 @@ async def get_dimension_stats(
         else:
             period_scores.append(0)
 
-        # 空间维度
+        # 空间维度（基于覆盖率和重叠率）
         if pa_json:
             try:
                 pa = json.loads(pa_json)
-                inv = pa.get("invasive_score", 0) or 0
-                spatial_scores.append(inv)
+                coverage = pa.get("coverage_ratio", 0) or 0
+                overlap = pa.get("overlap_ratio", 0) or 0
+                # 覆盖率高=题跋占画面多→偏积极；重叠高→偏消极
+                spatial_scores.append(coverage * 2 - overlap)
             except:
                 spatial_scores.append(0)
         else:
