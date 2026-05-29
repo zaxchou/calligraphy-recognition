@@ -131,6 +131,7 @@
         </div>
         <p class="footer-text">{{ siteConfig.footer }}</p>
         <p class="footer-sub" v-if="siteConfig.author">作者 {{ siteConfig.author }}</p>
+        <p class="footer-sub"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">沪ICP备2026019654号-2</a></p>
       </div>
     </footer>
   </div>
