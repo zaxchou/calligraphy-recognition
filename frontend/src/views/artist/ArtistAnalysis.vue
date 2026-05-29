@@ -633,7 +633,7 @@ function renderTimelineChart() {
   chart.off('click')
   chart.on('click', (params) => {
     if (params.data?.id) {
-      const resolved = router.resolve({ name: 'TubiAnalysis', params: { id: params.data.id } })
+      const resolved = router.resolve({ name: 'TubiDetail', params: { id: params.data.id } })
       window.open(resolved.href, '_blank')
     }
   })
@@ -786,7 +786,7 @@ async function openThemeDialog(themeName) {
 }
 
 function openPaintingDetail(row) {
-  const resolved = router.resolve({ name: 'TubiAnalysis', params: { id: row.id } })
+  const resolved = router.resolve({ name: 'TubiDetail', params: { id: row.id } })
   window.open(resolved.href, '_blank')
 }
 
@@ -859,7 +859,7 @@ async function fetchArtistBirthYear() {
 function onRankingItemClick(item) {
   const id = item.id || item.db_id
   if (id) {
-    const resolved = router.resolve({ name: 'TubiAnalysis', params: { id } })
+    const resolved = router.resolve({ name: 'TubiDetail', params: { id } })
     window.open(resolved.href, '_blank')
   }
 }
