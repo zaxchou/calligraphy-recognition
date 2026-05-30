@@ -49,8 +49,14 @@ const routes = [
   {
     path: '/artist/:name/analysis',
     name: 'ArtistAnalysis',
-    component: () => import('../views/artist/ArtistAnalysis.vue'),
+    component: () => import('../views/artist/ArtistAnalysisSlides.vue'),
     meta: { title: '画家数据分析' }
+  },
+  {
+    path: '/artist/:name/analysis-legacy',
+    name: 'ArtistAnalysisLegacy',
+    component: () => import('../views/artist/ArtistAnalysis.vue'),
+    meta: { title: '画家数据分析（旧版）' }
   },
   {
     path: '/recognize',
@@ -251,7 +257,7 @@ router.beforeEach((to, _from, next) => {
 })
 
 router.beforeResolve(async (to, _from) => {
-  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistMap']
+  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistAnalysisLegacy', 'ArtistMap']
   if (artistRoutes.includes(to.name) && to.params.name) {
     const raw = to.params.name
     // 已缓存的 canonical 名 → 直接返回，不发起网络请求
