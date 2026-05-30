@@ -100,13 +100,27 @@ const slides = [
 
 function setChartRef(el, slideIdx, chartIdx) {
   const key = `${slideIdx}-${chartIdx}`
-  if (el) chartRefs[key] = el
+  if (el) {
+    chartRefs[key] = el
+  } else {
+    // DOM 被销毁，清理旧 echarts 实例
+    if (chartInstances[key]) {
+      chartInstances[key].dispose()
+      delete chartInstances[key]
+    }
+    delete chartRefs[key]
+  }
 }
 
 function getChart(key) {
-  if (chartInstances[key]) return chartInstances[key]
   const el = chartRefs[key]
   if (!el) return null
+  // 如果实例还在但 DOM 已换（key 相同但元素不同），先销毁
+  if (chartInstances[key] && chartInstances[key].getDom() !== el) {
+    chartInstances[key].dispose()
+    delete chartInstances[key]
+  }
+  if (chartInstances[key]) return chartInstances[key]
   const chart = echarts.init(el)
   chartInstances[key] = chart
   return chart
@@ -327,7 +341,31 @@ function renderDimension() {
 }
 
 function renderRanking() {
-  // 排行榜用 HTML 渲染，不用 echarts
+  if (!emotionRanking.value) return
+  const c0 = getChart('5-0')
+  if (c0) {
+    const neg = (emotionRanking.value.top_negative || []).slice(0, 10).reverse()
+    c0.setOption({
+      grid: { left: '30%', right: '10%', bottom: '5%', top: '5%' },
+      xAxis: { type: 'value', min: -1, max: 0, axisLabel: { formatter: v => v.toFixed(1) } },
+      yAxis: { type: 'category', data: neg.map(i => i.title), axisLabel: { fontSize: 11, width: 100, overflow: 'truncate' } },
+      series: [{ type: 'bar', data: neg.map(i => ({ value: i.emotion_score, itemStyle: { color: '#f56c6c' } })),
+        label: { show: true, position: 'left', formatter: p => p.value.toFixed(2), fontSize: 11 } }]
+    })
+    c0.resize()
+  }
+  const c1 = getChart('5-1')
+  if (c1) {
+    const pos = (emotionRanking.value.top_positive || []).slice(0, 10).reverse()
+    c1.setOption({
+      grid: { left: '30%', right: '10%', bottom: '5%', top: '5%' },
+      xAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: v => v.toFixed(1) } },
+      yAxis: { type: 'category', data: pos.map(i => i.title), axisLabel: { fontSize: 11, width: 100, overflow: 'truncate' } },
+      series: [{ type: 'bar', data: pos.map(i => ({ value: i.emotion_score, itemStyle: { color: '#67c23a' } })),
+        label: { show: true, position: 'right', formatter: p => '+' + p.value.toFixed(2), fontSize: 11 } }]
+    })
+    c1.resize()
+  }
 }
 
 function renderSpatial() {
@@ -393,16 +431,14 @@ async function goTo(idx) {
   currentSlide.value = idx
   await nextTick()
   const slide = slides[idx]
+  // 每次进入 slide 都加载数据（如果还没加载）
   if (!loadedSlides.has(idx)) {
     await slide.load()
     loadedSlides.add(idx)
-    await nextTick()
-    setTimeout(() => slide.render(), 100)
   }
-  // 重新渲染已有的图表（resize）
-  for (const [key, chart] of Object.entries(chartInstances)) {
-    if (key.startsWith(`${idx}-`)) chart.resize()
-  }
+  // DOM 每次切换都会重建，所以每次都要等 nextTick 后重新渲染
+  await nextTick()
+  setTimeout(() => slide.render(), 50)
   slidesRef.value?.focus()
 }
 
