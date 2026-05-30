@@ -16,15 +16,26 @@
           <span class="slide-tag">{{ slides[currentSlide]?.id }}</span>
         </div>
 
-        <!-- 标题区 -->
-        <div class="slide-head">
-          <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
-          <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
-          <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
-        </div>
-
-        <!-- 主内容区：图表 + 专家解说 -->
+        <!-- 主内容区：文字 30% + 图表 70% -->
         <div class="slide-main">
+          <!-- 文字区（30%）：标题 + 解说 + 提示 -->
+          <div class="slide-text">
+            <div class="slide-text-inner">
+              <div class="slide-text-head">
+                <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
+                <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
+                <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
+              </div>
+              <div class="slide-insight">
+                <div class="insight-mark">✦</div>
+                <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
+                <div class="insight-tip" v-if="slides[currentSlide]?.tip">
+                  <span class="tip-icon">💡</span> {{ slides[currentSlide]?.tip }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 图表区（70%） -->
           <div class="slide-charts" :class="slides[currentSlide]?.chartLayout || 'two-col'">
             <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
@@ -32,15 +43,6 @@
               <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
             </div>
           </div>
-
-          <!-- 专家解说区（30%） -->
-          <aside class="slide-insight">
-            <div class="insight-mark">✦</div>
-            <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
-            <div class="insight-tip" v-if="slides[currentSlide]?.tip">
-              <span class="tip-icon">💡</span> {{ slides[currentSlide]?.tip }}
-            </div>
-          </aside>
         </div>
       </div>
     </transition>
@@ -570,24 +572,53 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
   text-transform: uppercase; font-family: 'Courier Prime', monospace;
 }
 
-.slide-head { margin-bottom: 3vh; }
-.slide-num {
-  font-family: 'Playfair Display', 'Noto Serif SC', serif;
-  font-size: 6vw; font-weight: 700; color: #b8b0a4; opacity: 0.3;
-  line-height: 1; display: block; margin-bottom: -1.5vh;
-}
-.slide-title {
-  font-family: 'Playfair Display', 'Noto Serif SC', serif;
-  font-size: 2.8vw; font-weight: 600; color: #1a1a1a;
-  margin: 0; line-height: 1.2;
-}
-.slide-lead {
-  font-size: 1vw; color: #8a8178; margin: 0.8vh 0 0;
-  max-width: 60vw; line-height: 1.6;
-}
+/* Charts + Insight 布局：上下两行 */
+.slide-main { flex: 1; display: flex; flex-direction: column; gap: 1.5vh; min-height: 0; }
 
-/* Charts + Insight 布局 */
-.slide-main { flex: 1; display: flex; gap: 2vw; min-height: 0; }
+/* 文字区（上 30%） */
+.slide-text {
+  flex: 3; min-height: 0; overflow: hidden;
+  display: flex; align-items: stretch;
+}
+.slide-text-inner {
+  width: 100%; display: flex; gap: 2vw;
+  background: rgba(255,255,255,0.35); border: 1px solid #d4cec4;
+  border-radius: 12px; padding: 1.5vw 2vw;
+  border-left: 3px solid #c96442;
+}
+.slide-text-head { flex: 0 0 auto; min-width: 180px; }
+.slide-text-head .slide-num {
+  font-family: 'Playfair Display', 'Noto Serif SC', serif;
+  font-size: 4vw; font-weight: 700; color: #b8b0a4; opacity: 0.3;
+  line-height: 1; display: block; margin-bottom: -0.8vh;
+}
+.slide-text-head .slide-title {
+  font-family: 'Playfair Display', 'Noto Serif SC', serif;
+  font-size: 1.8vw; font-weight: 600; color: #1a1a1a; margin: 0; line-height: 1.2;
+}
+.slide-text-head .slide-lead {
+  font-size: 0.8vw; color: #8a8178; margin: 0.4vh 0 0; line-height: 1.5;
+}
+.slide-insight {
+  flex: 1; display: flex; flex-direction: column; min-width: 0;
+  overflow-y: auto;
+}
+.insight-mark {
+  font-size: 1.2vw; color: #c96442; margin-bottom: 0.5vh;
+  font-family: 'Playfair Display', serif;
+}
+.insight-body {
+  font-size: 0.8vw; line-height: 1.75; color: #3a3a3a; flex: 1;
+}
+.insight-body :deep(p) { margin: 0 0 0.6em; }
+.insight-body :deep(strong) { color: #1a1a1a; font-weight: 600; }
+.insight-tip {
+  margin-top: auto; padding-top: 0.6vh; border-top: 1px dashed #d4cec4;
+  font-size: 0.7vw; color: #8a8178; line-height: 1.5;
+}
+.tip-icon { margin-right: 4px; }
+
+/* 图表区（下 70%） */
 .slide-charts { flex: 7; display: grid; gap: 1.5vw; min-height: 0; }
 .slide-charts.two-col { grid-template-columns: 1fr 1fr; }
 .chart-card {
@@ -597,32 +628,9 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
 .chart-label {
   font-family: 'Inter', 'Noto Sans SC', sans-serif;
   font-size: 0.8vw; font-weight: 600; color: #5a5a5a;
-  margin: 0 0 0.8vh; letter-spacing: 0.5px;
+  margin: 0 0 0.6vh; letter-spacing: 0.5px;
 }
-.chart-area { flex: 1; min-height: 200px; }
-
-/* 专家解说区 */
-.slide-insight {
-  flex: 3; display: flex; flex-direction: column;
-  background: rgba(255,255,255,0.35); border: 1px solid #d4cec4;
-  border-radius: 12px; padding: 1.5vw;
-  border-left: 3px solid #c96442;
-}
-.insight-mark {
-  font-size: 1.4vw; color: #c96442; margin-bottom: 0.8vh;
-  font-family: 'Playfair Display', serif;
-}
-.insight-body {
-  font-size: 0.85vw; line-height: 1.8; color: #3a3a3a;
-  flex: 1;
-}
-.insight-body :deep(p) { margin: 0 0 0.8em; }
-.insight-body :deep(strong) { color: #1a1a1a; font-weight: 600; }
-.insight-tip {
-  margin-top: auto; padding-top: 1vh; border-top: 1px dashed #d4cec4;
-  font-size: 0.75vw; color: #8a8178; line-height: 1.6;
-}
-.tip-icon { margin-right: 4px; }
+.chart-area { flex: 1; min-height: 180px; }
 
 /* 右侧导航点 */
 .nav-dots {
