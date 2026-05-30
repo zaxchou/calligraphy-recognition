@@ -336,7 +336,7 @@ function renderSentiment() {
     c1.setOption({
       tooltip: { trigger: 'item', formatter: p => {
         if (p.seriesName === '趋势') return `趋势: ${(p.value[1] * 100).toFixed(0)}%`
-        return `${p.value[0]}年 · ${p.seriesName}\n情感: ${p.value[1] > 0 ? '+' : ''}${(p.value[1] * 100).toFixed(0)}%`
+        return `${Math.round(p.value[0])}年 · ${p.seriesName}\n情感: ${p.value[1] > 0 ? '+' : ''}${(p.value[1] * 100).toFixed(0)}%`
       }},
       legend: { show: false },
       grid: { left: '6%', right: '4%', bottom: '6%', top: '4%', containLabel: true },
