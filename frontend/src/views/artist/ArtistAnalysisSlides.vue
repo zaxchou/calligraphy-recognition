@@ -21,27 +21,8 @@
           </div>
         </div>
 
-        <!-- ═══ Layout: hero — 大数字 + 单图 + 解说 ═══ -->
-        <div v-if="slides[currentSlide]?.layout === 'hero'" class="hero-layout">
-          <div class="hero-left">
-            <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
-            <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
-            <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
-            <div class="hero-insight" v-html="slides[currentSlide]?.insight || ''"></div>
-            <div class="insight-tip" v-if="slides[currentSlide]?.tip">
-              💡 {{ slides[currentSlide]?.tip }}
-            </div>
-          </div>
-          <div class="hero-right">
-            <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
-              <h3 class="chart-label">{{ chart.title }}</h3>
-              <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
-            </div>
-          </div>
-        </div>
-
         <!-- ═══ Layout: split — 左文字 + 右图表 ═══ -->
-        <div v-else-if="slides[currentSlide]?.layout === 'split'" class="split-layout">
+        <div v-if="slides[currentSlide]?.layout === 'split'" class="split-layout">
           <div class="split-left">
             <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
             <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
@@ -60,7 +41,7 @@
         </div>
 
         <!-- ═══ Layout: wide — 上标题解说 + 下全宽图表 ═══ -->
-        <div v-else-if="slides[currentSlide]?.layout === 'wide'" class="wide-layout">
+        <div v-else class="wide-layout">
           <div class="wide-top">
             <div class="wide-head">
               <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
@@ -78,51 +59,6 @@
             <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
               <h3 class="chart-label">{{ chart.title }}</h3>
               <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ═══ Layout: spotlight — 全宽图表 + 浮动解说卡 ═══ -->
-        <div v-else-if="slides[currentSlide]?.layout === 'spotlight'" class="spotlight-layout">
-          <div class="spotlight-head">
-            <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
-            <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
-            <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
-          </div>
-          <div class="spotlight-body">
-            <div class="spotlight-charts">
-              <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
-                <h3 class="chart-label">{{ chart.title }}</h3>
-                <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
-              </div>
-            </div>
-            <div class="spotlight-card">
-              <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
-              <div class="insight-tip" v-if="slides[currentSlide]?.tip">
-                💡 {{ slides[currentSlide]?.tip }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ═══ Layout: mosaic — 2x2 网格 ═══ -->
-        <div v-else class="mosaic-layout">
-          <div class="mosaic-head">
-            <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
-            <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
-          </div>
-          <div class="mosaic-body">
-            <div class="mosaic-grid">
-              <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
-                <h3 class="chart-label">{{ chart.title }}</h3>
-                <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
-              </div>
-            </div>
-            <div class="mosaic-side">
-              <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
-              <div class="insight-tip" v-if="slides[currentSlide]?.tip">
-                💡 {{ slides[currentSlide]?.tip }}
-              </div>
             </div>
           </div>
         </div>
@@ -200,7 +136,7 @@ echarts.registerTheme('molin', {
 
 const slides = [
   { id: 'overview', title: '概览', subtitle: '该画家题跋的整体画像',
-    layout: 'hero',
+    layout: 'split',
     charts: [{ title: '分期作品分布' }, { title: '生命阶段情感偏移' }],
     insight: `<p>看一个画家的题跋，首先要看他的<strong>创作周期</strong>。饼图告诉我们每个时期留下了多少作品——作品越多，样本越可靠。</p>
 <p>柱状图是关键：<strong>情感偏移值</strong>反映画家在不同时期的心境基调。正值偏乐观，负值偏沉重。</p>`,
@@ -208,8 +144,8 @@ const slides = [
     load: loadOverview, render: renderOverview },
 
   { id: 'sentiment', title: '情感分析', subtitle: '画作情绪的全景扫描',
-    layout: 'spotlight',
-    charts: [{ title: '情绪时间线' }, { title: '情感极性分布' }],
+    layout: 'wide',
+    charts: [{ title: '情感极性分布' }, { title: '情绪时间线' }],
     insight: `<p>每一幅画按创作年份排列，纵轴是<strong>VADER 综合情感分</strong>。虚线是趋势线：<strong>趋势线向下</strong>说明越画越沉重；平稳说明情感基调始终如一。</p>
 <p>关注散点图中的"离群点"——情感特别极端的作品往往对应画家人生中的重大转折。</p>`,
     tip: '散点图中离群最远的点，值得点开看原作。',
@@ -231,7 +167,7 @@ const slides = [
     load: loadStyle, render: renderStyle },
 
   { id: 'dimension', title: '印章与维度', subtitle: '六个维度的情感贡献',
-    layout: 'split',
+    layout: 'wide',
     charts: [{ title: '引擎维度雷达图' }, { title: '印章情感规则' }],
     insight: `<p>引擎从<strong>六个维度</strong>综合评判：文字、主题、印章、时期、空间、尺寸。雷达图展示每个维度的贡献强度。</p>
 <p>右边列出<strong>非中性印章</strong>的得分。印章是画家的"签名"——"苦李"得 -1.0（自嘲），"卖画不为官"得 +1.0（傲骨）。</p>`,
@@ -239,14 +175,14 @@ const slides = [
     load: loadDimension, render: renderDimension },
 
   { id: 'ranking', title: '情感排行', subtitle: '情感最极端的作品——点击查看详情',
-    layout: 'wide',
+    layout: 'split',
     charts: [{ title: '最消极 Top 10' }, { title: '最积极 Top 10' }],
     insight: `<p>左边是<strong>情感最沉重</strong>的 10 幅，右边是<strong>最积极乐观</strong>的 10 幅。点击可跳转详情页。消极作品常见"泣""泪""困"等字眼；积极作品常见"春""乐""寿"。</p>`,
     tip: '对比左右两列——情感弹性越大，内心世界越丰富。',
     load: loadRanking, render: renderRanking },
 
   { id: 'spatial', title: '空间与形式', subtitle: '画幅大小与题跋策略',
-    layout: 'mosaic',
+    layout: 'wide',
     charts: [{ title: '画幅 vs 题跋占比' }, { title: '布局形式统计' }],
     insight: `<p>散点图探索：<strong>大画和小画的题跋策略是否不同？</strong>水平分布说明无论大小画，题跋占比始终如一。</p>
 <p>布局形式反映画家的自信程度——边角式是传统，穿插式是创新。</p>`,
@@ -254,7 +190,7 @@ const slides = [
     load: loadSpatial, render: renderSpatial },
 
   { id: 'material', title: '画材与尺寸', subtitle: '画了什么、用的多大的纸',
-    layout: 'spotlight',
+    layout: 'split',
     charts: [{ title: '画材标签统计' }, { title: '作品尺寸分布' }],
     insight: `<p>题材偏好本身就是情感表达——竹子象征坚韧，兰花象征高洁。尺幅选择反映创作场景：小幅册页随手抒发，大幅中堂郑重其事。</p>`,
     tip: '花鸟画家晚期突然画"枯木""残荷"，往往是心境变化的信号。',
@@ -357,9 +293,19 @@ function renderOverview() {
 
 function renderSentiment() {
   const s = statsData.value; if (!s) return
-  // chart 1-0: 情绪时间线（大图）
   const c0 = getChart('1-0')
-  if (c0 && emotionTimeline.value?.points?.length) {
+  if (c0) {
+    const sentDist = s.sentiment_distribution || []
+    const totals = {}; sentDist.forEach(i => { const l = i.polarity === 'positive' ? '积极' : i.polarity === 'negative' ? '消极' : '中性'; totals[l] = (totals[l] || 0) + i.count })
+    c0.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['35%', '65%'],
+        data: Object.entries(totals).map(([n, v]) => ({ name: n, value: v, itemStyle: { color: n === '积极' ? PAL.pos : n === '消极' ? PAL.neg : PAL.neu } })),
+        label: { show: true, formatter: '{b}\n{d}%', fontSize: 12, color: PAL.fg2 } }]
+    }); c0.resize()
+  }
+  const c1 = getChart('1-1')
+  if (c1 && emotionTimeline.value?.points?.length) {
     const { points, trend } = emotionTimeline.value
     const groups = {}; points.forEach(p => { const per = p.period_phase || '未分期'; if (!groups[per]) groups[per] = []; groups[per].push(p) })
     const series = Object.entries(groups).map(([per, pts]) => ({
@@ -368,24 +314,12 @@ function renderSentiment() {
       data: pts.map(p => [p.year, p.emotion_score])
     }))
     if (trend?.length >= 2) series.push({ name: '趋势', type: 'line', showSymbol: false, lineStyle: { color: PAL.c1, width: 2, type: 'dashed' }, data: trend.map(t => [t.year, t.emotion_score]) })
-    c0.setOption({
+    c1.setOption({
       tooltip: { trigger: 'item' }, legend: { bottom: 0, textStyle: { color: PAL.fg2 } },
       grid: baseGrid(),
       xAxis: { type: 'value', name: '年份', axisLabel: { color: PAL.fg2 }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.2 } } },
       yAxis: { type: 'value', name: '情感', min: -1, max: 1, axisLabel: { color: PAL.fg2, formatter: v => (v > 0 ? '+' : '') + (v * 100).toFixed(0) + '%' }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.2 } } },
       series
-    }); c0.resize()
-  }
-  // chart 1-1: 情感极性分布（小图）
-  const c1 = getChart('1-1')
-  if (c1) {
-    const sentDist = s.sentiment_distribution || []
-    const totals = {}; sentDist.forEach(i => { const l = i.polarity === 'positive' ? '积极' : i.polarity === 'negative' ? '消极' : '中性'; totals[l] = (totals[l] || 0) + i.count })
-    c1.setOption({
-      tooltip: { trigger: 'item' },
-      series: [{ type: 'pie', radius: ['35%', '65%'],
-        data: Object.entries(totals).map(([n, v]) => ({ name: n, value: v, itemStyle: { color: n === '积极' ? PAL.pos : n === '消极' ? PAL.neg : PAL.neu } })),
-        label: { show: true, formatter: '{b}\n{d}%', fontSize: 12, color: PAL.fg2 } }]
     }); c1.resize()
   }
 }
@@ -705,19 +639,6 @@ onUnmounted(() => {
 }
 .chart-area { flex: 1; min-height: 120px; }
 
-/* ═══ Layout: hero — 左标题解说 + 右双图（均分） ═══ */
-.hero-layout { flex: 1; display: flex; gap: 2vw; min-height: 0; }
-.hero-left {
-  flex: 4; display: flex; flex-direction: column; justify-content: center;
-  padding-right: 1vw;
-}
-.hero-left .slide-num { margin-bottom: -0.5vh; }
-.hero-left .slide-title { font-size: 2vw; margin-top: 0.3vh; }
-.hero-insight { margin-top: 1.5vh; font-size: 1vw; line-height: 1.75; color: #3a3a3a; flex: 1; overflow-y: auto; }
-.hero-insight :deep(p) { margin: 0 0 0.5em; }
-.hero-insight :deep(strong) { color: #1a1a1a; font-weight: 600; }
-.hero-right { flex: 6; display: flex; flex-direction: column; gap: 1vh; min-height: 0; }
-
 /* ═══ Layout: split — 左文字 + 右双图 ═══ */
 .split-layout { flex: 1; display: flex; gap: 2vw; min-height: 0; }
 .split-left {
@@ -743,33 +664,6 @@ onUnmounted(() => {
 .wide-insight :deep(p) { margin: 0 0 0.4em; }
 .wide-insight :deep(strong) { color: #1a1a1a; font-weight: 600; }
 .wide-charts { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; min-height: 0; }
-
-/* ═══ Layout: spotlight — 全宽图 + 右侧浮动解说卡 ═══ */
-.spotlight-layout { flex: 1; display: flex; flex-direction: column; gap: 0.5vh; min-height: 0; }
-.spotlight-head { flex-shrink: 0; }
-.spotlight-head .slide-num { font-size: 2vw; margin-bottom: -0.3vh; display: inline; margin-right: 0.4vw; }
-.spotlight-head .slide-title { display: inline; font-size: 1.5vw; }
-.spotlight-body { flex: 1; display: flex; gap: 1vw; min-height: 0; }
-.spotlight-charts { flex: 1; display: flex; flex-direction: column; gap: 0.8vh; min-height: 0; }
-.spotlight-card {
-  flex: 0 0 260px; background: rgba(255,255,255,0.45); border: 1px solid #d4cec4;
-  border-radius: 8px; padding: 1vw; border-left: 3px solid #c96442;
-  display: flex; flex-direction: column; overflow-y: auto;
-}
-
-/* ═══ Layout: mosaic — 左网格 + 右解说 ═══ */
-.mosaic-layout { flex: 1; display: flex; flex-direction: column; gap: 0.5vh; min-height: 0; }
-.mosaic-head { flex-shrink: 0; }
-.mosaic-head .slide-num { font-size: 2vw; margin-bottom: -0.3vh; display: inline; margin-right: 0.4vw; }
-.mosaic-head .slide-title { display: inline; font-size: 1.5vw; }
-.mosaic-body { flex: 1; display: flex; gap: 1vw; min-height: 0; }
-.mosaic-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.8vw; min-height: 0; }
-.mosaic-side {
-  flex: 0 0 230px; display: flex; flex-direction: column; justify-content: center;
-  font-size: 0.95vw; line-height: 1.7; color: #3a3a3a; overflow-y: auto;
-}
-.mosaic-side :deep(p) { margin: 0 0 0.5em; }
-.mosaic-side :deep(strong) { color: #1a1a1a; font-weight: 600; }
 
 /* ── 导航 ── */
 .nav-dots {
