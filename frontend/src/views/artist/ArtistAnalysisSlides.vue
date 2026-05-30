@@ -703,7 +703,7 @@ onUnmounted(() => {
   font-size: 0.75vw; font-weight: 600; color: #5a5a5a;
   margin: 0 0 0.3vh; letter-spacing: 0.5px; flex-shrink: 0;
 }
-.chart-area { flex: 1; min-height: 0; }
+.chart-area { flex: 1; min-height: 120px; }
 
 /* ═══ Layout: hero — 左标题解说 + 右双图（均分） ═══ */
 .hero-layout { flex: 1; display: flex; gap: 2vw; min-height: 0; }
