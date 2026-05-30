@@ -41,7 +41,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts/core'
 import { PieChart, BarChart, ScatterChart, RadarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent } from 'echarts/components'
@@ -52,6 +52,7 @@ import { artistRulesApi } from '@/api'
 echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
 const route = useRoute()
+const router = useRouter()
 const artistName = route.params.name
 const API = import.meta.env.VITE_API_BASE || '/api/v1'
 
@@ -66,6 +67,7 @@ const artistRules = ref(null)
 const dimensionStats = ref(null)
 const emotionRanking = ref(null)
 const emotionTimeline = ref(null)
+const sizeStatsData = ref(null)
 const loadedSlides = new Set()
 
 const PERIOD_COLORS = { '早期': '#c96442', '中期': '#547a8c', '晚期': '#4a4a5a', '未分期': '#ccc' }
@@ -183,7 +185,15 @@ async function loadRanking() {
 }
 
 async function loadSpatial() { await fetchStats() }
-async function loadMaterial() { await fetchStats() }
+async function loadMaterial() {
+  await fetchStats()
+  if (!sizeStatsData.value) {
+    try {
+      const res = await fetch(`${API}/content-analysis/size-stats?artist=${encodeURIComponent(artistName)}`)
+      sizeStatsData.value = await res.json()
+    } catch {}
+  }
+}
 
 // ── 渲染 ──
 function renderOverview() {
@@ -337,14 +347,34 @@ function renderDimension() {
     })
     c0.resize()
   }
-  // 印章规则用 HTML 渲染（不用 echarts），在 chart area 外处理
+  const c1 = getChart('4-1')
+  if (c1 && artistRules.value?.seal_rules) {
+    const rules = artistRules.value.seal_rules
+    const entries = Object.entries(rules).filter(([, r]) => r.score !== 0).sort((a, b) => a[1].score - b[1].score)
+    if (entries.length) {
+      c1.setOption({
+        grid: { left: '25%', right: '10%', bottom: '5%', top: '5%' },
+        xAxis: { type: 'value', min: -1, max: 1, axisLabel: { formatter: v => (v > 0 ? '+' : '') + v.toFixed(1) } },
+        yAxis: { type: 'category', data: entries.map(([n]) => n).reverse(), axisLabel: { fontSize: 12 } },
+        series: [{ type: 'bar', data: entries.map(([, r]) => ({
+          value: r.score,
+          itemStyle: { color: r.score > 0 ? '#67c23a' : '#f56c6c' }
+        })).reverse(),
+          label: { show: true, position: 'right', formatter: p => (p.value > 0 ? '+' : '') + p.value.toFixed(1), fontSize: 11 } }]
+      })
+      c1.resize()
+    }
+  }
 }
 
 function renderRanking() {
   if (!emotionRanking.value) return
+  const negItems = (emotionRanking.value.top_negative || []).slice(0, 10)
+  const posItems = (emotionRanking.value.top_positive || []).slice(0, 10)
+
   const c0 = getChart('5-0')
-  if (c0) {
-    const neg = (emotionRanking.value.top_negative || []).slice(0, 10).reverse()
+  if (c0 && negItems.length) {
+    const neg = [...negItems].reverse()
     c0.setOption({
       grid: { left: '30%', right: '10%', bottom: '5%', top: '5%' },
       xAxis: { type: 'value', min: -1, max: 0, axisLabel: { formatter: v => v.toFixed(1) } },
@@ -353,10 +383,16 @@ function renderRanking() {
         label: { show: true, position: 'left', formatter: p => p.value.toFixed(2), fontSize: 11 } }]
     })
     c0.resize()
+    c0.off('click')
+    c0.on('click', (params) => {
+      const item = neg[params.dataIndex]
+      if (item?.id) window.open(router.resolve({ name: 'TubiDetail', params: { id: item.id } }).href, '_blank')
+    })
   }
+
   const c1 = getChart('5-1')
-  if (c1) {
-    const pos = (emotionRanking.value.top_positive || []).slice(0, 10).reverse()
+  if (c1 && posItems.length) {
+    const pos = [...posItems].reverse()
     c1.setOption({
       grid: { left: '30%', right: '10%', bottom: '5%', top: '5%' },
       xAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: v => v.toFixed(1) } },
@@ -365,6 +401,11 @@ function renderRanking() {
         label: { show: true, position: 'right', formatter: p => '+' + p.value.toFixed(2), fontSize: 11 } }]
     })
     c1.resize()
+    c1.off('click')
+    c1.on('click', (params) => {
+      const item = pos[params.dataIndex]
+      if (item?.id) window.open(router.resolve({ name: 'TubiDetail', params: { id: item.id } }).href, '_blank')
+    })
   }
 }
 
@@ -377,7 +418,11 @@ function renderSpatial() {
     const groups = {}
     corrData.forEach(d => { const p = d.period || '未分期'; if (!groups[p]) groups[p] = []; groups[p].push(d) })
     c0.setOption({
-      tooltip: { formatter: p => `${p.data?.title || ''}\n高${p.value[0]}cm\n题跋${p.value[1].toFixed(1)}%` },
+      tooltip: { formatter: p => {
+        if (p.seriesType === 'line') return `趋势: ${p.value[1]?.toFixed(2) || ''}`
+        const d = p.data || {}
+        return `${d.title || ''}\n高${d.height || p.value?.[0] || ''}cm\n题跋${(d.insc || p.value?.[1] || 0).toFixed(1)}%`
+      } },
       legend: { bottom: 0 },
       grid: { left: '10%', right: '5%', bottom: '14%', top: '5%', containLabel: true },
       xAxis: { type: 'value', name: '画幅高度 (cm)' },
@@ -419,8 +464,18 @@ function renderMaterial() {
   }
   const c1 = getChart('7-1')
   if (c1) {
-    // 尺寸数据需要从 size-stats 获取，先用 placeholder
-    c1.setOption({ title: { text: '尺寸数据加载中...', left: 'center', top: 'center', textStyle: { color: '#999' } } })
+    const sizeDist = sizeStatsData.value?.size_distribution || []
+    if (sizeDist.length) {
+      c1.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c}幅 ({d}%)' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: sizeDist.map(item => ({
+          name: item.category, value: item.count,
+          itemStyle: { color: item.category === '小幅' ? '#a65d3f' : item.category === '中幅' ? '#547a8c' : '#8b6f8e' }
+        })), label: { show: true, formatter: '{b}\n{d}%' } }]
+      })
+    } else {
+      c1.setOption({ title: { text: '暂无尺寸数据', left: 'center', top: 'center', textStyle: { color: '#999' } } })
+    }
     c1.resize()
   }
 }
@@ -451,7 +506,9 @@ function onKey(e) {
 }
 
 function handleResize() {
-  for (const chart of Object.values(chartInstances)) chart.resize()
+  for (const [key, chart] of Object.entries(chartInstances)) {
+    try { chart.resize() } catch { delete chartInstances[key] }
+  }
 }
 
 onMounted(() => {
