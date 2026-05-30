@@ -39,7 +39,7 @@
 
       <!-- 对比条 -->
       <div class="comparison-bars" v-if="leftStats && rightStats">
-        <TubiComparisonBar
+        <TibaComparisonBar
           v-for="item in visibleComparisonItems"
           :key="item.label"
           :label="item.label"
@@ -55,7 +55,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import TubiComparisonBar from './TubiComparisonBar.vue'
+import TibaComparisonBar from './TibaComparisonBar.vue'
 
 const props = defineProps({
   historyList: {

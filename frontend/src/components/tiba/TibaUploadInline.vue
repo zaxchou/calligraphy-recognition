@@ -43,7 +43,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
-import { tubiApi, artworkApi } from '../../api'
+import { tibaApi, artworkApi } from '../../api'
 import { useUploadStore, ITEM_STATUSES } from '../../stores/uploadStore'
 
 const UploadPhaseIdle = defineAsyncComponent(() => import('./UploadPhaseIdle.vue'))
@@ -96,7 +96,7 @@ async function startBatchUpload() {
           const data = await artworkApi.upload(props.libraryId, item.rawFile, {})
           result = { success: true, data }
         } else {
-          result = await tubiApi.uploadImage(item.rawFile, {})
+          result = await tibaApi.uploadImage(item.rawFile, {})
         }
         if (result.success) markUploaded(item.id, result.data.id || result.data?.image_id, result.data?.url)
         else markError(item.id, 'UPLOAD_FAILED', result.detail || '上传失败')
@@ -124,7 +124,7 @@ async function retryUploadItem(item) {
       const data = await artworkApi.upload(props.libraryId, item.rawFile, {})
       result = { success: true, data }
     } else {
-      result = await tubiApi.uploadImage(item.rawFile, {})
+      result = await tibaApi.uploadImage(item.rawFile, {})
     }
     if (result.success) markUploaded(item.id, result.data.id || result.data?.image_id, result.data?.url)
     else markError(item.id, 'UPLOAD_FAILED', result.detail || '上传失败')

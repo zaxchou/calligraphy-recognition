@@ -231,7 +231,7 @@ async function executeBatch() {
         const artworks = data?.artworks || data?.items || []
         const imageIds = artworks.filter(a => a.image_id).map(a => a.image_id)
         if (imageIds.length === 0) continue
-        endpoint = '/tubi/batch-auto-analyze'
+        endpoint = '/tiba/batch-auto-analyze'
         body = JSON.stringify({ image_ids: imageIds, mode: 'analyze' })
       } else if (batchMode.value === 'analyze') {
         endpoint = `/content-analysis/batch-reanalyze?library_id=${libId}&incremental=false`

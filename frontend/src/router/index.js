@@ -77,25 +77,25 @@ const routes = [
     meta: { title: '碑帖详情' }
   },
   {
-    path: '/tubi',
-    name: 'TubiAnalysis',
-    component: () => import('../views/TubiAnalysis.vue'),
+    path: '/tiba',
+    name: 'TibaAnalysis',
+    component: () => import('../views/TibaAnalysis.vue'),
     meta: { title: '题跋分析' }
   },
   {
-    path: '/tubi/:id',
-    name: 'TubiDetail',
-    component: () => import('../views/TubiAnalysis.vue'),
+    path: '/tiba/:id',
+    name: 'TibaDetail',
+    component: () => import('../views/TibaAnalysis.vue'),
     meta: { title: '题跋分析' }
   },
   {
-    path: '/tubi/list',
-    name: 'TubiList',
-    component: () => import('../views/TubiList.vue'),
+    path: '/tiba/list',
+    name: 'TibaList',
+    component: () => import('../views/TibaList.vue'),
     meta: { title: '作品库' }
   },
   {
-    path: '/tubi/dimensions',
+    path: '/tiba/dimensions',
     name: 'DimensionInput',
     component: () => import('../views/DimensionInput.vue'),
     meta: { title: '尺寸录入' }
@@ -250,7 +250,7 @@ const nameCache = new Map()
 
 router.beforeEach((to, _from, next) => {
   if (to.path === '/' && siteConfig.readonly === 'true') {
-    next('/tubi')
+    next('/tiba')
   } else {
     next()
   }

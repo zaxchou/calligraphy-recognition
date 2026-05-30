@@ -16,8 +16,8 @@
       <div class="nav-section">
         <div
           class="nav-item"
-          :class="{ active: currentRoute === 'tubi' }"
-          @click="navigateTo('tubi')"
+          :class="{ active: currentRoute === 'tiba' }"
+          @click="navigateTo('tiba')"
         >
           <el-icon size="18"><HomeFilled /></el-icon>
           <span class="nav-label">概览</span>
@@ -36,8 +36,8 @@
         </div>
         <div
           class="nav-item"
-          :class="{ active: currentRoute === 'tubi-detail' }"
-          @click="navigateTo('tubi-detail')"
+          :class="{ active: currentRoute === 'tiba-detail' }"
+          @click="navigateTo('tiba-detail')"
         >
           <el-icon size="18"><ChatDotSquare /></el-icon>
           <span class="nav-label">题跋识别</span>
@@ -108,8 +108,8 @@ const route = useRoute()
 const router = useRouter()
 
 const currentRoute = computed(() => {
-  if (route.path === '/tubi' || route.path === '/') return 'tubi'
-  if (route.path.startsWith('/tubi/')) return 'tubi-detail'
+  if (route.path === '/tiba' || route.path === '/') return 'tiba'
+  if (route.path.startsWith('/tiba/')) return 'tiba-detail'
   return ''
 })
 
@@ -124,9 +124,9 @@ const userAvatar = computed(() => {
 })
 
 function navigateTo(path) {
-  if (path === 'tubi') {
-    router.push('/tubi')
-  } else if (path === 'tubi-detail') {
+  if (path === 'tiba') {
+    router.push('/tiba')
+  } else if (path === 'tiba-detail') {
     // 需要有当前作品才能进入详情页
     ElMessage.info('请先选择一幅作品查看详情')
   }

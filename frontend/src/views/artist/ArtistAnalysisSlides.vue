@@ -449,7 +449,7 @@ function renderRanking() {
       series: [{ type: 'bar', data: neg.map(i => ({ value: i.emotion_score, itemStyle: { color: PAL.neg, borderRadius: [0, 3, 3, 0] } })),
         label: { show: true, position: 'left', formatter: p => p.value.toFixed(2), fontSize: 10, color: PAL.fg2 } }]
     }); c0.resize(); c0.off('click')
-    c0.on('click', p => { const item = neg[p.dataIndex]; if (item?.id) window.open(router.resolve({ name: 'TubiDetail', params: { id: item.id } }).href, '_blank') })
+    c0.on('click', p => { const item = neg[p.dataIndex]; if (item?.id) window.open(router.resolve({ name: 'TibaDetail', params: { id: item.id } }).href, '_blank') })
   }
   const c1 = getChart('5-1')
   if (c1 && posItems.length) {
@@ -461,7 +461,7 @@ function renderRanking() {
       series: [{ type: 'bar', data: pos.map(i => ({ value: i.emotion_score, itemStyle: { color: PAL.pos, borderRadius: [0, 3, 3, 0] } })),
         label: { show: true, position: 'right', formatter: p => '+' + p.value.toFixed(2), fontSize: 10, color: PAL.fg2 } }]
     }); c1.resize(); c1.off('click')
-    c1.on('click', p => { const item = pos[p.dataIndex]; if (item?.id) window.open(router.resolve({ name: 'TubiDetail', params: { id: item.id } }).href, '_blank') })
+    c1.on('click', p => { const item = pos[p.dataIndex]; if (item?.id) window.open(router.resolve({ name: 'TibaDetail', params: { id: item.id } }).href, '_blank') })
   }
 }
 

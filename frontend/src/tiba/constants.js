@@ -1,6 +1,6 @@
 /**
- * TubiAnalysis 常量与配置数据
- * 从 TubiAnalysis.vue 中抽离的纯配置/常量定义
+ * TibaAnalysis 常量与配置数据
+ * 从 TibaAnalysis.vue 中抽离的纯配置/常量定义
  */
 
 // 画家信息配置（出生年份用于年龄↔年份互算）

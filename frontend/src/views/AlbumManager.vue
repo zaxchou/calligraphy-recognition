@@ -376,7 +376,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Plus, View, Delete, Collection, Picture, Top, Bottom, Search, Edit } from '@element-plus/icons-vue'
-import { tubiApi } from '../api'
+import { tibaApi } from '../api'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -503,8 +503,8 @@ async function loadData() {
   loading.value = true
   try {
     const [albumsRes, allResultsRes] = await Promise.all([
-      tubiApi.getAlbums(props.artist, props.libraryId),
-      tubiApi.getAllResults(0, 1000, props.artist, props.libraryId),
+      tibaApi.getAlbums(props.artist, props.libraryId),
+      tibaApi.getAllResults(0, 1000, props.artist, props.libraryId),
     ])
     if (albumsRes.success && allResultsRes.success) {
       allRecords.value = allResultsRes.data
@@ -560,7 +560,7 @@ async function createAlbum() {
     }
     console.log('发送创建册页请求，payload:', payload)
     console.log('payload.record_ids 类型:', typeof payload.record_ids, '是否数组:', Array.isArray(payload.record_ids))
-    await tubiApi.createAlbum(payload)
+    await tibaApi.createAlbum(payload)
     ElMessage.success('册页创建成功')
     showCreateDialog.value = false
     createForm.value = { name: '' }
@@ -583,7 +583,7 @@ async function createAlbum() {
 async function viewAlbum(name) {
   currentAlbum.value = albums.value.find(a => a.name === name)
   try {
-    const res = await tubiApi.getAlbum(name)
+    const res = await tibaApi.getAlbum(name)
     if (res.success) {
       currentAlbumItems.value = res.data.items
     }
@@ -600,7 +600,7 @@ async function confirmDeleteAlbum(name) {
       '删除册页',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
-    await tubiApi.deleteAlbum(name)
+    await tibaApi.deleteAlbum(name)
     ElMessage.success('册页已删除')
     await loadData()
   } catch (e) {
@@ -617,7 +617,7 @@ async function confirmRemoveItem(id) {
       '移出作品',
       { confirmButtonText: '确定移出', cancelButtonText: '取消', type: 'warning' }
     )
-    await tubiApi.removeItemFromAlbum(currentAlbum.value.name, id)
+    await tibaApi.removeItemFromAlbum(currentAlbum.value.name, id)
     ElMessage.success('作品已移出')
     await viewAlbum(currentAlbum.value.name)
     await loadData()
@@ -638,7 +638,7 @@ async function moveItem(filteredIndex, direction) {
   newOrder.splice(realIndex + direction, 0, movedItem)
   
   try {
-    await tubiApi.reorderAlbumItems(
+    await tibaApi.reorderAlbumItems(
       currentAlbum.value.name,
       newOrder.map(i => i.id)
     )
@@ -656,7 +656,7 @@ async function addItemsToAlbum() {
   }
   adding.value = true
   try {
-    await tubiApi.addItemsToAlbum(currentAlbum.value.name, addingRecordIds.value)
+    await tibaApi.addItemsToAlbum(currentAlbum.value.name, addingRecordIds.value)
     ElMessage.success('作品已添加')
     showAddItemsDialog.value = false
     addingRecordIds.value = []
@@ -691,7 +691,7 @@ async function saveAlbumName() {
   }
   renaming.value = true
   try {
-    await tubiApi.renameAlbum(currentAlbum.value.name, editingAlbumName.value.trim())
+    await tibaApi.renameAlbum(currentAlbum.value.name, editingAlbumName.value.trim())
     ElMessage.success('册页名称已更新')
     isEditingAlbum.value = false
     // 重新加载册页数据
@@ -732,7 +732,7 @@ async function saveItemTitle(item) {
   }
   savingItemTitle.value = true
   try {
-    await tubiApi.updateImageInfo(item.id, { title: newTitle })
+    await tibaApi.updateImageInfo(item.id, { title: newTitle })
     ElMessage.success('作品名称已更新')
     // 更新本地数据
     item.title = newTitle
@@ -775,7 +775,7 @@ async function saveItemYear(item) {
   savingYear.value = true
   try {
     const yearNum = newYear ? Number(newYear) : null
-    await tubiApi.updateImageInfo(item.id, { year: yearNum })
+    await tibaApi.updateImageInfo(item.id, { year: yearNum })
     ElMessage.success('年份已更新')
     item.year = yearNum
     const record = allRecords.value.find(r => r.id === item.id)
@@ -792,7 +792,7 @@ async function setItemPageRole(item, role) {
   // role 来自 el-select: "" = 正文, "cover" = 封面, etc.
   // 后端 "" → page_role=NULL（清除角色）
   try {
-    await tubiApi.updateImageInfo(item.id, { page_role: role || '' })
+    await tibaApi.updateImageInfo(item.id, { page_role: role || '' })
     ElMessage.success(role ? '角色已更新' : '已设为正文')
     item.page_role = role || null
     const record = allRecords.value.find(r => r.id === item.id)

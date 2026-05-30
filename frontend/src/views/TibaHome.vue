@@ -6,7 +6,7 @@
       <ArtistStatsCard ref="artistStatsCardRef" @artist-change="onHomeArtistChange" style="flex: 6.5;" />
 
       <!-- 右侧：题跋比排行榜模块 -->
-      <TubiRankingCard
+      <TibaRankingCard
         :history-list="filteredAnalyticsData"
         :get-display-age="getDisplayAge"
         :loading="analyticsLoading"
@@ -17,7 +17,7 @@
     </div>
 
     <!-- 作品库列表 -->
-    <TubiGallery
+    <TibaGallery
       :history-list="filteredHistoryList"
       :get-display-age="getDisplayAge"
       :get-item-all-tags="getItemAllTags"
@@ -35,7 +35,7 @@
     />
 
     <!-- 名家对比区域（始终显示全部作者数据） -->
-    <TubiComparison :history-list="analyticsData" />
+    <TibaComparison :history-list="analyticsData" />
 
     <!-- 趋势图卡片 -->
     <el-card shadow="hover" class="trend-card" v-if="filteredTrendChartData.length > 0">
@@ -61,14 +61,14 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { getDisplayAge } from '../tubi/utils'
-import ArtistStatsCard from '../tubi/ArtistStatsCard.vue'
-import TubiRankingCard from '../components/tubi/TubiRankingCard.vue'
-import TubiGallery from '../components/tubi/TubiGallery.vue'
-import TubiComparison from '../components/tubi/TubiComparison.vue'
+import { getDisplayAge } from '../tiba/utils'
+import ArtistStatsCard from '../tiba/ArtistStatsCard.vue'
+import TibaRankingCard from '../components/tiba/TibaRankingCard.vue'
+import TibaGallery from '../components/tiba/TibaGallery.vue'
+import TibaComparison from '../components/tiba/TibaComparison.vue'
 
-import { tubiApi } from '../api'
-import { getSharedAnalyticsData, setSharedAnalyticsData, clearSharedAnalyticsData } from '../tubi/sharedCache'
+import { tibaApi } from '../api'
+import { getSharedAnalyticsData, setSharedAnalyticsData, clearSharedAnalyticsData } from '../tiba/sharedCache'
 
 const props = defineProps({
   historyList: { type: Array, default: () => [] },
@@ -80,7 +80,7 @@ const props = defineProps({
 })
 
 // ── 分析图表数据（独立于 Gallery 翻页，一次拉全量） ──
-// 共享缓存：同 session 内 TubiHome + TubiAnalysis 共用同一份
+// 共享缓存：同 session 内 TibaHome + TibaAnalysis 共用同一份
 const analyticsData = ref([])
 const analyticsLoading = ref(true)
 
@@ -93,7 +93,7 @@ async function fetchAnalyticsData(force = false) {
   }
   analyticsLoading.value = true
   try {
-    const res = await tubiApi.getAllResults(0, 2000)
+    const res = await tibaApi.getAllResults(0, 2000)
     if (res.success) {
       const data = (res.data || []).map(item => ({
         ...item,
@@ -456,7 +456,7 @@ defineExpose({
 })
 </script>
 
-<style src="../tubi/TubiAnalysis.css" scoped></style>
+<style src="../tiba/TibaAnalysis.css" scoped></style>
 
 <style scoped>
 .trend-card .card-header {

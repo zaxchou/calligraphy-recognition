@@ -448,7 +448,7 @@ function closePanel() {
 
 function goToPainting(painting: Painting) {
   const imageId = painting.image_id || painting.id
-  const route = router.resolve(`/tubi/${imageId}`)
+  const route = router.resolve(`/tiba/${imageId}`)
   window.open(route.href, '_blank')
 }
 

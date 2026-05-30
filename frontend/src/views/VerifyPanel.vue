@@ -88,7 +88,7 @@
             <div class="image-overlay"><el-icon><ZoomIn /></el-icon><span>点击查看大图</span></div>
           </div>
         </div>
-        <TubiImageZoomDialog v-model="showFullImage" :image-url="fullImageUrl" title="查看大图" />
+        <TibaImageZoomDialog v-model="showFullImage" :image-url="fullImageUrl" title="查看大图" />
         <div class="verify-text-section">
           <div class="text-card">
             <div class="card-header">
@@ -245,8 +245,8 @@
 import { ref, computed, watch, nextTick, onMounted, inject } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position, WarningFilled } from '@element-plus/icons-vue'
-import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
-import { tubiApi, sealsApi } from '../api'
+import TibaImageZoomDialog from '../components/tiba/TibaImageZoomDialog.vue'
+import { tibaApi, sealsApi } from '../api'
 
 const props = defineProps({
   records: { type: Array, default: () => [] },
@@ -485,7 +485,7 @@ async function saveTitle() {
   savingTitle.value = true
   try {
     const imageId = currentRecord.value.image_id || currentRecord.value.id
-    await tubiApi.updateImageInfo(imageId, { title: newTitle })
+    await tibaApi.updateImageInfo(imageId, { title: newTitle })
     emit('update-title', { id: currentRecord.value.id, image_id: imageId, title: newTitle })
     ElMessage.success('作品名已更新')
   } catch (e) {

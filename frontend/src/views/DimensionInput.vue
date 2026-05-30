@@ -313,7 +313,7 @@ async function loadData() {
     if (artistParam) params.set('artist', artistParam)
     if (props.libraryId) params.set('library_id', String(props.libraryId))
     const queryStr = params.toString() ? `?${params.toString()}` : ''
-    const res = await fetch(`${API_BASE}/tubi/dimensions${queryStr}`)
+    const res = await fetch(`${API_BASE}/tiba/dimensions${queryStr}`)
     const data = await res.json()
     if (data.success) {
       allItems.value = data.data.items
@@ -441,7 +441,7 @@ async function saveSingle(id) {
   if (!widthChanged && !heightChanged) return
 
   try {
-    const res = await fetch(`${API_BASE}/tubi/dimensions/${id}`, {
+    const res = await fetch(`${API_BASE}/tiba/dimensions/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -485,7 +485,7 @@ async function saveAlbumDimension(albumName) {
 
   try {
     console.log('[saveAlbum] sending...', { album_name: albumName, height, width })
-    const res = await fetch(`${API_BASE}/tubi/dimensions/album/batch`, {
+    const res = await fetch(`${API_BASE}/tiba/dimensions/album/batch`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -538,7 +538,7 @@ async function syncOneToAlbum(item) {
   const width = item.artwork_width_cm
 
   try {
-    const res = await fetch(`${API_BASE}/tubi/dimensions/album/batch`, {
+    const res = await fetch(`${API_BASE}/tiba/dimensions/album/batch`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

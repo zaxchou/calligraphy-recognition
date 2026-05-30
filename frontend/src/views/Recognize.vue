@@ -1023,9 +1023,9 @@ onMounted(() => {
 }
 
 :deep(.el-button--success) {
-  background: var(--tubi-success, #5a8a4a);
+  background: var(--tiba-success, #5a8a4a);
   color: var(--pure-white);
-  border-color: var(--tubi-success, #5a8a4a);
+  border-color: var(--tiba-success, #5a8a4a);
 }
 
 :deep(.el-button--success:hover) {

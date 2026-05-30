@@ -122,7 +122,7 @@
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
 import { Loading, Document, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { tubiApi } from '../api'
+import { tibaApi } from '../api'
 import { WORD_CLOUD_COLORS, WORD_CLOUD_FONT } from './constants'
 
 // Props
@@ -177,7 +177,7 @@ function wordFontSize(value) {
 
 async function loadWordCloudArtists() {
   try {
-    const response = await tubiApi.getWordCloudArtists()
+    const response = await tibaApi.getWordCloudArtists()
     if (response?.success) {
       wordCloudArtists.value = response.data || []
       if (selectedAuthor.value !== 'all' && !wordCloudArtists.value.some(x => x.name === selectedAuthor.value)) {
@@ -195,7 +195,7 @@ async function loadWordCloudArtists() {
 async function generateWordCloud() {
   wordCloudLoading.value = true
   try {
-    const response = await tubiApi.getWordCloud({
+    const response = await tibaApi.getWordCloud({
       artist: selectedAuthor.value,
       top_k: 40
     })

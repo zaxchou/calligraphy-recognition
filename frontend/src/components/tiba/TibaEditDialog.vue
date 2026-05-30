@@ -187,10 +187,10 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { ArrowDown, Stamp } from '@element-plus/icons-vue'
-import { tubiApi, sealsApi } from '../../api'
+import { tibaApi, sealsApi } from '../../api'
 import api from '../../api'
-import { ARTISTS } from '../../tubi/constants'
-import { calculateAge, calculateYear, getDisplayAge } from '../../tubi/utils'
+import { ARTISTS } from '../../tiba/constants'
+import { calculateAge, calculateYear, getDisplayAge } from '../../tiba/utils'
 import { useAuthStore } from '../../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -413,7 +413,7 @@ async function handleSave() {
       ElMessage.warning('请输入作者姓名')
       return
     }
-    const response = await tubiApi.updateImageInfo(form.id, {
+    const response = await tibaApi.updateImageInfo(form.id, {
       title: form.title,
       artist: finalArtist,
       year: form.year ? parseInt(form.year) : null,
@@ -469,7 +469,7 @@ async function handleDelete() {
       }
     )
 
-    const response = await tubiApi.deleteImage(form.id)
+    const response = await tibaApi.deleteImage(form.id)
     if (response.success) {
       ElMessage.success('删除成功')
       visible.value = false
@@ -501,7 +501,7 @@ async function handleReplaceImage(event) {
   })
 
   try {
-    const result = await tubiApi.replaceImage(form.id, file)
+    const result = await tibaApi.replaceImage(form.id, file)
     if (result.success) {
       ElMessage.success('图片替换成功！缩略图已刷新')
       emit('replaced', {
@@ -529,7 +529,7 @@ onMounted(() => { fetchArtistList() })
 </script>
 
 <style scoped>
-/* 现代表单样式 — 从 TubiAnalysis.css 复制 */
+/* 现代表单样式 — 从 TibaAnalysis.css 复制 */
 .modern-form-dialog :deep(.el-dialog__header) {
   background: var(--near-black);
   padding: 16px 20px;

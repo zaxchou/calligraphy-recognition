@@ -43,7 +43,7 @@
           <h1 class="hero-title">{{ siteConfig.title }}<br/><span class="hero-title-accent">{{ siteConfig.subtitle }}</span></h1>
           <p class="hero-subtitle">题跋识别 · 字体溯源 · 构图分析 · 知识检索</p>
           <div class="hero-actions">
-            <button class="btn-primary" @click="$router.push('/tubi')">
+            <button class="btn-primary" @click="$router.push('/tiba')">
               <span>开始分析</span>
               <el-icon><ArrowRight /></el-icon>
             </button>
@@ -198,10 +198,10 @@ const features = [
   { 
     title: '题跋空间分析', 
     desc: 'AI 自动识别画作中的题跋、绘画、留白区域', 
-    path: '/tubi', 
+    path: '/tiba', 
     icon: 'DataAnalysis', 
     iconClass: 'secondary',
-    bgClass: 'bg-tubi',
+    bgClass: 'bg-tiba',
     tag: 'AI识别',
   },
   { 
@@ -254,7 +254,7 @@ async function fetchDashboardData() {
   loading.value = true
   try {
     const [extRes, artistsRes] = await Promise.all([
-      fetch(`${API_BASE}/tubi/stats/extended`).then(r => r.json()),
+      fetch(`${API_BASE}/tiba/stats/extended`).then(r => r.json()),
       fetch(`${API_BASE}/content-analysis/artists`).then(r => r.json()),
     ])
 
@@ -420,7 +420,7 @@ onMounted(() => {
 .feature-card-light.bg-artist {
   background: linear-gradient(135deg, rgba(196,90,60,0.08) 0%, rgba(245,244,237,1) 60%);
 }
-.feature-card-light.bg-tubi {
+.feature-card-light.bg-tiba {
   background: linear-gradient(135deg, rgba(184,164,126,0.08) 0%, rgba(245,244,237,1) 60%);
 }
 .feature-card-light.bg-recognize {

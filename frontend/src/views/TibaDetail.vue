@@ -685,7 +685,7 @@
     </div>
 
     <!-- 深度缩放查看器（覆盖整个浏览器窗口） -->
-    <TubiDeepZoomDialog
+    <TibaDeepZoomDialog
       v-if="imagePreviewVisible"
       :image-url="currentPreviewImage"
       :dzi-url="currentPreviewDzi"
@@ -813,12 +813,12 @@ import {
   Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled, MagicStick
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getDisplayAge } from '../tubi/utils'
+import { getDisplayAge } from '../tiba/utils'
 import { sealsApi } from '../api'
 import api from '../api'
-import TubiDeepZoomDialog from '../components/tubi/TubiDeepZoomDialog.vue'
+import TibaDeepZoomDialog from '../components/tiba/TibaDeepZoomDialog.vue'
 import SealLightbox from '../components/seal/SealLightbox.vue'
-import EmotionCore3D from '../components/tubi/EmotionCore3D.vue'
+import EmotionCore3D from '../components/tiba/EmotionCore3D.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -1105,7 +1105,7 @@ const relatedWorks = computed(() => {
 })
 
 function openRanking() {
-  window.open('/#/tubi/list', '_blank')
+  window.open('/#/tiba/list', '_blank')
 }
 
 // ── 册页缩略图滚轮横向滚动 ──────────────────────
@@ -1791,7 +1791,7 @@ defineExpose({
 })
 </script>
 
-<style src="../tubi/TubiAnalysis.css" scoped></style>
+<style src="../tiba/TibaAnalysis.css" scoped></style>
 
 <style scoped>
 /* upload-card 去背景/边框/阴影，避免双层卡片感 */

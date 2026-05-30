@@ -36,7 +36,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { percentWidth, shouldLabelInside, outsideLabelStyle } from '../../tubi/utils'
+import { percentWidth, shouldLabelInside, outsideLabelStyle } from '../../tiba/utils'
 
 const props = defineProps({
   label: {

@@ -200,7 +200,7 @@
     </el-card>
 
     <!-- 编辑画作信息对话框 -->
-    <TubiEditDialog
+    <TibaEditDialog
       ref="editDialogRef"
       @saved="onEditSaved"
       @deleted="onEditDeleted"
@@ -213,8 +213,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ArrowLeft, ArrowUp, ArrowDown, Picture, Search, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { tubiApi } from '../api'
-import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
+import { tibaApi } from '../api'
+import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -317,7 +317,7 @@ function handleSearch() {
 // 在新窗口打开详情
 function openDetailInNewWindow(item) {
   const url = router.resolve({
-    name: 'TubiDetail',
+    name: 'TibaDetail',
     params: { id: item.id }
   }).href
   window.open(url, '_blank')
@@ -340,7 +340,7 @@ function handleImageError(e) {
 
 // 返回题跋分析页面
 function backToTubi() {
-  router.push('/tubi')
+  router.push('/tiba')
 }
 
 // 根据画家和年份计算年龄
@@ -398,7 +398,7 @@ async function deleteItem(item) {
       type: 'warning'
     })
 
-    const response = await tubiApi.deleteImage(item.id)
+    const response = await tibaApi.deleteImage(item.id)
     if (response.success) {
       ElMessage.success('删除成功')
       // 刷新排行榜数据
@@ -472,7 +472,7 @@ function sortRankings() {
 // 加载排行榜数据
 async function loadRankings() {
   try {
-    const response = await tubiApi.getAllResults()
+    const response = await tibaApi.getAllResults()
     if (response.success) {
       // 转换字段名
       const works = (response.data || []).map(item => ({

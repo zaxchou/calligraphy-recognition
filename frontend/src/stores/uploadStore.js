@@ -6,7 +6,7 @@
  */
 import { reactive, watch } from 'vue'
 
-const STORAGE_KEY = 'tubi_upload_state'
+const STORAGE_KEY = 'tiba_upload_state'
 
 // 单个上传项的状态
 const ITEM_STATUSES = {

@@ -207,7 +207,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Plus, Edit, Delete, PriceTag } from '@element-plus/icons-vue'
-import { tubiApi } from '../api'
+import { tibaApi } from '../api'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -257,8 +257,8 @@ async function loadData() {
   loading.value = true
   try {
     const [tagsRes, allResultsRes] = await Promise.all([
-      tubiApi.getTags(props.artist, props.libraryId),
-      tubiApi.getAllResults(0, 1000, props.artist, props.libraryId),
+      tibaApi.getTags(props.artist, props.libraryId),
+      tibaApi.getAllResults(0, 1000, props.artist, props.libraryId),
     ])
     if (tagsRes.success) tags.value = tagsRes.data
     if (allResultsRes.success) allRecords.value = allResultsRes.data
@@ -282,7 +282,7 @@ async function createTag() {
   }
   creating.value = true
   try {
-    await tubiApi.createTag(createForm.value.name)
+    await tibaApi.createTag(createForm.value.name)
     ElMessage.success('标签创建成功')
     showCreateDialog.value = false
     createForm.value = { name: '' }
@@ -297,7 +297,7 @@ async function createTag() {
 async function selectTag(name) {
   selectedTag.value = name
   try {
-    const res = await tubiApi.getTagItems(name)
+    const res = await tibaApi.getTagItems(name)
     if (res.success) {
       selectedTagItems.value = res.data.items
     }
@@ -319,7 +319,7 @@ async function renameTag() {
   }
   renaming.value = true
   try {
-    await tubiApi.renameTag(renamingTag.value.name, renameForm.value.new_name)
+    await tibaApi.renameTag(renamingTag.value.name, renameForm.value.new_name)
     ElMessage.success('标签已重命名')
     showRenameDialogVisible.value = false
     if (selectedTag.value === renamingTag.value.name) {
@@ -343,7 +343,7 @@ async function confirmDeleteTag(name) {
       '删除标签',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
-    await tubiApi.deleteTag(name)
+    await tibaApi.deleteTag(name)
     ElMessage.success('标签已删除')
     if (selectedTag.value === name) {
       selectedTag.value = null
@@ -364,7 +364,7 @@ async function handleResetAllTags() {
       '清空所有标签',
       { confirmButtonText: '确定清空', cancelButtonText: '取消', type: 'warning', confirmButtonClass: 'el-button--danger' }
     )
-    const res = await tubiApi.resetAllTags()
+    const res = await tibaApi.resetAllTags()
     ElMessage.success(res.data?.message || '已清空所有标签')
     selectedTag.value = null
     selectedTagItems.value = []
@@ -383,7 +383,7 @@ async function confirmRemoveItem(id) {
       '移除标签',
       { confirmButtonText: '确定移除', cancelButtonText: '取消', type: 'warning' }
     )
-    await tubiApi.removeItemFromTag(selectedTag.value, id)
+    await tibaApi.removeItemFromTag(selectedTag.value, id)
     ElMessage.success('标签已移除')
     await selectTag(selectedTag.value)
     await loadData()
@@ -401,7 +401,7 @@ async function addItemsToTag() {
   }
   adding.value = true
   try {
-    await tubiApi.addItemsToTag(selectedTag.value, addingRecordIds.value)
+    await tibaApi.addItemsToTag(selectedTag.value, addingRecordIds.value)
     ElMessage.success('标签已添加')
     showAddItemsDialog.value = false
     addingRecordIds.value = []

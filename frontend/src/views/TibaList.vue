@@ -221,7 +221,7 @@
     </div>
 
     <!-- 编辑画作信息对话框 -->
-    <TubiEditDialog
+    <TibaEditDialog
       ref="editDialogRef"
       @saved="onEditSaved"
       @deleted="onEditDeleted"
@@ -266,10 +266,10 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ArrowLeft, ArrowUp, ArrowDown, Picture, Search, Close, EditPen } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { tubiApi } from '../api'
+import { tibaApi } from '../api'
 import api from '../api'
 import { useAuthStore } from '../stores/authStore'
-import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
+import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -420,7 +420,7 @@ async function handleSearch() {
 async function loadSearchResults() {
   try {
     const skip = (currentPage.value - 1) * pageSize.value
-    const response = await tubiApi.searchImages(searchKeyword.value.trim(), skip, pageSize.value, selectedArtist.value)
+    const response = await tibaApi.searchImages(searchKeyword.value.trim(), skip, pageSize.value, selectedArtist.value)
     if (response.success) {
       const works = (response.data || []).map(item => ({
         ...item,
@@ -520,7 +520,7 @@ async function handleSubmitChange() {
 // 在新窗口打开详情
 function openDetailInNewWindow(item) {
   const url = router.resolve({
-    name: 'TubiDetail',
+    name: 'TibaDetail',
     params: { id: item.id }
   }).href
   window.open(url, '_blank')
@@ -543,7 +543,7 @@ function handleImageError(e) {
 
 // 返回题跋分析页面
 function backToTubi() {
-  router.push('/tubi')
+  router.push('/tiba')
 }
 
 // 根据画家和年份计算年龄
@@ -608,7 +608,7 @@ async function deleteItem(item) {
       type: 'warning'
     })
 
-    const response = await tubiApi.deleteImage(item.id)
+    const response = await tibaApi.deleteImage(item.id)
     if (response.success) {
       ElMessage.success('删除成功')
       // 刷新排行榜数据
@@ -633,7 +633,7 @@ function syncPageToUrl() {
   else delete query.page
   if (pageSize.value !== 20) query.size = String(pageSize.value)
   else delete query.size
-  router.replace({ name: 'TubiList', query })
+  router.replace({ name: 'TibaList', query })
 }
 
 // 分页处理
@@ -712,7 +712,7 @@ async function loadRankings() {
     const skip = (currentPage.value - 1) * pageSize.value
     const artistParam = selectedArtist.value !== 'all' ? selectedArtist.value : undefined
     const sortField = SORT_FIELD_MAP[activeSort.value]
-    const response = await tubiApi.getAllResults(skip, pageSize.value, artistParam, null, sortField, sortDirection.value)
+    const response = await tibaApi.getAllResults(skip, pageSize.value, artistParam, null, sortField, sortDirection.value)
     if (response.success) {
       // 转换字段名
       const works = (response.data || []).map(item => ({

@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import { tubiApi } from '@/api'
+import { tibaApi } from '@/api'
 import { artistsApi } from '@/api/artists'
 import {
   buildLocationsFromChronology,
@@ -146,7 +146,7 @@ export function useMapData() {
       // 并行获取艺术家元数据 + 作品
       const [artistRes, paintingsRes] = await Promise.all([
         artistsApi.getByName(name).catch(() => null),
-        tubiApi.getAllResults(0, 2000, name, null, 'year', 'asc').catch(() => null),
+        tibaApi.getAllResults(0, 2000, name, null, 'year', 'asc').catch(() => null),
       ])
 
       // 解析年谱

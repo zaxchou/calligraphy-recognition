@@ -464,7 +464,7 @@ async function openArtworks(seal) {
 }
 
 function goToArtwork(art) {
-  const route = router.resolve({ name: 'TubiDetail', params: { id: art.image_id } })
+  const route = router.resolve({ name: 'TibaDetail', params: { id: art.image_id } })
   window.open(route.href, '_blank')
 }
 

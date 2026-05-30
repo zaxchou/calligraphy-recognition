@@ -357,7 +357,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Plus, View, Delete, Collection, Picture, Top, Bottom, Search, Edit } from '@element-plus/icons-vue'
-import { tubiApi } from '../api'
+import { tibaApi } from '../api'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -482,8 +482,8 @@ async function loadData() {
   loading.value = true
   try {
     const [albumsRes, allResultsRes] = await Promise.all([
-      tubiApi.getAlbums(props.artist, props.libraryId),
-      tubiApi.getAllResults(0, 1000, props.artist, props.libraryId),
+      tibaApi.getAlbums(props.artist, props.libraryId),
+      tibaApi.getAllResults(0, 1000, props.artist, props.libraryId),
     ])
     // 竞态保护：只接受最新请求的结果
     if (token !== loadDataToken) return
@@ -526,7 +526,7 @@ async function createStrip() {
     if (selectedRecordIds.value.length > 0) {
       payload.record_ids = [...selectedRecordIds.value]
     }
-    await tubiApi.createAlbum(payload)
+    await tibaApi.createAlbum(payload)
     ElMessage.success('条屏创建成功')
     showCreateDialog.value = false
     createForm.value = { name: '' }
@@ -546,7 +546,7 @@ async function createStrip() {
 async function viewStrip(name) {
   currentStrip.value = strips.value.find(s => s.name === name)
   try {
-    const res = await tubiApi.getAlbum(name)
+    const res = await tibaApi.getAlbum(name)
     if (res.success) {
       currentStripItems.value = res.data.items
     }
@@ -563,7 +563,7 @@ async function confirmDeleteStrip(name) {
       '删除条屏',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
-    await tubiApi.deleteAlbum(name)
+    await tibaApi.deleteAlbum(name)
     ElMessage.success('条屏已删除')
     await loadData()
   } catch (e) {
@@ -580,7 +580,7 @@ async function confirmRemoveItem(id) {
       '移出作品',
       { confirmButtonText: '确定移出', cancelButtonText: '取消', type: 'warning' }
     )
-    await tubiApi.removeItemFromAlbum(currentStrip.value.name, id)
+    await tibaApi.removeItemFromAlbum(currentStrip.value.name, id)
     ElMessage.success('作品已移出')
     await viewStrip(currentStrip.value.name)
     await loadData()
@@ -600,7 +600,7 @@ async function moveItem(filteredIndex, direction) {
   newOrder.splice(realIndex + direction, 0, movedItem)
   
   try {
-    await tubiApi.reorderAlbumItems(
+    await tibaApi.reorderAlbumItems(
       currentStrip.value.name,
       newOrder.map(i => i.id)
     )
@@ -618,7 +618,7 @@ async function addItemsToStrip() {
   }
   adding.value = true
   try {
-    await tubiApi.addItemsToAlbum(currentStrip.value.name, addingRecordIds.value)
+    await tibaApi.addItemsToAlbum(currentStrip.value.name, addingRecordIds.value)
     ElMessage.success('作品已添加')
     showAddItemsDialog.value = false
     addingRecordIds.value = []
@@ -654,7 +654,7 @@ async function saveStripName() {
   }
   renaming.value = true
   try {
-    await tubiApi.renameAlbum(currentStrip.value.name, newName)
+    await tibaApi.renameAlbum(currentStrip.value.name, newName)
     ElMessage.success('条屏名称已更新')
     isEditingStrip.value = false
     await viewStrip(newName)
@@ -693,7 +693,7 @@ async function saveItemTitle(item) {
   }
   savingItemTitle.value = true
   try {
-    await tubiApi.updateImageInfo(item.id, { title: newTitle })
+    await tibaApi.updateImageInfo(item.id, { title: newTitle })
     ElMessage.success('作品名称已更新')
     item.title = newTitle
     const record = allRecords.value.find(r => r.id === item.id)
@@ -734,7 +734,7 @@ async function saveItemYear(item) {
   savingYear.value = true
   try {
     const yearNum = newYear ? Number(newYear) : null
-    await tubiApi.updateImageInfo(item.id, { year: yearNum })
+    await tibaApi.updateImageInfo(item.id, { year: yearNum })
     ElMessage.success('年份已更新')
     item.year = yearNum
     const record = allRecords.value.find(r => r.id === item.id)

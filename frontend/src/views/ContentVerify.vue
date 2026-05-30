@@ -173,7 +173,7 @@
                 <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
                 <el-table-column label="作品" min-width="120" show-overflow-tooltip>
                   <template #default="{ row }">
-                    <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tubi/${row.artwork_image_id}`)">
+                    <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tiba/${row.artwork_image_id}`)">
                       {{ row.artwork_title || '未命名' }}
                     </el-link>
                     <span v-else>{{ row.artwork_title || '-' }}</span>
@@ -235,7 +235,7 @@
                 <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
                 <el-table-column label="作品" min-width="120" show-overflow-tooltip>
                   <template #default="{ row }">
-                    <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tubi/${row.artwork_image_id}`)">
+                    <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tiba/${row.artwork_image_id}`)">
                       {{ row.artwork_title || '未命名' }}
                     </el-link>
                     <span v-else>{{ row.artwork_title || '-' }}</span>
@@ -358,7 +358,7 @@ const AnnotationVerify = defineAsyncComponent(() => import('./AnnotationVerify.v
 const ArtistInfoManager = defineAsyncComponent(() => import('./ArtistInfoManager.vue'))
 const ArtistRulesManager = defineAsyncComponent(() => import('./ArtistRulesManager.vue'))
 const SealManager = defineAsyncComponent(() => import('./SealManager.vue'))
-const ImageSearchPanel = defineAsyncComponent(() => import('../components/tubi/ImageSearchPanel.vue'))
+const ImageSearchPanel = defineAsyncComponent(() => import('../components/tiba/ImageSearchPanel.vue'))
 const AdminDashboard = defineAsyncComponent(() => import('./admin/Dashboard.vue'))
 const AdminUsers = defineAsyncComponent(() => import('./admin/Users.vue'))
 const AdminSettings = defineAsyncComponent(() => import('./admin/Settings.vue'))
@@ -860,7 +860,7 @@ function onTitleUpdated({ id, image_id, title }) {
 }
 
 function onImageSearchItemClick(recordId) {
-  const route = router.resolve({ name: 'TubiDetail', params: { id: recordId } })
+  const route = router.resolve({ name: 'TibaDetail', params: { id: recordId } })
   window.open(route.href, '_blank')
 }
 

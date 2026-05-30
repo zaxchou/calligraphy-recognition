@@ -109,7 +109,7 @@ async function loadStats() {
   loading.value = true
   error.value = ''
   try {
-    const data = await api.get('/tubi/stats/my')
+    const data = await api.get('/tiba/stats/my')
     stats.value = data
   } catch (e) {
     error.value = e?.response?.data?.detail || '加载统计失败'

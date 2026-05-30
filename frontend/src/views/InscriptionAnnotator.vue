@@ -939,7 +939,7 @@ async function saveRegions() {
   // 管理员/非suggest模式 → 直接写入数据库
   saving.value = true
   try {
-    const res = await fetch(`/api/v1/tubi/${route.params.id}/regions`, {
+    const res = await fetch(`/api/v1/tiba/${route.params.id}/regions`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
       body: JSON.stringify({ regions })
@@ -954,7 +954,7 @@ async function saveRegions() {
     ElMessage.success('标注已保存')
     const targetId = recordData.value?.image_id || recordData.value?.id
     if (targetId) {
-      router.push(`/tubi/${targetId}`)
+      router.push(`/tiba/${targetId}`)
     }
   } catch (err) {
     ElMessage.error('保存失败：' + err.message)
@@ -1028,7 +1028,7 @@ async function submitForReview() {
       throw new Error(errData.detail || '提交失败')
     }
 
-    // 设置标志，供 TubiDetail 检测
+    // 设置标志，供 TibaDetail 检测
     const imageId = route.params.id
     localStorage.setItem('suggest_annotation_done_' + imageId, '1')
     // 清除本地草稿
@@ -1052,7 +1052,7 @@ function goBack() {
 // 加载数据
 async function loadRecord() {
   try {
-    const res = await fetch(`/api/v1/tubi/${route.params.id}`)
+    const res = await fetch(`/api/v1/tiba/${route.params.id}`)
     if (!res.ok) throw new Error('记录不存在')
     const data = await res.json()
 

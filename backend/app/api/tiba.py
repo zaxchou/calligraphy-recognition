@@ -91,9 +91,9 @@ def _parse_calligraphy_filename(filename: str) -> dict:
     title = "_".join(title_parts) if title_parts else name
     return {"title": title, "artist": artist, "year": year, "period": period}
 UPLOAD_DIR = settings.UPLOAD_DIR
-THUMBNAIL_DIR = settings.TUBI_THUMBNAIL_DIR
-ANNOTATED_DIR = settings.TUBI_ANNOTATED_DIR
-DEBUG_DIR = settings.TUBI_DEBUG_DIR
+THUMBNAIL_DIR = settings.TIBA_THUMBNAIL_DIR
+ANNOTATED_DIR = settings.TIBA_ANNOTATED_DIR
+DEBUG_DIR = settings.TIBA_DEBUG_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 os.makedirs(ANNOTATED_DIR, exist_ok=True)
@@ -229,7 +229,7 @@ from app.services.siliconflow_service import (
 from app.services.inscription_position_analyzer import analyze_inscription_position
 from app.services.keyword_extractor import extract_wordcloud_keywords, load_wordcloud_config, get_artist_aliases
 
-router = APIRouter(prefix="/tubi", tags=["题跋分析"])
+router = APIRouter(prefix="/tiba", tags=["题跋分析"])
 _QUEUE_KEY_PENDING = "tubi:queue:pending"
 _QUEUE_KEY_PROCESSING = "tubi:queue:processing"
 

@@ -393,7 +393,7 @@ function scrollToSection(id) {
 
 function goToWork(id) {
   if (id) {
-    const resolved = router.resolve({ name: 'TubiAnalysis', params: { id } })
+    const resolved = router.resolve({ name: 'TibaAnalysis', params: { id } })
     window.open(resolved.href, '_blank')
   }
 }

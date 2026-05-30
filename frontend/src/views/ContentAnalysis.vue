@@ -1156,7 +1156,7 @@ async function openThemeDialog(themeName) {
 }
 
 function openPaintingDetail(row) {
-  window.location.href = `/#/tubi/${row.id}`
+  window.location.href = `/#/tiba/${row.id}`
 }
 
 async function openSentimentDialog(polarity, polarityName) {

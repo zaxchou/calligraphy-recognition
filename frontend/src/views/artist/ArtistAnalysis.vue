@@ -68,7 +68,7 @@
     <!-- 数据概览 + 排行榜 -->
     <div class="dashboard-row">
       <ArtistStatsCard ref="artistStatsCardRef" @artist-change="onStatsArtistChange" style="flex: 6.5;" />
-      <TubiRankingCard
+      <TibaRankingCard
         :history-list="rankingList"
         :get-display-age="getDisplayAge"
         :loading="rankingLoading"
@@ -336,9 +336,9 @@ import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
-import ArtistStatsCard from '@/tubi/ArtistStatsCard.vue'
-import TubiRankingCard from '@/components/tubi/TubiRankingCard.vue'
-import { tubiApi, artistRulesApi } from '@/api'
+import ArtistStatsCard from '@/tiba/ArtistStatsCard.vue'
+import TibaRankingCard from '@/components/tiba/TibaRankingCard.vue'
+import { tibaApi, artistRulesApi } from '@/api'
 import { artistsApi } from '@/api/artists'
 
 const route = useRoute()
@@ -657,7 +657,7 @@ function renderTimelineChart() {
   chart.off('click')
   chart.on('click', (params) => {
     if (params.data?.id) {
-      const resolved = router.resolve({ name: 'TubiDetail', params: { id: params.data.id } })
+      const resolved = router.resolve({ name: 'TibaDetail', params: { id: params.data.id } })
       window.open(resolved.href, '_blank')
     }
   })
@@ -810,7 +810,7 @@ async function openThemeDialog(themeName) {
 }
 
 function openPaintingDetail(row) {
-  const resolved = router.resolve({ name: 'TubiDetail', params: { id: row.id } })
+  const resolved = router.resolve({ name: 'TibaDetail', params: { id: row.id } })
   window.open(resolved.href, '_blank')
 }
 
@@ -883,19 +883,19 @@ async function fetchArtistBirthYear() {
 function onRankingItemClick(item) {
   const id = item.id || item.db_id
   if (id) {
-    const resolved = router.resolve({ name: 'TubiDetail', params: { id } })
+    const resolved = router.resolve({ name: 'TibaDetail', params: { id } })
     window.open(resolved.href, '_blank')
   }
 }
 
 function onRankingMore() {
-  router.push({ name: 'TubiList' })
+  router.push({ name: 'TibaList' })
 }
 
 async function fetchRankingData() {
   rankingLoading.value = true
   try {
-    const res = await tubiApi.getAllResults(0, 200, selectedArtist.value)
+    const res = await tibaApi.getAllResults(0, 200, selectedArtist.value)
     if (res.success) {
       rankingList.value = (res.data || []).map(item => ({
         ...item,

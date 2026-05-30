@@ -10,7 +10,7 @@
     </div>
 
     <!-- 首页概览视图 -->
-    <TubiHome
+    <TibaHome
       v-if="!currentImage &amp;&amp; !initialLoading"
       ref="tubiHomeRef"
       :history-list="historyList"
@@ -32,7 +32,7 @@
     />
 
     <!-- 详情页视图 -->
-    <TubiDetail
+    <TibaDetail
       v-if="currentImage"
       ref="tubiDetailRef"
       :current-image="currentImage"
@@ -60,7 +60,7 @@
 
 
     <!-- 搜索结果弹窗 -->
-    <TubiSearchDialog
+    <TibaSearchDialog
       v-model="searchDialogVisible"
       :keyword="searchKeyword"
       :results="searchResults"
@@ -72,19 +72,19 @@
     />
 
     <!-- 图片预览对话框 -->
-    <TubiImagePreviewDialog
+    <TibaImagePreviewDialog
       v-model="previewDialogVisible"
       :image-url="previewImageUrl"
     />
 
     <!-- 原图放大查看对话框 -->
-    <TubiImageZoomDialog
+    <TibaImageZoomDialog
       v-model="imagePreviewVisible"
       :image-url="currentPreviewImage"
     />
 
     <!-- 编辑历史记录对话框 -->
-    <TubiEditDialog
+    <TibaEditDialog
       ref="editDialogRef"
       @saved="onEditSaved"
       @deleted="onEditDeleted"
@@ -107,25 +107,25 @@ import {
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import * as echarts from 'echarts'
-import { tubiApi } from '../api'
-import { getSharedAnalyticsData, setSharedAnalyticsData } from '../tubi/sharedCache'
-import { ARTISTS } from '../tubi/constants'
+import { tibaApi } from '../api'
+import { getSharedAnalyticsData, setSharedAnalyticsData } from '../tiba/sharedCache'
+import { ARTISTS } from '../tiba/constants'
 import {
   calculateAge,
   calculateYear,
   getDisplayAge,
   formatDate
-} from '../tubi/utils'
-import ArtistStatsCard from '../tubi/ArtistStatsCard.vue'
-import TubiRankingCard from '../components/tubi/TubiRankingCard.vue'
-import TubiGallery from '../components/tubi/TubiGallery.vue'
-import TubiEditDialog from '../components/tubi/TubiEditDialog.vue'
-import TubiComparison from '../components/tubi/TubiComparison.vue'
-import TubiSearchDialog from '../components/tubi/TubiSearchDialog.vue'
-import TubiImagePreviewDialog from '../components/tubi/TubiImagePreviewDialog.vue'
-import TubiImageZoomDialog from '../components/tubi/TubiImageZoomDialog.vue'
-import TubiHome from './TubiHome.vue'
-import TubiDetail from './TubiDetail.vue'
+} from '../tiba/utils'
+import ArtistStatsCard from '../tiba/ArtistStatsCard.vue'
+import TibaRankingCard from '../components/tiba/TibaRankingCard.vue'
+import TibaGallery from '../components/tiba/TibaGallery.vue'
+import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
+import TibaComparison from '../components/tiba/TibaComparison.vue'
+import TibaSearchDialog from '../components/tiba/TibaSearchDialog.vue'
+import TibaImagePreviewDialog from '../components/tiba/TibaImagePreviewDialog.vue'
+import TibaImageZoomDialog from '../components/tiba/TibaImageZoomDialog.vue'
+import TibaHome from './TibaHome.vue'
+import TibaDetail from './TibaDetail.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -172,14 +172,14 @@ watch(
 )
 
 // 历史记录相关
-const refreshAnalyticsKey = ref(0) // 递增触发 TubiHome 刷新分析数据
+const refreshAnalyticsKey = ref(0) // 递增触发 TibaHome 刷新分析数据
 const historyList = ref([])
 const historyPageSize = ref(24)
 const historyPage = ref(1)
 const historyHasMore = ref(true)
 
 // 全量作品列表（用于 prev/next 导航）
-// 使用 sharedCache 与 TubiHome 共享数据，避免重复 API 请求
+// 使用 sharedCache 与 TibaHome 共享数据，避免重复 API 请求
 const fullItemList = ref([])
 async function loadFullItemList(force = false) {
   const cached = getSharedAnalyticsData()
@@ -188,7 +188,7 @@ async function loadFullItemList(force = false) {
     return
   }
   try {
-    const res = await tubiApi.getAllResults(0, 2000)
+    const res = await tibaApi.getAllResults(0, 2000)
     if (res.success) {
       const data = (res.data || []).map(item => ({
         ...item,
@@ -249,7 +249,7 @@ const filterTag = ref(null)
 
 function filterByTag(tag) {
   // 新窗口打开 list 页面，通过 URL 参数传递标签
-  window.open(`${window.location.origin}/#/tubi/list?tag=${encodeURIComponent(tag)}`, '_blank')
+  window.open(`${window.location.origin}/#/tiba/list?tag=${encodeURIComponent(tag)}`, '_blank')
 }
 
 function clearTagFilter() {
@@ -377,7 +377,7 @@ function onEditDeleted(id) {
       const query = (currentArtist.value && currentArtist.value !== '李鱓') 
         ? { artist: currentArtist.value } 
         : {}
-      router.replace({ name: 'TubiAnalysis', query })
+      router.replace({ name: 'TibaAnalysis', query })
     }
   }
 }
@@ -445,7 +445,7 @@ const filteredTrendChartData = computed(() => {
   return trendChartData.value.filter(item => item.artist === trendArtistFilter.value)
 })
 
-// 聚合 analysis 相关 state（用于 TubiDetail）
+// 聚合 analysis 相关 state（用于 TibaDetail）
 const analysisState = computed(() => ({
   status: analyzeStatus.value,
   progress: analyzeProgress.value,
@@ -559,7 +559,7 @@ const artistStats = computed(() => {
 
 // 跳转到排行榜页面
 function navigateToRanking() {
-  router.push('/tubi/list')
+  router.push('/tiba/list')
 }
 
 // 趋势图作者筛选变化
@@ -567,7 +567,7 @@ function onTrendArtistChange() {
   updateTrendChart()
 }
 
-// 画家筛选变化（来自 TubiHome）
+// 画家筛选变化（来自 TibaHome）
 function onArtistChange(artist) {
   currentArtist.value = artist
   historyPage.value = 1
@@ -604,9 +604,9 @@ function backToHome() {
     const query = currentArtist.value && currentArtist.value !== '李鱓' 
       ? { artist: currentArtist.value } 
       : {}
-    router.replace({ name: 'TubiAnalysis', query })
+    router.replace({ name: 'TibaAnalysis', query })
   }
-  // 清空图表（pieChart 在 TubiDetail 中管理，不在本作用域）
+  // 清空图表（pieChart 在 TibaDetail 中管理，不在本作用域）
   if (trendChart) {
     trendChart.dispose()
     trendChart = null
@@ -642,7 +642,7 @@ function startHistoryPollingForPending() {
     }
     const ids = pending.map(i => i.id)
     try {
-      const result = await tubiApi.batchGetStatus(ids)
+      const result = await tibaApi.batchGetStatus(ids)
       if (!result.success) return
       let changed = false
       result.data.forEach(r => {
@@ -697,7 +697,7 @@ async function selectImage(img) {
     const query = (currentArtist.value && currentArtist.value !== '李鱓') 
       ? { artist: currentArtist.value } 
       : {}
-    router.replace({ name: 'TubiDetail', params: { id: routeId }, query })
+    router.replace({ name: 'TibaDetail', params: { id: routeId }, query })
   }
   
   // 处理模拟数据（负数ID）
@@ -770,7 +770,7 @@ async function clearAll() {
 
     for (const img of uploadedImages.value) {
       try {
-        await tubiApi.deleteImage(img.id)
+        await tibaApi.deleteImage(img.id)
       } catch (e) {
         console.error('删除图片失败:', e)
       }
@@ -783,7 +783,7 @@ async function clearAll() {
       const query = (currentArtist.value && currentArtist.value !== '李鱓') 
         ? { artist: currentArtist.value } 
         : {}
-      router.replace({ name: 'TubiAnalysis', query })
+      router.replace({ name: 'TibaAnalysis', query })
     }
     ElMessage.success('已清空')
   } catch (error) {
@@ -934,7 +934,7 @@ async function autoAnalyze() {
   const progressInterval = startAnalyzeProgress()
 
   try {
-    const startResult = await tubiApi.autoAnalyze(currentImage.value.id)
+    const startResult = await tibaApi.autoAnalyze(currentImage.value.id)
     if (!startResult?.success) {
       throw new Error(startResult?.detail || startResult?.error || '分析任务启动失败')
     }
@@ -949,7 +949,7 @@ async function autoAnalyze() {
     const startAt = Date.now()
     let pollInterval = 3000  // exponential backoff: 3s -> 15s max
     while (true) {
-      const statusResult = await tubiApi.getAnalyzeStatus(currentImage.value.id)
+      const statusResult = await tibaApi.getAnalyzeStatus(currentImage.value.id)
       if (!statusResult?.success) {
         throw new Error(statusResult?.detail || statusResult?.error || '获取分析状态失败')
       }
@@ -961,7 +961,7 @@ async function autoAnalyze() {
       }
       if (status === 'queued') {
         try {
-          const qi = await tubiApi.getQueueInfo(currentImage.value.id)
+          const qi = await tibaApi.getQueueInfo(currentImage.value.id)
           const pos = qi?.data?.position
           const est = qi?.data?.estimated_wait_seconds
           if (pos) {
@@ -984,7 +984,7 @@ async function autoAnalyze() {
       }
     }
 
-    const result = await tubiApi.getAnalysisResult(currentImage.value.id)
+    const result = await tibaApi.getAnalysisResult(currentImage.value.id)
     clearInterval(progressInterval)
 
     if (!result?.success) {
@@ -1031,7 +1031,7 @@ async function autoAnalyze() {
     tubiDetailRef.value?.updatePieChart?.()
 
     await loadHistory()
-    refreshAnalyticsKey.value++  // 通知 TubiHome 刷新分析图表缓存
+    refreshAnalyticsKey.value++  // 通知 TibaHome 刷新分析图表缓存
 
     ElMessage.success('AI分析完成')
   } catch (error) {
@@ -1336,7 +1336,7 @@ async function handleSearch(keyword) {
   searchDialogVisible.value = true
   searchLoading.value = true
   try {
-    const response = await tubiApi.searchImages(kw, 0, 50, currentArtist.value)
+    const response = await tibaApi.searchImages(kw, 0, 50, currentArtist.value)
     if (response.success) {
       // 转换字段名（下划线转驼峰）
       searchResults.value = (response.data || []).map(item => ({
@@ -1417,7 +1417,7 @@ async function loadHistory(page = 1) {
   try {
     const skip = (page - 1) * historyPageSize.value
     const artistParam = currentArtist.value || undefined
-    const response = await tubiApi.getAllResults(skip, historyPageSize.value, artistParam)
+    const response = await tibaApi.getAllResults(skip, historyPageSize.value, artistParam)
     console.log('历史记录API响应:', response)
     if (response.success) {
       const items = (response.data || []).map(item => {
@@ -1502,7 +1502,7 @@ async function loadHistoryItem(row) {
     } else {
       // 正常加载真实数据 - 优先使用 image_id (UUID)
       const recordId = row.image_id || row.id
-      const response = await tubiApi.getAnalysisResult(recordId)
+      const response = await tibaApi.getAnalysisResult(recordId)
       if (response.success) {
         const data = response.data
 
@@ -1584,7 +1584,7 @@ async function loadHistoryItem(row) {
 // 加载并选择指定ID的图片（用于趋势图点击）
 async function loadAndSelectImage(imageId) {
   try {
-    const response = await tubiApi.getAnalysisResult(imageId)
+    const response = await tibaApi.getAnalysisResult(imageId)
     if (response.success) {
       const data = response.data
 
@@ -1655,7 +1655,7 @@ async function deleteHistoryItem(row) {
       type: 'warning'
     })
 
-    const response = await tubiApi.deleteImage(row.id)
+    const response = await tibaApi.deleteImage(row.id)
     if (response.success) {
       ElMessage.success('删除成功')
       // 从列表中移除
@@ -1706,7 +1706,7 @@ async function deleteImage(item) {
       type: 'warning'
     })
 
-    const response = await tubiApi.deleteImage(item.id)
+    const response = await tibaApi.deleteImage(item.id)
     if (response.success) {
       ElMessage.success('删除成功')
       // 从列表中移除
@@ -1727,7 +1727,7 @@ async function deleteImage(item) {
           const query = (currentArtist.value && currentArtist.value !== '李鱓') 
             ? { artist: currentArtist.value } 
             : {}
-          router.replace({ name: 'TubiAnalysis', query })
+          router.replace({ name: 'TibaAnalysis', query })
         }
       }
     } else {
@@ -2167,7 +2167,7 @@ onMounted(async () => {
     // 详情页模式：显示 loading，等数据加载完成后再渲染
     initialLoading.value = true
     try {
-      const response = await tubiApi.getAnalysisResult(imageId)
+      const response = await tibaApi.getAnalysisResult(imageId)
       if (response.success) {
         const data = response.data
         const analysisNoteText = data.analysis_note || ''
@@ -2225,7 +2225,7 @@ onMounted(async () => {
         await loadFullItemList()
         loadHistory()
 
-        // 所有数据就绪后才设置 currentImage，确保 TubiDetail 首次渲染时 prev/next 有数据
+        // 所有数据就绪后才设置 currentImage，确保 TibaDetail 首次渲染时 prev/next 有数据
         selectImage(historyImage)
         ElMessage({ message: '已加载指定作品', type: 'success', customClass: 'toast-transparent', center: true })
       }
@@ -2236,7 +2236,7 @@ onMounted(async () => {
       const query = (currentArtist.value && currentArtist.value !== '李鱓') 
         ? { artist: currentArtist.value } 
         : {}
-      router.replace({ name: 'TubiAnalysis', query })
+      router.replace({ name: 'TibaAnalysis', query })
       // 失败时也加载历史列表
       loadHistory()
     } finally {
@@ -2300,7 +2300,7 @@ async function loadAlbumNavigation() {
   console.log('[册页导航] 加载导航，recordId:', recordId, 'currentImage:', currentImage.value)
 
   try {
-    const res = await tubiApi.getAlbumNavigation(recordId)
+    const res = await tibaApi.getAlbumNavigation(recordId)
     console.log('[册页导航] API响应:', res)
     if (res.success) {
       const data = res.data
@@ -2334,7 +2334,7 @@ async function navigateToAlbumItem(item) {
   // 没找到，通过 API 加载
   console.log('[册页导航] 未找到，通过API加载:', item.id)
   try {
-    const response = await tubiApi.getAnalysisResult(item.id)
+    const response = await tibaApi.getAnalysisResult(item.id)
     if (response.success) {
       const data = response.data
       const analysisNoteText = data.analysis_note || ''
@@ -2396,7 +2396,7 @@ watch(currentImage, (newVal) => {
 watch(() => route.params.id, async (newId, oldId) => {
   if (!newId || !oldId || String(newId) === String(oldId)) return
   try {
-    const response = await tubiApi.getAnalysisResult(newId)
+    const response = await tibaApi.getAnalysisResult(newId)
     if (response.success) {
       const data = response.data
       const analysisNoteText = data.analysis_note || ''
@@ -2426,7 +2426,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 })
 </script>
 
-<style src="../tubi/TubiAnalysis.css" scoped></style>
+<style src="../tiba/TibaAnalysis.css" scoped></style>
 
 <style scoped>
 /* 初始加载遮罩：防止直接访问详情页时闪现首页框架 */

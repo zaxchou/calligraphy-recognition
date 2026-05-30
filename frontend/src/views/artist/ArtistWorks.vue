@@ -62,7 +62,7 @@
     <div v-if="loading" class="av-loading">加载中...</div>
     <div v-else-if="works.length === 0" class="av-empty">暂无作品数据</div>
     <template v-else>
-      <!-- 图库模式（照搬 TubiGallery 样式） -->
+      <!-- 图库模式（照搬 TibaGallery 样式） -->
       <div v-show="viewMode === 'grid'" class="aw-grid">
         <div v-for="w in works" :key="w.id || w.db_id" class="aw-card" @click="goToWork(w)">
           <div class="aw-image-wrapper">
@@ -236,7 +236,7 @@ function clearSearch() { searchQuery.value = ''; currentPage.value = 1; loadWork
 function goToWork(w) {
   const id = w.id || w.db_id
   if (id) {
-    const resolved = router.resolve({ name: 'TubiDetail', params: { id } })
+    const resolved = router.resolve({ name: 'TibaDetail', params: { id } })
     window.open(resolved.href, '_blank')
   }
 }
@@ -258,7 +258,7 @@ async function loadWorks() {
     if (workTypeFilter.value) params.set('work_type', workTypeFilter.value)
     const sf = SORT_FIELD_MAP[activeSort.value]
     if (sf) { params.set('sort_by', sf); params.set('sort_dir', sortDir.value) }
-    const res = await fetch(`${API_BASE}/tubi/results?${params}`)
+    const res = await fetch(`${API_BASE}/tiba/results?${params}`)
     if (res.ok) { const d = await res.json(); works.value = d.data || []; totalCount.value = d.total || 0 }
   } catch (e) { console.error(e) }
   finally { loading.value = false }
@@ -301,7 +301,7 @@ onMounted(() => { loadWorks() })
 .aw-sort-item:hover { color: #3a3222; background: #edeae1; }
 .aw-sort-item.active { color: #c45a3c; background: #fdf6f0; font-weight: 500; }
 
-/* ─── 图库模式（TubiGallery 风格） ─── */
+/* ─── 图库模式（TibaGallery 风格） ─── */
 .aw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
 .aw-card { background: #fff; border: 1px solid #e8e3da; border-radius: 8px; overflow: hidden; cursor: pointer; transition: all 0.2s; }
 .aw-card:hover { border-color: #c45a3c; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transform: translateY(-2px); }

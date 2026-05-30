@@ -75,7 +75,7 @@
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="title" label="作品" min-width="140">
           <template #default="{ row }">
-            <router-link :to="`/tubi/${row.image_id}`" @click.stop class="work-link">
+            <router-link :to="`/tiba/${row.image_id}`" @click.stop class="work-link">
               {{ row.title || '未命名' }}
             </router-link>
           </template>

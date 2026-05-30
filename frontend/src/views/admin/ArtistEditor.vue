@@ -489,7 +489,7 @@ async function searchArtworks() {
   searching.value = true
   try {
     const params = { keyword: gallerySearch.value, limit: 20 }
-    const data = await api.get('/tubi/search', { params })
+    const data = await api.get('/tiba/search', { params })
     searchResults.value = (data.data || []).map(w => ({
       id: w.id || w.db_id,
       title: w.title || w.work_name || '未命名',

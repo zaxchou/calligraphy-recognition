@@ -1,6 +1,6 @@
 /**
- * TubiAnalysis 工具函数
- * 从 TubiAnalysis.vue 中抽离的纯逻辑/无副作用函数
+ * TibaAnalysis 工具函数
+ * 从 TibaAnalysis.vue 中抽离的纯逻辑/无副作用函数
  */
 import { ARTISTS, BAR_CONSTANTS } from './constants'
 

@@ -1,6 +1,6 @@
 <template>
   <!-- 模式选择弹窗 -->
-  <TubiModeSelectionDialog
+  <TibaModeSelectionDialog
     v-model="showModeSelectionDialog"
     @confirm="confirmUploadMode"
     @cancel="showModeSelectionDialog = false"
@@ -77,9 +77,9 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { tubiApi } from '../../api'
+import { tibaApi } from '../../api'
 import { useUploadStore, ITEM_STATUSES } from '../../stores/uploadStore'
-import TubiModeSelectionDialog from './TubiModeSelectionDialog.vue'
+import TibaModeSelectionDialog from './TibaModeSelectionDialog.vue'
 
 // 动态加载 phase 组件
 const UploadPhaseIdle = defineAsyncComponent(() => import('./UploadPhaseIdle.vue'))
@@ -161,7 +161,7 @@ async function startBatchUpload() {
       if (batchUploadCancelled) return
       try {
         const rawFile = item.rawFile
-        const result = await tubiApi.uploadImage(rawFile, {})
+        const result = await tibaApi.uploadImage(rawFile, {})
 
         if (result.success) {
           markUploaded(item.id, result.data.id, result.data.url)
@@ -238,7 +238,7 @@ async function confirmUploadMode(mode) {
   }
 
   try {
-    const batchResult = await tubiApi.batchAutoAnalyze(pendingUploadedIds, mode)
+    const batchResult = await tibaApi.batchAutoAnalyze(pendingUploadedIds, mode)
     if (batchResult.success) {
       batchResult.data.forEach(r => {
         const item = uploadStore.items.find(i => i.imageId === r.id)
@@ -251,7 +251,7 @@ async function confirmUploadMode(mode) {
     console.error('批量入队失败，逐个入队:', error)
     for (const imageId of pendingUploadedIds) {
       try {
-        await tubiApi.autoAnalyze(imageId)
+        await tibaApi.autoAnalyze(imageId)
         const item = uploadStore.items.find(i => i.imageId === imageId)
         if (item) markQueued(item.id, null, null)
       } catch (e) {
@@ -303,7 +303,7 @@ async function pollAnalysisStatus() {
   if (imageIds.length === 0) return
 
   try {
-    const result = await tubiApi.batchGetStatus(imageIds)
+    const result = await tibaApi.batchGetStatus(imageIds)
     if (!result.success) return
 
     result.data.forEach(r => {
@@ -337,11 +337,11 @@ async function retryUploadItem(item) {
   }
   resetForRetry(item.id)
   try {
-    const result = await tubiApi.uploadImage(item.rawFile, {})
+    const result = await tibaApi.uploadImage(item.rawFile, {})
     if (result.success) {
       markUploaded(item.id, result.data.id, result.data.url)
       try {
-        await tubiApi.autoAnalyze(result.data.id)
+        await tibaApi.autoAnalyze(result.data.id)
         markQueued(item.id, null, null)
       } catch (e) {
         markError(item.id, 'QUEUE_UNAVAILABLE', e.message)

@@ -26,7 +26,7 @@ if settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
 
 from app.core.database import engine, Base, get_db
 from sqlalchemy import text
-from app.api import recognition, steles, tubi, seals, artists, artist_rules, auth, artist_claims, revisions, notifications, libraries, artist_changes, artwork_artists, artworks
+from app.api import recognition, steles, tiba, seals, artists, artist_rules, auth, artist_claims, revisions, notifications, libraries, artist_changes, artwork_artists, artworks
 
 try:
     from app.api import composition
@@ -131,7 +131,7 @@ app.mount("/dzi", StaticFiles(directory=settings.DZI_DIR), name="dzi")
 
 # 启动时清除旧的全量作品列表缓存，确保新数据被包含
 try:
-    from app.api.tubi import _clear_results_cache
+    from app.api.tiba import _clear_results_cache
     _clear_results_cache()
     logging.getLogger(__name__).info("已清除作品列表缓存")
 except Exception:
@@ -151,7 +151,7 @@ app.include_router(
 )
 
 app.include_router(
-    tubi.router,
+    tiba.router,
     prefix=settings.API_V1_STR,
     tags=["题跋分析"]
 )
@@ -380,8 +380,8 @@ def _embedded_worker_loop():
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
     from app.core.database import SessionLocal
-    from app.models.tubi_analysis import TubiAnalysis
-    from app.models.tubi_job import TubiJob
+    from app.models.tiba_analysis import TubiAnalysis
+    from app.models.tiba_job import TubiJob
 
     logger = logging.getLogger("embedded_worker")
     logger.info("嵌入式 Worker 已启动（DB 轮询模式）")
@@ -413,7 +413,7 @@ def _embedded_worker_loop():
 
         # process_one 内部自己管理 DB session
         try:
-            from tubi_worker import process_one
+            from tiba_worker import process_one
             process_one(None, image_id)
         except Exception as e:
             logger.error(f"处理失败 {image_id}: {e}")
@@ -427,7 +427,7 @@ def _start_embedded_worker():
     if _worker_running:
         return
     _worker_running = True
-    t = threading.Thread(target=_embedded_worker_loop, daemon=True, name="tubi-worker")
+    t = threading.Thread(target=_embedded_worker_loop, daemon=True, name="tiba-worker")
     t.start()
 
 

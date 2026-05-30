@@ -36,7 +36,7 @@
           <el-icon><Close /></el-icon> 收起
         </el-button>
       </div>
-      <TubiUploadInline
+      <TibaUploadInline
         ref="uploadInlineRef"
         :library-id="libraryId"
         @refresh="onUploadRefresh"
@@ -298,7 +298,7 @@
         </el-descriptions>
         <div class="drawer-actions" style="margin-top:16px">
           <el-button type="primary" @click="showDetailDrawer = false; openSuggestEdit(selectedArtwork)">我的意见</el-button>
-          <el-button @click="openTubiDetail">打开完整详情</el-button>
+          <el-button @click="openTibaDetail">打开完整详情</el-button>
         </div>
       </template>
     </el-drawer>
@@ -485,7 +485,7 @@
       </template>
     </el-dialog>
 
-    <TubiEditDialog ref="editDialogRef" @saved="loadArtworks" />
+    <TibaEditDialog ref="editDialogRef" @saved="loadArtworks" />
   </div>
 </template>
 
@@ -495,9 +495,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Picture, Loading, Plus, View, ArrowRight, Collection, Edit, VideoPlay, Delete, Close, Bottom, Right, Refresh, RefreshRight, EditPen, Crop, MagicStick } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
-import { libraryApi, artworkApi, tubiApi } from '../api'
-import TubiUploadInline from '@/components/tubi/TubiUploadInline.vue'
-import TubiEditDialog from '@/components/tubi/TubiEditDialog.vue'
+import { libraryApi, artworkApi, tibaApi } from '../api'
+import TibaUploadInline from '@/components/tiba/TibaUploadInline.vue'
+import TibaEditDialog from '@/components/tiba/TibaEditDialog.vue'
 import { useSSEStream } from '@/composables/useSSEStream'
 
 const route = useRoute()
@@ -656,9 +656,9 @@ function openProofread(artwork) {
   }
 }
 
-function openTubiDetail() {
+function openTibaDetail() {
   if (!selectedArtwork.value?.image_id) return
-  window.open(window.location.origin + '/#/tubi/' + selectedArtwork.value.image_id, '_blank')
+  window.open(window.location.origin + '/#/tiba/' + selectedArtwork.value.image_id, '_blank')
 }
 
 function openAnnotate(artwork) {
@@ -797,7 +797,7 @@ async function startBatchAiAnalyze(mode) {
   aiAnalyzeProgress.value = { current: 0, total: 0, status: 'analyzing', percent: 0 }
   try {
     // 从后端获取所有作品（不限分页），避免只发当前页
-    const resp = await tubiApi.getAllResults(0, 2000, null, libraryId.value)
+    const resp = await tibaApi.getAllResults(0, 2000, null, libraryId.value)
     const allItems = resp?.results || resp?.data || []
     // 增量模式：只包含未分析的作品
     const imageIds = mode === 'incremental'
@@ -811,7 +811,7 @@ async function startBatchAiAnalyze(mode) {
     }
     aiAnalyzeImageIds.value = imageIds
     aiAnalyzeProgress.value.total = imageIds.length
-    const r = await tubiApi.batchAutoAnalyze(imageIds, mode)
+    const r = await tibaApi.batchAutoAnalyze(imageIds, mode)
     if (!r.success) {
       ElMessage.error(r.detail || '触发分析失败')
       aiAnalyzing.value = false
@@ -829,7 +829,7 @@ async function startBatchAiAnalyze(mode) {
 function startAiPolling(imageIds) {
   const timer = setInterval(async () => {
     try {
-      const r = await tubiApi.batchGetStatus(imageIds)
+      const r = await tibaApi.batchGetStatus(imageIds)
       if (!r.success) return
       const done = r.data.filter(x => x.status === 'analyzed').length
       const errored = r.data.filter(x => x.status === 'error').length
@@ -855,7 +855,7 @@ async function cancelBatchAiAnalyze() {
   showAiAnalyzeProgress.value = false
   // 调用后端真正取消队列中的任务
   if (aiAnalyzeImageIds.value.length > 0) {
-    try { await tubiApi.batchCancel(aiAnalyzeImageIds.value) } catch {}
+    try { await tibaApi.batchCancel(aiAnalyzeImageIds.value) } catch {}
     aiAnalyzeImageIds.value = []
   }
 }
