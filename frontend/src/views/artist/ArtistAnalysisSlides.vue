@@ -13,7 +13,12 @@
         <!-- 页眉 -->
         <div class="slide-top">
           <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="slide-back">← {{ artistName }}</router-link>
-          <span class="slide-tag">{{ slides[currentSlide]?.id }}</span>
+          <div class="slide-top-right">
+            <button class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
+              {{ isFullscreen ? '⊞' : '⛶' }}
+            </button>
+            <span class="slide-tag">{{ slides[currentSlide]?.id }}</span>
+          </div>
         </div>
 
         <!-- 主内容区：文字 30% + 图表 70% -->
@@ -93,6 +98,7 @@ const dimensionStats = ref(null)
 const emotionRanking = ref(null)
 const emotionTimeline = ref(null)
 const sizeStatsData = ref(null)
+const isFullscreen = ref(false)
 const loadedSlides = new Set()
 
 // ── 调色板（cartesian 风格 + 中国画配色）──
@@ -520,6 +526,18 @@ function onKey(e) {
 }
 function handleResize() { for (const [k, c] of Object.entries(chartInstances)) { try { c.resize() } catch { delete chartInstances[k] } } }
 
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    deckRef.value?.requestFullscreen?.()
+  } else {
+    document.exitFullscreen?.()
+  }
+}
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+  setTimeout(() => handleResize(), 200)
+}
+
 onMounted(async () => {
   // 首页没有 transition，直接加载+渲染
   currentSlide.value = 0
@@ -530,8 +548,13 @@ onMounted(async () => {
   slide.render()
   deckRef.value?.focus()
   window.addEventListener('resize', handleResize)
+  document.addEventListener('fullscreenchange', onFullscreenChange)
 })
-onUnmounted(() => { window.removeEventListener('resize', handleResize); for (const c of Object.values(chartInstances)) c.dispose() })
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
+  for (const c of Object.values(chartInstances)) c.dispose()
+})
 </script>
 
 <style scoped>
@@ -560,6 +583,14 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 1vh; flex-shrink: 0;
 }
+.slide-top-right { display: flex; align-items: center; gap: 10px; }
+.fullscreen-btn {
+  background: none; border: 1px solid #d4cec4; border-radius: 4px;
+  width: 28px; height: 28px; font-size: 16px; color: #8a8178;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.fullscreen-btn:hover { background: #d4cec4; color: #1a1a1a; }
 .slide-back {
   font-size: 0.8vw; color: #8a8178; text-decoration: none;
   letter-spacing: 1px; text-transform: uppercase;
