@@ -4023,20 +4023,24 @@ async def get_emotion_ranking(
     for row in rows:
         try:
             ca = json.loads(row[5])
+            # 优先用综合分（8维度），fallback 到文本分
+            cs = ca.get("combined_sentiment", {})
+            vader_norm = cs.get("vader_normalized")
+            if vader_norm is not None:
+                score = round(vader_norm, 3)
+            else:
+                es = ca.get("sentiment", {}).get("emotion_score")
+                score = round(es / math.sqrt(es ** 2 + 8.0), 3) if es else 0
             sent = ca.get("sentiment", {})
-            es = sent.get("emotion_score")
-            if es is not None:
-                normalized = es / math.sqrt(es ** 2 + 8.0)
-                scored.append({
-                    "id": row[1] or str(row[0]),
-                    "title": row[2] or "未命名",
-                    "year": row[3],
-                    "period_phase": row[4] or "未分期",
-                    "emotion_score": round(normalized, 3),
-                    "raw_score": round(es, 2),
-                    "polarity": sent.get("polarity", "neutral"),
-                    "inscription_excerpt": (row[6] or "")[:60],
-                })
+            scored.append({
+                "id": row[1] or str(row[0]),
+                "title": row[2] or "未命名",
+                "year": row[3],
+                "period_phase": row[4] or "未分期",
+                "emotion_score": score,
+                "polarity": sent.get("polarity", "neutral"),
+                "inscription_excerpt": (row[6] or "")[:60],
+            })
         except:
             continue
 
@@ -4077,18 +4081,22 @@ async def get_emotion_timeline(
     for row in rows:
         try:
             ca = json.loads(row[5])
+            cs = ca.get("combined_sentiment", {})
+            vader_norm = cs.get("vader_normalized")
+            if vader_norm is not None:
+                score = round(vader_norm, 3)
+            else:
+                es = ca.get("sentiment", {}).get("emotion_score")
+                score = round(es / math.sqrt(es ** 2 + 8.0), 3) if es else 0
             sent = ca.get("sentiment", {})
-            es = sent.get("emotion_score")
-            if es is not None:
-                normalized = es / math.sqrt(es ** 2 + 8.0)
-                points.append({
-                    "id": row[1] or str(row[0]),
-                    "title": row[2] or "未命名",
-                    "year": row[3],
-                    "period_phase": row[4] or "未分期",
-                    "emotion_score": round(normalized, 3),
-                    "polarity": sent.get("polarity", "neutral"),
-                })
+            points.append({
+                "id": row[1] or str(row[0]),
+                "title": row[2] or "未命名",
+                "year": row[3],
+                "period_phase": row[4] or "未分期",
+                "emotion_score": score,
+                "polarity": sent.get("polarity", "neutral"),
+            })
         except:
             continue
 
