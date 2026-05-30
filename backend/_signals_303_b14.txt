@@ -1,0 +1,13 @@
+ID=303 | 花鸟十二开之八 | text_raw=3.0
+题跋: 一片清光万里寒，蛟龙惊觉咽吞难。谁知荇底鱼儿辈，翻得嫦娥隔水看。乾隆十八年秋，李鱓制。
+
+    multi_word 乾隆十八 score=+0 neg=False
+    multi_word 李鱓制 score=+0 neg=False
+    multi_word 清光 score=+2 neg=False
+    multi_word 嫦娥 score=+2 neg=False
+    multi_word 惊觉 score=-1 neg=False
+   single_char 寒 score=+0 neg=False
+   single_char 年 score=+0 neg=False
+   single_char 水 score=+0 neg=False
+   single_char 秋 score=+0 neg=False
+   single_char 鱼 score=+0 neg=False

@@ -17,7 +17,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from app.core.database import SessionLocal
-from app.models.tubi_analysis import TubiAnalysis
+from app.models.tiba_analysis import TibaAnalysis
 
 
 def calculate_iou(mask1: np.ndarray, mask2: np.ndarray) -> float:
@@ -36,9 +36,9 @@ def run_batch_optimization() -> Dict:
     db = SessionLocal()
     try:
         # 加载所有有标注的记录
-        records = db.query(TubiAnalysis).filter(
-            TubiAnalysis.regions != None,
-            TubiAnalysis.regions != ''
+        records = db.query(TibaAnalysis).filter(
+            TibaAnalysis.regions != None,
+            TibaAnalysis.regions != ''
         ).all()
         
         if len(records) < 10:

@@ -18,7 +18,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.path_utils import get_static_url, get_full_file_path, normalize_path, basename
 from app.core.auth import require_admin_role, require_editor, require_permission, get_optional_user, get_current_user
-from app.models.tubi_analysis import TubiAnalysis
+from app.models.tiba_analysis import TibaAnalysis
 from app.models.user import User
 from app.services.auto_tags import compute_tags_cached
 from app.services.inscription_content_analyzer import get_period_phase
@@ -100,7 +100,7 @@ os.makedirs(ANNOTATED_DIR, exist_ok=True)
 os.makedirs(DEBUG_DIR, exist_ok=True)
 
 
-from app.models.tubi_job import TubiJob
+from app.models.tiba_job import TibaJob
 
 # 获取项目根目录
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -274,10 +274,10 @@ def get_wordcloud_keywords(
     top_k: int = 40,
     db: Session = Depends(get_db),
 ):
-    q = db.query(TubiAnalysis)
+    q = db.query(TibaAnalysis)
     if artist and artist != "all":
-        q = q.filter(TubiAnalysis.artist.in_(get_artist_aliases(artist)))
-    items = q.order_by(TubiAnalysis.created_at.desc()).limit(2000).all()
+        q = q.filter(TibaAnalysis.artist.in_(get_artist_aliases(artist)))
+    items = q.order_by(TibaAnalysis.created_at.desc()).limit(2000).all()
 
     docs = [
         {
@@ -838,7 +838,7 @@ async def upload_image(
                 raise HTTPException(status_code=400, detail="画库未设置画家（artist_name），无法自动绑定作者")
             artist = lib_artist_name
 
-        db_analysis = TubiAnalysis(
+        db_analysis = TibaAnalysis(
             image_id=file_id,
             filename=file.filename,
             filepath=normalize_path(filepath),
@@ -865,7 +865,7 @@ async def upload_image(
         # 更新画库作品计数
         if library_id:
             from app.models.artwork_library import ArtworkLibrary
-            count = db.query(TubiAnalysis).filter(TubiAnalysis.library_id == library_id).count()
+            count = db.query(TibaAnalysis).filter(TibaAnalysis.library_id == library_id).count()
             db.query(ArtworkLibrary).filter(ArtworkLibrary.id == library_id).update({"artwork_count": count})
             db.commit()
 
@@ -1076,7 +1076,7 @@ async def upload_images(
             year = parsed["year"]
             period = parsed["period"]
             try:
-                db_analysis = TubiAnalysis(
+                db_analysis = TibaAnalysis(
                     image_id=file_id,
                     filename=file.filename,
                     filepath=normalize_path(filepath),
@@ -1146,7 +1146,7 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db), editor=Depe
     使用 AI 自动分析图像中的题跋、绘画、留白区域
     Redis 不可用时自动降级到 DB 队列（tubi_worker 的 DB 轮询模式会处理）
     """
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1156,13 +1156,13 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db), editor=Depe
     db_analysis.status = "queued"
     db.commit()
 
-    job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
+    job = db.query(TibaJob).filter(TibaJob.image_id == image_id).first()
     if job:
         job.status = "queued"
         job.last_error = None
         job.error_code = None
     else:
-        job = TubiJob(image_id=image_id, status="queued")
+        job = TibaJob(image_id=image_id, status="queued")
         db.add(job)
     db.commit()
 
@@ -1196,7 +1196,7 @@ async def auto_analyze(image_id: str, db: Session = Depends(get_db), editor=Depe
 
 @router.post("/analyze")
 async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == request.image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == request.image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1238,24 +1238,24 @@ async def analyze_regions(request: AnalysisRequest, db: Session = Depends(get_db
 
 def _get_adjacent_image_id(db, analysis, direction="prev"):
     """获取同作者/同库的前一个或后一个 image_id，用于导航按钮"""
-    query = db.query(TubiAnalysis.image_id).filter(
-        TubiAnalysis.artist == analysis.artist,
-        TubiAnalysis.id != analysis.id,
-        TubiAnalysis.page_role.is_(None) | (TubiAnalysis.page_role == ""),
+    query = db.query(TibaAnalysis.image_id).filter(
+        TibaAnalysis.artist == analysis.artist,
+        TibaAnalysis.id != analysis.id,
+        TibaAnalysis.page_role.is_(None) | (TibaAnalysis.page_role == ""),
     )
     if analysis.library_id:
-        query = query.filter(TubiAnalysis.library_id == analysis.library_id)
+        query = query.filter(TibaAnalysis.library_id == analysis.library_id)
     if direction == "prev":
-        query = query.filter(TubiAnalysis.id < analysis.id).order_by(TubiAnalysis.id.desc())
+        query = query.filter(TibaAnalysis.id < analysis.id).order_by(TibaAnalysis.id.desc())
     else:
-        query = query.filter(TubiAnalysis.id > analysis.id).order_by(TubiAnalysis.id.asc())
+        query = query.filter(TibaAnalysis.id > analysis.id).order_by(TibaAnalysis.id.asc())
     result = query.first()
     return result[0] if result else None
 
 
 @router.get("/result/{image_id}")
 async def get_result(image_id: str, db: Session = Depends(get_db), user: Optional[User] = Depends(get_optional_user)):
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
     # 私有作品仅 owner/admin 可见
@@ -1386,7 +1386,7 @@ async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), edito
     if mode == "manual":
         results = []
         for image_id in image_ids:
-            db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+            db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
             if not db_analysis:
                 results.append({"id": image_id, "status": "not_found"})
                 continue
@@ -1399,7 +1399,7 @@ async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), edito
     results = []
     skipped_analyzed = 0
     for image_id in image_ids:
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
         if not db_analysis:
             results.append({"id": image_id, "status": "not_found", "via": None})
             continue
@@ -1414,14 +1414,14 @@ async def batch_auto_analyze(request: dict, db: Session = Depends(get_db), edito
         db_analysis.status = "queued"
         db.commit()
 
-        job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
+        job = db.query(TibaJob).filter(TibaJob.image_id == image_id).first()
         if job:
             job.status = "queued"
             job.mode = mode
             job.last_error = None
             job.error_code = None
         else:
-            job = TubiJob(image_id=image_id, status="queued", mode=mode)
+            job = TibaJob(image_id=image_id, status="queued", mode=mode)
             db.add(job)
         db.commit()
 
@@ -1453,8 +1453,8 @@ async def batch_get_status(request: BatchStatusRequest, db: Session = Depends(ge
 
     # Single query with IN instead of N individual queries
     analyses = (
-        db.query(TubiAnalysis)
-        .filter(TubiAnalysis.image_id.in_(request.image_ids))
+        db.query(TibaAnalysis)
+        .filter(TibaAnalysis.image_id.in_(request.image_ids))
         .all()
     )
     # Build lookup dict for O(1) access
@@ -1483,13 +1483,13 @@ async def batch_cancel(request: BatchStatusRequest, db: Session = Depends(get_db
     cancelled = 0
     for image_id in request.image_ids:
         # 取消 jobs
-        job = db.query(TubiJob).filter(TubiJob.image_id == image_id, TubiJob.status.in_(["queued", "processing"])).first()
+        job = db.query(TibaJob).filter(TibaJob.image_id == image_id, TibaJob.status.in_(["queued", "processing"])).first()
         if job:
             job.status = "done"
             job.last_error = "cancelled by user"
             cancelled += 1
         # 重置 analysis 状态
-        analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id, TubiAnalysis.status.in_(["queued", "analyzing"])).first()
+        analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id, TibaAnalysis.status.in_(["queued", "analyzing"])).first()
         if analysis:
             analysis.status = "uploaded"
     db.commit()
@@ -1498,7 +1498,7 @@ async def batch_cancel(request: BatchStatusRequest, db: Session = Depends(get_db
 
 @router.get("/analyze-status/{image_id}")
 async def get_analyze_status(image_id: str, db: Session = Depends(get_db)):
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1518,7 +1518,7 @@ async def get_analyze_status(image_id: str, db: Session = Depends(get_db)):
 
 @router.get("/queue-info/{image_id}")
 async def get_queue_info(image_id: str, db: Session = Depends(get_db)):
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1559,7 +1559,7 @@ async def get_queue_info(image_id: str, db: Session = Depends(get_db)):
 
     # 降级到 DB 查询
     if not redis_available:
-        job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
+        job = db.query(TibaJob).filter(TibaJob.image_id == image_id).first()
         if not job or not job.created_at:
             return {
                 "success": True,
@@ -1575,13 +1575,13 @@ async def get_queue_info(image_id: str, db: Session = Depends(get_db)):
             }
 
         before_count = (
-            db.query(TubiJob)
-            .filter(TubiJob.status == "queued")
-            .filter(TubiJob.created_at < job.created_at)
+            db.query(TibaJob)
+            .filter(TibaJob.status == "queued")
+            .filter(TibaJob.created_at < job.created_at)
             .count()
         )
-        pending_count = db.query(TubiJob).filter(TubiJob.status == "queued").count()
-        processing_count = db.query(TubiJob).filter(TubiJob.status == "processing").count()
+        pending_count = db.query(TibaJob).filter(TibaJob.status == "queued").count()
+        processing_count = db.query(TibaJob).filter(TibaJob.status == "processing").count()
         position = before_count + 1
 
     # 计算预估等待时间
@@ -1606,7 +1606,7 @@ async def get_queue_info(image_id: str, db: Session = Depends(get_db)):
 
 @router.post("/year")
 async def save_year_data(request: YearDataRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == request.image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == request.image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1630,7 +1630,7 @@ async def update_image_info(
     editor=Depends(require_editor)
 ):
     """更新图片信息（标题、作者等）"""
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1707,7 +1707,7 @@ async def replace_image(
     - 保留：title/artist/year/period/notes/analysis_note/inscription_content/seal_content/inscription_percent/painting_percent/blank_percent/regions/position_analysis/content_analysis/theme_tags/material_tags/artwork_width_cm/artwork_height_cm/album_name/album_index
     - 更新：filepath/thumbnail_path/image_width/image_height/filename/annotated_image_path（设为None）
     """
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -1868,42 +1868,42 @@ async def get_all_results(
         if cached:
             return cached
 
-    query = db.query(TubiAnalysis)
+    query = db.query(TibaAnalysis)
     if artist:
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
-        query = query.filter(TubiAnalysis.artist.in_(aliases))
+        query = query.filter(TibaAnalysis.artist.in_(aliases))
     if work_type:
-        query = query.filter(TubiAnalysis.work_type == work_type)
+        query = query.filter(TibaAnalysis.work_type == work_type)
 
     # 可见性过滤：私有作品仅 owner/admin 可见
     if user and user.role in ("admin", "super_admin"):
         pass  # admin 可看全部
     elif user:
         query = query.filter(
-            (TubiAnalysis.visibility != "private") | (TubiAnalysis.owner_id == user.id)
+            (TibaAnalysis.visibility != "private") | (TibaAnalysis.owner_id == user.id)
         )
     else:
-        query = query.filter(TubiAnalysis.visibility != "private")
+        query = query.filter(TibaAnalysis.visibility != "private")
 
     if library_id:
-        query = query.filter(TubiAnalysis.library_id == library_id)
+        query = query.filter(TibaAnalysis.library_id == library_id)
 
     # 排序
     sort_map = {
-        'inscription_percent': TubiAnalysis.inscription_percent,
-        'painting_percent': TubiAnalysis.painting_percent,
-        'blank_percent': TubiAnalysis.blank_percent,
-        'year': TubiAnalysis.year,
-        'created_at': TubiAnalysis.created_at,
-        'updated_at': TubiAnalysis.updated_at,
+        'inscription_percent': TibaAnalysis.inscription_percent,
+        'painting_percent': TibaAnalysis.painting_percent,
+        'blank_percent': TibaAnalysis.blank_percent,
+        'year': TibaAnalysis.year,
+        'created_at': TibaAnalysis.created_at,
+        'updated_at': TibaAnalysis.updated_at,
     }
     if sort_by and sort_by in sort_map:
         sort_col = sort_map[sort_by]
         order_fn = sort_col.desc() if sort_dir == 'desc' else sort_col.asc()
         query = query.order_by(sort_col.is_(None).asc(), order_fn)
     else:
-        query = query.order_by(TubiAnalysis.created_at.desc())
+        query = query.order_by(TibaAnalysis.created_at.desc())
     analyses = query.offset(skip).limit(limit).all()
 
     is_full_list = not artist and not sort_by and limit >= 500  # 全量查询 → 轻量 response + 持久缓存
@@ -2012,8 +2012,8 @@ async def get_all_results(
     if user:
         response["user_data"] = {
             "user_id": user.id,
-            "my_library_count": db.query(TubiAnalysis).filter(
-                TubiAnalysis.owner_id == user.id
+            "my_library_count": db.query(TibaAnalysis).filter(
+                TibaAnalysis.owner_id == user.id
             ).count(),
         }
     # 全量查询写入持久缓存（轻量版本）
@@ -2047,32 +2047,32 @@ async def search_images(
             }
 
         # 构建查询
-        query = db.query(TubiAnalysis)
+        query = db.query(TibaAnalysis)
 
         # 作者筛选
         if artist and artist != 'all':
             from app.services.keyword_extractor import get_artist_aliases
             aliases = get_artist_aliases(artist)
-            query = query.filter(TubiAnalysis.artist.in_(aliases))
+            query = query.filter(TibaAnalysis.artist.in_(aliases))
 
         # 关键词搜索（标题、作者、年代、备注、题跋、印章、标签、年份）
         keyword_filter = f"%{keyword}%"
         filters = [
-            TubiAnalysis.title.ilike(keyword_filter),
-            TubiAnalysis.artist.ilike(keyword_filter),
-            TubiAnalysis.period.ilike(keyword_filter),
-            TubiAnalysis.notes.ilike(keyword_filter),
-            TubiAnalysis.analysis_note.ilike(keyword_filter),
-            TubiAnalysis.inscription_content.ilike(keyword_filter),
-            TubiAnalysis.inscription_modern.ilike(keyword_filter),
-            TubiAnalysis.seal_content.ilike(keyword_filter),
-            TubiAnalysis.theme_tags.ilike(keyword_filter),
-            TubiAnalysis.material_tags.ilike(keyword_filter),
+            TibaAnalysis.title.ilike(keyword_filter),
+            TibaAnalysis.artist.ilike(keyword_filter),
+            TibaAnalysis.period.ilike(keyword_filter),
+            TibaAnalysis.notes.ilike(keyword_filter),
+            TibaAnalysis.analysis_note.ilike(keyword_filter),
+            TibaAnalysis.inscription_content.ilike(keyword_filter),
+            TibaAnalysis.inscription_modern.ilike(keyword_filter),
+            TibaAnalysis.seal_content.ilike(keyword_filter),
+            TibaAnalysis.theme_tags.ilike(keyword_filter),
+            TibaAnalysis.material_tags.ilike(keyword_filter),
         ]
         # 年份精确匹配（keyword 为纯数字时）
         try:
             year_val = int(keyword)
-            filters.append(TubiAnalysis.year == year_val)
+            filters.append(TibaAnalysis.year == year_val)
         except (ValueError, TypeError):
             pass
         query = query.filter(or_(*filters))
@@ -2082,16 +2082,16 @@ async def search_images(
             pass
         elif user:
             query = query.filter(
-                (TubiAnalysis.visibility != "private") | (TubiAnalysis.owner_id == user.id)
+                (TibaAnalysis.visibility != "private") | (TibaAnalysis.owner_id == user.id)
             )
         else:
-            query = query.filter(TubiAnalysis.visibility != "private")
+            query = query.filter(TibaAnalysis.visibility != "private")
 
         # 总匹配数（用于分页）
         total_matches = query.count()
 
         # 按创建时间倒序 + 分页
-        analyses = query.order_by(TubiAnalysis.created_at.desc()).offset(skip).limit(limit).all()
+        analyses = query.order_by(TibaAnalysis.created_at.desc()).offset(skip).limit(limit).all()
 
         # 组装结果
         results = []
@@ -2212,8 +2212,8 @@ async def search_images(
         if user:
             response["user_data"] = {
                 "user_id": user.id,
-                "my_library_count": db.query(TubiAnalysis).filter(
-                    TubiAnalysis.owner_id == user.id
+                "my_library_count": db.query(TibaAnalysis).filter(
+                    TibaAnalysis.owner_id == user.id
                 ).count(),
             }
         return response
@@ -2226,7 +2226,7 @@ async def search_images(
 
 @router.delete("/image/{image_id}")
 async def delete_image(image_id: str, request: Request, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -2264,7 +2264,7 @@ async def clear_all_analyses(request: Request, db: Session = Depends(get_db), ad
     """清空所有分析数据"""
     try:
         # 获取所有记录
-        all_analyses = db.query(TubiAnalysis).all()
+        all_analyses = db.query(TibaAnalysis).all()
 
         # 删除所有关联文件 - 使用跨平台路径处理
         for analysis in all_analyses:
@@ -2285,7 +2285,7 @@ async def clear_all_analyses(request: Request, db: Session = Depends(get_db), ad
                         logger.error("删除标注图失败 %s: %s", annotated_path_local, e)
 
         # 删除所有数据库记录
-        db.query(TubiAnalysis).delete()
+        db.query(TibaAnalysis).delete()
         db.commit()
 
         return {
@@ -2363,23 +2363,23 @@ async def get_dimensions(
     - 包含宽高、册页分组信息
     - 按年份分组（供前端按年筛选）
     """
-    query = db.query(TubiAnalysis)
+    query = db.query(TibaAnalysis)
     
     if artist:
         # 获取该作者的所有别名
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
-        query = query.filter(TubiAnalysis.artist.in_(aliases))
+        query = query.filter(TibaAnalysis.artist.in_(aliases))
     else:
         # 默认只查李鱓
-        query = query.filter(TubiAnalysis.artist.in_(["李鱓", "李复堂", "李鳆"]))
+        query = query.filter(TibaAnalysis.artist.in_(["李鱓", "李复堂", "李鳆"]))
     if library_id:
-        query = query.filter(TubiAnalysis.library_id == library_id)
+        query = query.filter(TibaAnalysis.library_id == library_id)
     
     # 只查正文画页（排除封面/封底/题跋页/附件/其他页）
-    query = query.filter((TubiAnalysis.page_role.is_(None)) | (TubiAnalysis.page_role == ''))
+    query = query.filter((TibaAnalysis.page_role.is_(None)) | (TibaAnalysis.page_role == ''))
 
-    records = query.order_by(TubiAnalysis.year, TubiAnalysis.id).all()
+    records = query.order_by(TibaAnalysis.year, TibaAnalysis.id).all()
 
     items = []
     for r in records:
@@ -2431,7 +2431,7 @@ async def get_dimensions(
 @router.put("/dimensions/{id}")
 async def update_dimension(id: int, request: DimensionUpdateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """更新单条记录的尺寸和册页信息"""
-    db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.id == id).first()
+    db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.id == id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="记录不存在")
 
@@ -2469,8 +2469,8 @@ async def batch_update_album_dimensions(request: AlbumDimensionRequest, db: Sess
     根据 album_name 匹配，为该册页所有记录设置相同宽高。
     """
     updated = (
-        db.query(TubiAnalysis)
-        .filter(TubiAnalysis.album_name == request.album_name)
+        db.query(TibaAnalysis)
+        .filter(TibaAnalysis.album_name == request.album_name)
         .all()
     )
 
@@ -2528,14 +2528,14 @@ async def get_albums(
     """获取所有册页列表（含统计）"""
     from collections import defaultdict
     
-    query = db.query(TubiAnalysis).filter(TubiAnalysis.album_name.isnot(None))
+    query = db.query(TibaAnalysis).filter(TibaAnalysis.album_name.isnot(None))
     if artist:
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
-        query = query.filter(TubiAnalysis.artist.in_(aliases))
+        query = query.filter(TibaAnalysis.artist.in_(aliases))
     if library_id:
-        query = query.filter(TubiAnalysis.library_id == library_id)
-    records_with_album = query.order_by(TubiAnalysis.album_name, TubiAnalysis.album_index).all()
+        query = query.filter(TibaAnalysis.library_id == library_id)
+    records_with_album = query.order_by(TibaAnalysis.album_name, TibaAnalysis.album_index).all()
     
     albums = defaultdict(list)
     for r in records_with_album:
@@ -2564,9 +2564,9 @@ async def get_albums(
 async def get_album(album_name: str, db: Session = Depends(get_db)):
     """获取册页详情（含作品列表）"""
     records = (
-        db.query(TubiAnalysis)
-        .filter(TubiAnalysis.album_name == album_name)
-        .order_by(TubiAnalysis.album_index)
+        db.query(TibaAnalysis)
+        .filter(TibaAnalysis.album_name == album_name)
+        .order_by(TibaAnalysis.album_index)
         .all()
     )
     
@@ -2597,13 +2597,13 @@ async def get_album(album_name: str, db: Session = Depends(get_db)):
 @router.post("/albums")
 async def create_album(request: AlbumCreateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """创建新册页"""
-    existing = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == request.name).first()
+    existing = db.query(TibaAnalysis).filter(TibaAnalysis.album_name == request.name).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"册页名已存在: {request.name}")
     
     if request.record_ids:
         for idx, record_image_id in enumerate(request.record_ids):
-            r = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_image_id).first()
+            r = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == record_image_id).first()
             if r:
                 r.album_name = request.name
                 r.album_index = idx + 1
@@ -2616,11 +2616,11 @@ async def create_album(request: AlbumCreateRequest, db: Session = Depends(get_db
 @router.put("/albums/{album_name}")
 async def rename_album(album_name: str, request: AlbumRenameRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """重命名册页"""
-    existing = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == request.new_name).first()
+    existing = db.query(TibaAnalysis).filter(TibaAnalysis.album_name == request.new_name).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"册页名已存在: {request.new_name}")
     
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.album_name == album_name).all()
     if not records:
         raise HTTPException(status_code=404, detail=f"册页不存在: {album_name}")
     
@@ -2635,7 +2635,7 @@ async def rename_album(album_name: str, request: AlbumRenameRequest, db: Session
 @router.delete("/albums/{album_name}")
 async def delete_album(album_name: str, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """删除册页（作品恢复自由态，不删除作品）"""
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.album_name == album_name).all()
     
     if not records:
         raise HTTPException(status_code=404, detail=f"册页不存在: {album_name}")
@@ -2652,19 +2652,19 @@ async def delete_album(album_name: str, db: Session = Depends(get_db), admin=Dep
 @router.post("/albums/{album_name}/items")
 async def add_items_to_album(album_name: str, request: AlbumAddItemsRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """添加作品到册页"""
-    existing = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).first()
+    existing = db.query(TibaAnalysis).filter(TibaAnalysis.album_name == album_name).first()
     if not existing:
         raise HTTPException(status_code=404, detail=f"册页不存在: {album_name}")
     
     current_max = (
-        db.query(func.max(TubiAnalysis.album_index))
-        .filter(TubiAnalysis.album_name == album_name)
+        db.query(func.max(TibaAnalysis.album_index))
+        .filter(TibaAnalysis.album_name == album_name)
         .scalar() or 0
     )
     
     added = 0
     for record_image_id in request.record_ids:
-        r = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_image_id).first()
+        r = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == record_image_id).first()
         if r:
             r.album_name = album_name
             current_max += 1
@@ -2679,7 +2679,7 @@ async def add_items_to_album(album_name: str, request: AlbumAddItemsRequest, db:
 @router.delete("/albums/{album_name}/items/{record_id}")
 async def remove_item_from_album(album_name: str, record_id: str, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """从册页移除作品（作品恢复自由态）"""
-    r = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_id).first()
+    r = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == record_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="记录不存在")
     if r.album_name != album_name:
@@ -2696,7 +2696,7 @@ async def remove_item_from_album(album_name: str, record_id: str, db: Session = 
 @router.put("/albums/{album_name}/reorder")
 async def reorder_album_items(album_name: str, request: AlbumReorderRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """重新排序册页内作品"""
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name == album_name).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.album_name == album_name).all()
     if not records:
         raise HTTPException(status_code=404, detail=f"册页不存在: {album_name}")
     
@@ -2706,7 +2706,7 @@ async def reorder_album_items(album_name: str, request: AlbumReorderRequest, db:
             raise HTTPException(status_code=400, detail=f"记录 {record_image_id} 不属于此册页")
     
     for idx, record_image_id in enumerate(request.item_order):
-        r = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_image_id).first()
+        r = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == record_image_id).first()
         if r:
             r.album_index = idx + 1
             r.updated_at = datetime.now()
@@ -2719,9 +2719,9 @@ async def reorder_album_items(album_name: str, request: AlbumReorderRequest, db:
 async def get_album_navigation(record_id: str, db: Session = Depends(get_db)):
     """获取指定作品的册页导航信息（返回同册页其他作品列表）"""
     if record_id.isdigit():
-        current_record = db.query(TubiAnalysis).filter(TubiAnalysis.id == int(record_id)).first()
+        current_record = db.query(TibaAnalysis).filter(TibaAnalysis.id == int(record_id)).first()
     else:
-        current_record = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == record_id).first()
+        current_record = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == record_id).first()
     
     if not current_record:
         raise HTTPException(status_code=404, detail="记录不存在")
@@ -2730,9 +2730,9 @@ async def get_album_navigation(record_id: str, db: Session = Depends(get_db)):
         return {"success": True, "data": {"is_in_album": False}}
     
     album_records = (
-        db.query(TubiAnalysis)
-        .filter(TubiAnalysis.album_name == current_record.album_name)
-        .order_by(TubiAnalysis.album_index)
+        db.query(TibaAnalysis)
+        .filter(TibaAnalysis.album_name == current_record.album_name)
+        .order_by(TibaAnalysis.album_index)
         .all()
     )
     
@@ -2795,13 +2795,13 @@ async def get_tags(
     
     tag_counts = defaultdict(int)
     
-    query = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None))
+    query = db.query(TibaAnalysis).filter(TibaAnalysis.tags.isnot(None))
     if artist:
         from app.services.keyword_extractor import get_artist_aliases
         aliases = get_artist_aliases(artist)
-        query = query.filter(TubiAnalysis.artist.in_(aliases))
+        query = query.filter(TibaAnalysis.artist.in_(aliases))
     if library_id:
-        query = query.filter(TubiAnalysis.library_id == library_id)
+        query = query.filter(TibaAnalysis.library_id == library_id)
     records_with_tags = query.all()
     
     for r in records_with_tags:
@@ -2824,7 +2824,7 @@ async def get_tags(
 @router.get("/tags/{tag_name}")
 async def get_tag_items(tag_name: str, db: Session = Depends(get_db)):
     """获取标签下的所有作品"""
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.tags.isnot(None)).all()
     
     items = []
     for r in records:
@@ -2850,7 +2850,7 @@ async def get_tag_items(tag_name: str, db: Session = Depends(get_db)):
 @router.post("/tags")
 async def create_tag(request: TagCreateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """创建新标签（实际上标签是动态的，这个接口主要用于验证标签名）"""
-    existing = db.query(TubiAnalysis).filter(TubiAnalysis.tags.like(f'%{request.name}%')).first()
+    existing = db.query(TibaAnalysis).filter(TibaAnalysis.tags.like(f'%{request.name}%')).first()
     if existing:
         return {"success": True, "message": f"标签「{request.name}」已存在"}
     
@@ -2860,7 +2860,7 @@ async def create_tag(request: TagCreateRequest, db: Session = Depends(get_db), e
 @router.put("/tags")
 async def rename_tag(request: TagUpdateRequest, db: Session = Depends(get_db), editor=Depends(require_editor)):
     """重命名标签"""
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.tags.isnot(None)).all()
     
     updated_count = 0
     for r in records:
@@ -2881,7 +2881,7 @@ async def rename_tag(request: TagUpdateRequest, db: Session = Depends(get_db), e
 @router.delete("/tags/{tag_name}")
 async def delete_tag(tag_name: str, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """删除标签（从所有作品中移除该标签）"""
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.tags.isnot(None)).all()
     
     updated_count = 0
     for r in records:
@@ -2904,7 +2904,7 @@ async def add_items_to_tag(request: TagItemRequest, db: Session = Depends(get_db
     """给作品添加标签"""
     added_count = 0
     for record_id in request.record_ids:
-        r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
+        r = db.query(TibaAnalysis).filter(TibaAnalysis.id == record_id).first()
         if r:
             try:
                 tags = json.loads(r.tags) if r.tags and isinstance(r.tags, str) else []
@@ -2925,7 +2925,7 @@ async def add_items_to_tag(request: TagItemRequest, db: Session = Depends(get_db
 @router.delete("/tags/{tag_name}/items/{record_id}")
 async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """从作品移除标签"""
-    r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
+    r = db.query(TibaAnalysis).filter(TibaAnalysis.id == record_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="记录不存在")
     
@@ -2947,7 +2947,7 @@ async def remove_item_from_tag(tag_name: str, record_id: int, db: Session = Depe
 async def reset_all_tags(db: Session = Depends(get_db), admin=Depends(require_admin_role)):
     """清空所有作品的 tags 字段（用于重置自动标签）"""
     updated_count = 0
-    records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
+    records = db.query(TibaAnalysis).filter(TibaAnalysis.tags.isnot(None)).all()
     for r in records:
         r.tags = None
         r.updated_at = datetime.now()
@@ -2968,9 +2968,9 @@ async def get_extended_stats(db: Session = Depends(get_db)):
 
     from collections import defaultdict
 
-    total = db.query(TubiAnalysis).count()
+    total = db.query(TibaAnalysis).count()
     
-    album_records = db.query(TubiAnalysis).filter(TubiAnalysis.album_name.isnot(None)).all()
+    album_records = db.query(TibaAnalysis).filter(TibaAnalysis.album_name.isnot(None)).all()
     album_groups = defaultdict(list)
     for r in album_records:
         album_groups[r.album_name].append(r)
@@ -2979,7 +2979,7 @@ async def get_extended_stats(db: Session = Depends(get_db)):
     album_item_count = len(album_records)
     
     tag_counts = defaultdict(int)
-    tag_records = db.query(TubiAnalysis).filter(TubiAnalysis.tags.isnot(None)).all()
+    tag_records = db.query(TibaAnalysis).filter(TibaAnalysis.tags.isnot(None)).all()
     for r in tag_records:
         try:
             tags = json.loads(r.tags) if isinstance(r.tags, str) else r.tags
@@ -3001,7 +3001,7 @@ async def get_extended_stats(db: Session = Depends(get_db)):
             return "大幅"
     
     size_stats = defaultdict(int)
-    records_with_size = db.query(TubiAnalysis).filter(TubiAnalysis.artwork_height_cm.isnot(None)).all()
+    records_with_size = db.query(TibaAnalysis).filter(TibaAnalysis.artwork_height_cm.isnot(None)).all()
     for r in records_with_size:
         cat = get_size_category(r.artwork_height_cm)
         if cat:
@@ -3052,9 +3052,9 @@ async def get_record_by_id(id: str, db: Session = Depends(get_db)):
     """通过数据库主键或 image_id 获取单条记录（用于标注工具等场景）"""
     # 支持数字主键和 UUID 字符串两种方式
     if id.isdigit():
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.id == int(id)).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.id == int(id)).first()
     else:
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == id).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="记录不存在")
 
@@ -3141,9 +3141,9 @@ async def update_regions_manual(
     """
     # 支持数字ID或UUID字符串查询
     if id.isdigit():
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.id == int(id)).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.id == int(id)).first()
     else:
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == id).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="记录不存在")
 
@@ -3328,9 +3328,9 @@ async def recover_regions(
     当 regions 为数组（错误格式）时，自动转换为正确的 dict 格式。
     """
     if image_id.isdigit():
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.id == int(image_id)).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.id == int(image_id)).first()
     else:
-        db_analysis = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == image_id).first()
+        db_analysis = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == image_id).first()
     if not db_analysis:
         raise HTTPException(status_code=404, detail="图像不存在")
 
@@ -3420,7 +3420,7 @@ async def get_my_stats(
     import json
 
     # 我的作品
-    my_query = db.query(TubiAnalysis).filter(TubiAnalysis.owner_id == user.id)
+    my_query = db.query(TibaAnalysis).filter(TibaAnalysis.owner_id == user.id)
 
     my_total = my_query.count()
     if my_total == 0:
@@ -3432,7 +3432,7 @@ async def get_my_stats(
                 "period_stats": [],
                 "size_distribution": [],
             },
-            "public_total": db.query(TubiAnalysis).count(),
+            "public_total": db.query(TibaAnalysis).count(),
         }
 
     # 我的情感分布 - 从 content_analysis JSON 中提取
@@ -3502,7 +3502,7 @@ async def get_my_stats(
             })
 
     # 公共数据总量（用于对比）
-    public_total = db.query(TubiAnalysis).count()
+    public_total = db.query(TibaAnalysis).count()
 
     return {
         "success": True,

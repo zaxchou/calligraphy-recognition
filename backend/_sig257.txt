@@ -1,0 +1,8 @@
+ID=257 | 杂画十二开之九 | raw=2.0
+美人期不来，秋水寒如此。隔岸芙蓉花，暝色空江里。
+    multi_word 美人 score=+2
+   single_char 寒 score=+0
+   single_char 水 score=+0
+   single_char 秋 score=+0
+   single_char 空 score=+0
+   single_char 花 score=+0

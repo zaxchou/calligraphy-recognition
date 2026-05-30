@@ -1,0 +1,10 @@
+method=multi_word word=堂懊道人 score=+0 negated=False
+method=multi_word word=长兄先生 score=+2 negated=False
+method=single_char word=墨 score=+0 negated=False
+method=single_char word=年 score=+0 negated=False
+method=single_char word=水 score=+0 negated=False
+method=single_char word=秀 score=+0 negated=False
+method=single_char word=苦 score=-3 negated=False
+method=single_char word=趣 score=+1 negated=False
+
+text_raw=0.0

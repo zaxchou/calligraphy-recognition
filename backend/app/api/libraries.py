@@ -16,7 +16,7 @@ from app.core.quota import check_library_quota
 from app.models.artwork_library import ArtworkLibrary
 from app.models.library_collaborator import LibraryCollaborator
 from app.models.change_request import ChangeRequest
-from app.models.tubi_analysis import TubiAnalysis
+from app.models.tiba_analysis import TibaAnalysis
 from app.models.user import User
 from app.api.revisions import create_revision
 from app.api.notifications import create_notification_for_review, notify_admins_of_pending
@@ -234,8 +234,8 @@ async def get_library_detail(
         })
 
     # 实际作品数（从 tubi_analyses 统计，确保准确）
-    actual_count = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id
+    actual_count = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id
     ).scalar()
 
     result = _library_to_response(lib)
@@ -293,8 +293,8 @@ async def delete_library(
     if lib.owner_id != user.id:
         raise HTTPException(status_code=403, detail="仅库主可以删除作品库")
 
-    artwork_count = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id
+    artwork_count = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id
     ).scalar()
 
     if artwork_count > 0 and not cascade:
@@ -305,8 +305,8 @@ async def delete_library(
 
     if cascade and artwork_count > 0:
         # 级联删除：将作品从库中移除（设置 library_id=NULL）
-        db.query(TubiAnalysis).filter(TubiAnalysis.library_id == library_id).update(
-            {TubiAnalysis.library_id: None}
+        db.query(TibaAnalysis).filter(TibaAnalysis.library_id == library_id).update(
+            {TibaAnalysis.library_id: None}
         )
 
     # 删除协作者记录
@@ -467,30 +467,30 @@ async def get_library_stats(
         if not is_collab and user.role not in ("admin", "super_admin", "editor"):
             raise HTTPException(status_code=403, detail="无权访问此作品库")
     
-    total = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id
+    total = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id
     ).scalar() or 0
     
-    verified = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id,
-        TubiAnalysis.inscription_verified == 1
+    verified = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id,
+        TibaAnalysis.inscription_verified == 1
     ).scalar() or 0
     
-    translated = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id,
-        TubiAnalysis.inscription_content.isnot(None),
-        TubiAnalysis.inscription_modern.isnot(None),
-        TubiAnalysis.inscription_modern != ""
+    translated = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id,
+        TibaAnalysis.inscription_content.isnot(None),
+        TibaAnalysis.inscription_modern.isnot(None),
+        TibaAnalysis.inscription_modern != ""
     ).scalar() or 0
     
-    analyzed = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id,
-        TubiAnalysis.status == "analyzed"
+    analyzed = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id,
+        TibaAnalysis.status == "analyzed"
     ).scalar() or 0
     
-    annotated = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id,
-        TubiAnalysis.regions.isnot(None)
+    annotated = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id,
+        TibaAnalysis.regions.isnot(None)
     ).scalar() or 0
     
     return {
@@ -538,7 +538,7 @@ async def list_all_change_requests(
 
     result = []
     for cr in query.all():
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
         lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
         submitter = db.query(User).filter(User.id == cr.submitter_id).first()
         result.append({
@@ -576,7 +576,7 @@ async def list_my_change_requests(
 
     result = []
     for cr in query.all():
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
         lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
         reviewer = db.query(User).filter(User.id == cr.reviewer_id).first() if cr.reviewer_id else None
         result.append({
@@ -631,7 +631,7 @@ async def list_change_requests(
     result = []
     for r in requests:
         submitter = db.query(User).filter(User.id == r.submitter_id).first()
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == r.artwork_id).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == r.artwork_id).first()
         result.append({
             "id": r.id,
             "artwork_id": r.artwork_id,
@@ -688,16 +688,16 @@ async def submit_change_request(
     artwork = None
     try:
         int_id = int(req.artwork_id)
-        artwork = db.query(TubiAnalysis).filter(
-            TubiAnalysis.id == int_id,
-            TubiAnalysis.library_id == library_id,
+        artwork = db.query(TibaAnalysis).filter(
+            TibaAnalysis.id == int_id,
+            TibaAnalysis.library_id == library_id,
         ).first()
     except (ValueError, TypeError):
         pass
     if not artwork and req.artwork_id:
-        artwork = db.query(TubiAnalysis).filter(
-            TubiAnalysis.image_id == str(req.artwork_id),
-            TubiAnalysis.library_id == library_id,
+        artwork = db.query(TibaAnalysis).filter(
+            TibaAnalysis.image_id == str(req.artwork_id),
+            TibaAnalysis.library_id == library_id,
         ).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在或不属于该库")
@@ -754,7 +754,7 @@ async def review_change_request(
 
     # 权限：库 owner / maintainer / 作品 owner / admin
     lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
     can_review = False
     if lib and lib.owner_id == user.id:
         can_review = True
@@ -783,7 +783,7 @@ async def review_change_request(
         cr.status = "approved"
 
         # 自动应用变更到 artwork
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
 
         # 先创建版本快照（捕获修改前的状态），再执行数据修改
         if artwork:

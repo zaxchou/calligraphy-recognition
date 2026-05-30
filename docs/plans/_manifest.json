@@ -1,0 +1,626 @@
+[
+  {
+    "source": ".trae\\documents\\tubi-dynamic-auto-tuning.md",
+    "target": "docs\\plans\\2026-04\\2026-04-07_tubi-dynamic-auto-tuning.md",
+    "date": "2026-04-07T11:41:03",
+    "title": "Tubi 动态调参 + 纠错策略（Plan）"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-paint-mask-precision_d54b0c42(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-09_tubi-paint-mask-precision.md",
+    "date": "2026-04-09T14:54:06.833158",
+    "title": "开启绘画区域 mask 精炼功能（GrabCut），使标注图能精确贴合绘画主体边缘，而不是四边形粗略框选"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-paint-polygon-precision_2df721ba.md",
+    "target": "docs\\plans\\2026-04\\2026-04-09_tubi-paint-polygon-precision.md",
+    "date": "2026-04-09T14:59:46.554445",
+    "title": "修改 LLM prompt，让 AI 返回更多点的多边形（15-25点）来描绘绘画区域轮廓，替代 GrabCut 精修方案"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-blank-region-annotation_64801d71(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-10_fix-blank-region-annotation.md",
+    "date": "2026-04-10T08:25:30.988393",
+    "title": "修复标注图中留白区域不显示的问题：让 draw_annotated_image 函数自动计算留白区域（100% - 绘画 - 题跋），而不依赖 LLM 返回的 blank_regions"
+  },
+  {
+    "source": ".workbuddy\\plans\\knowledge-embedding-upgrade_481e2196.md",
+    "target": "docs\\plans\\2026-04\\2026-04-10_knowledge-embedding-upgrade.md",
+    "date": "2026-04-10T08:45:28.697480",
+    "title": "升级知识库图像 embedding：从零向量改为 DashScope multimodal-embedding-v1 真实图像向量，提升搜索准确性和完整性"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-related-images-relevance_14d18a73.md",
+    "target": "docs\\plans\\2026-04\\2026-04-10_fix-related-images-relevance.md",
+    "date": "2026-04-10T18:22:32.084208",
+    "title": "修复AI概述区\"相关配图\"关联性差的问题：将主要图片来源从跨模态搜索改为文本结果的associated_images，跨模态搜索加分数门槛，两来源去重合并。"
+  },
+  {
+    "source": ".workbuddy\\plans\\composition-analysis-optimization_2bfaefd9(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-13_composition-analysis-optimization.md",
+    "date": "2026-04-13T01:51:48.649785",
+    "title": "保守方案优化潘天寿构图分析：优化 composition_llm.py 的 prompt 讲评质量 + 扩充 panplus.md 规则库内容 + 优化规则匹配策略，不改动检索架构"
+  },
+  {
+    "source": ".workbuddy\\plans\\李鱓题跋学术分析系统_60059a72.md",
+    "target": "docs\\plans\\2026-04\\2026-04-13_李鱓题跋学术分析系统.md",
+    "date": "2026-04-13T18:39:31.770473",
+    "title": "在现有 Tubi 系统上叠加李鱓题跋学术分析模块：数据整理 → LLM 主题/情感分类 → 分期量化统计 → 内容-形式关联分析 → 论文级报告输出"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-cors-backend_e8aa4daa.md",
+    "target": "docs\\plans\\2026-04\\2026-04-14_fix-cors-backend.md",
+    "date": "2026-04-14T10:33:45.976655",
+    "title": "修 CORS 跨域问题，使前端 localhost:3000 能访问后端 API"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-tubi_e368d132.md",
+    "target": "docs\\plans\\2026-04\\2026-04-14_fix-tubi.md",
+    "date": "2026-04-14T12:21:09.611461",
+    "title": "修复Tubi题跋分析系统4个Bug：图片URL路径错、内容分析跳过已校验记录、校对列表排序错、面积计算覆盖错误"
+  },
+  {
+    "source": ".workbuddy\\plans\\大数据分析平台增强_cdb5882f.md",
+    "target": "docs\\plans\\2026-04\\2026-04-14_大数据分析平台增强.md",
+    "date": "2026-04-14T17:02:39.974943",
+    "title": "为书法题跋分析系统新增：现代文翻译字段、DashScope qwen-plus翻译集成、前端翻译展示、以及大数据分析页面整体可视化改造（总体占比饼图等）"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-stats-panel-replacement_3afcee86(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-15_tubi-stats-panel-replacement.md",
+    "date": "2026-04-15T14:57:03.083733",
+    "title": "将 Tubi 首页左侧「云关键词」模块替换为「李鱓数据概览」面板，以统计卡片 + 双环形图（主题分布 + 情感分布）的形式呈现，与右侧「题跋比排行榜」并排。"
+  },
+  {
+    "source": ".workbuddy\\plans\\inscription-annotator_277546a1.md",
+    "target": "docs\\plans\\2026-04\\2026-04-15_inscription-annotator.md",
+    "date": "2026-04-15T15:02:25.802417",
+    "title": "新建题跋多边形手动标注工具：前端独立页面 + 后端更新接口，支持从作品详情页和校对页进入，标注结果写入 tubi_analyses 表的 regions 和 inscription_percent 字段。"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-manual-annotation-v9-flow_00513887(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-15_tubi-manual-annotation-v9-flow.md",
+    "date": "2026-04-15T18:18:30.480229",
+    "title": "手动标注保存后，自动调用 V9 分析流程计算 position_analysis、painting/blank 区域，并生成完整三色标注图，同时让 TubiAnalysis 页面保存后自动刷新展示结果。"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-manual-two-regions_dd087980.md",
+    "target": "docs\\plans\\2026-04\\2026-04-16_tubi-manual-two-regions.md",
+    "date": "2026-04-16T15:30:49.553151",
+    "title": "简化方案：InscriptionAnnotator 支持同时标注题跋和绘画两个区域，留白自动计算为剩余部分，生成三色标注图。"
+  },
+  {
+    "source": ".workbuddy\\plans\\tiba-multidim-classification-v4_60eee626.md",
+    "target": "docs\\plans\\2026-04\\2026-04-16_tiba-multidim-classification-v4.md",
+    "date": "2026-04-16T17:16:55.937667",
+    "title": "将题跋主题/情感分类从纯LLM提示词驱动升级为时间+画作内容+文本三维信号融合的规则引擎算法"
+  },
+  {
+    "source": ".workbuddy\\plans\\insight-enhancement_36cb6815.md",
+    "target": "docs\\plans\\2026-04\\2026-04-16_insight-enhancement.md",
+    "date": "2026-04-16T20:02:38.414666",
+    "title": "升级李鱓题跋分析系统的 AI 数据洞察质量：从模型、上下文、prompt 策略、前端展示四个维度全面提升，让洞察从\"数据罗列\"变为\"以小见大的叙事\"。"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-upload-rebuild_a8c73ee0.md",
+    "target": "docs\\plans\\2026-04\\2026-04-17_tubi-upload-rebuild.md",
+    "date": "2026-04-17T08:51:57.035685",
+    "title": "题跋上传可靠性改造：Layer1后端可靠性（Redis降级+Worker看门狗+错误透明化）+ Layer2前端透明化（两阶段上传+分进度条+失败重试）"
+  },
+  {
+    "source": ".workbuddy\\plans\\content-analysis-incremental-mode_2be73484.md",
+    "target": "docs\\plans\\2026-04\\2026-04-17_content-analysis-incremental-mode.md",
+    "date": "2026-04-17T09:39:31.967312",
+    "title": "内容分析批量重跑增加增量/全量选项"
+  },
+  {
+    "source": ".workbuddy\\plans\\li_shan_image_rename_04350e7f.md",
+    "target": "docs\\plans\\2026-04\\2026-04-17_li_shan_image_rename.md",
+    "date": "2026-04-17T09:39:36.015261",
+    "title": "对「待确认时间」目录中 87 张李鱓作品图片，通过感知哈希在参考书（752页PDF图）中匹配元数据页，提取作品名和创作时间，重命名为「清_李鱓_作品名_创作时间」格式。"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-pure-entry-mode_31123322.md",
+    "target": "docs\\plans\\2026-04\\2026-04-17_tubi-pure-entry-mode.md",
+    "date": "2026-04-17T18:55:55.744873",
+    "title": "在题跋分析上传流程中增加「纯录入」模式：拖入图片后，点确认时弹出选项「AI 分析（默认）」或「仅录入（后续手动标注）」。纯录入不入队 AI，缩略图和文件名解析（标题/作者/时间）正常进行。"
+  },
+  {
+    "source": ".workbuddy\\plans\\analyze-text-only_a5f43ee1.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_analyze-text-only.md",
+    "date": "2026-04-18T09:58:39.333709",
+    "title": "新增\"AI分析（仅文字）\"选项，跳过标注图生成，仅返回文字描述"
+  },
+  {
+    "source": ".workbuddy\\plans\\修复AI文本分析模式功能_8e1a4b4e(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_修复AI文本分析模式功能.md",
+    "date": "2026-04-18T11:47:55.622778",
+    "title": "修改tubi_worker.py，使\"AI文本分析\"模式（mode=\"analyze_text_only\"）跳过图像区域检测和OCR识别，直接调用AI进行快速点评概述。"
+  },
+  {
+    "source": ".workbuddy\\plans\\修复AI文本分析模式_前端上传弹窗Claude风格优化_2bf2fb2c.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_修复AI文本分析模式_前端上传弹窗Claude风格优化.md",
+    "date": "2026-04-18T11:57:37.617175",
+    "title": "1. 修复AI文本分析模式（跳过区域检测/OCR，仅快速点评）；2. 优化前端上传弹窗为Claude风格（卡片式选项、统一的设计语言）；3. 修复前端一个bug：selectedMode没有正确传递给后端"
+  },
+  {
+    "source": "docs\\ALBUM_TAG_PLAN.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_ALBUM_TAG_PLAN.md",
+    "date": "2026-04-18T12:52:11.416783",
+    "title": "册页与标签功能完整实现文档"
+  },
+  {
+    "source": ".workbuddy\\plans\\册页功能完整规划_14f6e797.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_册页功能完整规划.md",
+    "date": "2026-04-18T15:27:27.020772",
+    "title": "针对成套册页作品的管理、展示、尺寸录入和统计功能的完整实现方案"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-album-422_1d5a3fb3.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_fix-album-422.md",
+    "date": "2026-04-18T15:42:19.485392",
+    "title": "修复 AlbumManager.vue 创建册页时的 422 错误：添加 @submit.prevent 防止原生表单提交，显式设置 Content-Type，改善错误提示"
+  },
+  {
+    "source": ".workbuddy\\plans\\widen-album-dialogs_d345bb60.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_widen-album-dialogs.md",
+    "date": "2026-04-18T15:50:38.725042",
+    "title": "调整 AlbumManager.vue 弹窗和选择区域尺寸，方便多选作品：新建/添加作品弹窗 500/600px→900px，选择区域高度 300→500px，缩略图 80→100px，item 最小宽 120→160px"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-422-and-wider-selector_e7dbd6bb.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_fix-422-and-wider-selector.md",
+    "date": "2026-04-18T15:56:32.084235",
+    "title": "彻底解决 422 错误（移除 @keyup.enter）+ 让选择作品区域真正变宽（移除 el-form-item 宽度限制，调整 label-width）"
+  },
+  {
+    "source": ".workbuddy\\plans\\管理后台整合与条屏管理_5b1b101d.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_管理后台整合与条屏管理.md",
+    "date": "2026-04-18T17:09:46.487944",
+    "title": "将 ContentVerify 改造成统一管理后台，整合册页/Tag管理，新增条屏管理功能"
+  },
+  {
+    "source": ".workbuddy\\plans\\统一ID使用方案-详细执行计划_9415adce.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_统一ID使用方案-详细执行计划.md",
+    "date": "2026-04-18T18:35:00.936800",
+    "title": "彻底解决 id 和 image_id 双 ID 混乱问题，统一使用 image_id (UUID) 作为外部唯一标识，修复作品库点击问题"
+  },
+  {
+    "source": ".workbuddy\\plans\\题跋标注器缩放_缩略图修复_3f2e7b70.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_题跋标注器缩放_缩略图修复.md",
+    "date": "2026-04-18T19:35:11.103449",
+    "title": "为 InscriptionAnnotator.vue 添加滚轮缩放+拖拽平移功能；修复超宽图片标注定位不准问题；改进缩略图生成逻辑（只裁切高度符合的一段而非整体缩放）"
+  },
+  {
+    "source": ".workbuddy\\plans\\手动标注器缩放方案设计_58161a91.md",
+    "target": "docs\\plans\\2026-04\\2026-04-18_手动标注器缩放方案设计.md",
+    "date": "2026-04-18T20:03:38.130184",
+    "title": "为 InscriptionAnnotator.vue 设计并实现缩放/平移功能，确保坐标准确；同时优化过宽/过高图的显示方式"
+  },
+  {
+    "source": ".workbuddy\\plans\\gallery-labels_d0bfcd8d.md",
+    "target": "docs\\plans\\2026-04\\2026-04-19_gallery-labels.md",
+    "date": "2026-04-19T10:16:32.908575",
+    "title": "作品库图片右下角添加标签显示（册页、条屏等），Claude配色"
+  },
+  {
+    "source": ".workbuddy\\plans\\incremental-reclassify-fix_22ab2340.md",
+    "target": "docs\\plans\\2026-04\\2026-04-19_incremental-reclassify-fix.md",
+    "date": "2026-04-19T10:17:08.044501",
+    "title": "修复重分析接口的增量逻辑：当 force_reanalyze=false 时跳过已有分析结果的记录，只分析新增/未分析的记录。"
+  },
+  {
+    "source": ".workbuddy\\plans\\auto-tags-system_eeb86a4e.md",
+    "target": "docs\\plans\\2026-04\\2026-04-19_auto-tags-system.md",
+    "date": "2026-04-19T11:20:33.947700",
+    "title": "为作品库构建自动标签系统，从AI分析结果和画作尺寸中实时计算标签，前端缩略图右下角显示。"
+  },
+  {
+    "source": ".workbuddy\\plans\\clickable-detail-tags_4cb82697(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-19_clickable-detail-tags.md",
+    "date": "2026-04-19T12:01:35.869908",
+    "title": "作品详情页标签可点击，点击后筛选/搜索包含该标签的所有作品"
+  },
+  {
+    "source": ".workbuddy\\plans\\auto-tags-merge-reset_e18b2478.md",
+    "target": "docs\\plans\\2026-04\\2026-04-19_auto-tags-merge-reset.md",
+    "date": "2026-04-19T12:07:11.710938",
+    "title": "自动标签持久化到tags + 一键清空 + 标签可点击筛选"
+  },
+  {
+    "source": ".workbuddy\\plans\\主题-情感-分期三维关系网络图_77c7226c.md",
+    "target": "docs\\plans\\2026-04\\2026-04-19_主题-情感-分期三维关系网络图.md",
+    "date": "2026-04-19T20:29:58.628887",
+    "title": "在 ContentAnalysis.vue 中添加力导向网络图，展示主题、情感、分期三维共现关系"
+  },
+  {
+    "source": ".workbuddy\\plans\\面积数据可视化方案_d2cbe77e(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-20_面积数据可视化方案.md",
+    "date": "2026-04-20T11:56:43.082546",
+    "title": "实现4个面积数据可视化图表：面积分布直方图、面积-主题堆叠柱状图、面积三元图、面积-尺寸相关性分析"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-analysis-split_c5c938fe.md",
+    "target": "docs\\plans\\2026-04\\2026-04-20_tubi-analysis-split.md",
+    "date": "2026-04-20T14:10:18.473865",
+    "title": "将 3600+ 行的 TubiAnalysis.vue 拆分为多个独立组件，逐步验证确保无 bug"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-new-vs-old-performance-test_15940b20(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-20_tubi-new-vs-old-performance-test.md",
+    "date": "2026-04-20T18:46:01.995707",
+    "title": "设计并执行新旧 Tubi 组件（TubiHome/TubiDetail vs 旧版内联代码）的性能对比测试，覆盖加载时间、渲染性能、内存占用等维度。"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-component-refactoring_53855bfd.md",
+    "target": "docs\\plans\\2026-04\\2026-04-20_tubi-component-refactoring.md",
+    "date": "2026-04-20T19:48:09.540909",
+    "title": "按照 Vercel Composition Patterns 重构 Tubi 相关组件，按优先级顺序执行：1. TubiUploadDialog phase 拆分 2. TubiAnalysis 对话框提取 3. TubiRanking 复用 TubiEditDialog 4. TubiDetail props 聚合"
+  },
+  {
+    "source": ".workbuddy\\plans\\content-verify-refactor_f5570f9f.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_content-verify-refactor.md",
+    "date": "2026-04-21T13:54:41.275946",
+    "title": "按优先级重构 ContentVerify.vue：拆出题跋校对组件、提取 SSE composable、合并重复函数、复用图片预览组件。每步完成后验证无 500 错误并 git 保存。"
+  },
+  {
+    "source": ".workbuddy\\plans\\ContentVerify重构收尾_e648b9a4.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_ContentVerify重构收尾.md",
+    "date": "2026-04-21T16:47:51.309505",
+    "title": "修复 TubiImageZoomDialog title prop 生效问题，移除 VerifyPanel 硬编码 API_BASE"
+  },
+  {
+    "source": ".workbuddy\\plans\\DynamicArtistList_30847b09.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_DynamicArtistList.md",
+    "date": "2026-04-21T17:09:09.603233",
+    "title": "后端新增作者列表 API（从数据库 DISTINCT 查询），前端4个页面的作者下拉从硬编码改为动态获取"
+  },
+  {
+    "source": ".workbuddy\\plans\\home-hero-gallery-v2_169add5b.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_home-hero-gallery-v2.md",
+    "date": "2026-04-21T19:10:44.842664",
+    "title": "首页 Hero 画廊优化：扩充图片至11张、生成缩略图解决卡顿、标题改白字楷体、移除 badge，并评估可选动画增强方案。"
+  },
+  {
+    "source": ".workbuddy\\plans\\home-page-dark-redesign_479f3386.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_home-page-dark-redesign.md",
+    "date": "2026-04-21T19:20:10.517250",
+    "title": "首页全页暗色博物馆风格改版：hero滚动减速、header首页黑底白字、下半部分功能卡片/流程/引用区统一暗色设计。"
+  },
+  {
+    "source": ".workbuddy\\plans\\hero-video-background-toggle_b232a46e.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_hero-video-background-toggle.md",
+    "date": "2026-04-21T19:37:38.006894",
+    "title": "首页 Hero 区域新增视频背景切换功能：将生成的博物馆视频作为可选背景，保留现有画廊效果，通过开关一键切换。"
+  },
+  {
+    "source": ".workbuddy\\plans\\verify-panel-single-reanalyze_d29ee061.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_verify-panel-single-reanalyze.md",
+    "date": "2026-04-21T19:50:07.522106",
+    "title": "在校对页面添加「重新分析」单条按钮，后端新增对应 API。"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-verify-counts-over-200_460a2cf4.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_fix-verify-counts-over-200.md",
+    "date": "2026-04-21T20:00:54.062228",
+    "title": "修复校对页面统计数超过200条时只统计前200条的问题，后端单独返回 verified_count/translated_count/analyzed_count。"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-batch-incremental-and-verify-count_7a1c80dc.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_fix-batch-incremental-and-verify-count.md",
+    "date": "2026-04-21T20:42:25.724943",
+    "title": "修复增量分析筛选条件（应对齐已校对+已翻译），并修复前端limit:200导致VerifyPanel校对数与顶部统计不一致的问题。"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-nav-active-state_063a7064.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_fix-nav-active-state.md",
+    "date": "2026-04-21T21:40:46.142138",
+    "title": "修复顶部导航菜单在子路由页面下的高亮状态，确保访问作品详情页等子路由时，对应的父级菜单项正确高亮。"
+  },
+  {
+    "source": ".workbuddy\\plans\\update-home-features_4f52463e.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_update-home-features.md",
+    "date": "2026-04-21T22:22:04.261350",
+    "title": "在主页核心功能区域新增\"题跋大数据分析\"卡片，使功能板块从5个变为6个，布局保持3列2行整齐排列。"
+  },
+  {
+    "source": ".workbuddy\\plans\\homepage-notion-redesign_41c7588a.md",
+    "target": "docs\\plans\\2026-04\\2026-04-21_homepage-notion-redesign.md",
+    "date": "2026-04-21T23:15:04.820286",
+    "title": "参考 Notion 重新设计 Home.vue 首页：上半部分暗色 Hero+数据墙+功能卡，下半部分亮色 Claude 风格实时数据区"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-verify-search_692329a6.md",
+    "target": "docs\\plans\\2026-04\\2026-04-22_tubi-verify-search.md",
+    "date": "2026-04-22T00:18:16.236279",
+    "title": "题跋校对页面增加搜索功能：在当前作者范围内按作品名/年份/题跋文字模糊搜索，弹出结果列表选择后跳转定位"
+  },
+  {
+    "source": ".workbuddy\\plans\\tubi-verify-search-merge_bf5ef9c0.md",
+    "target": "docs\\plans\\2026-04\\2026-04-22_tubi-verify-search-merge.md",
+    "date": "2026-04-22T00:35:33.164728",
+    "title": "合并数字定位与搜索功能：删除旧 jumpToId，将搜索框移到 VerifyPanel filter-row，搜索同时支持关键词和数字ID"
+  },
+  {
+    "source": ".workbuddy\\plans\\泛化优先CV-First题跋分析架构重构_b285b347.md",
+    "target": "docs\\plans\\2026-04\\2026-04-22_泛化优先CV-First题跋分析架构重构.md",
+    "date": "2026-04-22T13:37:02.696168",
+    "title": "重构题跋分析管道为CV优先架构，全流程采用「相对特征+分群规律+跨群测试」泛化性保障机制，彻底解决过拟合问题，支持暗底/偏色/污渍等各种输入场景，最终平均IoU提升至0.85以上，跨群测试性能下降不超过10%。"
+  },
+  {
+    "source": ".workbuddy\\plans\\cv-first-fixes_35f7dea8(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-22_cv-first-fixes.md",
+    "date": "2026-04-22T16:26:45.177317",
+    "title": "修复CV-First架构的三个问题：标注图增加蓝色绘画区域叠加、保护手动编辑数据不被覆盖、手动保存接口标记user_edited"
+  },
+  {
+    "source": ".workbuddy\\plans\\reanalyze-errors-feature_03a0e9bf.md",
+    "target": "docs\\plans\\2026-04\\2026-04-24_reanalyze-errors-feature.md",
+    "date": "2026-04-24T12:18:00.283059",
+    "title": "在管理后台 ContentVerify.vue 新增\"重新解析\"标签页，自动找出 analysis_note 含错误文本的记录并重新入队 LLM 文本分析"
+  },
+  {
+    "source": ".workbuddy\\plans\\artist-info-management_e089c3c7.md",
+    "target": "docs\\plans\\2026-04\\2026-04-24_artist-info-management.md",
+    "date": "2026-04-24T13:05:40.006818",
+    "title": "新建 artists 数据库表，将硬编码的画家元数据/提示词变量提取为可编辑字段，在管理后台新增「作者信息」Tab 支持 CRUD 和 AI 一键填充。"
+  },
+  {
+    "source": ".workbuddy\\plans\\seal-management-feature_a1aaea4f(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-26_seal-management-feature.md",
+    "date": "2026-04-26T18:43:14.841259",
+    "title": "新增印章管理功能：后端新建 seals 表 + CRUD API + 图片上传 + 数据迁移脚本；前端新增 SealManager.vue 印章管理 Tab；改造 VerifyPanel 印章输入为标签插入模式。"
+  },
+  {
+    "source": ".workbuddy\\plans\\lishan-analysis-refactor_d533e375.md",
+    "target": "docs\\plans\\2026-04\\2026-04-26_lishan-analysis-refactor.md",
+    "date": "2026-04-26T19:42:13.597900",
+    "title": "李鱓作品分析框架彻底重构：从行为分类改为意图导向分类，修复情感分析通道，批量重跑351幅作品"
+  },
+  {
+    "source": ".workbuddy\\plans\\lishan-v52-and-report_e028325c.md",
+    "target": "docs\\plans\\2026-04\\2026-04-26_lishan-v52-and-report.md",
+    "date": "2026-04-26T20:46:23.558325",
+    "title": "v5.2迭代校准（收紧身世自况、修复早期偏阴问题）+ 生成学术报告（含证据链、置信度、分时期趋势、美术史对照）"
+  },
+  {
+    "source": ".workbuddy\\plans\\academic-report-integration_3f82f6f0.md",
+    "target": "docs\\plans\\2026-04\\2026-04-26_academic-report-integration.md",
+    "date": "2026-04-26T21:27:59.217406",
+    "title": "将学术报告生成器固化为后端服务，替换ContentAnalysis页面的LLM洞察为结构化学术报告展示"
+  },
+  {
+    "source": ".workbuddy\\plans\\unify-tibi-analysis-rules_82b681f4.md",
+    "target": "docs\\plans\\2026-04\\2026-04-27_unify-tibi-analysis-rules.md",
+    "date": "2026-04-27T01:45:29.834957",
+    "title": "将题跋分析的主题/情感算法规则从 inscription_content_analyzer.py 抽离到独立规则中心模块，修复懊道人残留问题，确保所有调用方单一来源。"
+  },
+  {
+    "source": ".workbuddy\\plans\\v5_4-emotion-baseline-tuning_6b91008e.md",
+    "target": "docs\\plans\\2026-04\\2026-04-27_v5_4-emotion-baseline-tuning.md",
+    "date": "2026-04-27T02:26:51.767057",
+    "title": "调整情感基线修正和交游赠答权重，修正rebatch后的摆锤效应和交游赠答虚高"
+  },
+  {
+    "source": ".workbuddy\\plans\\move-upload-to-admin_e283f437.md",
+    "target": "docs\\plans\\2026-04\\2026-04-27_move-upload-to-admin.md",
+    "date": "2026-04-27T14:34:56.651349",
+    "title": "将题跋图片上传功能从 Tubi 页面迁移到管理后台 ContentVerify 页面，新增\"作品上传\"tab"
+  },
+  {
+    "source": ".workbuddy\\plans\\move-upload-tab-last_3fbb5cf7.md",
+    "target": "docs\\plans\\2026-04\\2026-04-27_move-upload-tab-last.md",
+    "date": "2026-04-27T15:17:25.740088",
+    "title": "将作品上传tab移到最后一个位置"
+  },
+  {
+    "source": ".workbuddy\\plans\\enhance-tubi-search_6ae140f4.md",
+    "target": "docs\\plans\\2026-04\\2026-04-27_enhance-tubi-search.md",
+    "date": "2026-04-27T16:55:50.457526",
+    "title": "扩展Tubi搜索功能，后端新增inscription_content/inscription_modern/seal_content/theme_tags/material_tags/year字段搜索，前端搜索结果增加匹配维度标签"
+  },
+  {
+    "source": ".workbuddy\\plans\\fix-verifypanel-search-jump_17ec58d6.md",
+    "target": "docs\\plans\\2026-04\\2026-04-27_fix-verifypanel-search-jump.md",
+    "date": "2026-04-27T16:56:49.496403",
+    "title": "修复 VerifyPanel 搜索结果\"跳转\"按钮：改为在当前面板内切换记录（不弹新页面），并修复所有搜索结果都跳到同一个作品的 bug"
+  },
+  {
+    "source": ".trae\\documents\\content-area-correlation-analysis.md",
+    "target": "docs\\plans\\2026-04\\2026-04-28_content-area-correlation-analysis.md",
+    "date": "2026-04-28T17:22:20.327472",
+    "title": "内容 × 面积联动分析 — 数据验证后精简规划"
+  },
+  {
+    "source": ".trae\\documents\\自嘲模式情感反转方案.md",
+    "target": "docs\\plans\\2026-04\\2026-04-28_自嘲模式情感反转方案.md",
+    "date": "2026-04-28T19:11:45.934389",
+    "title": "自嘲模式情感反转方案"
+  },
+  {
+    "source": ".workbuddy\\plans\\batch-reanalyze-button-relocation_d2874077(未完成).md",
+    "target": "docs\\plans\\2026-04\\2026-04-28_batch-reanalyze-button-relocation.md",
+    "date": "2026-04-28T20:37:02.111012",
+    "title": "将\"批量重跑\"按钮从 ContentAnalysis（大数据分析）页面移到 ContentVerify（管理后台）页面，替换原来的\"分析\"按钮"
+  },
+  {
+    "source": ".workbuddy\\plans\\phase2-mineru-integration_219ac767.md",
+    "target": "docs\\plans\\2026-04\\2026-04-28_phase2-mineru-integration.md",
+    "date": "2026-04-28T20:50:58.169730",
+    "title": "\"Phase 2: 文档解析器升级 — 将 MinerU 云 API 集成到 PdfProcessor，替代本地 PyMuPDF 解析\""
+  },
+  {
+    "source": ".trae\\documents\\image-similarity-search-plan.md",
+    "target": "docs\\plans\\2026-04\\2026-04-28_image-similarity-search-plan.md",
+    "date": "2026-04-28T23:40:12.545309",
+    "title": "以图搜图 · 作品查重方案"
+  },
+  {
+    "source": ".trae\\documents\\image-search-fix-plan.md",
+    "target": "docs\\plans\\2026-04\\2026-04-29_image-search-fix-plan.md",
+    "date": "2026-04-29T01:07:29.651957",
+    "title": "以图搜图 · 自验证修复 + Qwen3-VL-Embedding 切换 + UI 重构 Plan"
+  },
+  {
+    "source": ".trae\\documents\\knowledge-search-rebuild-plan.md",
+    "target": "docs\\plans\\2026-04\\2026-04-29_knowledge-search-rebuild-plan.md",
+    "date": "2026-04-29T03:52:08.278004",
+    "title": "写意知识库分屏重构 + PDF.js 修复计划（含调研增强）"
+  },
+  {
+    "source": "reports\\plan_composition_optimize.md",
+    "target": "docs\\plans\\2026-05\\2026-05-01_plan_composition_optimize.md",
+    "date": "2026-05-01T19:54:17.310793",
+    "title": "Composition 模块优化方案"
+  },
+  {
+    "source": "reports\\plan_figure_fix.md",
+    "target": "docs\\plans\\2026-05\\2026-05-01_plan_figure_fix.md",
+    "date": "2026-05-01T19:54:17.325653",
+    "title": "Plan: 插图查找链路彻底修复"
+  },
+  {
+    "source": "reports\\plan_qczh_revamp.md",
+    "target": "docs\\plans\\2026-05\\2026-05-01_plan_qczh_revamp.md",
+    "date": "2026-05-01T19:54:17.339824",
+    "title": "Plan: 报告插图修复 + 起承转合改版"
+  },
+  {
+    "source": "reports\\summary_2026-04-30.md",
+    "target": "docs\\plans\\2026-05\\2026-05-01_summary_2026-04-30.md",
+    "date": "2026-05-01T19:54:17.356176",
+    "title": "写意知识库工作日志 · 2026-04-29 ~ 2026-04-30"
+  },
+  {
+    "source": "reports\\summary_2026-04-30_composition_optimization.md",
+    "target": "docs\\plans\\2026-05\\2026-05-01_summary_2026-04-30_composition_optimization.md",
+    "date": "2026-05-01T19:54:17.395842",
+    "title": "Composition 模块优化工作总结 · 2026-04-30"
+  },
+  {
+    "source": ".trae\\documents\\plan_qczh_user_markdown.md",
+    "target": "docs\\plans\\2026-05\\2026-05-02_plan_qczh_user_markdown.md",
+    "date": "2026-05-02T14:04:28.515186",
+    "title": "起承转合：用户自定义Markdown知识注入 + LLM/GLM分工优化"
+  },
+  {
+    "source": "reports\\plan_miniprogram_v1_research.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_plan_miniprogram_v1_research.md",
+    "date": "2026-05-05T19:19:42.584419",
+    "title": "微信小程序转化方案 · 初步调研报告 v1"
+  },
+  {
+    "source": "reports\\plan_miniprogram_v2_twomods.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_plan_miniprogram_v2_twomods.md",
+    "date": "2026-05-05T19:19:42.601508",
+    "title": "微信小程序转化方案 · V2 深入规划（两模块聚焦）"
+  },
+  {
+    "source": "reports\\plan_miniprogram_v3_pantianshou_tech.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_plan_miniprogram_v3_pantianshou_tech.md",
+    "date": "2026-05-05T19:19:42.618885",
+    "title": "微信小程序转化方案 · V3 潘天寿构图技术深入"
+  },
+  {
+    "source": "reports\\plan_miniprogram_v4_decisions_guide.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_plan_miniprogram_v4_decisions_guide.md",
+    "date": "2026-05-05T19:19:42.638561",
+    "title": "微信小程序转化方案 · V4 技术决议 + 注册指南"
+  },
+  {
+    "source": "reports\\plan_miniprogram_v5_demo_deploy.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_plan_miniprogram_v5_demo_deploy.md",
+    "date": "2026-05-05T19:19:42.659745",
+    "title": "微信小程序转化方案 · V5 Demo 构建 + 部署调研"
+  },
+  {
+    "source": "reports\\plan_miniprogram_v6_architecture.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_plan_miniprogram_v6_architecture.md",
+    "date": "2026-05-05T19:19:42.678325",
+    "title": "微信小程序 · V6 架构重构方案"
+  },
+  {
+    "source": ".trae\\documents\\qczh-workflow-report.md",
+    "target": "docs\\plans\\2026-05\\2026-05-05_qczh-workflow-report.md",
+    "date": "2026-05-05T19:45:01.497577",
+    "title": "起承转合工作流报告"
+  },
+  {
+    "source": ".trae\\documents\\artist-encyclopedia-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-16_artist-encyclopedia-plan.md",
+    "date": "2026-05-16T22:02:19.753106",
+    "title": "画家百科页面 — 实施规划"
+  },
+  {
+    "source": ".trae\\documents\\画家百科独立页面-实施规划.md",
+    "target": "docs\\plans\\2026-05\\2026-05-16_画家百科独立页面-实施规划.md",
+    "date": "2026-05-16T22:59:18.510267",
+    "title": "画家百科独立页面 — 实施规划"
+  },
+  {
+    "source": ".trae\\documents\\artist-list-redesign-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-17_artist-list-redesign-plan.md",
+    "date": "2026-05-17T21:55:27.231959",
+    "title": "ArtistList 全面重构计划"
+  },
+  {
+    "source": ".trae\\documents\\OpenSeadragon-integration-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-18_OpenSeadragon-integration-plan.md",
+    "date": "2026-05-18T23:14:44.348899",
+    "title": "OpenSeadragon 集成方案"
+  },
+  {
+    "source": ".trae\\documents\\seal-source-and-gallery.md",
+    "target": "docs\\plans\\2026-05\\2026-05-19_seal-source-and-gallery.md",
+    "date": "2026-05-19T12:40:58.138813",
+    "title": "印章功能增强：来源引用 + 多版本图库 + 前端画廊"
+  },
+  {
+    "source": ".trae\\documents\\artist-works-improvement.md",
+    "target": "docs\\plans\\2026-05\\2026-05-20_artist-works-improvement.md",
+    "date": "2026-05-20T00:06:05.416334",
+    "title": "ArtistWorks 改进 + 画作/书法分类"
+  },
+  {
+    "source": ".trae\\documents\\consolidate-upload-into-library.md",
+    "target": "docs\\plans\\2026-05\\2026-05-20_consolidate-upload-into-library.md",
+    "date": "2026-05-20T13:06:35.252146",
+    "title": "Plan: 合并作品上传到作品库"
+  },
+  {
+    "source": ".trae\\documents\\upload-consolidation-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-20_upload-consolidation-plan.md",
+    "date": "2026-05-20T13:58:36.948409",
+    "title": "作品上传流程合并计划 v2"
+  },
+  {
+    "source": ".trae\\documents\\plan_sidebar_restructure.md",
+    "target": "docs\\plans\\2026-05\\2026-05-21_plan_sidebar_restructure.md",
+    "date": "2026-05-21T04:28:31.061116",
+    "title": "侧边栏导航重构：作品库 → 树形菜单"
+  },
+  {
+    "source": "docs\\db-optimization-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-27_db-optimization-plan.md",
+    "date": "2026-05-27T01:57:43.286006",
+    "title": "数据库优化计划"
+  },
+  {
+    "source": "backend\\BACKEND_REVIEW.md",
+    "target": "docs\\plans\\2026-05\\2026-05-27_BACKEND_REVIEW.md",
+    "date": "2026-05-27T02:00:59.979361",
+    "title": "后端代码审查报告"
+  },
+  {
+    "source": "docs\\sentiment-scoring-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-27_sentiment-scoring-plan.md",
+    "date": "2026-05-27T05:56:45.292591",
+    "title": "情感评分系统完整改造计划"
+  },
+  {
+    "source": "docs\\molin-emotion-engine-plan.md",
+    "target": "docs\\plans\\2026-05\\2026-05-27_molin-emotion-engine-plan.md",
+    "date": "2026-05-27T14:59:41.829181",
+    "title": "墨林情绪引擎 (Molin Emotion Engine)"
+  }
+]

@@ -1,0 +1,6 @@
+ID=260 text_raw=3.0
+  method=multi_word word=听床头蟋 score=+2 neg=True
+  method=multi_word word=宁教豆架 score=+2 neg=False
+  method=single_char word=莫 score=-1 neg=False
+
+Text: 宁教豆架奇奇斜莫听床头蟋蟀声

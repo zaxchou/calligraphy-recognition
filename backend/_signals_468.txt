@@ -1,0 +1,13 @@
+ID=468 text_raw=5
+  method=multi_word word=乾隆十八 score=+0 neg=False
+  method=multi_word word=懊道人 score=+0 neg=False
+  method=multi_word word=年夏月 score=+0 neg=False
+  method=multi_word word=绰约 score=+2 neg=False
+  method=single_char word=上 score=+0 neg=False
+  method=single_char word=忧 score=+1 neg=True
+  method=single_char word=思 score=+0 neg=False
+  method=single_char word=游 score=+0 neg=False
+  method=single_char word=爱 score=+2 neg=False
+  method=single_char word=花 score=+0 neg=False
+
+Text: 愿言思伯未忘忧，正是萧郎爱远游。绰约梳头发初乱，玉簪拖上桂花油。乾隆十八年夏月，懊道人。

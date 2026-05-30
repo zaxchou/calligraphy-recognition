@@ -1,0 +1,12 @@
+id=1 title=水仙
+  seal_content: 宗杨
+
+id=2 title=煮茶图
+  seal_content: 鱓印
+
+id=3 title=竹叶
+  seal_content: 鱓、宗杨
+
+id=50 title=花鸟草虫图册之十二
+  seal_content: 宗杨
+

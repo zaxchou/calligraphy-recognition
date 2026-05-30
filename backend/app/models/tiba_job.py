@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, func
 from app.core.database import Base
 
 
-class TubiJob(Base):
+class TibaJob(Base):
     __tablename__ = "tubi_jobs"
 
     id = Column(Integer, primary_key=True, index=True)

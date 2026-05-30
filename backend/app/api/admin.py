@@ -18,7 +18,7 @@ from app.core.auth import require_admin_role, require_super_admin, get_user_perm
 from app.core.config import get_settings
 from app.core.database import get_db, get_db_connection
 from app.models.user import User
-from app.models.tubi_analysis import TubiAnalysis
+from app.models.tiba_analysis import TibaAnalysis
 from app.models.artist_claim import ArtistClaim
 from app.models.role_permission import RolePermission
 
@@ -226,7 +226,7 @@ def get_stats(
 ):
     """全局统计：总用户数、总作品数、今日AI调用、总存储用量"""
     total_users = db.query(sqlfunc.count(User.id)).scalar() or 0
-    total_artworks = db.query(sqlfunc.count(TubiAnalysis.id)).scalar() or 0
+    total_artworks = db.query(sqlfunc.count(TibaAnalysis.id)).scalar() or 0
     total_libraries = 0  # Phase 3: artwork_libraries 表已废弃
     total_storage = db.query(sqlfunc.sum(User.storage_used_bytes)).scalar() or 0
     ai_today = db.query(sqlfunc.sum(User.ai_calls_this_month)).scalar() or 0
@@ -444,20 +444,20 @@ def list_emotion_logs(
     """情绪分析日志列表（分页 + 筛选）"""
     import json as _json
 
-    q = db.query(TubiAnalysis).filter(
-        TubiAnalysis.content_analysis.isnot(None),
-        TubiAnalysis.content_analysis != "",
-        TubiAnalysis.content_analysis != "{}",
+    q = db.query(TibaAnalysis).filter(
+        TibaAnalysis.content_analysis.isnot(None),
+        TibaAnalysis.content_analysis != "",
+        TibaAnalysis.content_analysis != "{}",
     )
 
     if artist:
-        q = q.filter(TubiAnalysis.artist == artist)
+        q = q.filter(TibaAnalysis.artist == artist)
     if search:
-        q = q.filter(TubiAnalysis.title.contains(search))
+        q = q.filter(TibaAnalysis.title.contains(search))
 
     total = q.count()
     offset = (page - 1) * page_size
-    records = q.order_by(TubiAnalysis.id.desc()).offset(offset).limit(page_size).all()
+    records = q.order_by(TibaAnalysis.id.desc()).offset(offset).limit(page_size).all()
 
     items = []
     for r in records:
@@ -513,7 +513,7 @@ def get_emotion_log_detail(
     """单件作品完整情绪分析记录（逐维度详情）"""
     import json as _json
 
-    r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
+    r = db.query(TibaAnalysis).filter(TibaAnalysis.id == record_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="记录不存在")
 
@@ -571,7 +571,7 @@ async def reanalyze_emotion(
     """手动触发单件作品的 LLM 情绪重分析"""
     import json as _json
 
-    r = db.query(TubiAnalysis).filter(TubiAnalysis.id == record_id).first()
+    r = db.query(TibaAnalysis).filter(TibaAnalysis.id == record_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="记录不存在")
     if not r.inscription_content or len(r.inscription_content.strip()) < 2:
@@ -894,10 +894,10 @@ def get_emotion_stats(
     """情绪引擎 v3 统计：词库 vs LLM 校正量分布"""
     import json as _json
 
-    records = db.query(TubiAnalysis).filter(
-        TubiAnalysis.content_analysis.isnot(None),
-        TubiAnalysis.content_analysis != "",
-        TubiAnalysis.content_analysis != "{}",
+    records = db.query(TibaAnalysis).filter(
+        TibaAnalysis.content_analysis.isnot(None),
+        TibaAnalysis.content_analysis != "",
+        TibaAnalysis.content_analysis != "{}",
     ).all()
 
     total = len(records)

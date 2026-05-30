@@ -1,0 +1,43 @@
+ID=148 text_raw=8.0
+  method=multi_word word=堂懊道人 score=+0 neg=False
+  method=multi_word word=九年岁在 score=+0 neg=False
+  method=multi_word word=春光零乱 score=-2 neg=False
+  method=multi_word word=小春月 score=+1 neg=False
+  method=multi_word word=乾隆十 score=+0 neg=False
+  method=multi_word word=弟李鱓 score=+0 neg=False
+  method=multi_word word=君子 score=+3 neg=False
+  method=multi_word word=高峰 score=+3 neg=False
+  method=multi_word word=清闲 score=-1 neg=True
+  method=multi_word word=蛾眉 score=+1 neg=False
+  method=multi_word word=艳丽 score=+1 neg=False
+  method=multi_word word=倚靠 score=+0 neg=False
+  method=multi_word word=先生 score=+0 neg=False
+  method=multi_word word=不如 score=-1 neg=False
+  method=multi_word word=富贵 score=+2 neg=False
+  method=single_char word=东 score=+0 neg=False
+  method=single_char word=写 score=+0 neg=False
+  method=single_char word=墨 score=+0 neg=False
+  method=single_char word=年 score=+0 neg=False
+  method=single_char word=恐 score=-4 neg=False
+  method=single_char word=日 score=+0 neg=False
+  method=single_char word=春 score=+0 neg=False
+  method=single_char word=淡 score=+0 neg=False
+  method=single_char word=爱 score=+3 neg=False
+  method=single_char word=画 score=+0 neg=False
+  method=single_char word=空 score=+0 neg=False
+  method=single_char word=笔 score=+0 neg=False
+  method=single_char word=绝 score=+0 neg=False
+  method=single_char word=花 score=+0 neg=False
+  method=single_char word=衰 score=+2 neg=True
+  method=single_char word=静 score=+0 neg=False
+
+Text: 城南僧舍静无哗，合住清闲作画家。
+爱日掩关成一幅，朱藤花共牡丹花。
+紫蝶飞翻辨有无，帘前鼠姑重叠锦。
+氍毹毫端艳丽春如海，窃恐真花反不如。
+爱此峰峦倚靠长，春光零乱紫罗囊。
+蛾眉淡扫绯衣侧，谁似空门佛面黄。
+老不嫌衰病远相寻，笔墨虽难酬赏鉴。
+写出高峰况君子，绵缠富贵与年深。
+乾隆十九年岁在甲戌小春月，客吴陵缪公祠寓斋成画一幅，并题四绝敬呈东皋父台老先生大教。
+隣治复堂懊道人弟李鱓。

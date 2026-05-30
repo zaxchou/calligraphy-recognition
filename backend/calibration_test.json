@@ -1,0 +1,207 @@
+{
+  "timestamp": "2026-05-27T05:18:39.345563",
+  "sample_size": 10,
+  "artist": null,
+  "valid_samples": 10,
+  "metrics": {
+    "old_system_mae": 0.3234,
+    "new_system_mae_initial": 0.0387,
+    "new_system_mae_calibrated": 0.0305,
+    "improvement_vs_old": 90.6
+  },
+  "weights": {
+    "initial": {
+      "text": 0.5,
+      "spatial": 0.3,
+      "seal": 0.2
+    },
+    "calibrated": {
+      "text": 0.3894,
+      "spatial": 0.3663,
+      "seal": 0.2443
+    }
+  },
+  "vader_alpha": 25.0,
+  "samples": [
+    {
+      "id": 172,
+      "title": "蕉石萱花图",
+      "artist": "李鱓",
+      "theme": "身世自况",
+      "inscription_preview": "雍正阏逢摄提格之夏五月，复堂懊道人李鱓写。...",
+      "old_score": -0.287,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "题跋仅为年款和署名，无情感表达内容。",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 346,
+      "title": "蔬果图三",
+      "artist": "刘海勇",
+      "theme": "咏物寄兴",
+      "inscription_preview": "竹身济世利无穷期。海勇...",
+      "old_score": 0.15,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting property n",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 88,
+      "title": "墨芙蓉",
+      "artist": "李鱓",
+      "theme": "身世自况",
+      "inscription_preview": "怪风吹起江天黑，江上芙蓉少颜色。祗知泣露哭秋风，三变娇容描不得。\n康熙辛丑六月坐竹香书房，两过试笔再...",
+      "old_score": -0.625,
+      "new_score_initial": -0.1,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": -1.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 63,
+      "title": "牡丹图",
+      "artist": "李鱓",
+      "theme": "身世自况",
+      "inscription_preview": "一层墨笔一层台。知有仙人化蝶来。买尽洛阳千百种。何如此种四时开。乾隆二十一年岁在丙子（西元一七五六年...",
+      "old_score": -0.514,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 405,
+      "title": "花鸟册四开之三",
+      "artist": "李鱓",
+      "theme": "咏物寄兴",
+      "inscription_preview": "满街提遍画眉笼，近日吾乡大不同。我亦画他栖纸上，好音如在竹林中。复堂。...",
+      "old_score": 0.194,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 101,
+      "title": "映雪",
+      "artist": "李鱓",
+      "theme": "咏物寄兴",
+      "inscription_preview": "弄风打雨嵇叶带，领红见映雪花漫。以柔姿比松柏兹图原是右丞羌。\n乾隆九年十月写于崇川寓斋，懊道人李鱓。...",
+      "old_score": 0.192,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 354,
+      "title": "荔枝2",
+      "artist": "刘海勇",
+      "theme": "咏物寄兴",
+      "inscription_preview": "绿阴翳翳连山市，丹实累累照路隅。未爱满盘堆火齐，先惊探颔得骊珠。斜簪宝髻看游舫，细织筠笼入上都。醉里...",
+      "old_score": 0.217,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 41,
+      "title": "花鸟草虫图册十开之八",
+      "artist": "李鱓",
+      "theme": "时事讽喻",
+      "inscription_preview": "草际长身百结衣，秋来赢得稻粱肥。\n为人事胜诚何意，惹得奔奔没处飞。\n藏拙写长字。\n辛未之秋，李鱓写。...",
+      "old_score": -0.757,
+      "new_score_initial": -0.287,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": -3.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 368,
+      "title": "杂画册十开之七",
+      "artist": "李鱓",
+      "theme": "咏物寄兴",
+      "inscription_preview": "淋漓如此写芳菲，只少盆载异石围。记得春风敲幽谷，蕙花如草趁樵归。懊道人...",
+      "old_score": 0.144,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    },
+    {
+      "id": 131,
+      "title": "杂画册八开之二",
+      "artist": "李鱓",
+      "theme": "咏物寄兴",
+      "inscription_preview": "砚池流出原泉水，天上人间共一家。不信请看千万树，自是谁香过桂兰花。\n乾隆十九年十月 两牕遣兴，李鱓...",
+      "old_score": -0.152,
+      "new_score_initial": 0.0,
+      "llm_score": 0.0,
+      "llm_polarity": "neutral",
+      "llm_reasoning": "LLM调用失败: Expecting value: lin",
+      "new_reasoning": "无明显情感信号",
+      "components": {
+        "text_raw": 0.0,
+        "spatial_raw": 0.0,
+        "seal_raw": 0.0
+      }
+    }
+  ]
+}

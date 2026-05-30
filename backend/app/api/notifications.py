@@ -11,7 +11,7 @@ from app.core.auth import get_current_user
 from app.models.user import User
 from app.models.notification import Notification
 from app.models.change_request import ChangeRequest
-from app.models.tubi_analysis import TubiAnalysis
+from app.models.tiba_analysis import TibaAnalysis
 from app.models.artwork_library import ArtworkLibrary
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def create_notification_for_review(cr_id: int, action: str, reviewer_id: int, db
     cr = db.query(ChangeRequest).filter(ChangeRequest.id == cr_id).first()
     if not cr:
         return
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
     lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
     artwork_title = artwork.title or artwork.filename or f"作品#{cr.artwork_id}" if artwork else "作品"
 
@@ -56,7 +56,7 @@ def notify_admins_of_pending(cr_id: int, db: Session):
     cr = db.query(ChangeRequest).filter(ChangeRequest.id == cr_id).first()
     if not cr:
         return
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
     lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
     artwork_title = artwork.title or artwork.filename or f"作品#{cr.artwork_id}" if artwork else "作品"
     lib_name = lib.name if lib else "画库"
@@ -166,7 +166,7 @@ async def my_contributions(
 
     result = []
     for cr in crs:
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == cr.artwork_id).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == cr.artwork_id).first()
         lib = db.query(ArtworkLibrary).filter(ArtworkLibrary.id == cr.library_id).first()
         result.append({
             "id": cr.id,

@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, Float, JSON, fun
 from app.core.database import Base
 
 
-class TubiAnalysis(Base):
+class TibaAnalysis(Base):
     """题跋分析结果数据库模型"""
     __tablename__ = "tubi_analyses"
     

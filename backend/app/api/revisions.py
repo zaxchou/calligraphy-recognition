@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import get_current_user, require_editor
 from app.models.user import User
-from app.models.tubi_analysis import TubiAnalysis
+from app.models.tiba_analysis import TibaAnalysis
 from app.models.work_revision import WorkRevision
 
 logger = logging.getLogger(__name__)
@@ -19,22 +19,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/artworks", tags=["版本历史"])
 
 
-def _resolve_artwork(db: Session, artwork_id: Union[str, int]) -> TubiAnalysis:
+def _resolve_artwork(db: Session, artwork_id: Union[str, int]) -> TibaAnalysis:
     """通过 id（数字）或 image_id（UUID）查找作品"""
     try:
         int_id = int(artwork_id)
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == int_id).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == int_id).first()
     except (ValueError, TypeError):
         artwork = None
     if not artwork:
-        artwork = db.query(TubiAnalysis).filter(TubiAnalysis.image_id == str(artwork_id)).first()
+        artwork = db.query(TibaAnalysis).filter(TibaAnalysis.image_id == str(artwork_id)).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     return artwork
 
 
-def build_snapshot(artwork: TubiAnalysis) -> dict:
-    """从 TubiAnalysis 对象构建完整数据快照"""
+def build_snapshot(artwork: TibaAnalysis) -> dict:
+    """从 TibaAnalysis 对象构建完整数据快照"""
     return {
         "title": artwork.title,
         "artist": artwork.artist,
@@ -71,7 +71,7 @@ def create_revision(
     change_request_id: Optional[int] = None,
 ) -> WorkRevision:
     """创建一条版本历史记录"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise ValueError(f"作品 {artwork_id} 不存在")
 

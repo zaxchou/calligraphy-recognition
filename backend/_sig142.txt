@@ -1,0 +1,19 @@
+Text: 京华联袂识才雄，早得名邦快转蓬。此去西秦官况好，苍松青翠火炉红。
+乾隆元初岁在丙辰之嘉平月，小诗拙染，奉送奋翁学长老先生荣任，即请教正。弟李鱓。
+Lexicon text raw: 9.0
+Signals:
+  score= +0 | method=multi_word   | 弟李鱓
+  score= +0 | method=multi_word   | 乾隆元
+  score= +1 | method=multi_word   | 嘉平月
+  score= +0 | method=multi_word   | 岁在丙
+  score= +0 | method=multi_word   | 先生
+  score= +2 | method=multi_word   | 识才
+  score= -3 | method=multi_word   | 转蓬
+  score= +1 | method=multi_word   | 长老
+  score= +1 | method=multi_word   | 请教
+  score= +2 | method=multi_word   | 青翠
+  score= +2 | method=multi_word   | 联袂
+  score= +1 | method=multi_word   | 得名
+  score= +2 | method=single_char  | 快
+  score= +0 | method=single_char  | 雄
+Combined raw: 3.6

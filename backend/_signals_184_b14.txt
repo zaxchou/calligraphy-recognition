@@ -1,0 +1,18 @@
+ID=184 | 百事大吉图 | text_raw=16.0
+题跋: 画鸡于树，何乃者欲向高柯报惠音。报恩千岁计，树德善人多福可更心范本。图画多尚吉庆，每用假借音义不必尽真。大率类此白石翁画鸡于柏树上，题为百事大吉图。乾隆二十一年清和月写于竹西寓斋，复堂李鱓。
+
+    multi_word 隆二十一 score=+0 neg=False
+    multi_word 清和月写 score=+1 neg=False
+    multi_word 百事大吉 score=+4 neg=False
+    multi_word 复堂李鱓 score=+0 neg=False
+    multi_word 于竹西 score=+0 neg=False
+    multi_word 多福 score=+4 neg=False
+    multi_word 报恩 score=+2 neg=False
+    multi_word 范本 score=+2 neg=False
+    multi_word 吉庆 score=+3 neg=False
+   single_char 上 score=+0 neg=False
+   single_char 人 score=+0 neg=False
+   single_char 年 score=+0 neg=False
+   single_char 树 score=+0 neg=False
+   single_char 画 score=+0 neg=False
+   single_char 高 score=+0 neg=False

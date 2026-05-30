@@ -82,6 +82,15 @@
 - **GitHub MCP:** `@modelcontextprotocol/server-github` — GitHub API 操作（已配 token）
 - **两个 server 均已安装并连接成功**
 
+### Claude-Mem（会话记忆服务）
+- **用途：** 跨会话持久记忆，记录工作历史和上下文
+- **端口：** `http://localhost:37777`
+- **启动命令：** `npx claude-mem start`
+- **停止命令：** `npx claude-mem stop`
+- **状态检查：** `curl -s http://localhost:37777/api/health`
+- **每次会话开始时必须检查并启动此服务！**
+- **版本：** 13.4.0（插件缓存路径：`C:\Users\zax\.claude\plugins\cache\thedotmack\claude-mem\`）
+
 ### 权限模型
 
 ```

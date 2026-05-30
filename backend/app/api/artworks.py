@@ -22,8 +22,8 @@ from app.core.database import get_db
 from app.core.auth import get_current_user, get_optional_user
 from app.core.quota import check_ai_quota
 from app.core.path_utils import get_static_url, normalize_path
-from app.models.tubi_analysis import TubiAnalysis
-from app.models.tubi_job import TubiJob
+from app.models.tiba_analysis import TibaAnalysis
+from app.models.tiba_job import TibaJob
 from app.models.artwork_library import ArtworkLibrary
 from app.models.library_collaborator import LibraryCollaborator
 from app.models.literature_reference import LiteratureReference
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["作品管理"])
 
 UPLOAD_DIR = settings.UPLOAD_DIR
-THUMBNAIL_DIR = settings.TUBI_THUMBNAIL_DIR
+THUMBNAIL_DIR = settings.TIBA_THUMBNAIL_DIR
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
@@ -113,8 +113,8 @@ class AuctionCreate(BaseModel):
 
 # ── Helpers ──
 
-def _artwork_to_dict(a: TubiAnalysis) -> dict:
-    """TubiAnalysis 转为字典"""
+def _artwork_to_dict(a: TibaAnalysis) -> dict:
+    """TibaAnalysis 转为字典"""
     def _ts(v):
         return v.isoformat() if v else None
 
@@ -272,7 +272,7 @@ def _check_library_write_access(lib: ArtworkLibrary, user: User, db: Session) ->
         raise HTTPException(status_code=403, detail="无权操作此作品库（需要 editor 或以上权限）")
 
 
-def _check_artwork_write_access(artwork: TubiAnalysis, user: User, db: Session) -> None:
+def _check_artwork_write_access(artwork: TibaAnalysis, user: User, db: Session) -> None:
     """检查用户是否有作品的写入权限"""
     if artwork.owner_id == user.id:
         return
@@ -286,8 +286,8 @@ def _check_artwork_write_access(artwork: TubiAnalysis, user: User, db: Session) 
 
 def _update_artwork_count(library_id: int, db: Session) -> None:
     """更新作品库的 artwork_count"""
-    count = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id
+    count = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id
     ).scalar()
     db.query(ArtworkLibrary).filter(ArtworkLibrary.id == library_id).update(
         {ArtworkLibrary.artwork_count: count}
@@ -471,7 +471,7 @@ async def upload_artwork(
     period = parsed["period"] or period
 
     # 创建数据库记录
-    artwork = TubiAnalysis(
+    artwork = TibaAnalysis(
         image_id=file_id,
         filename=file.filename,
         filepath=normalize_path(filepath),
@@ -541,11 +541,11 @@ async def list_artworks(
             raise HTTPException(status_code=403, detail="无权访问此作品库")
 
     # 排序
-    sort_col = TubiAnalysis.created_at
+    sort_col = TibaAnalysis.created_at
     if sort_by == "artist":
-        sort_col = TubiAnalysis.artist
+        sort_col = TibaAnalysis.artist
     elif sort_by == "year":
-        sort_col = TubiAnalysis.year
+        sort_col = TibaAnalysis.year
 
     if order == "asc":
         order_func = sort_col.asc()
@@ -553,12 +553,12 @@ async def list_artworks(
         order_func = sort_col.desc()
 
     offset = (page - 1) * page_size
-    total = db.query(sqlfunc.count(TubiAnalysis.id)).filter(
-        TubiAnalysis.library_id == library_id
+    total = db.query(sqlfunc.count(TibaAnalysis.id)).filter(
+        TibaAnalysis.library_id == library_id
     ).scalar()
 
-    artworks = db.query(TubiAnalysis).filter(
-        TubiAnalysis.library_id == library_id
+    artworks = db.query(TibaAnalysis).filter(
+        TibaAnalysis.library_id == library_id
     ).order_by(order_func).offset(offset).limit(page_size).all()
 
     items = []
@@ -582,7 +582,7 @@ async def get_artwork_detail(
     user: Optional[User] = Depends(get_optional_user),
 ):
     """作品详情（含著录、拍卖记录、研究笔记、AI分析结果）"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
 
@@ -694,7 +694,7 @@ async def update_artwork(
     user: User = Depends(get_current_user),
 ):
     """更新作品元数据（仅 owner/collaborator）"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     _check_artwork_write_access(artwork, user, db)
@@ -717,7 +717,7 @@ async def delete_artwork(
     user: User = Depends(get_current_user),
 ):
     """删除作品（仅 owner）"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
 
@@ -770,7 +770,7 @@ async def add_literature(
     user: User = Depends(get_current_user),
 ):
     """添加著录引用"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     _check_artwork_write_access(artwork, user, db)
@@ -810,7 +810,7 @@ async def delete_literature(
     user: User = Depends(get_current_user),
 ):
     """删除著录引用"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     _check_artwork_write_access(artwork, user, db)
@@ -839,7 +839,7 @@ async def add_auction(
     user: User = Depends(get_current_user),
 ):
     """添加拍卖记录"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     _check_artwork_write_access(artwork, user, db)
@@ -881,7 +881,7 @@ async def delete_auction(
     user: User = Depends(get_current_user),
 ):
     """删除拍卖记录"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     _check_artwork_write_access(artwork, user, db)
@@ -922,7 +922,7 @@ async def create_note(
     user: User = Depends(get_current_user),
 ):
     """为作品写研究笔记"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
 
@@ -964,7 +964,7 @@ async def list_notes(
     user: Optional[User] = Depends(get_optional_user),
 ):
     """获取作品研究笔记列表（仅公开 + 用户自己的）"""
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
 
@@ -1125,7 +1125,7 @@ async def trigger_artwork_analysis(
     复用现有 tubi_worker 的分析流水线（区域检测 + OCR + LLM 分析）。
     返回分析任务状态，可通过 GET /artworks/{id}/analysis 轮询进度。
     """
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
     _check_artwork_write_access(artwork, user, db)
@@ -1156,14 +1156,14 @@ async def trigger_artwork_analysis(
     artwork.status = "queued"
     db.commit()
 
-    # 更新或创建 TubiJob 记录
-    job = db.query(TubiJob).filter(TubiJob.image_id == image_id).first()
+    # 更新或创建 TibaJob 记录
+    job = db.query(TibaJob).filter(TibaJob.image_id == image_id).first()
     if job:
         job.status = "queued"
         job.last_error = None
         job.error_code = None
     else:
-        job = TubiJob(image_id=image_id, status="queued")
+        job = TibaJob(image_id=image_id, status="queued")
         db.add(job)
     db.commit()
 
@@ -1207,7 +1207,7 @@ async def get_artwork_analysis(
     返回当前分析状态（uploaded/queued/analyzing/analyzed/error）
     以及分析完成后的各项数据（content_analysis, regions, inscription 等）。
     """
-    artwork = db.query(TubiAnalysis).filter(TubiAnalysis.id == artwork_id).first()
+    artwork = db.query(TibaAnalysis).filter(TibaAnalysis.id == artwork_id).first()
     if not artwork:
         raise HTTPException(status_code=404, detail="作品不存在")
 

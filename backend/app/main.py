@@ -380,8 +380,8 @@ def _embedded_worker_loop():
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
     from app.core.database import SessionLocal
-    from app.models.tiba_analysis import TubiAnalysis
-    from app.models.tiba_job import TubiJob
+    from app.models.tiba_analysis import TibaAnalysis
+    from app.models.tiba_job import TibaJob
 
     logger = logging.getLogger("embedded_worker")
     logger.info("嵌入式 Worker 已启动（DB 轮询模式）")
@@ -393,7 +393,7 @@ def _embedded_worker_loop():
         db = SessionLocal()
         image_id = None
         try:
-            job = db.query(TubiJob).filter(TubiJob.status == "queued").order_by(TubiJob.created_at.asc()).first()
+            job = db.query(TibaJob).filter(TibaJob.status == "queued").order_by(TibaJob.created_at.asc()).first()
             if not job:
                 _time.sleep(2)
                 continue
