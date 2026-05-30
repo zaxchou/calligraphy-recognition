@@ -554,11 +554,11 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
   position: relative; z-index: 1;
   width: 100%; height: 100%;
   display: flex; flex-direction: column;
-  padding: 3vh 5vw;
+  padding: 1.5vh 4vw;
 }
 .slide-top {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 2vh;
+  margin-bottom: 1vh; flex-shrink: 0;
 }
 .slide-back {
   font-size: 0.8vw; color: #8a8178; text-decoration: none;
@@ -572,7 +572,7 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
 }
 
 /* Charts + Insight 布局：上下两行 */
-.slide-main { flex: 1; display: flex; flex-direction: column; gap: 1.5vh; min-height: 0; }
+.slide-main { flex: 1; display: flex; flex-direction: column; gap: 1vh; min-height: 0; }
 
 /* 文字区（上 30%） */
 .slide-text {
@@ -582,14 +582,14 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
 .slide-text-inner {
   width: 100%; display: flex; gap: 2vw;
   background: rgba(255,255,255,0.35); border: 1px solid #d4cec4;
-  border-radius: 12px; padding: 1.5vw 2vw;
+  border-radius: 10px; padding: 1vh 1.5vw;
   border-left: 3px solid #c96442;
 }
-.slide-text-head { flex: 0 0 auto; min-width: 180px; }
+.slide-text-head { flex: 0 0 auto; min-width: 160px; }
 .slide-text-head .slide-num {
   font-family: 'Playfair Display', 'Noto Serif SC', serif;
-  font-size: 4vw; font-weight: 700; color: #b8b0a4; opacity: 0.3;
-  line-height: 1; display: block; margin-bottom: -0.8vh;
+  font-size: 3vw; font-weight: 700; color: #b8b0a4; opacity: 0.3;
+  line-height: 1; display: block; margin-bottom: -0.5vh;
 }
 .slide-text-head .slide-title {
   font-family: 'Playfair Display', 'Noto Serif SC', serif;
@@ -618,18 +618,18 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
 .tip-icon { margin-right: 4px; }
 
 /* 图表区（下 70%） */
-.slide-charts { flex: 7; display: grid; gap: 1.5vw; min-height: 0; }
+.slide-charts { flex: 7; display: grid; gap: 1vw; min-height: 0; }
 .slide-charts.two-col { grid-template-columns: 1fr 1fr; }
 .chart-card {
   background: rgba(255,255,255,0.5); border: 1px solid #d4cec4;
-  border-radius: 12px; padding: 1.2vw; display: flex; flex-direction: column;
+  border-radius: 10px; padding: 0.8vw 1vw; display: flex; flex-direction: column;
 }
 .chart-label {
   font-family: 'Inter', 'Noto Sans SC', sans-serif;
   font-size: 0.8vw; font-weight: 600; color: #5a5a5a;
-  margin: 0 0 0.6vh; letter-spacing: 0.5px;
+  margin: 0 0 0.4vh; letter-spacing: 0.5px;
 }
-.chart-area { flex: 1; min-height: 180px; }
+.chart-area { flex: 1; min-height: 150px; }
 
 /* 右侧导航点 */
 .nav-dots {
