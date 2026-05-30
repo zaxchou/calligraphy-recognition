@@ -523,6 +523,7 @@ function prev() { goTo(currentSlide.value - 1) }
 function onKey(e) {
   if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next() }
   if (e.key === 'ArrowLeft') { e.preventDefault(); prev() }
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen() }
 }
 function handleResize() { for (const [k, c] of Object.entries(chartInstances)) { try { c.resize() } catch { delete chartInstances[k] } } }
 
