@@ -2,9 +2,33 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
+function http2Preload() {
+  return {
+    name: 'http2-preload',
+    transformIndexHtml(html, { bundle }) {
+      if (!bundle) return
+      const entryChunk = Object.values(bundle).find(c => c.isEntry)
+      if (!entryChunk) return
+      const links = []
+      if (entryChunk.fileName) {
+        links.push({ tag: 'link', attrs: { rel: 'modulepreload', href: '/' + entryChunk.fileName }, injectTo: 'head' })
+      }
+      const entryName = entryChunk.name
+      for (const [, chunk] of Object.entries(bundle)) {
+        if (chunk.type === 'asset' && chunk.fileName?.endsWith('.css') && chunk.name?.replace(/\.css$/, '') === entryName) {
+          links.push({ tag: 'link', attrs: { rel: 'preload', href: '/' + chunk.fileName, as: 'style' }, injectTo: 'head' })
+        }
+      }
+      links.push({ tag: 'link', attrs: { rel: 'preload', href: '/openseadragon/openseadragon.js', as: 'script' }, injectTo: 'head' })
+      return links
+    }
+  }
+}
+
 export default defineConfig({
   plugins: [
     vue(),
+    http2Preload(),
   ],
   resolve: {
     alias: {
@@ -28,7 +52,6 @@ export default defineConfig({
         changeOrigin: true
       }
     },
-    // 确保 .mjs 文件正确服务
     fs: {
       allow: ['.']
     }
