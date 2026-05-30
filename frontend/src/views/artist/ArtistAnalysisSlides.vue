@@ -8,7 +8,7 @@
     </div>
 
     <!-- Slide 内容 -->
-    <transition name="slide-fade" mode="out-in">
+    <transition name="slide-fade" mode="out-in" @after-enter="onSlideEnter">
       <div class="slide" :key="currentSlide">
         <!-- 页眉 -->
         <div class="slide-top">
@@ -429,15 +429,36 @@ function renderMaterial() {
 }
 
 // ── 导航 ──
+let pendingSlide = null
+
 async function goTo(idx) {
   if (idx < 0 || idx >= slides.length) return
   currentSlide.value = idx
-  await nextTick()
+  pendingSlide = idx
+  // 数据在切换时就开始加载
   const slide = slides[idx]
-  if (!loadedSlides.has(idx)) { await slide.load(); loadedSlides.add(idx) }
-  await nextTick()
-  setTimeout(() => slide.render(), 50)
+  if (!loadedSlides.has(idx)) {
+    slide.load().then(() => { loadedSlides.add(idx) })
+  }
   deckRef.value?.focus()
+}
+
+// transition @after-enter 回调：DOM 已就绪，安全渲染图表
+function onSlideEnter() {
+  const idx = pendingSlide
+  if (idx == null) return
+  pendingSlide = null
+  const slide = slides[idx]
+  // 等数据加载完成后再渲染
+  const tryRender = () => {
+    if (loadedSlides.has(idx) || !slide.load) {
+      slide.render()
+    } else {
+      setTimeout(tryRender, 50)
+    }
+  }
+  // 确保 refs 已绑定
+  nextTick(() => tryRender())
 }
 function next() { goTo(currentSlide.value + 1) }
 function prev() { goTo(currentSlide.value - 1) }
@@ -447,7 +468,17 @@ function onKey(e) {
 }
 function handleResize() { for (const [k, c] of Object.entries(chartInstances)) { try { c.resize() } catch { delete chartInstances[k] } } }
 
-onMounted(() => { goTo(0); window.addEventListener('resize', handleResize) })
+onMounted(async () => {
+  // 首页没有 transition，直接加载+渲染
+  currentSlide.value = 0
+  const slide = slides[0]
+  await slide.load()
+  loadedSlides.add(0)
+  await nextTick()
+  slide.render()
+  deckRef.value?.focus()
+  window.addEventListener('resize', handleResize)
+})
 onUnmounted(() => { window.removeEventListener('resize', handleResize); for (const c of Object.values(chartInstances)) c.dispose() })
 </script>
 
