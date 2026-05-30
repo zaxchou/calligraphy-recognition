@@ -191,6 +191,10 @@ const routes = [
     path: '/content-verify',
     redirect: to => ({ path: '/admin', query: to.query }),
   },
+  { path: '/tubi', redirect: '/tiba' },
+  { path: '/tubi/list', redirect: '/tiba/list' },
+  { path: '/tubi/dimensions', redirect: '/tiba/dimensions' },
+  { path: '/tubi/:id', redirect: to => ({ path: `/tiba/${to.params.id}` }) },
   {
     path: '/annotate/:id',
     name: 'InscriptionAnnotator',
