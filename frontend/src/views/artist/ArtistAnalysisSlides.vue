@@ -75,12 +75,12 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts/core'
 import { PieChart, BarChart, ScatterChart, RadarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent, LegendComponent, RadarComponent } from 'echarts/components'
 import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { artistRulesApi } from '@/api'
 
-echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent, LabelLayout, UniversalTransition, CanvasRenderer])
+echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
 const route = useRoute()
 const router = useRouter()
@@ -507,15 +507,15 @@ function onSlideEnter() {
   if (idx == null) return
   pendingSlide = null
   const slide = slides[idx]
-  // 等数据加载完成后再渲染
+  let retries = 0
   const tryRender = () => {
     if (loadedSlides.has(idx) || !slide.load) {
       slide.render()
-    } else {
+    } else if (retries < 40) { // 最多等 2 秒
+      retries++
       setTimeout(tryRender, 50)
     }
   }
-  // 确保 refs 已绑定
   nextTick(() => tryRender())
 }
 function next() { goTo(currentSlide.value + 1) }
@@ -633,10 +633,6 @@ onUnmounted(() => {
 .slide-insight {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
   overflow-y: auto;
-}
-.insight-mark {
-  font-size: 1.6vw; color: #c96442; margin-bottom: 0.5vh;
-  font-family: 'Playfair Display', serif;
 }
 .insight-body {
   font-size: 1.2vw; line-height: 1.85; color: #3a3a3a; flex: 1;
