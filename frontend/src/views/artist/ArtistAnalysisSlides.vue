@@ -27,7 +27,6 @@
                 <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
               </div>
               <div class="slide-insight">
-                <div class="insight-mark">✦</div>
                 <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
                 <div class="insight-tip" v-if="slides[currentSlide]?.tip">
                   <span class="tip-icon">💡</span> {{ slides[currentSlide]?.tip }}
