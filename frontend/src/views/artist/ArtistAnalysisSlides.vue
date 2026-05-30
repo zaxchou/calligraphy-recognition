@@ -340,7 +340,7 @@ function renderSentiment() {
       }},
       legend: { show: false },
       grid: { left: '6%', right: '4%', bottom: '6%', top: '4%', containLabel: true },
-      xAxis: { type: 'value', name: '年份', nameLocation: 'middle', nameGap: 25, min: yearMin - 1, max: yearMax + 1, axisLabel: { color: PAL.fg2, formatter: v => String(Math.round(v)) }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.15 } } },
+      xAxis: { type: 'value', name: '年份', nameLocation: 'middle', nameGap: 25, min: yearMin - 1, max: yearMax + 1, axisLabel: { color: PAL.fg2, formatter: v => String(Math.round(v)) }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.15 } }, minInterval: 1 },
       yAxis: { type: 'value', name: '情感', min: -1, max: 1, axisLabel: { color: PAL.fg2, formatter: v => (v > 0 ? '+' : '') + (v * 100).toFixed(0) + '%' }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.15 } } },
       series
     }); c1.resize()
