@@ -594,27 +594,27 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
 }
 .slide-text-head .slide-title {
   font-family: 'Playfair Display', 'Noto Serif SC', serif;
-  font-size: 1.8vw; font-weight: 600; color: #1a1a1a; margin: 0; line-height: 1.2;
+  font-size: 2.2vw; font-weight: 600; color: #1a1a1a; margin: 0; line-height: 1.2;
 }
 .slide-text-head .slide-lead {
-  font-size: 0.8vw; color: #8a8178; margin: 0.4vh 0 0; line-height: 1.5;
+  font-size: 1vw; color: #8a8178; margin: 0.4vh 0 0; line-height: 1.5;
 }
 .slide-insight {
   flex: 1; display: flex; flex-direction: column; min-width: 0;
   overflow-y: auto;
 }
 .insight-mark {
-  font-size: 1.2vw; color: #c96442; margin-bottom: 0.5vh;
+  font-size: 1.6vw; color: #c96442; margin-bottom: 0.5vh;
   font-family: 'Playfair Display', serif;
 }
 .insight-body {
-  font-size: 0.8vw; line-height: 1.75; color: #3a3a3a; flex: 1;
+  font-size: 1.05vw; line-height: 1.85; color: #3a3a3a; flex: 1;
 }
-.insight-body :deep(p) { margin: 0 0 0.6em; }
+.insight-body :deep(p) { margin: 0 0 0.8em; }
 .insight-body :deep(strong) { color: #1a1a1a; font-weight: 600; }
 .insight-tip {
-  margin-top: auto; padding-top: 0.6vh; border-top: 1px dashed #d4cec4;
-  font-size: 0.7vw; color: #8a8178; line-height: 1.5;
+  margin-top: auto; padding-top: 0.8vh; border-top: 1px dashed #d4cec4;
+  font-size: 0.9vw; color: #8a8178; line-height: 1.6;
 }
 .tip-icon { margin-right: 4px; }
 
