@@ -12,10 +12,10 @@ import cv2
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-from app.tubi.evaluation.gt_loader import load_ground_truth
-from app.tubi.evaluation.iou_evaluator import compute_iou
-from app.tubi.evaluation.grabcut_refiner import refine_regions
-from app.tubi.evaluation.vl_segmentation_probe import probe_single_image
+from app.tiba.evaluation.gt_loader import load_ground_truth
+from app.tiba.evaluation.iou_evaluator import compute_iou
+from app.tiba.evaluation.grabcut_refiner import refine_regions
+from app.tiba.evaluation.vl_segmentation_probe import probe_single_image
 
 TEST_IMAGES = ["荷花图", "土墙蝶花图", "煮茶图"]
 
@@ -85,7 +85,7 @@ def analyze_grabcut_diagnosis():
         bbox_combined = np.maximum(bbox_insc_mask, bbox_paint_mask)
 
         # 3. GT mask（坐标是像素值！用 iou_evaluator 的 polygons_to_mask）
-        from app.tubi.evaluation.iou_evaluator import polygons_to_mask as gt_polygons_to_mask
+        from app.tiba.evaluation.iou_evaluator import polygons_to_mask as gt_polygons_to_mask
         gt_insc = gt_polygons_to_mask(rec.regions.get("inscription_regions", []), w, h)
         gt_paint = gt_polygons_to_mask(rec.regions.get("painting_regions", []), w, h)
         gt_blank = gt_polygons_to_mask(rec.regions.get("blank_regions", []), w, h)

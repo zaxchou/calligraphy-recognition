@@ -10,7 +10,7 @@ import os
 from typing import Dict, List, Optional
 from datetime import datetime
 
-from app.tubi.llm_classifier.rule_library import load_rule_library, save_rule_library
+from app.tiba.llm_classifier.rule_library import load_rule_library, save_rule_library
 
 
 LEARN_LOG_PATH = r"z:\BaiduSync\BaiduSyncdisk\calligraphy-recognition\backend\data\rule_library\learn_log.jsonl"

@@ -20,8 +20,8 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 from app.core.config import get_settings
-from app.tubi.preprocessing import StandardizedImage, GroupClassification
-from app.tubi.cv_mask_extractor import MaskSet
+from app.tiba.preprocessing import StandardizedImage, GroupClassification
+from app.tiba.cv_mask_extractor import MaskSet
 from .rule_library import load_rule_library, RuleLibrary
 
 

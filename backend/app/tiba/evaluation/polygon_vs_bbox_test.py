@@ -15,7 +15,7 @@ load_dotenv(os.path.join(_BASE, ".env"))
 
 import numpy as np
 
-from app.tubi.evaluation.vl_segmentation_probe import (
+from app.tiba.evaluation.vl_segmentation_probe import (
     probe_single_image, load_ground_truth,
     regions_to_mask, polygons_to_mask, compute_iou,
     visualize_comparison,
@@ -110,7 +110,7 @@ def run_polygon_vs_bbox_test(images_to_test=None):
             poly_insc = regions_to_mask(poly_result["vl_result"]["inscription_regions"], record.width, record.height)
             poly_paint = regions_to_mask(poly_result["vl_result"]["painting_regions"], record.width, record.height)
 
-            from app.tubi.evaluation.vl_segmentation_probe import visualize_hybrid_comparison
+            from app.tiba.evaluation.vl_segmentation_probe import visualize_hybrid_comparison
             vis_path = os.path.join(out_dir, f"vis_{record.image_id}_compare.jpg")
             visualize_hybrid_comparison(
                 record.filepath, record,

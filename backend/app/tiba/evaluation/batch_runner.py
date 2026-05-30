@@ -50,7 +50,7 @@ def run_single_evaluation(
     
     # 导入CV-First分析模块（延迟导入，避免循环依赖）
     ensure_backend_path()
-    from app.tubi.integration import run_cv_first_analysis
+    from app.tiba.integration import run_cv_first_analysis
     
     # 运行CV-First分析
     try:

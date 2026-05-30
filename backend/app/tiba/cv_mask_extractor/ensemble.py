@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 
-from app.tubi.preprocessing import StandardizedImage
+from app.tiba.preprocessing import StandardizedImage
 from .ink_mask import extract_ink_mask
 from .seal_mask import extract_seal_mask
 from .text_mask import extract_text_mask

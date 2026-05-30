@@ -34,10 +34,10 @@ import numpy as np
 from PIL import Image
 import httpx
 
-from app.tubi.evaluation.gt_loader import load_ground_truth, GroundTruthRecord
-from app.tubi.evaluation.iou_evaluator import polygons_to_mask, compute_iou, compute_class_iou
-from app.tubi.evaluation import vl_cv_hybrid
-from app.tubi.evaluation import grabcut_refiner
+from app.tiba.evaluation.gt_loader import load_ground_truth, GroundTruthRecord
+from app.tiba.evaluation.iou_evaluator import polygons_to_mask, compute_iou, compute_class_iou
+from app.tiba.evaluation import vl_cv_hybrid
+from app.tiba.evaluation import grabcut_refiner
 
 
 # ── 配置 ────────────────────────────────────────────────────────────────────

@@ -12,11 +12,11 @@ import cv2
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
-from app.tubi.preprocessing import preprocess_standardize, classify_image_group
-from app.tubi.cv_mask_extractor import ensemble_masks
-from app.tubi.llm_classifier import classify_regions
-from app.tubi.vl_verifier import verify_low_confidence_regions
-from app.services.tubi_mask_refiner import mask_to_regions
+from app.tiba.preprocessing import preprocess_standardize, classify_image_group
+from app.tiba.cv_mask_extractor import ensemble_masks
+from app.tiba.llm_classifier import classify_regions
+from app.tiba.vl_verifier import verify_low_confidence_regions
+from app.services.tiba_mask_refiner import mask_to_regions
 
 
 def run_cv_first_analysis(image_path: str, image_width: int, image_height: int) -> Dict:

@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 from app.core.config import get_settings
-from app.tubi.llm_classifier import ClassifiedRegion, ClassificationResult
+from app.tiba.llm_classifier import ClassifiedRegion, ClassificationResult
 
 
 settings = get_settings()

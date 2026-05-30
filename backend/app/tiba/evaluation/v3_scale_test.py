@@ -15,7 +15,7 @@ sys.path.insert(0, _BASE)
 from dotenv import load_dotenv
 load_dotenv(os.path.join(_BASE, ".env"))
 
-from app.tubi.evaluation.vl_segmentation_probe import (
+from app.tiba.evaluation.vl_segmentation_probe import (
     run_probe, probe_single_image, load_ground_truth,
     regions_to_mask, polygons_to_mask, compute_iou,
     visualize_comparison

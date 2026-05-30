@@ -16,7 +16,7 @@ import sys
 # 把项目根目录加入路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-from app.tubi.evaluation.vl_segmentation_probe import (
+from app.tiba.evaluation.vl_segmentation_probe import (
     run_probe,
     probe_single_image,
     load_ground_truth,
@@ -25,7 +25,7 @@ from app.tubi.evaluation.vl_segmentation_probe import (
     compute_iou,
     polygons_to_mask,
 )
-from app.tubi.evaluation import grabcut_refiner
+from app.tiba.evaluation import grabcut_refiner
 import numpy as np
 
 
@@ -139,7 +139,7 @@ def run_quick_test():
 
     # 保存报告
     import time
-    from app.tubi.evaluation.vl_segmentation_probe import REPORT_DIR
+    from app.tiba.evaluation.vl_segmentation_probe import REPORT_DIR
     ts = time.strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.join(REPORT_DIR, f"refine_quick_{ts}")
     os.makedirs(out_dir, exist_ok=True)

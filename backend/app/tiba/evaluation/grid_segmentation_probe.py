@@ -37,8 +37,8 @@ import numpy as np
 from PIL import Image
 import httpx
 
-from app.tubi.evaluation.gt_loader import load_ground_truth, GroundTruthRecord
-from app.tubi.evaluation.iou_evaluator import polygons_to_mask, compute_iou
+from app.tiba.evaluation.gt_loader import load_ground_truth, GroundTruthRecord
+from app.tiba.evaluation.iou_evaluator import polygons_to_mask, compute_iou
 
 
 # ── 配置 ────────────────────────────────────────────────────────────────────
@@ -682,7 +682,7 @@ def run_grid_vs_bbox_comparison(
     if grid_sizes is None:
         grid_sizes = [32, 48]
 
-    from app.tubi.evaluation.vl_segmentation_probe import (
+    from app.tiba.evaluation.vl_segmentation_probe import (
         probe_single_image as probe_bbox,
     )
 
