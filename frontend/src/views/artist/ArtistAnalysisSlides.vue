@@ -330,13 +330,14 @@ function renderSentiment() {
     const series = Object.entries(groups).map(([per, pts]) => ({
       name: per, type: 'scatter', symbolSize: 5,
       itemStyle: { color: PERIOD_COLORS[per] || PAL.line, opacity: 0.55 },
-      data: pts.map(p => [p.year + (Math.random() - 0.5) * jitterRange, p.emotion_score])
+      data: pts.map(p => ({ value: [p.year + (Math.random() - 0.5) * jitterRange, p.emotion_score], title: p.title }))
     }))
     if (trend?.length >= 2) series.push({ name: '趋势', type: 'line', showSymbol: false, lineStyle: { color: PAL.c1, width: 2.5, type: 'dashed' }, data: trend.map(t => [t.year, t.emotion_score]), z: 10 })
     c1.setOption({
       tooltip: { trigger: 'item', formatter: p => {
         if (p.seriesName === '趋势') return `趋势: ${(p.value[1] * 100).toFixed(0)}%`
-        return `${Math.round(p.value[0])}年 · ${p.seriesName}\n情感: ${p.value[1] > 0 ? '+' : ''}${(p.value[1] * 100).toFixed(0)}%`
+        const title = p.data?.title || ''
+        return `<b>${title}</b>\n${Math.round(p.value[0])}年 · ${p.seriesName}\n情感: ${p.value[1] > 0 ? '+' : ''}${(p.value[1] * 100).toFixed(0)}%`
       }},
       legend: { show: false },
       grid: { left: '6%', right: '4%', bottom: '6%', top: '4%', containLabel: true },
