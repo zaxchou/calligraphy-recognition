@@ -650,6 +650,7 @@ onUnmounted(() => {
 .split-insight :deep(p) { margin: 0 0 0.5em; }
 .split-insight :deep(strong) { color: #1a1a1a; font-weight: 600; }
 .split-right { flex: 6.5; display: flex; flex-direction: column; gap: 1vh; min-height: 0; }
+.split-right .chart-card { flex: 1; min-height: 0; }
 
 /* ═══ Layout: wide — 上标题+解说横条，下全宽双图 ═══ */
 .wide-layout { flex: 1; display: flex; flex-direction: column; gap: 0.8vh; min-height: 0; }
@@ -664,6 +665,7 @@ onUnmounted(() => {
 .wide-insight :deep(p) { margin: 0 0 0.4em; }
 .wide-insight :deep(strong) { color: #1a1a1a; font-weight: 600; }
 .wide-charts { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; min-height: 0; }
+.wide-charts .chart-card { min-height: 0; }
 
 /* ── 导航 ── */
 .nav-dots {
