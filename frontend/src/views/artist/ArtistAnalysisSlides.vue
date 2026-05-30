@@ -9,7 +9,7 @@
 
     <!-- Slide 内容 -->
     <transition name="slide-fade" mode="out-in" @after-enter="onSlideEnter">
-      <div class="slide" :key="currentSlide">
+      <div class="slide" :key="currentSlide" :class="'slide-layout-' + (slides[currentSlide]?.layout || 'default')">
         <!-- 页眉 -->
         <div class="slide-top">
           <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="slide-back">← {{ artistName }}</router-link>
@@ -23,12 +23,24 @@
           <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
         </div>
 
-        <!-- 图表区 -->
-        <div class="slide-charts" :class="slides[currentSlide]?.layout || 'two-col'">
-          <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
-            <h3 class="chart-label">{{ chart.title }}</h3>
-            <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
+        <!-- 主内容区：图表 + 专家解说 -->
+        <div class="slide-main">
+          <!-- 图表区（70%） -->
+          <div class="slide-charts" :class="slides[currentSlide]?.chartLayout || 'two-col'">
+            <div v-for="(chart, ci) in slides[currentSlide]?.charts" :key="ci" class="chart-card">
+              <h3 class="chart-label">{{ chart.title }}</h3>
+              <div :ref="el => setChartRef(el, currentSlide, ci)" class="chart-area"></div>
+            </div>
           </div>
+
+          <!-- 专家解说区（30%） -->
+          <aside class="slide-insight">
+            <div class="insight-mark">✦</div>
+            <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
+            <div class="insight-tip" v-if="slides[currentSlide]?.tip">
+              <span class="tip-icon">💡</span> {{ slides[currentSlide]?.tip }}
+            </div>
+          </aside>
         </div>
       </div>
     </transition>
@@ -102,29 +114,68 @@ echarts.registerTheme('molin', {
 })
 
 const slides = [
-  { id: 'overview', title: '概览', subtitle: '该画家题跋的整体画像：作品数量、时期分布、情感基线',
+  { id: 'overview', title: '概览', subtitle: '该画家题跋的整体画像',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '分期作品分布' }, { title: '生命阶段情感偏移' }],
+    insight: `<p>看一个画家的题跋，首先要看他的<strong>创作周期</strong>。左边的饼图告诉我们每个时期留下了多少作品——作品越多，样本越可靠。</p>
+<p>右边的柱状图是关键：<strong>情感偏移值</strong>反映画家在不同时期的心境基调。正值偏乐观，负值偏沉重。大多数画家早年意气风发（偏正），晚年归于平淡或感慨（偏负）。</p>`,
+    tip: '如果晚期偏移值远低于早期，说明画家人生际遇对其创作情感影响很大。',
     load: loadOverview, render: renderOverview },
-  { id: 'sentiment', title: '情感分析', subtitle: '情感极性分布与一生情绪变化趋势',
-    charts: [{ title: '情感极性分布' }, { title: '情绪时间线（VADER 综合分）' }],
+
+  { id: 'sentiment', title: '情感分析', subtitle: '画作情绪的全景扫描',
+    layout: 'default', chartLayout: 'two-col',
+    charts: [{ title: '情感极性分布' }, { title: '情绪时间线' }],
+    insight: `<p>我们用 <strong>VADER 情感分析引擎</strong>对每幅画的题跋进行了八维度综合评分。左边的饼图展示消极/中性/积极的整体比例。</p>
+<p>右边的散点图更有意思——每一幅画按创作年份排列，纵轴是情感分数。虚线是趋势线：<strong>如果趋势线向下</strong>，说明这位画家越画越沉重；如果平稳，说明情感基调始终如一。</p>`,
+    tip: '关注散点图中的"离群点"——情感特别极端的作品往往对应画家人生中的重大转折。',
     load: loadSentiment, render: renderSentiment },
-  { id: 'theme', title: '主题分析', subtitle: '哪些主题最常见？各时期主题如何变化？',
+
+  { id: 'theme', title: '主题分析', subtitle: '画家在题跋中说了什么',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '主题总体分布' }, { title: '主题分期对比' }],
+    insight: `<p>我们把题跋内容分为六大主题：<strong>身世自况</strong>（谈自己的经历）、<strong>咏物寄兴</strong>（借物抒情）、<strong>画理自叙</strong>（谈绘画理念）、<strong>时事讽喻</strong>（评论社会）、<strong>吉语祥瑞</strong>（祝福祈愿）、<strong>交游赠答</strong>（送给朋友）。</p>
+<p>右边的堆叠柱状图展示各时期主题的变化。如果"身世自况"在晚期大幅上升，说明画家晚年更倾向于在画中倾诉个人遭遇。</p>`,
+    tip: '身世自况比例高的画家，题跋往往是理解其人生观的第一手材料。',
     load: loadTheme, render: renderTheme },
-  { id: 'style', title: '题跋风格', subtitle: '题跋长度和面积占比的变化规律',
+
+  { id: 'style', title: '题跋风格', subtitle: '字数与面积的量化规律',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '题跋字数分期对比' }, { title: '题跋面积分布' }],
+    insight: `<p>题跋的<strong>长度</strong>本身就是一个情感信号。早期作品题跋简短，可能是"某年某月写于某地"的套路；晚期题跋变长，往往是因为心中有话不吐不快。</p>
+<p>右边的面积分布图告诉我们：题跋占画面的比例集中在哪个区间。比例越大，说明画家越重视文字表达，甚至不惜"侵占"画面空间来抒发情感。</p>`,
+    tip: '题跋字数突然增多的作品，往往是画家情感最充沛的时期。',
     load: loadStyle, render: renderStyle },
-  { id: 'dimension', title: '印章与维度', subtitle: '各维度情感贡献 + 关键印章的情感含义',
+
+  { id: 'dimension', title: '印章与维度', subtitle: '六个维度的情感贡献',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '引擎维度雷达图' }, { title: '印章情感规则' }],
+    insight: `<p>我们的引擎从<strong>六个维度</strong>综合评判一幅画的情感：文字（题跋本身）、主题、印章、时期、空间布局、尺寸。雷达图展示每个维度对整体情感的贡献强度。</p>
+<p>右边列出该画家所有<strong>非中性印章</strong>的得分。印章是画家的"签名"——比如"苦李"得 -1.0 分（极度消极），因为这是李鱓用来自嘲的号；"卖画不为官"得 +1.0（极度积极），表达的是不向权贵低头的傲骨。</p>`,
+    tip: '印章是画家主动选择盖上去的，所以它们是"最诚实"的情感信号。',
     load: loadDimension, render: renderDimension },
+
   { id: 'ranking', title: '情感排行', subtitle: '情感最极端的作品——点击查看详情',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '最消极 Top 10' }, { title: '最积极 Top 10' }],
+    insight: `<p>左边是这位画家<strong>情感最沉重</strong>的 10 幅作品，右边是<strong>最积极乐观</strong>的 10 幅。点击任意一条可以跳转到作品详情页，查看完整的题跋内容和分析过程。</p>
+<p>消极作品中常见的元素：题跋出现"泣""泪""困""愁"等字眼，或主题为"时事讽喻"。积极作品则常见"春""乐""寿""福"等吉语。</p>`,
+    tip: '对比左右两列——画家的情感弹性越大，说明其内心世界越丰富复杂。',
     load: loadRanking, render: renderRanking },
-  { id: 'spatial', title: '空间与形式', subtitle: '画幅大小与题跋策略的关系',
+
+  { id: 'spatial', title: '空间与形式', subtitle: '画幅大小与题跋策略',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '画幅 vs 题跋占比' }, { title: '布局形式统计' }],
+    insight: `<p>左边的散点图探索一个有趣的问题：<strong>大画和小画的题跋策略是否不同？</strong>如果散点呈水平分布，说明无论画幅大小，题跋占比始终如一；如果大画的散点偏高，说明画家在大画上更敢写。</p>
+<p>右边统计题跋的<strong>空间布局形式</strong>——是规矩地写在边角，还是大胆地侵入画面中央。布局形式反映的是画家的自信程度和创新意识。</p>`,
+    tip: '拦边封角式布局是传统文人画最常见的，如果一个画家大量使用穿插式，说明他在空间上有创新意识。',
     load: loadSpatial, render: renderSpatial },
-  { id: 'material', title: '画材与尺寸', subtitle: '常用画材和尺幅偏好',
+
+  { id: 'material', title: '画材与尺寸', subtitle: '画了什么、用的多大的纸',
+    layout: 'default', chartLayout: 'two-col',
     charts: [{ title: '画材标签统计' }, { title: '作品尺寸分布' }],
+    insight: `<p>左边统计这位画家最常画的<strong>题材和元素</strong>。花鸟画家偏爱梅兰竹菊，山水画家则是峰峦溪流。题材偏好本身就是一种情感表达——竹子象征坚韧，兰花象征高洁。</p>
+<p>右边展示尺幅偏好。小幅作品（如册页）适合随手抒发，大幅作品（如中堂）则需要郑重其事。尺幅的选择反映了画家的创作场景和意图。</p>`,
+    tip: '如果一位花鸟画家晚期突然开始大量画"枯木""残荷"，这往往是心境变化的信号。',
     load: loadMaterial, render: renderMaterial },
 ]
 
@@ -535,19 +586,43 @@ onUnmounted(() => { window.removeEventListener('resize', handleResize); for (con
   max-width: 60vw; line-height: 1.6;
 }
 
-/* Charts */
-.slide-charts { flex: 1; display: grid; gap: 2vw; min-height: 0; }
+/* Charts + Insight 布局 */
+.slide-main { flex: 1; display: flex; gap: 2vw; min-height: 0; }
+.slide-charts { flex: 7; display: grid; gap: 1.5vw; min-height: 0; }
 .slide-charts.two-col { grid-template-columns: 1fr 1fr; }
 .chart-card {
   background: rgba(255,255,255,0.5); border: 1px solid #d4cec4;
-  border-radius: 12px; padding: 1.5vw; display: flex; flex-direction: column;
+  border-radius: 12px; padding: 1.2vw; display: flex; flex-direction: column;
 }
 .chart-label {
   font-family: 'Inter', 'Noto Sans SC', sans-serif;
-  font-size: 0.85vw; font-weight: 600; color: #5a5a5a;
-  margin: 0 0 1vh; letter-spacing: 0.5px;
+  font-size: 0.8vw; font-weight: 600; color: #5a5a5a;
+  margin: 0 0 0.8vh; letter-spacing: 0.5px;
 }
-.chart-area { flex: 1; min-height: 250px; }
+.chart-area { flex: 1; min-height: 200px; }
+
+/* 专家解说区 */
+.slide-insight {
+  flex: 3; display: flex; flex-direction: column;
+  background: rgba(255,255,255,0.35); border: 1px solid #d4cec4;
+  border-radius: 12px; padding: 1.5vw;
+  border-left: 3px solid #c96442;
+}
+.insight-mark {
+  font-size: 1.4vw; color: #c96442; margin-bottom: 0.8vh;
+  font-family: 'Playfair Display', serif;
+}
+.insight-body {
+  font-size: 0.85vw; line-height: 1.8; color: #3a3a3a;
+  flex: 1;
+}
+.insight-body :deep(p) { margin: 0 0 0.8em; }
+.insight-body :deep(strong) { color: #1a1a1a; font-weight: 600; }
+.insight-tip {
+  margin-top: auto; padding-top: 1vh; border-top: 1px dashed #d4cec4;
+  font-size: 0.75vw; color: #8a8178; line-height: 1.6;
+}
+.tip-icon { margin-right: 4px; }
 
 /* 右侧导航点 */
 .nav-dots {
