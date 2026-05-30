@@ -324,17 +324,24 @@ function renderSentiment() {
   if (c1 && emotionTimeline.value?.points?.length) {
     const { points, trend } = emotionTimeline.value
     const groups = {}; points.forEach(p => { const per = p.period_phase || '未分期'; if (!groups[per]) groups[per] = []; groups[per].push(p) })
+    const yearMin = Math.min(...points.map(p => p.year))
+    const yearMax = Math.max(...points.map(p => p.year))
+    const jitterRange = (yearMax - yearMin) * 0.008
     const series = Object.entries(groups).map(([per, pts]) => ({
-      name: per, type: 'scatter', symbolSize: 7,
-      itemStyle: { color: PERIOD_COLORS[per] || PAL.line, opacity: 0.7 },
-      data: pts.map(p => [p.year, p.emotion_score])
+      name: per, type: 'scatter', symbolSize: 5,
+      itemStyle: { color: PERIOD_COLORS[per] || PAL.line, opacity: 0.55 },
+      data: pts.map(p => [p.year + (Math.random() - 0.5) * jitterRange, p.emotion_score])
     }))
-    if (trend?.length >= 2) series.push({ name: '趋势', type: 'line', showSymbol: false, lineStyle: { color: PAL.c1, width: 2, type: 'dashed' }, data: trend.map(t => [t.year, t.emotion_score]) })
+    if (trend?.length >= 2) series.push({ name: '趋势', type: 'line', showSymbol: false, lineStyle: { color: PAL.c1, width: 2.5, type: 'dashed' }, data: trend.map(t => [t.year, t.emotion_score]), z: 10 })
     c1.setOption({
-      tooltip: { trigger: 'item' }, legend: { bottom: 0, textStyle: { color: PAL.fg2 } },
-      grid: baseGrid(),
-      xAxis: { type: 'value', name: '年份', axisLabel: { color: PAL.fg2 }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.2 } } },
-      yAxis: { type: 'value', name: '情感', min: -1, max: 1, axisLabel: { color: PAL.fg2, formatter: v => (v > 0 ? '+' : '') + (v * 100).toFixed(0) + '%' }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.2 } } },
+      tooltip: { trigger: 'item', formatter: p => {
+        if (p.seriesName === '趋势') return `趋势: ${(p.value[1] * 100).toFixed(0)}%`
+        return `${p.value[0]}年 · ${p.seriesName}\n情感: ${p.value[1] > 0 ? '+' : ''}${(p.value[1] * 100).toFixed(0)}%`
+      }},
+      legend: { show: false },
+      grid: { left: '6%', right: '4%', bottom: '6%', top: '4%', containLabel: true },
+      xAxis: { type: 'value', name: '年份', nameLocation: 'middle', nameGap: 25, min: yearMin - 1, max: yearMax + 1, axisLabel: { color: PAL.fg2, formatter: v => String(Math.round(v)) }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.15 } } },
+      yAxis: { type: 'value', name: '情感', min: -1, max: 1, axisLabel: { color: PAL.fg2, formatter: v => (v > 0 ? '+' : '') + (v * 100).toFixed(0) + '%' }, splitLine: { lineStyle: { color: PAL.line, opacity: 0.15 } } },
       series
     }); c1.resize()
   }
