@@ -4062,10 +4062,20 @@ async def get_emotion_ranking(
 async def get_emotion_timeline(
     artist: str = Query(default="all", description="画家名称"),
 ):
-    """返回该画家所有有年份的作品的 emotion_score，按年份排序"""
+    """返回该画家所有有年份的作品的情感分数，按年份排序。
+    使用 text_score + 时期 mood_offset，与画家规则一致。"""
     conn = get_db_connection()
     cur = conn.cursor()
     artist_where, artist_params = build_artist_condition(artist)
+
+    # 加载画家规则获取 life_stages
+    from app.services.inscription_content_analyzer import _load_artist_rules
+    rules = _load_artist_rules(artist if artist != "all" else "")
+    life_stages = rules.get("life_stages", [])
+    period_offset = {}
+    for stage in life_stages:
+        name = stage.get("name", "")
+        period_offset[name] = stage.get("mood_offset", 0)
 
     cur.execute(f"""
         SELECT id, image_id, title, year, period_phase, content_analysis
@@ -4082,18 +4092,25 @@ async def get_emotion_timeline(
         try:
             ca = json.loads(row[5])
             cs = ca.get("combined_sentiment", {})
-            vader_norm = cs.get("vader_normalized")
-            if vader_norm is not None:
-                score = round(vader_norm, 3)
-            else:
-                es = ca.get("sentiment", {}).get("emotion_score")
-                score = round(es / math.sqrt(es ** 2 + 8.0), 3) if es else 0
+            text_score = cs.get("text_score", 0) or 0
+            # VADER 归一化文字分
+            text_norm = text_score / math.sqrt(text_score ** 2 + 8.0) if text_score else 0
+            # 加上时期 mood_offset
+            period = row[4] or ""
+            mood = 0
+            for pname, offset in period_offset.items():
+                if pname and pname in period:
+                    mood = offset
+                    break
+            score = round(text_norm + mood, 3)
+            # clamp to -1 ~ 1
+            score = max(-1.0, min(1.0, score))
             sent = ca.get("sentiment", {})
             points.append({
                 "id": row[1] or str(row[0]),
                 "title": row[2] or "未命名",
                 "year": row[3],
-                "period_phase": row[4] or "未分期",
+                "period_phase": period or "未分期",
                 "emotion_score": score,
                 "polarity": sent.get("polarity", "neutral"),
             })
