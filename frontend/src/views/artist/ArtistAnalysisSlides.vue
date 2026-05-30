@@ -639,7 +639,7 @@ onUnmounted(() => {
   font-family: 'Playfair Display', serif;
 }
 .insight-body {
-  font-size: 1.05vw; line-height: 1.85; color: #3a3a3a; flex: 1;
+  font-size: 1.2vw; line-height: 1.85; color: #3a3a3a; flex: 1;
 }
 .insight-body :deep(p) { margin: 0 0 0.8em; }
 .insight-body :deep(strong) { color: #1a1a1a; font-weight: 600; }
