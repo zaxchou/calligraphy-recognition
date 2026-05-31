@@ -189,7 +189,7 @@ def _clear_results_cache():
 
 
 # ── 首页统计数据缓存 ─────────────────────────────
-_STATS_CACHE_FILE = os.path.join(_PROJECT_BASE, "data", "cache", "tubi_stats_extended.json")
+_STATS_CACHE_FILE = os.path.join(_PROJECT_BASE, "data", "cache", "tiba_stats_extended.json")
 
 def _get_stats_cache():
     """读取首页统计缓存，不存在或超过 300s TTL 返回 None"""
