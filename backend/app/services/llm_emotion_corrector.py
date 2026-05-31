@@ -32,32 +32,14 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是一位中国古代书画研究者。请根据给出的事实性信息，独立判断题跋的情感。
 
-## 评分维度（-8 到 +8，独立打分）
+对以下7个维度分别给出分数（-8到+8）和简短理由：text（文字情感）、period（时期心境）、theme（主题情感）、painting（画材情感）、spatial（空间情感）、seal（印章情感）、size（尺寸情感）。
 
-1. text — 题跋文字本身表达的情绪
-2. period — 基于画家年龄，此画创作时可能的心境
-3. theme — 题题本身的情感倾向
-4. painting — 画材/题材的情感含义
-5. spatial — 题跋布局传达的情绪
-6. seal — 印章文字的情感
-7. size — 画幅暗示的创作心态
+评分参考：-8~-5强烈消极 | -5~-2明显消极 | -2~+2中性 | +2~+5明显积极 | +5~+8强烈积极
 
-评分参考：
-- -8 ~ -5：强烈消极
-- -5 ~ -2：明显消极
-- -2 ~ +2：中性或复杂
-- +2 ~ +5：明显积极
-- +5 ~ +8：强烈积极
+然后写一段150字以上的鉴赏分析（summary字段），50字以内的判断依据（reasoning字段）。
 
-## 综合分析（至少 150 字）
-
-像书画鉴赏家一样解读：
-1. 表层——题跋在说什么
-2. 深层——真正在表达什么情绪
-3. 有没有矛盾的信号
-4. 整体情感倾向
-
-输出严格 JSON。"""
+输出严格JSON，不要markdown包裹：
+{"scores":{"text":{"score":0,"reasoning":"..."},"period":{"score":0,"reasoning":"..."},"theme":{"score":0,"reasoning":"..."},"painting":{"score":0,"reasoning":"..."},"spatial":{"score":0,"reasoning":"..."},"seal":{"score":0,"reasoning":"..."},"size":{"score":0,"reasoning":"..."}},"polarity":"neutral","summary":"...","reasoning":"..."}"""
 
 
 def _build_user_prompt(
@@ -86,23 +68,8 @@ def _build_user_prompt(
         lines.append(f"## 印章\n{seal_info}")
 
     lines.append(f"""
-## 输出格式（严格 JSON）
-```json
-{{
-  "scores": {{
-    "text": {{"score": <float -8~8>, "reasoning": "<理由>"}},
-    "period": {{"score": <float -8~8>, "reasoning": "<理由>"}},
-    "theme": {{"score": <float -8~8>, "reasoning": "<理由>"}},
-    "painting": {{"score": <float -8~8>, "reasoning": "<理由>"}},
-    "spatial": {{"score": <float -8~8>, "reasoning": "<理由>"}},
-    "seal": {{"score": <float -8~8>, "reasoning": "<理由>"}},
-    "size": {{"score": <float -8~8>, "reasoning": "<理由>"}}
-  }},
-  "polarity": "positive|negative|neutral|complex",
-  "summary": "<150字以上的鉴赏分析>",
-  "reasoning": "<50字判断依据>"
-}}
-```
+输出严格JSON，不要markdown包裹：
+{{"scores":{{"text":{{"score":0,"reasoning":"..."}},"period":{{"score":0,"reasoning":"..."}},"theme":{{"score":0,"reasoning":"..."}},"painting":{{"score":0,"reasoning":"..."}},"spatial":{{"score":0,"reasoning":"..."}},"seal":{{"score":0,"reasoning":"..."}},"size":{{"score":0,"reasoning":"..."}}}},"polarity":"neutral","summary":"...","reasoning":"..."}}
 """)
     return "\n".join(lines)
 
