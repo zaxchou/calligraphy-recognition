@@ -4092,25 +4092,28 @@ async def get_emotion_timeline(
         try:
             ca = json.loads(row[5])
             cs = ca.get("combined_sentiment", {})
-            text_score = cs.get("text_score", 0) or 0
-            # VADER 归一化文字分
-            text_norm = text_score / math.sqrt(text_score ** 2 + 8.0) if text_score else 0
-            # 加上时期 mood_offset
-            period = row[4] or ""
-            mood = 0
-            for pname, offset in period_offset.items():
-                if pname and pname in period:
-                    mood = offset
-                    break
-            score = round(text_norm + mood, 3)
-            # clamp to -1 ~ 1
-            score = max(-1.0, min(1.0, score))
+            # 优先用综合分 vader_normalized
+            score = cs.get("vader_normalized")
+            if score is not None:
+                score = round(float(score), 3)
+            else:
+                # fallback: text_score + mood_offset
+                text_score = cs.get("text_score", 0) or 0
+                text_norm = text_score / math.sqrt(text_score ** 2 + 8.0) if text_score else 0
+                period = row[4] or ""
+                mood = 0
+                for pname, offset in period_offset.items():
+                    if pname and pname in period:
+                        mood = offset
+                        break
+                score = round(text_norm + mood, 3)
+                score = max(-1.0, min(1.0, score))
             sent = ca.get("sentiment", {})
             points.append({
                 "id": row[1] or str(row[0]),
                 "title": row[2] or "未命名",
                 "year": row[3],
-                "period_phase": period or "未分期",
+                "period_phase": row[4] or "未分期",
                 "emotion_score": score,
                 "polarity": sent.get("polarity", "neutral"),
             })
