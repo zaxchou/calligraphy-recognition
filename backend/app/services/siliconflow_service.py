@@ -619,9 +619,9 @@ def analyze_image_regions(image_path: str, image_width: int, image_height: int, 
         tried = []
         last_error = None
 
-        forced = (getattr(settings, "TUBI_LLM_PROVIDER", "") or "").strip().lower()
+        forced = (getattr(settings, "TIBA_LLM_PROVIDER", "") or "").strip().lower()
         if forced and forced not in ("zhipu", "qwen", "siliconflow"):
-            return {"success": False, "error": f"无效TUBI_LLM_PROVIDER: {forced}"}
+            return {"success": False, "error": f"无效TIBA_LLM_PROVIDER: {forced}"}
 
         def _try(provider: str, base_url: str, api_key: str, model: str) -> Optional[Dict]:
             nonlocal last_error
@@ -946,9 +946,9 @@ def analyze_text_summary_only(image_path: str, artist: str = None) -> Dict:
         tried = []
         last_error = None
 
-        forced = (getattr(settings, "TUBI_LLM_PROVIDER", "") or "").strip().lower()
+        forced = (getattr(settings, "TIBA_LLM_PROVIDER", "") or "").strip().lower()
         if forced and forced not in ("zhipu", "qwen", "siliconflow"):
-            return {"success": False, "error": f"无效TUBI_LLM_PROVIDER: {forced}"}
+            return {"success": False, "error": f"无效TIBA_LLM_PROVIDER: {forced}"}
 
         def _try(provider: str, base_url: str, api_key: str, model: str) -> Optional[Dict]:
             nonlocal last_error
