@@ -36,10 +36,13 @@ SYSTEM_PROMPT = """你是一位中国古代书画研究者。请根据给出的�
 
 评分参考：-8~-5强烈消极 | -5~-2明显消极 | -2~+2中性 | +2~+5明显积极 | +5~+8强烈积极
 
-然后写一段150字以上的鉴赏分析（summary字段），50字以内的判断依据（reasoning字段）。
+summary字段必须用以下三段式结构（每段至少50字）：
+正面：找出题跋中所有积极的信号
+负面：找出题跋中所有消极的信号
+综合：给出整体判断
 
 输出严格JSON，不要markdown包裹：
-{"scores":{"text":{"score":0,"reasoning":"..."},"period":{"score":0,"reasoning":"..."},"theme":{"score":0,"reasoning":"..."},"painting":{"score":0,"reasoning":"..."},"spatial":{"score":0,"reasoning":"..."},"seal":{"score":0,"reasoning":"..."},"size":{"score":0,"reasoning":"..."}},"polarity":"neutral","summary":"...","reasoning":"..."}"""
+{"scores":{"text":{"score":0,"reasoning":"..."},"period":{"score":0,"reasoning":"..."},"theme":{"score":0,"reasoning":"..."},"painting":{"score":0,"reasoning":"..."},"spatial":{"score":0,"reasoning":"..."},"seal":{"score":0,"reasoning":"..."},"size":{"score":0,"reasoning":"..."}},"polarity":"neutral","summary":"正面：...\\n负面：...\\n综合：...","reasoning":"..."}"""
 
 
 def _build_user_prompt(

@@ -8,10 +8,13 @@ SYSTEM_PROMPT = """你是一位中国古代书画研究者。请根据给出的�
 
 评分参考：-8~-5强烈消极 | -5~-2明显消极 | -2~+2中性 | +2~+5明显积极 | +5~+8强烈积极
 
-然后写一段150字以上的鉴赏分析（summary字段），50字以内的判断依据（reasoning字段）。
+summary字段必须用以下三段式结构（每段至少50字）：
+正面：找出题跋中所有积极的信号
+负面：找出题跋中所有消极的信号
+综合：给出整体判断
 
 输出严格JSON，不要markdown包裹：
-{"scores":{"text":{"score":0,"reasoning":"..."},"period":{"score":0,"reasoning":"..."},"theme":{"score":0,"reasoning":"..."},"painting":{"score":0,"reasoning":"..."},"spatial":{"score":0,"reasoning":"..."},"seal":{"score":0,"reasoning":"..."},"size":{"score":0,"reasoning":"..."}},"polarity":"neutral","summary":"...","reasoning":"..."}"""
+{"scores":{"text":{"score":0,"reasoning":"..."},"period":{"score":0,"reasoning":"..."},"theme":{"score":0,"reasoning":"..."},"painting":{"score":0,"reasoning":"..."},"spatial":{"score":0,"reasoning":"..."},"seal":{"score":0,"reasoning":"..."},"size":{"score":0,"reasoning":"..."}},"polarity":"neutral","summary":"正面：...\\n负面：...\\n综合：...","reasoning":"..."}"""
 
 
 async def analyze_one(text, year, period, seal, themes):
@@ -77,6 +80,7 @@ for i, row in enumerate(rows):
             vader_norm = combined_raw / math.sqrt(combined_raw ** 2 + 8.0) if combined_raw else 0
 
             # combined_sentiment：最终分数（引擎读这个）
+            old_cs = old_ca.get('combined_sentiment', {})
             new_cs = {
                 'polarity': result.get('polarity', 'neutral'),
                 'reasoning': result.get('reasoning', ''),
@@ -91,7 +95,14 @@ for i, row in enumerate(rows):
                 'combined_score': round(combined_raw, 2),
                 'vader_normalized': round(vader_norm, 3),
                 'method': 'llm_independent',
-                'dimension_details': old_ca.get('combined_sentiment', {}).get('dimension_details', {}),
+                # 保留旧格式的引擎元数据
+                'dimension_details': old_cs.get('dimension_details', {}),
+                'dimension_polarities': old_cs.get('dimension_polarities', {}),
+                'conflict_score': old_cs.get('conflict_score', 0),
+                'has_data': old_cs.get('has_data', {}),
+                'weights': old_cs.get('weights', {}),
+                'vader_alpha': old_cs.get('vader_alpha', 8.0),
+                'brush_ink_score': old_cs.get('brush_ink_score', 0),
             }
 
             # llm_analysis：前端详情页读这个
