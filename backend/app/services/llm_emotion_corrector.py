@@ -90,13 +90,13 @@ def _build_user_prompt(
 ```json
 {{
   "scores": {{
-    "text": <float -8~8>,
-    "period": <float -8~8>,
-    "theme": <float -8~8>,
-    "painting": <float -8~8>,
-    "spatial": <float -8~8>,
-    "seal": <float -8~8>,
-    "size": <float -8~8>
+    "text": {{"score": <float -8~8>, "reasoning": "<理由>"}},
+    "period": {{"score": <float -8~8>, "reasoning": "<理由>"}},
+    "theme": {{"score": <float -8~8>, "reasoning": "<理由>"}},
+    "painting": {{"score": <float -8~8>, "reasoning": "<理由>"}},
+    "spatial": {{"score": <float -8~8>, "reasoning": "<理由>"}},
+    "seal": {{"score": <float -8~8>, "reasoning": "<理由>"}},
+    "size": {{"score": <float -8~8>, "reasoning": "<理由>"}}
   }},
   "polarity": "positive|negative|neutral|complex",
   "summary": "<150字以上的鉴赏分析>",
@@ -143,7 +143,7 @@ def _validate_corrections(data: dict) -> bool:
         logger.warning(f"_validate_corrections: not a dict, type={type(data).__name__}")
         return False
 
-    # 新格式：scores
+    # 新格式：scores（每个维度可以是数字或 {score, reasoning} 字典）
     scores = data.get("scores")
     if isinstance(scores, dict):
         expected_dims = {"text", "period", "theme", "painting", "spatial", "seal", "size"}
@@ -151,8 +151,10 @@ def _validate_corrections(data: dict) -> bool:
             for dim_name, val in scores.items():
                 if dim_name == "brush_ink":
                     continue
-                if not isinstance(val, (int, float)):
-                    logger.warning(f"_validate_corrections: {dim_name} score not numeric")
+                if isinstance(val, dict):
+                    if not isinstance(val.get("score", 0), (int, float)):
+                        return False
+                elif not isinstance(val, (int, float)):
                     return False
             logger.info(f"_validate_corrections: PASSED (scores format), polarity={data.get('polarity','?')}")
             return True
@@ -308,13 +310,19 @@ async def correct_dimensions(
         llm_scores = parsed["scores"]
         corrections = {}
         for dim in ["text", "spatial", "painting", "size", "period", "seal", "theme", "brush_ink"]:
-            llm_val = llm_scores.get(dim, 0) or 0
+            entry = llm_scores.get(dim, {})
+            if isinstance(entry, dict):
+                llm_val = entry.get("score", 0) or 0
+                reasoning = entry.get("reasoning", "")
+            else:
+                llm_val = entry or 0
+                reasoning = ""
             lex_raw = dimension_scores.get(dim, {}).get("raw", 0) or 0
             delta = llm_val - lex_raw
             corrections[dim] = {
                 "delta": round(delta, 2),
                 "confidence": 0.8 if dim != "brush_ink" else 0,
-                "reasoning": "",
+                "reasoning": reasoning,
             }
         parsed["corrections"] = corrections
         parsed["combined"] = {
