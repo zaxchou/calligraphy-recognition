@@ -30,31 +30,34 @@ logger = logging.getLogger(__name__)
 
 # ── Prompt 模板 ──────────────────────────────────────────────
 
-SYSTEM_PROMPT = """你是中国古代书画情感分析专家。你的首要任务是**独立解读**题跋的情感，再与机器评分对比。
+SYSTEM_PROMPT = """你是一位中国古代书画研究者。请根据给出的事实性信息，独立判断题跋的情感。
 
-**你的解读流程**（写入 combined.summary，至少 150 字）：
+## 评分维度（-8 到 +8，独立打分）
 
-先自己读，不要看机器分数——把你当成一个书画鉴赏家：
-1. **表层**——题跋字面在说什么
-2. **深层**——作者真正在表达什么情绪。特别注意：
-   - 反讽/对比结构："甘芳物无限，辣味嫌人餐" → 不是说甜的东西好，是说甜的到处都是，唯独我这辣的没人要。甘芳是反衬，不是正面词。
-   - 条件/让步结构："任使含咀乃得志" → 要熬得住才有出头日。重点是"熬"，不是"得志"。
-   - 书画语境隐喻："辣"可能是性格辛辣/画风冷峻，"嫌"是被世人排斥
-3. **复杂面**——有没有矛盾的信号？比如表面自嘲但底层倔强？表层洒脱但深处苍凉？
-4. **综合评价**——整体情感倾向是什么。用自然语言描述，不要只用标签。
+1. text — 题跋文字本身表达的情绪
+2. period — 基于画家年龄，此画创作时可能的心境
+3. theme — 题题本身的情感倾向
+4. painting — 画材/题材的情感含义
+5. spatial — 题跋布局传达的情绪
+6. seal — 印章文字的情感
+7. size — 画幅暗示的创作心态
 
-**再对比机器评分**（写入 corrections）：
-机器（词库引擎）只看单字/词组的情感值，看不懂反讽和语境。你需要判断：
-- 文字维度：机器有没有把反衬词当正面词加分？
-- 空间维度：布局是舒展还是压抑？
-- 时期维度：画家的生平阶段和这首诗匹配吗？
-- 主题维度：主题标签的默认倾向是否合理？
+评分参考：
+- -8 ~ -5：强烈消极
+- -5 ~ -2：明显消极
+- -2 ~ +2：中性或复杂
+- +2 ~ +5：明显积极
+- +5 ~ +8：强烈积极
 
-每个需要纠正的维度给出 delta（范围 -8 到 +8，大胆修正），不需要纠正的给 0。
-置信度低于 0.5 的不纠。
+## 综合分析（至少 150 字）
 
-输出严格 JSON。combined.summary 要像鉴赏文章一样写，不要像审计报告。
-不要写"词库评分基本准确"这种话——即使分数对，也要解释为什么对。"""
+像书画鉴赏家一样解读：
+1. 表层——题跋在说什么
+2. 深层——真正在表达什么情绪
+3. 有没有矛盾的信号
+4. 整体情感倾向
+
+输出严格 JSON。"""
 
 
 def _build_user_prompt(
@@ -66,61 +69,38 @@ def _build_user_prompt(
     spatial_info: str = None,
     seal_info: str = None,
 ) -> str:
-    """构建用户提示，包含题跋全文、词库分数和画家背景"""
+    """构建用户提示，只给事实性信息，不给判断性暗示"""
     lines = [f"## 题跋全文\n{text}\n"]
 
-    # 画家背景提示（帮助理解语境）
-    artist_hints = {
-        "李鱓": "扬州八怪之一。早年供奉内廷→中期扬州卖画→晚期归隐。题跋常带自嘲、不驯、苦涩中的倔强。",
-        "郑燮": "扬州八怪之一，号板桥。题跋多含为民请命、不媚权贵之意。",
-        "徐渭": "大写意开创者，一生坎坷潦倒。题跋常狂放与悲愤交织。",
-        "朱耷": "明宗室后裔，国破家亡后出家。画中鱼鸟白眼向人，题跋晦涩隐晦。",
-    }
+    # 画家和年代：只给事实
     if artist:
-        lines.append(f"## 作者\n{artist}")
-        if artist in artist_hints:
-            lines.append(f"背景：{artist_hints[artist]}")
-
+        lines.append(f"## 画家\n{artist}")
     if year:
-        lines.append(f"## 年代\n{year}年")
+        lines.append(f"## 创作年份\n{year}年")
     if themes:
         theme_names = [t.get("name", "") for t in themes[:5]]
-        lines.append(f"## 主题\n{'、'.join(theme_names)}")
+        lines.append(f"## 主题分类\n{'、'.join(theme_names)}")
     if spatial_info:
         lines.append(f"## 空间布局\n{spatial_info}")
     if seal_info:
         lines.append(f"## 印章\n{seal_info}")
 
-    lines.append("\n## 词库基线（供你判断是否需要校正）")
-    for dim_name, dim_data in dimension_scores.items():
-        raw = dim_data.get("raw", 0)
-        norm = dim_data.get("normalized", 0)
-        conf = dim_data.get("confidence", 1.0)
-        has_data = dim_data.get("has_data", False)
-        status = "有信号" if has_data else "无数据"
-        lines.append(f"  {dim_name}: raw={raw:+.2f}, norm={norm:+.3f}, confidence={conf:.1f} [{status}]")
-
     lines.append(f"""
 ## 输出格式（严格 JSON）
-- delta 范围: -8 ~ +8（大胆修正，不要只调零点几）
-- combined.summary: 像鉴赏文章，至少 150 字，不要写"基本准确"
 ```json
 {{
-  "corrections": {{
-    "text":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "spatial":  {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "painting": {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "size":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "period":   {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "seal":     {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "theme":    {{"delta": <float>, "confidence": <float 0-1>, "reasoning": "<校正理由>"}},
-    "brush_ink":{{"delta": 0, "confidence": 0, "reasoning": "预留维度"}}
+  "scores": {{
+    "text": <float -8~8>,
+    "period": <float -8~8>,
+    "theme": <float -8~8>,
+    "painting": <float -8~8>,
+    "spatial": <float -8~8>,
+    "seal": <float -8~8>,
+    "size": <float -8~8>
   }},
-  "combined": {{
-    "delta": <float>,
-    "polarity": "positive|negative|neutral|complex",
-    "summary": "<逐层解读：1)表层意思→2)深层隐喻→3)情感底色→4)关键信号。至少120字。>"
-  }}
+  "polarity": "positive|negative|neutral|complex",
+  "summary": "<150字以上的鉴赏分析>",
+  "reasoning": "<50字判断依据>"
 }}
 ```
 """)
@@ -158,34 +138,35 @@ def _extract_json(text: str) -> Optional[dict]:
 
 
 def _validate_corrections(data: dict) -> bool:
-    """验证 LLM 输出结构是否完整"""
+    """验证 LLM 输出结构是否完整（支持新 scores 格式和旧 corrections 格式）"""
     if not isinstance(data, dict):
         logger.warning(f"_validate_corrections: not a dict, type={type(data).__name__}")
         return False
+
+    # 新格式：scores
+    scores = data.get("scores")
+    if isinstance(scores, dict):
+        expected_dims = {"text", "period", "theme", "painting", "spatial", "seal", "size"}
+        if expected_dims.issubset(scores.keys()):
+            for dim_name, val in scores.items():
+                if dim_name == "brush_ink":
+                    continue
+                if not isinstance(val, (int, float)):
+                    logger.warning(f"_validate_corrections: {dim_name} score not numeric")
+                    return False
+            logger.info(f"_validate_corrections: PASSED (scores format), polarity={data.get('polarity','?')}")
+            return True
+
+    # 旧格式：corrections（向后兼容）
     corrections = data.get("corrections")
-    if not isinstance(corrections, dict):
-        logger.warning(f"_validate_corrections: corrections not dict")
-        return False
-    expected_dims = {"text", "spatial", "painting", "size", "period", "seal", "theme", "brush_ink"}
-    if not expected_dims.issubset(corrections.keys()):
-        logger.warning(f"_validate_corrections: missing dims {expected_dims - set(corrections.keys())}")
-        return False
-    for dim_name, dim_data in corrections.items():
-        if not isinstance(dim_data, dict):
-            logger.warning(f"_validate_corrections: {dim_name} not dict")
-            return False
-        if "delta" not in dim_data or "confidence" not in dim_data:
-            return False
-        delta = dim_data.get("delta", 0)
-        if not isinstance(delta, (int, float)) or delta < -10.0 or delta > 10.0:
-            logger.warning(f"_validate_corrections: {dim_name} delta={delta} out of range or bad type={type(delta).__name__}")
-            return False
-    combined = data.get("combined")
-    if not isinstance(combined, dict) or "delta" not in combined:
-        logger.warning(f"_validate_corrections: combined missing or no delta")
-        return False
-    logger.info(f"_validate_corrections: PASSED for polarity={combined.get('polarity','?')}")
-    return True
+    if isinstance(corrections, dict):
+        expected_dims = {"text", "spatial", "painting", "size", "period", "seal", "theme", "brush_ink"}
+        if expected_dims.issubset(corrections.keys()):
+            logger.info(f"_validate_corrections: PASSED (corrections format)")
+            return True
+
+    logger.warning("_validate_corrections: invalid format")
+    return False
 
 
 def _empty_corrections() -> dict:
@@ -279,8 +260,8 @@ async def correct_dimensions(
 
     try:
         response = await call_qwen_chat_async(
-            max_tokens=2000,
-            temperature=0.4,
+            max_tokens=800,
+            temperature=0.1,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -319,8 +300,28 @@ async def correct_dimensions(
 
     # 验证结构
     if not _validate_corrections(parsed):
-        logger.warning(f"LLM emotion corrector: invalid structure. corrections keys={list(parsed.get('corrections', {}).keys())}")
+        logger.warning(f"LLM emotion corrector: invalid structure. keys={list(parsed.keys())}")
         return _empty_corrections()
+
+    # 如果是新格式 scores，转换为 corrections（delta = llm_score - lexicon_score）
+    if "scores" in parsed and "corrections" not in parsed:
+        llm_scores = parsed["scores"]
+        corrections = {}
+        for dim in ["text", "spatial", "painting", "size", "period", "seal", "theme", "brush_ink"]:
+            llm_val = llm_scores.get(dim, 0) or 0
+            lex_raw = dimension_scores.get(dim, {}).get("raw", 0) or 0
+            delta = llm_val - lex_raw
+            corrections[dim] = {
+                "delta": round(delta, 2),
+                "confidence": 0.8 if dim != "brush_ink" else 0,
+                "reasoning": "",
+            }
+        parsed["corrections"] = corrections
+        parsed["combined"] = {
+            "delta": 0,
+            "polarity": parsed.get("polarity", "neutral"),
+            "summary": parsed.get("summary", ""),
+        }
 
     # 补充 meta 信息
     usage = response.get("usage", {})
