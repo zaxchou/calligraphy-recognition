@@ -242,6 +242,7 @@
                     <button class="toolbar-btn" @click="expandAllDims">展开全部</button>
                     <button class="toolbar-btn" @click="collapseAllDims">收缩全部</button>
                   </div>
+                  <div class="formula-table-scroll">
                   <table class="formula-table">
                     <thead>
                       <tr>
@@ -300,6 +301,7 @@
                       </template>
                     </tbody>
                   </table>
+                  </div>
 
                   <div class="formula-result">
                     <span class="result-label">{{ $t('derivation.normalized') }}</span>
@@ -2640,6 +2642,10 @@ defineExpose({
   font-size: 12px;
   margin-bottom: 8px;
 }
+.formula-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .formula-table th {
   text-align: right;
   font-weight: 600;
@@ -3407,6 +3413,36 @@ defineExpose({
 .llm-model {
   font-family: 'Courier New', monospace;
   color: #9b8a6e;
+}
+
+/* ── 移动端溢出修复 ── */
+@media (max-width: 768px) {
+  .right-panel {
+    overflow: hidden;
+    min-width: 0;
+  }
+  .analysis-two-col-layout {
+    flex-direction: column;
+    margin: 10px 0;
+  }
+  .info-row-horizontal {
+    flex-direction: column;
+  }
+  .formula-table-scroll {
+    margin: 0 -4px;
+  }
+  .formula-table {
+    min-width: 380px;
+  }
+}
+@media (max-width: 480px) {
+  .info-row-horizontal {
+    flex-direction: column;
+  }
+  .formula-table {
+    min-width: 340px;
+    font-size: 11px;
+  }
 }
 </style>
 

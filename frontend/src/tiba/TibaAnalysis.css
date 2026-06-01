@@ -3,6 +3,7 @@
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
+  overflow-x: hidden;
 }
 
 /* 紧凑页面标题 */
@@ -735,6 +736,7 @@
   display: grid;
   grid-template-columns: 30% 1fr;
   gap: 14px;
+  overflow-x: hidden;
 }
 
 /* 附件模式：全宽 */
@@ -752,6 +754,7 @@
   position: sticky;
   top: 84px; /* header 高度 + 顶部间距 */
   align-self: start;
+  overflow: hidden;
 }
 
 /* 右侧面板 */
@@ -759,6 +762,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* 历史记录卡片 */
