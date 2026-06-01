@@ -3,7 +3,6 @@
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
-  overflow-x: hidden;
 }
 
 /* 紧凑页面标题 */
@@ -736,7 +735,6 @@
   display: grid;
   grid-template-columns: 30% 1fr;
   gap: 14px;
-  overflow-x: hidden;
 }
 
 /* 附件模式：全宽 */
@@ -754,7 +752,6 @@
   position: sticky;
   top: 84px; /* header 高度 + 顶部间距 */
   align-self: start;
-  overflow: hidden;
 }
 
 /* 右侧面板 */
@@ -762,8 +759,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-width: 0;
-  overflow: hidden;
 }
 
 /* 历史记录卡片 */
@@ -1942,7 +1937,6 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow: hidden;
 }
 
 .analysis-left-col .analysis-note-main {
@@ -1955,7 +1949,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
 }
 
 /* 分析说明 */
@@ -1970,7 +1963,6 @@
   font-weight: 400;
   overflow-wrap: break-word;
   word-break: break-word;
-  overflow: hidden;
 }
 
 .analysis-note-main h4 {
@@ -2013,7 +2005,6 @@
   background: rgba(245, 244, 237, 0.6);
   border-radius: 8px;
   border: 1px solid rgba(184, 164, 126, 0.25);
-  overflow: hidden;
 }
 .detail-tags-list {
   display: flex;
@@ -2043,7 +2034,6 @@
   background: #faf9f7;
   border-radius: 8px;
   border: 1px solid #e8e4da;
-  overflow: hidden;
 }
 
 .inscription-note-main h4 {
@@ -2080,7 +2070,6 @@
   background: #faf9f7;
   border-radius: 8px;
   border: 1px solid #e8e4da;
-  overflow: hidden;
 }
 
 .seal-note-main h4 {
@@ -2112,7 +2101,6 @@
   gap: 12px;
   margin: 20px 10px 10px;
   min-height: 240px;
-  overflow: hidden;
 }
 
 .annotated-image-section {
@@ -2122,8 +2110,6 @@
   background: #f5f4ed;
   border-radius: 8px;
   border: 1px solid #e8e4da;
-  overflow: hidden;
-  min-width: 0;
 }
 
 .stats-section {
@@ -2135,7 +2121,6 @@
   background: #faf9f7;
   border-radius: 8px;
   border: 1px solid #e8e4da;
-  overflow: hidden;
 }
 
 .section-title {

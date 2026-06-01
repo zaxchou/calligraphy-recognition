@@ -2270,7 +2270,6 @@ defineExpose({
   border: 1px solid #e0d8c8;
   border-radius: 10px;
   padding: 14px 16px;
-  overflow: hidden;
 }
 .score-card .section-title {
   display: flex;
@@ -2566,7 +2565,6 @@ defineExpose({
   border: 1px solid #e8e4da;
   border-radius: 8px;
   padding: 10px 12px;
-  overflow: hidden;
 }
 .steps-card .section-title {
   display: flex;
@@ -3424,10 +3422,6 @@ defineExpose({
 
 /* ── 移动端溢出修复 ── */
 @media (max-width: 768px) {
-  .right-panel {
-    overflow: hidden;
-    min-width: 0;
-  }
   .analysis-two-col-layout {
     flex-direction: column;
     margin: 10px 0;
@@ -3446,10 +3440,6 @@ defineExpose({
   }
   .narrative-card {
     padding: 12px 14px;
-  }
-  .llm-narrative-body {
-    overflow-wrap: break-word;
-    word-break: break-word;
   }
 }
 @media (max-width: 480px) {
