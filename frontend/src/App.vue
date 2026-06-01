@@ -450,7 +450,8 @@ h1, h2, h3, h4, h5, h6 {
 .nav-item.active {
   background: rgba(201, 100, 66, 0.06);
   border-radius: 6px;
-  padding: var(--space-sm) 8px;
+  margin: 0 -8px;
+  padding: 4px 8px;
 }
 
 /* 下划线 — 极细暖色线 */
@@ -480,6 +481,15 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  padding: var(--space-sm) 0;
+  text-decoration: none;
+  position: relative;
+}
+.nav-dropdown-trigger.active {
+  background: rgba(201, 100, 66, 0.06);
+  border-radius: 6px;
+  margin: 0 -8px;
+  padding: 4px 8px;
 }
 .nav-arrow {
   font-size: 10px;
@@ -1051,6 +1061,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .home-header .nav-item.active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-header .nav-dropdown-trigger.active {
   background: rgba(255, 255, 255, 0.08);
 }
 
