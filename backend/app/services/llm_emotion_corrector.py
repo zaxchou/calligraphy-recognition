@@ -36,13 +36,13 @@ SYSTEM_PROMPT = """你是一位中国古代书画研究者。请根据给出的�
 
 评分参考：-8~-5强烈消极 | -5~-2明显消极 | -2~+2中性 | +2~+5明显积极 | +5~+8强烈积极
 
-summary字段必须用以下三段式结构（每段至少50字）：
-积极面：找出题跋中所有积极的信号
-消极面：找出题跋中所有消极的信号
-综合判断：给出整体判断
+summary字段必须严格按以下三段式结构。引用题跋原文词句为证，结合画家生平、创作年代、画幅尺寸等元数据进行深度解读：
+积极面：80-120字。提取正向情绪、自我肯定、坚持、美感、生命意志等。引用原文词句，说明其积极含义。
+消极面：80-120字。指出孤独、被拒、命运不顺、苦涩、自嘲、幻灭等。引用原文词句，说明其消极含义。
+综合判断：120-200字。给出总体定性（如：偏积极/偏消极/悲凉中的倔强/热烈下的虚无等），说明两面如何共存，结合画家此时期的心境、人生阶段、艺术风格做整体评价。这一段应当是最有深度的总结。
 
 输出严格JSON，不要markdown包裹：
-{"scores":{"text":{"score":0,"reasoning":"..."},"period":{"score":0,"reasoning":"..."},"theme":{"score":0,"reasoning":"..."},"painting":{"score":0,"reasoning":"..."},"spatial":{"score":0,"reasoning":"..."},"seal":{"score":0,"reasoning":"..."},"size":{"score":0,"reasoning":"..."}},"polarity":"neutral","summary":"积极面：...\\n消极面：...\\n综合判断：...","reasoning":"..."}"""
+{"scores":{"text":{"score":0,"reasoning":"..."},...},"polarity":"neutral","summary":"积极面：（80-120字）...\\n消极面：（80-120字）...\\n综合判断：（120-200字，最有深度的总结）...","reasoning":"..."}"""
 
 
 def _build_user_prompt(
@@ -53,6 +53,7 @@ def _build_user_prompt(
     themes: List = None,
     spatial_info: str = None,
     seal_info: str = None,
+    size_info: str = None,
 ) -> str:
     """构建用户提示，只给事实性信息，不给判断性暗示"""
     lines = [f"## 题跋全文\n{text}\n"]
@@ -65,15 +66,13 @@ def _build_user_prompt(
     if themes:
         theme_names = [t.get("name", "") for t in themes[:5]]
         lines.append(f"## 主题分类\n{'、'.join(theme_names)}")
+    if size_info:
+        lines.append(f"## 画幅尺寸\n{size_info}")
     if spatial_info:
         lines.append(f"## 空间布局\n{spatial_info}")
     if seal_info:
         lines.append(f"## 印章\n{seal_info}")
 
-    lines.append(f"""
-输出严格JSON，不要markdown包裹：
-{{"scores":{{"text":{{"score":0,"reasoning":"..."}},"period":{{"score":0,"reasoning":"..."}},"theme":{{"score":0,"reasoning":"..."}},"painting":{{"score":0,"reasoning":"..."}},"spatial":{{"score":0,"reasoning":"..."}},"seal":{{"score":0,"reasoning":"..."}},"size":{{"score":0,"reasoning":"..."}}}},"polarity":"neutral","summary":"...","reasoning":"..."}}
-""")
     return "\n".join(lines)
 
 
@@ -177,6 +176,7 @@ async def correct_dimensions(
     themes: List = None,
     spatial_info: str = None,
     seal_info: str = None,
+    size_info: str = None,
 ) -> dict:
     """
     主入口：对词库引擎的 8 维基线分数进行 LLM 逐维度校正
@@ -228,11 +228,12 @@ async def correct_dimensions(
         themes=themes,
         spatial_info=spatial_info,
         seal_info=seal_info,
+        size_info=size_info,
     )
 
     try:
         response = await call_qwen_chat_async(
-            max_tokens=800,
+            max_tokens=2000,
             temperature=0.1,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},

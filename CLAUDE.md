@@ -128,3 +128,41 @@ guest         ❌                   ❌                  ❌
    （实际操作用 Python 脚本：从 Qdrant scroll 出所有 `id + book_id + chunk_index`，逐条更新 SQLite）
 3. **应急方案（已实现）：** 后端 `knowledge_api.py` 有"孤立向量回退"逻辑——当 SQLite 查不到匹配时，直接从 Qdrant 的 payload 构建搜索结果（含书名、配图、上下文）。此方案能工作但依赖 payload 的完整性
 4. **判断是否发生此问题：** 搜索知识库返回 `results: []` 但 `ai_summary` 有内容，日志中出现 `"跳过孤立向量"` 或 `"孤立向量"`
+
+### 情感分析架构（重要！不要搞混）
+
+**核心原则：LLM 为主，词库兜底。**
+
+```
+优先级：LLM 独立判断 > 词库引擎基线
+```
+
+- 有 LLM 分析 → 直接用 LLM 绝对分（-8到+8）作为最终维度分
+- 无 LLM（调用失败/超时） → 降级到词库引擎基线分
+- **不要用** `apply_corrections`（词库基线 + LLM delta 的混合模式），那是旧架构
+
+**分数计算公式：**
+```
+combined_score = Σ(wᵢ × cᵢ × sᵢ) / Σ(wᵢ × cᵢ)
+vader_normalized = combined_score / √(combined_score² + 8)
+```
+- wᵢ = 维度权重（存储在 `combined_sentiment.weights`）
+- cᵢ = 维度置信度（存储在 `combined_sentiment.dimension_confidence`）
+- sᵢ = 维度分数（LLM 绝对分，或词库基线分）
+
+**数据流：**
+1. `correct_dimensions()` → LLM 返回 `{scores: {text: {score, reasoning}, ...}, summary, polarity}`
+2. 用 LLM scores 做加权平均 → `combined_score` + `vader_normalized`
+3. 存入 `combined_sentiment`（维度分 + 归一化分 + weights + dimension_confidence）
+4. 存入 `llm_analysis`（corrections + summary + meta）
+
+**前端 formula-table：**
+- 维度分 = `combined_sentiment.text_score` 等（LLM 绝对分）
+- 权重 = `combined_sentiment.weights`
+- 置信度 = `combined_sentiment.dimension_confidence`（不是 has_data）
+- 展开行 = 词库信号 + LLM reasoning
+
+**batch 脚本（batch_absolute_reanalyze.py）：**
+- 和 production 路径用同一个 SYSTEM_PROMPT
+- 用加权平均（不是简单平均）计算 combined_score
+- 存储 dimension_confidence 和 weights

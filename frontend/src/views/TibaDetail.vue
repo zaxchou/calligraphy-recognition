@@ -238,10 +238,14 @@
                     </div>
                   </div>
 
+                  <div class="formula-table-toolbar">
+                    <button class="toolbar-btn" @click="expandAllDims">展开全部</button>
+                    <button class="toolbar-btn" @click="collapseAllDims">收缩全部</button>
+                  </div>
                   <table class="formula-table">
                     <thead>
                       <tr>
-                        <th>{{ $t('derivation.dimension') }}</th>
+                        <th class="th-left">{{ $t('derivation.dimension') }}</th>
                         <th>{{ $t('derivation.normalized') }}</th>
                         <th>{{ $t('derivation.weight') }}</th>
                         <th>{{ $t('derivation.confidence') }}</th>
@@ -285,6 +289,11 @@
                                   <span class="detail-desc" v-if="item.desc">{{ item.desc }}</span>
                                 </div>
                               </template>
+                              <!-- LLM reasoning -->
+                              <div v-if="getLlmReasoning(dim.nameKey)" class="detail-item llm-reasoning-row">
+                                <span class="detail-label">🤖 LLM</span>
+                                <span class="detail-desc llm-reasoning-text">{{ getLlmReasoning(dim.nameKey) }}</span>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -348,45 +357,15 @@
                   </div>
                 </div>
 
-                <!-- v3 LLM 校正详情 -->
-                <div v-if="currentImage.contentAnalysis?.llm_analysis?.corrections" class="llm-correction-section">
-                  <div class="llm-section-header">
-                    <el-icon><MagicStick /></el-icon>
-                    <span>{{ $t('derivation.llm_correction') }}</span>
-                  </div>
-                  <!-- 逐维度校正 -->
-                  <table class="llm-table">
-                    <thead>
-                      <tr>
-                        <th>{{ $t('derivation.dimension') }}</th>
-                        <th>{{ $t('derivation.llm_delta') }}</th>
-                        <th>{{ $t('derivation.confidence') }}</th>
-                        <th>{{ $t('derivation.llm_reasoning') }}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(corr, dimKey) in currentImage.contentAnalysis.llm_analysis.corrections" :key="dimKey">
-                        <td class="dim-name">{{ $t(`factor.${dimKey}`) }}</td>
-                        <td class="dim-delta" :class="{ 'score-pos': corr.delta > 0, 'score-neg': corr.delta < 0 }">
-                          {{ corr.delta > 0 ? '+' : '' }}{{ corr.delta.toFixed(2) }}
-                        </td>
-                        <td class="dim-conf" :class="{ 'conf-high': corr.confidence >= 0.7, 'conf-mid': corr.confidence >= 0.4 && corr.confidence < 0.7 }">
-                          {{ (corr.confidence * 100).toFixed(0) }}%
-                        </td>
-                        <td class="llm-reasoning-cell">{{ corr.reasoning }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <!-- 元信息 -->
-                  <div class="llm-meta" v-if="currentImage.contentAnalysis.llm_analysis.meta">
-                    <span class="llm-model">{{ currentImage.contentAnalysis.llm_analysis.meta.model }}</span>
-                    <span v-if="currentImage.contentAnalysis.llm_analysis.meta.token_count" class="llm-tokens">
-                      · {{ currentImage.contentAnalysis.llm_analysis.meta.token_count }} tokens
-                    </span>
-                    <span v-if="currentImage.contentAnalysis.llm_analysis.meta.time_ms" class="llm-time">
-                      · {{ (currentImage.contentAnalysis.llm_analysis.meta.time_ms / 1000).toFixed(1) }}s
-                    </span>
-                  </div>
+                <!-- LLM meta 信息（模型/耗时） -->
+                <div class="llm-meta" v-if="currentImage.contentAnalysis?.llm_analysis?.meta">
+                  <span class="llm-model">{{ currentImage.contentAnalysis.llm_analysis.meta.model }}</span>
+                  <span v-if="currentImage.contentAnalysis.llm_analysis.meta.token_count" class="llm-tokens">
+                    · {{ currentImage.contentAnalysis.llm_analysis.meta.token_count }} tokens
+                  </span>
+                  <span v-if="currentImage.contentAnalysis.llm_analysis.meta.time_ms" class="llm-time">
+                    · {{ (currentImage.contentAnalysis.llm_analysis.meta.time_ms / 1000).toFixed(1) }}s
+                  </span>
                 </div>
 
               </div>
@@ -1210,27 +1189,30 @@ const dimensionRows = computed(() => {
   if (!cs) return []
   const w = cs.weights || {}
   const hd = cs.has_data || {}
+  const dc = cs.dimension_confidence || {} // 后端存储的逐维度置信度
+  // 优先用 dimension_confidence，回退到 has_data 推断
+  const conf = (dim, hasDataFallback, fallback) => dc[dim] != null ? dc[dim] : (hasDataFallback ? fallback : 0.2)
   const dims = [
-    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, confidence: hd.text ? 1.0 : 0.3, hasData: hd.text ?? true },
-    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, confidence: hd.spatial ? 0.8 : 0.3, hasData: hd.spatial ?? false },
-    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, confidence: hd.painting ? 0.7 : 0.2, hasData: hd.painting ?? false },
-    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, confidence: hd.size ? 0.5 : 0.2, hasData: hd.size ?? false },
-    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, confidence: hd.period ? 0.8 : 0.3, hasData: hd.period ?? false },
-    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: hd.seal ? 0.6 : 0.2, hasData: hd.seal ?? false },
-    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: hd.theme ? 0.9 : 0.2, hasData: hd.theme ?? false },
+    { nameKey: 'factor.text', raw: cs.text_score || 0, weight: w.text || 0.40, confidence: conf('text', hd.text, 1.0), hasData: hd.text ?? true },
+    { nameKey: 'factor.spatial', raw: cs.spatial_score || 0, weight: w.spatial || 0.20, confidence: conf('spatial', hd.spatial, 0.8), hasData: hd.spatial ?? false },
+    { nameKey: 'factor.painting', raw: cs.painting_score || 0, weight: w.painting || 0.10, confidence: conf('painting', hd.painting, 0.7), hasData: hd.painting ?? false },
+    { nameKey: 'factor.size', raw: cs.size_score || 0, weight: w.size || 0.05, confidence: conf('size', hd.size, 0.5), hasData: hd.size ?? false },
+    { nameKey: 'factor.period', raw: cs.time_score || 0, weight: w.period || 0.10, confidence: conf('period', hd.period, 0.8), hasData: hd.period ?? false },
+    { nameKey: 'factor.seal', raw: cs.seal_score || 0, weight: w.seal || 0.10, confidence: conf('seal', hd.seal, 0.6), hasData: hd.seal ?? false },
+    { nameKey: 'factor.theme', raw: cs.theme_score || 0, weight: w.theme || 0.05, confidence: conf('theme', hd.theme, 0.9), hasData: hd.theme ?? false },
     { nameKey: 'factor.brush_ink', raw: cs.brush_ink_score || 0, weight: w.brush_ink || 0.00, confidence: 0, hasData: false, placeholder: true },
   ]
   const dp = cs.dimension_polarities || {}
   const combinedPol = cs.polarity || 'neutral'
-  // 计算每个维度的贡献、归一化分数和极性
-  const totalWeight = dims.reduce((sum, d) => sum + d.weight * (d.hasData ? 1.0 : 0.2), 0)
+  // 计算每个维度的贡献（用实际 confidence 而非二值 has_data）
+  const totalWeight = dims.reduce((sum, d) => sum + d.weight * d.confidence, 0)
   return dims.map(d => {
     const dimKey = d.nameKey.replace('factor.', '')
     const dimPol = dp[dimKey] || 'neutral'
     return {
       ...d,
       normalized: vaderNorm(d.raw),
-      contribution: totalWeight > 0 ? (d.weight * (d.hasData ? 1.0 : 0.2) * d.raw) / totalWeight : 0,
+      contribution: totalWeight > 0 ? (d.weight * d.confidence * d.raw) / totalWeight : 0,
       polarity: dimPol,
       conflicted: d.hasData && dimPol !== 'neutral' && combinedPol !== 'neutral' &&
         ((dimPol === 'positive' && combinedPol.includes('negative')) ||
@@ -1247,6 +1229,12 @@ function toggleDimDetail(key) {
   } else {
     expandedDims.value.add(key)
   }
+}
+function expandAllDims() {
+  expandedDims.value = new Set(dimensionRows.value.filter(d => d.hasData || d.placeholder).map(d => d.nameKey))
+}
+function collapseAllDims() {
+  expandedDims.value = new Set()
 }
 
 // 获取维度详情
@@ -1286,7 +1274,7 @@ function getDimDetail(dimKey) {
   // 尺寸维度
   if (key === 'size') {
     return [{
-      label: `${detail.width || '?'}×${detail.height || '?'}cm`,
+      label: `${detail.height_cm || '?'}×${detail.width_cm || '?'}cm`,
       score: cs.size_score || 0,
       desc: detail.category || '',
     }]
@@ -1320,6 +1308,12 @@ function getDimDetail(dimKey) {
   }
 
   return [{ label: '无详细数据', score: 0, desc: '' }]
+}
+
+// 获取 LLM 对该维度的 reasoning
+function getLlmReasoning(dimNameKey) {
+  const dimKey = dimNameKey.replace('factor.', '')
+  return contentAnalysis.value?.llm_analysis?.corrections?.[dimKey]?.reasoning || ''
 }
 
 // VADER 归一化函数（前端版本，α=8）
@@ -2647,12 +2641,34 @@ defineExpose({
   margin-bottom: 8px;
 }
 .formula-table th {
-  text-align: left;
+  text-align: right;
   font-weight: 600;
   color: #5d4e37;
   padding: 4px 8px;
   border-bottom: 2px solid #d8d0c0;
   font-size: 11px;
+}
+.formula-table th.th-left {
+  text-align: left;
+}
+.formula-table-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.toolbar-btn {
+  font-size: 11px;
+  color: #8b7355;
+  background: transparent;
+  border: 1px solid #d8d0c0;
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.toolbar-btn:hover {
+  background: #f5f2ea;
+  color: #5d4e37;
 }
 .formula-table td {
   padding: 4px 8px;
@@ -2680,6 +2696,7 @@ defineExpose({
 .formula-result {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   font-size: 13px;
   padding: 6px 10px;
@@ -2744,6 +2761,21 @@ defineExpose({
   color: #999;
   font-size: 10px;
   flex: 1;
+}
+.llm-reasoning-row {
+  border-top: 1px dashed #e8e4da;
+  margin-top: 4px;
+  padding-top: 4px;
+}
+.llm-reasoning-row .detail-label {
+  color: #8b7355;
+  font-size: 10px;
+  min-width: auto;
+}
+.llm-reasoning-text {
+  color: #666;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 /* ── 空间情绪解读卡片 ── */
@@ -3359,86 +3391,7 @@ defineExpose({
 }
 .conflict-bar-value { color: #666; white-space: nowrap; }
 
-/* ── LLM 校正详情 ── */
-.llm-correction-section {
-  margin-top: 12px;
-  border: 1px solid #e8e4da;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.llm-section-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #5d4e37;
-  background: #f8f5ee;
-  border-bottom: 1px solid #e8e4da;
-}
-.llm-section-header .el-icon {
-  color: #9b7b4a;
-}
-.llm-summary {
-  font-size: 13px;
-  color: #5d4e37;
-  padding: 10px 14px;
-  background: #fcfaf6;
-  line-height: 1.6;
-  border-bottom: 1px solid #f0ede6;
-}
-.llm-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.llm-table th {
-  text-align: left;
-  padding: 8px 10px;
-  background: #f8f5ee;
-  color: #7a6b54;
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid #e8e4da;
-}
-.llm-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #f5f2ea;
-  vertical-align: top;
-}
-.llm-table tbody tr:last-child td {
-  border-bottom: none;
-}
-.llm-table tbody tr:hover {
-  background: #fcfaf6;
-}
-.llm-table .dim-name {
-  font-weight: 500;
-  color: #5d4e37;
-  white-space: nowrap;
-}
-.llm-table .dim-delta {
-  font-family: 'Courier New', monospace;
-  font-weight: 600;
-  font-size: 12px;
-  white-space: nowrap;
-}
-.llm-table .dim-conf {
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  white-space: nowrap;
-}
-.conf-high { color: #4a7c59; }
-.conf-mid { color: #b8953a; }
-.llm-reasoning-cell {
-  color: #6a5b44;
-  font-size: 12px;
-  line-height: 1.5;
-  max-width: 320px;
-}
+/* ── LLM meta 信息 ── */
 .llm-meta {
   padding: 8px 14px;
   font-size: 11px;
@@ -3448,6 +3401,8 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 2px;
+  margin-top: 8px;
+  border-radius: 4px;
 }
 .llm-model {
   font-family: 'Courier New', monospace;

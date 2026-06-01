@@ -362,7 +362,7 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     final_combined_norm = molin_result.combined_normalized
 
     try:
-        from app.services.llm_emotion_corrector import correct_dimensions, apply_corrections
+        from app.services.llm_emotion_corrector import correct_dimensions
 
         engine_dict = {
             "text": molin_result.text, "spatial": molin_result.spatial,
@@ -371,22 +371,57 @@ async def analyze_single_record(record_id: int, cur) -> dict:
             "theme": molin_result.theme, "brush_ink": molin_result.brush_ink,
         }
 
+        # 构建空间布局文本描述
+        spatial_info_text = None
+        if se:
+            parts = [se.get("combined_spatial_sentiment", "")]
+            for sig in (se.get("signals") or []):
+                if sig.get("type"):
+                    parts.append(f"{sig['type']}：{sig.get('emotion', '')}")
+            if se.get("blank_percent") is not None:
+                parts.append(f"留白{se['blank_percent']:.0f}%")
+            spatial_info_text = "；".join(p for p in parts if p)
+
+        # 构建尺寸文本描述
+        size_info_text = None
+        if width_cm and height_cm:
+            size_info_text = f"{height_cm}cm × {width_cm}cm"
+
         llm_analysis = await correct_dimensions(
             text=text or "",
             lexicon_result=engine_dict,
             artist=artist,
             year=year,
             themes=result.get("themes", []),
+            spatial_info=spatial_info_text,
+            seal_info=seal_content,
+            size_info=size_info_text,
         )
 
-        if llm_analysis and llm_analysis.get("corrections"):
+        if llm_analysis and llm_analysis.get("scores"):
+            # LLM 为主：直接用 LLM 绝对分作为最终分
             new_ca["llm_analysis"] = llm_analysis
-            final_scores = await apply_corrections(molin_result, llm_analysis)
-            if final_scores and final_scores.get("analysis_method") == "llm_corrected":
-                analysis_method = "llm_corrected"
-                final_cp = final_scores["polarity"]
-                final_combined_raw = final_scores["combined_raw"]
-                final_combined_norm = final_scores["combined_normalized"]
+            analysis_method = "llm_independent"
+            llm_scores_raw = llm_analysis["scores"]
+            def _llm_score(v):
+                return v.get("score", 0) if isinstance(v, dict) else (v or 0)
+            llm_scores = {k: _llm_score(v) for k, v in llm_scores_raw.items()}
+
+            # 加权平均（用引擎的 weights 和 confidence）
+            weights_used = molin_result.weights_used
+            weighted_sum = 0.0
+            weight_total = 0.0
+            for dim_key in ['text','spatial','painting','size','period','seal','theme','brush_ink']:
+                w = weights_used.get(dim_key, 0)
+                conf = max(getattr(molin_result, dim_key, type('',(),{'confidence':0})()).confidence, 0.8 if dim_key != 'brush_ink' else 0)
+                s = llm_scores.get(dim_key, 0)
+                weighted_sum += w * conf * s
+                weight_total += w * conf
+            final_combined_raw = weighted_sum / weight_total if weight_total > 0 else 0
+            from app.services.molin_engine import vader_normalize, classify_polarity
+            final_combined_norm = vader_normalize(final_combined_raw)
+            final_cp = classify_polarity(final_combined_norm)
+            final_cr = llm_analysis.get("reasoning", "")
     except Exception as e:
         logger.warning(f"LLM emotion corrector skipped (record_id={record_id}): {e}")
 
@@ -395,54 +430,112 @@ async def analyze_single_record(record_id: int, cur) -> dict:
     cr = final_cr
 
     # 保留旧格式兼容 + 引擎数据
-    new_ca["combined_sentiment"] = {
-        "polarity": cp,
-        "reasoning": cr,
-        "text_score": molin_result.text.raw,
-        "spatial_score": molin_result.spatial.raw,
-        "seal_score": molin_result.seal.raw,
-        "painting_score": molin_result.painting.raw,
-        "time_score": molin_result.period.raw,
-        "size_score": molin_result.size.raw,
-        "theme_score": molin_result.theme.raw,
-        "brush_ink_score": molin_result.brush_ink.raw,
-        "combined_score": round(final_combined_raw, 2),
-        "vader_normalized": round(final_combined_norm, 3),
-        "vader_alpha": 8.0,
-        "weights": molin_result.weights_used,
-        "method": analysis_method,
-        # v3.1: 维度极性和冲突分数
-        "dimension_polarities": molin_result.dimension_polarities,
-        "conflict_score": molin_result.conflict_score,
-        # 各维度是否有实际数据
-        "has_data": {
-            "text": molin_result.text.has_data,
-            "spatial": molin_result.spatial.has_data,
-            "painting": molin_result.painting.has_data,
-            "size": molin_result.size.has_data,
-            "period": molin_result.period.has_data,
-            "seal": molin_result.seal.has_data,
-            "theme": molin_result.theme.has_data,
-            "brush_ink": molin_result.brush_ink.has_data,
-        },
-        # 各维度详细信号（用于推导过程展示）
-        "dimension_details": {
-            "text": {"signals": molin_result.text.signals},
-            "spatial": {"signals": molin_result.spatial.signals},
-            "painting": {"signals": molin_result.painting.signals},
-            "size": {
-                "category": getattr(molin_result.size, 'size_category', ''),
-                "width_cm": width_cm,
-                "height_cm": height_cm,
+    if analysis_method == "llm_independent" and llm_analysis:
+        # LLM 为主：存储 LLM 绝对分
+        new_ca["combined_sentiment"] = {
+            "polarity": cp,
+            "reasoning": cr,
+            "text_score": round(llm_scores.get('text', 0), 2),
+            "spatial_score": round(llm_scores.get('spatial', 0), 2),
+            "seal_score": round(llm_scores.get('seal', 0), 2),
+            "painting_score": round(llm_scores.get('painting', 0), 2),
+            "time_score": round(llm_scores.get('period', 0), 2),
+            "size_score": round(llm_scores.get('size', 0), 2),
+            "theme_score": round(llm_scores.get('theme', 0), 2),
+            "brush_ink_score": round(llm_scores.get('brush_ink', 0), 2),
+            "combined_score": round(final_combined_raw, 2),
+            "vader_normalized": round(final_combined_norm, 3),
+            "vader_alpha": 8.0,
+            "weights": molin_result.weights_used,
+            "method": analysis_method,
+            # v3.1: 维度极性和冲突分数
+            "dimension_polarities": molin_result.dimension_polarities,
+            "conflict_score": molin_result.conflict_score,
+            # 各维度是否有实际数据
+            "has_data": {
+                "text": molin_result.text.has_data,
+                "spatial": molin_result.spatial.has_data,
+                "painting": molin_result.painting.has_data,
+                "size": molin_result.size.has_data,
+                "period": molin_result.period.has_data,
+                "seal": molin_result.seal.has_data,
+                "theme": molin_result.theme.has_data,
+                "brush_ink": molin_result.brush_ink.has_data,
             },
-            "period": {
-                "year": year,
-                "stage": getattr(molin_result.period, 'stage', ''),
+            # 逐维度置信度（用于公式表加权计算）
+            "dimension_confidence": {
+                dim_key: round(max(getattr(molin_result, dim_key, type('',(),{'confidence':0})()).confidence, 0.8 if dim_key != 'brush_ink' else 0), 2)
+                for dim_key in ['text','spatial','painting','size','period','seal','theme','brush_ink']
             },
-            "seal": {"signals": molin_result.seal.signals},
-            "theme": {"signals": molin_result.theme.signals},
-        },
-    }
+            # 各维度详细信号（用于推导过程展示）
+            "dimension_details": {
+                "text": {"signals": molin_result.text.signals},
+                "spatial": {"signals": molin_result.spatial.signals},
+                "painting": {"signals": molin_result.painting.signals},
+                "size": {
+                    "category": getattr(molin_result.size, 'size_category', ''),
+                    "width_cm": width_cm,
+                    "height_cm": height_cm,
+                },
+                "period": {
+                    "year": year,
+                    "stage": getattr(molin_result.period, 'stage', ''),
+                },
+                "seal": {"signals": molin_result.seal.signals},
+                "theme": {"signals": molin_result.theme.signals},
+            },
+        }
+    else:
+        # 词库基线分（LLM 未校正）
+        new_ca["combined_sentiment"] = {
+            "polarity": cp,
+            "reasoning": cr,
+            "text_score": molin_result.text.raw,
+            "spatial_score": molin_result.spatial.raw,
+            "seal_score": molin_result.seal.raw,
+            "painting_score": molin_result.painting.raw,
+            "time_score": molin_result.period.raw,
+            "size_score": molin_result.size.raw,
+            "theme_score": molin_result.theme.raw,
+            "brush_ink_score": molin_result.brush_ink.raw,
+            "combined_score": round(final_combined_raw, 2),
+            "vader_normalized": round(final_combined_norm, 3),
+            "vader_alpha": 8.0,
+            "weights": molin_result.weights_used,
+            "method": analysis_method,
+            "dimension_polarities": molin_result.dimension_polarities,
+            "conflict_score": molin_result.conflict_score,
+            "has_data": {
+                "text": molin_result.text.has_data,
+                "spatial": molin_result.spatial.has_data,
+                "painting": molin_result.painting.has_data,
+                "size": molin_result.size.has_data,
+                "period": molin_result.period.has_data,
+                "seal": molin_result.seal.has_data,
+                "theme": molin_result.theme.has_data,
+                "brush_ink": molin_result.brush_ink.has_data,
+            },
+            "dimension_confidence": {
+                dim_key: round(getattr(molin_result, dim_key, type('',(),{'confidence':0})()).confidence, 2)
+                for dim_key in ['text','spatial','painting','size','period','seal','theme','brush_ink']
+            },
+            "dimension_details": {
+                "text": {"signals": molin_result.text.signals},
+                "spatial": {"signals": molin_result.spatial.signals},
+                "painting": {"signals": molin_result.painting.signals},
+                "size": {
+                    "category": getattr(molin_result.size, 'size_category', ''),
+                    "width_cm": width_cm,
+                    "height_cm": height_cm,
+                },
+                "period": {
+                    "year": year,
+                    "stage": getattr(molin_result.period, 'stage', ''),
+                },
+                "seal": {"signals": molin_result.seal.signals},
+                "theme": {"signals": molin_result.theme.signals},
+            },
+        }
 
     theme_tags = ",".join(t["name"] for t in result.get("themes", []) if t.get("name"))
     cur.execute("""
