@@ -6,8 +6,8 @@
         <router-link to="/" class="logo">
           <img src="/logo.png" alt="墨" class="logo-img">
           <div class="logo-text">
-            <span class="logo-main">{{ siteConfig.title }}</span>
-            <span class="logo-sub">{{ siteConfig.subtitle }}</span>
+            <span class="logo-main">{{ displayTitle }}</span>
+            <span class="logo-sub">{{ displaySubtitle }}</span>
           </div>
         </router-link>
         <nav class="main-nav">
@@ -62,7 +62,7 @@
           <div class="drawer-logo">
             <img src="/logo.png" alt="墨" class="drawer-logo-img">
             <div class="drawer-logo-text">
-              <span class="drawer-logo-main">{{ siteConfig.title }}</span>
+              <span class="drawer-logo-main">{{ displayTitle }}</span>
             </div>
           </div>
           <button class="drawer-close" @click="closeMobileMenu" aria-label="关闭菜单">
@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
@@ -151,6 +151,9 @@ const authStore = useAuthStore()
 const { locale } = useI18n()
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
+
+const displayTitle = computed(() => locale.value === 'en' ? 'Molin' : siteConfig.title)
+const displaySubtitle = computed(() => locale.value === 'en' ? 'The Intelligent Chinese Painting & Calligraphy Archive' : siteConfig.subtitle)
 let closeTimer = null
 function showUserMenu() { clearTimeout(closeTimer); userMenuOpen.value = true }
 function hideUserMenu() { closeTimer = setTimeout(() => { userMenuOpen.value = false }, 200) }
