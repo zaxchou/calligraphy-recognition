@@ -70,45 +70,45 @@
           </button>
         </div>
         <nav class="drawer-nav">
-          <router-link to="/" class="drawer-nav-item" exact-active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
+          <a class="drawer-nav-item" @click.prevent="drawerNavigate('/')">
             <span class="nav-text">首页</span>
-          </router-link>
-          <router-link to="/knowledge" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
+          </a>
+          <a class="drawer-nav-item" @click.prevent="drawerNavigate('/knowledge')">
             <span class="nav-text">写意知识库</span>
-          </router-link>
-          <router-link to="/artists" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
+          </a>
+          <a class="drawer-nav-item" @click.prevent="drawerNavigate('/artists')">
             <span class="nav-text">艺术家百科</span>
-          </router-link>
-          <router-link to="/tiba" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="nextTick(() => mobileMenuOpen = false)">
+          </a>
+          <a class="drawer-nav-item" @click.prevent="drawerNavigate('/tiba')">
             <span class="nav-text">题跋分析</span>
-          </router-link>
-          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="nextTick(() => mobileMenuOpen = false)">
+          </a>
+          <a v-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/composition')">
             <span class="nav-text">潘天寿教你构图</span>
-          </router-link>
-          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
+          </a>
+          <a v-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/qczh')">
             <span class="nav-text">起承转合</span>
-          </router-link>
+          </a>
           <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
             <div class="drawer-section-label">个人中心</div>
-            <router-link v-if="authStore.isEditor" to="/admin" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/admin') }" @click="nextTick(() => mobileMenuOpen = false)">
+            <a v-if="authStore.isEditor" class="drawer-nav-item" @click.prevent="drawerNavigate('/admin')">
               <span class="nav-text">📂 管理后台</span>
-            </router-link>
-            <router-link to="/user/center" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
+            </a>
+            <a class="drawer-nav-item" @click.prevent="drawerNavigate('/user/center')">
               <span class="nav-text">👤 用户中心</span>
-            </router-link>
-            <router-link to="/my/knowledge" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
+            </a>
+            <a class="drawer-nav-item" @click.prevent="drawerNavigate('/my/knowledge')">
               <span class="nav-text">📁 我的知识库</span>
-            </router-link>
-            <router-link to="/content-analysis" class="drawer-nav-item" @click="nextTick(() => mobileMenuOpen = false)">
+            </a>
+            <a class="drawer-nav-item" @click.prevent="drawerNavigate('/content-analysis')">
               <span class="nav-text">🎨 我的分析历史</span>
-            </router-link>
+            </a>
             <div class="drawer-nav-item drawer-logout-item" @click="handleLogout(); closeMobileMenu()">
               <span class="nav-text">退出登录</span>
             </div>
           </template>
-          <router-link v-else-if="siteConfig.readonly !== 'true'" to="/login" class="drawer-nav-item" @click="closeMobileMenu">
+          <a v-else-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/login')">
             <span class="nav-text">登录</span>
-          </router-link>
+          </a>
         </nav>
       </div>
     </transition>
@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
@@ -154,6 +154,11 @@ const userMenuOpen = ref(false)
 
 const displayTitle = computed(() => locale.value === 'en' ? 'Molin' : siteConfig.title)
 const displaySubtitle = computed(() => locale.value === 'en' ? 'Chinese Painting & Calligraphy Intelligence' : siteConfig.subtitle)
+
+function drawerNavigate(path) {
+  mobileMenuOpen.value = false
+  router.push(path)
+}
 let closeTimer = null
 function showUserMenu() { clearTimeout(closeTimer); userMenuOpen.value = true }
 function hideUserMenu() { closeTimer = setTimeout(() => { userMenuOpen.value = false }, 200) }
