@@ -142,7 +142,7 @@
                         <span class="vader-axis vader-axis-zero">0</span>
                         <span class="vader-axis vader-axis-pos">+1.0</span>
                       </div>
-                      <div class="vader-reasoning">{{ translateContent(combinedSentiment.reasoning) }}</div>
+                      <div class="vader-reasoning" v-if="translateContent(combinedSentiment.reasoning) || combinedSentiment.summary">{{ translateContent(combinedSentiment.reasoning) || translateContent(combinedSentiment.summary) }}</div>
                       <!-- v3.1: 8维极性条 -->
                       <div class="dim-polarity-strip" v-if="Object.keys(dimensionPolarities).length">
                         <div class="polarity-strip-title">维度极性</div>
