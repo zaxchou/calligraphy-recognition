@@ -2361,6 +2361,7 @@ defineExpose({
   align-items: baseline;
   margin-bottom: 10px;
   height: 28px;
+  overflow: hidden;
 }
 .vader-polarity {
   position: absolute;
@@ -2377,6 +2378,7 @@ defineExpose({
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.3px;
   line-height: 1;
+  min-width: 0;
 }
 .vader-bar-header .el-tag {
   position: absolute;
@@ -2527,12 +2529,17 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .theme-name {
   flex-shrink: 0;
   font-size: 12px;
   color: #555;
   min-width: 4em;
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .theme-bar-track {
   flex: 1;
@@ -3440,6 +3447,22 @@ defineExpose({
   }
   .narrative-card {
     padding: 12px 14px;
+  }
+  .emotion-core-left {
+    width: 120px;
+    min-height: 120px;
+  }
+  .vader-score-big {
+    font-size: 20px;
+  }
+  .vader-polarity {
+    font-size: 16px;
+  }
+  .score-card .section-title {
+    font-size: 13px;
+  }
+  .theme-name {
+    max-width: 5em;
   }
 }
 @media (max-width: 480px) {
