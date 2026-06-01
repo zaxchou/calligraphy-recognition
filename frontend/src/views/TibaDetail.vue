@@ -142,7 +142,7 @@
                         <span class="vader-axis vader-axis-zero">0</span>
                         <span class="vader-axis vader-axis-pos">+1.0</span>
                       </div>
-                      <div class="vader-reasoning" v-if="translateContent(combinedSentiment.reasoning) || combinedSentiment.summary">{{ translateContent(combinedSentiment.reasoning) || translateContent(combinedSentiment.summary) }}</div>
+                      <div class="vader-reasoning" v-if="verdictSnippet">{{ verdictSnippet }}</div>
                       <!-- v3.1: 8维极性条 -->
                       <div class="dim-polarity-strip" v-if="Object.keys(dimensionPolarities).length">
                         <div class="polarity-strip-title">维度极性</div>
@@ -1124,6 +1124,17 @@ const sortedSpatialSignals = computed(() => {
   return [...signals].sort((a, b) => (priority[b.emotion_key] || 0) - (priority[a.emotion_key] || 0))
 })
 const combinedSentiment = computed(() => contentAnalysis.value?.combined_sentiment || null)
+const verdictSnippet = computed(() => {
+  const cs = combinedSentiment.value
+  if (!cs) return ''
+  const r = cs.reasoning
+  if (r) return r.length > 50 ? r.slice(0, 50) + '…' : r
+  const s = cs.summary || ''
+  const m = s.match(/综合判断[：:]\s*([\s\S]*?)(?=积极面|消极面|$)/)
+  const text = m ? m[1].trim() : s
+  if (!text) return ''
+  return text.length > 50 ? text.slice(0, 50) + '…' : text
+})
 const dimensionPolarities = computed(() => combinedSentiment.value?.dimension_polarities || {})
 const conflictScore = computed(() => combinedSentiment.value?.conflict_score ?? null)
 // vader_normalized (-1~+1) → 3D core mood (0~1)
