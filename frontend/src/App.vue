@@ -449,17 +449,9 @@ h1, h2, h3, h4, h5, h6 {
 /* active 项加淡色背景，撑满 header 高度 */
 .nav-item.active {
   background: rgba(201, 100, 66, 0.06);
-  position: relative;
-}
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: -11px;
-  bottom: -11px;
-  left: -8px;
-  right: -8px;
   border-radius: 6px;
-  z-index: -1;
+  padding-top: 19px;
+  padding-bottom: 19px;
 }
 
 /* 下划线 — 极细暖色线 */
@@ -494,18 +486,10 @@ h1, h2, h3, h4, h5, h6 {
   position: relative;
 }
 .nav-dropdown-trigger.active {
-  position: relative;
-}
-.nav-dropdown-trigger.active::before {
-  content: '';
-  position: absolute;
-  top: -11px;
-  bottom: -11px;
-  left: -8px;
-  right: -8px;
   background: rgba(201, 100, 66, 0.06);
   border-radius: 6px;
-  z-index: -1;
+  padding-top: 19px;
+  padding-bottom: 19px;
 }
 .nav-arrow {
   font-size: 10px;
@@ -1076,12 +1060,16 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--pure-white);
 }
 
-.home-header .nav-item.active::before {
+.home-header .nav-item.active {
   background: rgba(255, 255, 255, 0.08);
+  padding-top: 19px;
+  padding-bottom: 19px;
 }
 
-.home-header .nav-dropdown-trigger.active::before {
+.home-header .nav-dropdown-trigger.active {
   background: rgba(255, 255, 255, 0.08);
+  padding-top: 19px;
+  padding-bottom: 19px;
 }
 
 .home-header .nav-dropdown-menu {
