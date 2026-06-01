@@ -359,33 +359,35 @@ def run_migrations():
             conn.execute("ALTER TABLE seal_images ADD COLUMN thumbnail_path TEXT DEFAULT ''")
             logger.info("Migration: added seal_images.thumbnail_path column")
 
-        seal_cols = {row[1] for row in conn.execute("PRAGMA table_info(seals)").fetchall()}
-        if "source" not in seal_cols:
-            conn.execute("ALTER TABLE seals ADD COLUMN source TEXT DEFAULT ''")
-            logger.info("Migration: added seals.source column")
+        seal_tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='seals'").fetchall()}
+        if 'seals' in seal_tables:
+            seal_cols = {row[1] for row in conn.execute("PRAGMA table_info(seals)").fetchall()}
+            if "source" not in seal_cols:
+                conn.execute("ALTER TABLE seals ADD COLUMN source TEXT DEFAULT ''")
+                logger.info("Migration: added seals.source column")
 
-        # 旧数据迁移：将 seals.images JSON 数组迁移到 seal_images 表
-        old_seals = conn.execute(
-            "SELECT id, images FROM seals WHERE images IS NOT NULL AND images != '' AND images != '[]'"
-        ).fetchall()
-        migrated = 0
-        for seal_id, images_json in old_seals:
-            try:
-                img_list = json.loads(images_json)
-                if isinstance(img_list, list) and len(img_list) > 0:
-                    for i, path in enumerate(img_list):
-                        if isinstance(path, str) and path.strip():
-                            conn.execute(
-                                "INSERT INTO seal_images (seal_id, path, sort_order) VALUES (?, ?, ?)",
-                                (seal_id, path, i)
-                            )
-                            migrated += 1
-                    conn.execute("UPDATE seals SET images = '[]' WHERE id = ?", (seal_id,))
-            except (json.JSONDecodeError, TypeError):
-                pass
-        if migrated:
-            logger.info("Migration: migrated %d old seal images to seal_images table", migrated)
-        conn.commit()
+            # 旧数据迁移：将 seals.images JSON 数组迁移到 seal_images 表
+            old_seals = conn.execute(
+                "SELECT id, images FROM seals WHERE images IS NOT NULL AND images != '' AND images != '[]'"
+            ).fetchall()
+            migrated = 0
+            for seal_id, images_json in old_seals:
+                try:
+                    img_list = json.loads(images_json)
+                    if isinstance(img_list, list) and len(img_list) > 0:
+                        for i, path in enumerate(img_list):
+                            if isinstance(path, str) and path.strip():
+                                conn.execute(
+                                    "INSERT INTO seal_images (seal_id, path, sort_order) VALUES (?, ?, ?)",
+                                    (seal_id, path, i)
+                                )
+                                migrated += 1
+                        conn.execute("UPDATE seals SET images = '[]' WHERE id = ?", (seal_id,))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if migrated:
+                logger.info("Migration: migrated %d old seal images to seal_images table", migrated)
+            conn.commit()
 
         # ── tubi_analyses 加 work_type 列 ──
         ta_cols = {row[1] for row in conn.execute("PRAGMA table_info(tubi_analyses)").fetchall()}
