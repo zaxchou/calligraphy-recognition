@@ -254,6 +254,8 @@ const nameCache = new Map()
 
 router.beforeEach((to, _from, next) => {
   if (to.path === '/' && siteConfig.readonly === 'true') {
+    const token = localStorage.getItem('auth_token')
+    if (token) { next(); return }
     next('/tiba')
   } else {
     next()
