@@ -153,7 +153,7 @@ const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 
 const displayTitle = computed(() => locale.value === 'en' ? 'Molin' : siteConfig.title)
-const displaySubtitle = computed(() => locale.value === 'en' ? 'The Intelligent Chinese Painting & Calligraphy Archive' : siteConfig.subtitle)
+const displaySubtitle = computed(() => locale.value === 'en' ? 'Chinese Painting & Calligraphy Intelligence' : siteConfig.subtitle)
 let closeTimer = null
 function showUserMenu() { clearTimeout(closeTimer); userMenuOpen.value = true }
 function hideUserMenu() { closeTimer = setTimeout(() => { userMenuOpen.value = false }, 200) }
