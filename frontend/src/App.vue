@@ -70,36 +70,36 @@
           </button>
         </div>
         <nav class="drawer-nav">
-          <router-link to="/" class="drawer-nav-item" exact-active-class="active" @click="closeMobileMenu">
+          <router-link to="/" class="drawer-nav-item" exact-active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
             <span class="nav-text">首页</span>
           </router-link>
-          <router-link to="/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+          <router-link to="/knowledge" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
             <span class="nav-text">写意知识库</span>
           </router-link>
-          <router-link to="/artists" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+          <router-link to="/artists" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
             <span class="nav-text">艺术家百科</span>
           </router-link>
-          <router-link to="/tiba" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="closeMobileMenu">
+          <router-link to="/tiba" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="nextTick(() => mobileMenuOpen = false)">
             <span class="nav-text">题跋分析</span>
           </router-link>
-          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="closeMobileMenu">
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/composition') }" @click="nextTick(() => mobileMenuOpen = false)">
             <span class="nav-text">潘天寿教你构图</span>
           </router-link>
-          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
             <span class="nav-text">起承转合</span>
           </router-link>
           <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
             <div class="drawer-section-label">个人中心</div>
-            <router-link v-if="authStore.isEditor" to="/admin" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/admin') }" @click="closeMobileMenu">
+            <router-link v-if="authStore.isEditor" to="/admin" class="drawer-nav-item" :class="{ active: $route.path.startsWith('/admin') }" @click="nextTick(() => mobileMenuOpen = false)">
               <span class="nav-text">📂 管理后台</span>
             </router-link>
-            <router-link to="/user/center" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <router-link to="/user/center" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
               <span class="nav-text">👤 用户中心</span>
             </router-link>
-            <router-link to="/my/knowledge" class="drawer-nav-item" active-class="active" @click="closeMobileMenu">
+            <router-link to="/my/knowledge" class="drawer-nav-item" active-class="active" @click="nextTick(() => mobileMenuOpen = false)">
               <span class="nav-text">📁 我的知识库</span>
             </router-link>
-            <router-link to="/content-analysis" class="drawer-nav-item" @click="closeMobileMenu">
+            <router-link to="/content-analysis" class="drawer-nav-item" @click="nextTick(() => mobileMenuOpen = false)">
               <span class="nav-text">🎨 我的分析历史</span>
             </router-link>
             <div class="drawer-nav-item drawer-logout-item" @click="handleLogout(); closeMobileMenu()">
@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
@@ -165,6 +165,9 @@ onMounted(() => {
 
 function toggleMobileMenu() { mobileMenuOpen.value = !mobileMenuOpen.value }
 function closeMobileMenu() { mobileMenuOpen.value = false }
+function navigateAndClose() {
+  mobileMenuOpen.value = false
+}
 function handleLogout() { authStore.logout(); router.push('/'); userMenuOpen.value = false }
 function toggleLang() {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
