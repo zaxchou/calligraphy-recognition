@@ -2270,6 +2270,7 @@ defineExpose({
   border: 1px solid #e0d8c8;
   border-radius: 10px;
   padding: 14px 16px;
+  overflow: hidden;
 }
 .score-card .section-title {
   display: flex;
@@ -2345,7 +2346,8 @@ defineExpose({
   font-size: 12px;
   color: #5a5347;
   line-height: 1.5;
-  flex: 1;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 /* ── VADER compound bar（融合版）────────────────────── */
 .emotion-vader-bar {
@@ -2564,6 +2566,7 @@ defineExpose({
   border: 1px solid #e8e4da;
   border-radius: 8px;
   padding: 10px 12px;
+  overflow: hidden;
 }
 .steps-card .section-title {
   display: flex;
@@ -3319,6 +3322,8 @@ defineExpose({
   font-size: 13px;
   line-height: 1.85;
   color: #5c5346;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .split-pct {
   font-size: 11px;
@@ -3346,6 +3351,8 @@ defineExpose({
   font-size: 13px; line-height: 1.7;
   color: #4a4438; background: #fefefe;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── v3.1: 维度极性条 ── */
@@ -3433,6 +3440,16 @@ defineExpose({
   }
   .formula-table {
     min-width: 380px;
+  }
+  .llm-narrative-grid {
+    grid-template-columns: 1fr;
+  }
+  .narrative-card {
+    padding: 12px 14px;
+  }
+  .llm-narrative-body {
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 }
 @media (max-width: 480px) {
