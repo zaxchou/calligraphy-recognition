@@ -168,3 +168,28 @@ vader_normalized = combined_score / √(combined_score² + 8)
 - 和 production 路径用同一个 SYSTEM_PROMPT
 - 用加权平均（不是简单平均）计算 combined_score
 - 存储 dimension_confidence 和 weights
+
+## Obsidian 记忆库（E:\mynote\Project\）
+
+每次对话结束前，检查是否有需要写入记忆库的内容。目录结构见 `E:\mynote\Project\AGENTS.md`。
+
+### 记忆写入规则
+当出现以下内容时，写入 `E:\mynote\Project\` 对应目录：
+- **长期有效的项目决策** → `decisions/<决策名>.md` + 更新 `memory/decisions.md` 索引
+- **用户明确确认的偏好** → `memory/goals.md` 或 `memory/decisions.md`
+- **已经验证有效的工作流** → `memory/style-guide.md` 或 `templates/`
+- **被否定的方案及原因** → `decisions/<决策名>.md`（"被否决的方案"章节）
+- **内容模板、Prompt模板、脚本模板** → `templates/<模板名>.md`
+- **项目目录结构和命名规范** → `projects/<项目名>/README.md`
+
+### 不要写入
+APIKey、密码（admin 账号除外）、支付信息、银行信息、私人聊天、临时想法、未确认的猜测。
+
+### 写入格式
+每个 .md 文件开头加 Obsidian frontmatter：
+```yaml
+---
+tags: [memory, <分类>]
+created: YYYY-MM-DD
+---
+```
