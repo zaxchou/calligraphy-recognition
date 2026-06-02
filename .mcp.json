@@ -8,6 +8,13 @@
         "serve",
         "--mcp"
       ]
+    },
+    "mimo-image-recognition": {
+      "command": "uvx",
+      "args": [
+        "--refresh",
+        "mimo-image-recognition-mcp"
+      ]
     }
   }
 }

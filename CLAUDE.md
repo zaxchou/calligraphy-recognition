@@ -80,7 +80,7 @@
 ### MCP 服务器
 - **Memory MCP:** `@modelcontextprotocol/server-memory` — 知识图谱记忆
 - **GitHub MCP:** `@modelcontextprotocol/server-github` — GitHub API 操作（已配 token）
-- **两个 server 均已安装并连接成功**
+- **MIMO 图片识别:** `mimo-image-recognition-mcp` — 调用小米 MIMO 多模态模型进行图片理解、OCR。**只当模型为 `mimo-v2.5-pro` 时使用此工具做图片识别**
 
 ### Claude-Mem（会话记忆服务）
 - **用途：** 跨会话持久记忆，记录工作历史和上下文
@@ -89,7 +89,9 @@
 - **停止命令：** `npx claude-mem stop`
 - **状态检查：** `curl -s http://localhost:37777/api/health`
 - **每次会话开始时必须检查并启动此服务！**
-- **版本：** 13.4.0（插件缓存路径：`C:\Users\zax\.claude\plugins\cache\thedotmack\claude-mem\`）
+- **版本：** 13.4.0（所在路径：`C:\Users\zax\.claude\plugins\marketplaces\thedotmack\plugin\`）
+- **重要：当用户说"启动服务"时，必须同时做两件事：** (1) `npx claude-mem start` (2) 触发 hooks 加载context。一步到位，不要让用户说第二次。
+- **已知坑：** hooks 命令中的路径必须指向 `marketplaces` 目录（不是 `cache`），cache 目录已删掉避免混乱
 
 ### 权限模型
 
