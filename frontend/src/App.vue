@@ -18,7 +18,7 @@
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
-        <div class="user-area">
+        <div class="user-area" v-if="siteConfig.readonly !== 'true'">
           <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
             {{ locale === 'zh' ? 'EN' : '中' }}
           </button>
