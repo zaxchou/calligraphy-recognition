@@ -297,7 +297,8 @@ def delete_points(collection: str, point_ids: List[str]) -> bool:
 KNOWLEDGE_TEXTS_COLLECTION = "knowledge_texts"
 KNOWLEDGE_IMAGES_COLLECTION = "knowledge_images"
 KNOWLEDGE_TABLES_COLLECTION = "knowledge_tables"  # 新增表格集合
-KNOWLEDGE_PRIVATE_COLLECTION = "knowledge_private"  # Phase 3: 用户私人文档向量
+KNOWLEDGE_PRIVATE_COLLECTION = "knowledge_private"  # Phase 3:
+KNOWLEDGE_DB_COLLECTION = "knowledge_db"
 
 # multimodal-embedding-v1 输出 1024 维向量
 KNOWLEDGE_VECTOR_SIZE = 1024
@@ -309,7 +310,8 @@ def ensure_knowledge_collections() -> bool:
     images_ok = ensure_collection(KNOWLEDGE_IMAGES_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)
     tables_ok = ensure_collection(KNOWLEDGE_TABLES_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)  # 新增表格集合
     private_ok = ensure_collection(KNOWLEDGE_PRIVATE_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)  # Phase 3: 私人文档
-    return texts_ok and images_ok and tables_ok and private_ok
+    db_ok = ensure_collection(KNOWLEDGE_DB_COLLECTION, vector_size=KNOWLEDGE_VECTOR_SIZE)
+    return texts_ok and images_ok and tables_ok and private_ok and db_ok
 
 
 def upsert_text_chunks(chunks: List[Dict[str, Any]], book_id: str) -> bool:
@@ -583,6 +585,44 @@ def get_book_vector_count(book_id: str) -> Dict[str, int]:
         logger.error("Qdrant 获取书籍向量统计失败 [book_id=%s]: %s", book_id, e)
         return {"texts": 0, "images": 0, "tables": 0}
 
+
+
+# -- knowledge_db: DB entity search & upsert --
+def search_knowledge_db(
+    vector: List[float],
+    limit: int = 10,
+    score_threshold: float = 0.5,
+) -> List[Dict[str, Any]]:
+    """???????????/??/???."""
+    return search_collection(
+        KNOWLEDGE_DB_COLLECTION,
+        vector,
+        limit=limit,
+        query_filter=None,
+        score_threshold=score_threshold,
+    )
+
+def upsert_db_entities(points: List[Dict[str, Any]]) -> bool:
+    """????/?? DB ????? knowledge_db."""
+    return upsert_points(KNOWLEDGE_DB_COLLECTION, points)
+
+def delete_db_entity_vectors(entity_id: str) -> bool:
+    """Delete a single entity from knowledge_db by entity_id."""
+    base = _base_url()
+    if not base:
+        return False
+    try:
+        client = _get_client(10.0)
+        r = client.post(
+            f"{base}/collections/{KNOWLEDGE_DB_COLLECTION}/points/delete",
+            json={"filter": {"must": [{"key": "entity_id", "match": {"value": entity_id}}]}},
+            headers=_headers(),
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error("Delete entity_id=%s from knowledge_db: %s", entity_id, e)
+        return False
 
 # ═══════════════════════════════════════════════════════════════
 # Phase 3: 私人知识库操作

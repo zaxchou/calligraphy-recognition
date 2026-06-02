@@ -73,6 +73,25 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             continue
         filtered.append(r)
 
+
+    # ---- DB entity search ----
+    try:
+        db_results = qdrant_client.search_knowledge_db(
+            vector=q_embedding,
+            limit=limit,
+            score_threshold=0.5,
+        )
+        seen_db = {}
+        for r in db_results:
+            entity_id = r.get("payload", {}).get("entity_id", "")
+            key = entity_id
+            if key and key not in seen_db or r.get("score", 0) > seen_db.get(key, -1):
+                seen_db[key] = r.get("score", 0)
+                filtered.append(r)
+        logger.info("Chat DB search: %d unique entities found", len(seen_db))
+    except Exception as e:
+        logger.warning("Chat DB search failed: %s", e)
+
     return filtered
 
 

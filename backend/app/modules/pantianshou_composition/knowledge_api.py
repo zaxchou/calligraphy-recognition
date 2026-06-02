@@ -1073,6 +1073,30 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                     search_results.append(r)
         else:
             search_results = merged_results
+
+        # ---- ?.7 ??????? ----
+        try:
+            for q in all_queries[:2]:
+                embed_result = await embedding_service.embed_text(q)
+                q_embedding = embed_result.embedding if embed_result else None
+                if not q_embedding:
+                    continue
+                db_results = qdrant_client.search_knowledge_db(
+                    vector=q_embedding,
+                    limit=request.limit,
+                    score_threshold=0.5,
+                )
+                for r in db_results:
+                    vid = r.get("id")
+                    if vid and vid not in seen_ids:
+                        seen_ids.add(vid)
+                        payload = r.get("payload", {})
+                        payload["_source"] = "database"
+                        merged_results.append(r)
+            logger.info("DB??????: %d ?", sum(1 for r in merged_results if r.get("payload", {}).get("_source") == "database"))
+        except Exception as e:
+            logger.warning("DB??????: %s", e)
+
         
         # 启发式精排（图像结果不参与精排，直接保留）
         from .reranker import heuristic_rerank
@@ -2226,6 +2250,38 @@ class RuleUpdateRequest(BaseModel):
     subcategory_name: Optional[str] = None
     reference_figures: Optional[List[str]] = None
     is_active: Optional[int] = None
+
+
+
+@router.post("/db/reindex")
+async def reindex_db_entities(
+    type: Optional[str] = Query(None, description="??: artists/artworks/seals, ?????"),
+    user: User = Depends(get_current_user),
+):
+    """?????????? Qdrant???????"""
+    if user.role not in ("super_admin", "admin"):
+        raise HTTPException(status_code=403, detail="???????")
+    
+    import asyncio, threading
+    
+    def _run_reindex():
+        import subprocess, sys, os
+        backend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+        cmd = [sys.executable, "-m", "app.modules.pantianshou_composition.knowledge_ingest_db", "--clear"]
+        if type:
+            cmd.append(f"--{type}-only")
+        
+        try:
+            result = subprocess.run(cmd, cwd=backend_dir, capture_output=True, text=True, timeout=600)
+            return result.stdout + "\n" + result.stderr
+        except subprocess.TimeoutExpired:
+            return "reindex timed out"
+        except Exception as e:
+            return str(e)
+    
+    loop = asyncio.get_event_loop()
+    output = await loop.run_in_executor(None, _run_reindex)
+    return {"success": True, "output": output[:2000]}
 
 
 @router.get("/rules")
