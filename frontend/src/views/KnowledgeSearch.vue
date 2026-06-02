@@ -13,7 +13,7 @@
       </div>
       <div class="ks-mode-row">
         <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索模式</button>
-        <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button>
+        <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')" :disabled="!authStore.isLoggedIn" :title="authStore.isLoggedIn?'':'登录后使用'"><MessageCircle class="icon-xs" /> 专家模式</button>
         <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
       </div>
       <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
@@ -28,7 +28,7 @@
       </div>
       <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
     </header>
-    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button></div>
+    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button :class="['ks-mode-pill']" @click="switchMode('chat')" :disabled="!authStore.isLoggedIn" :title="authStore.isLoggedIn?'':'登录后使用'"><MessageCircle class="icon-xs" /> 专家模式</button></div>
     <div class="ks-body-wrap" :class="{'with-panel':rightPanelOpen}">
       <div class="ks-main">
         <div class="ks-search-panel">
@@ -170,15 +170,10 @@ function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>'
 
 function switchMode(m){
   if(m==='lib'){toggleLib();return}
-  // 专家模式需要登录
-  if(m==='chat'){
-    if(!authStore.isLoggedIn){
-      ElMessage.warning('请先登录后使用专家模式')
-      router.push('/login')
-      return
-    }
-    chatStore.fetchSessions()
-  }
+  // 专家模式：未登录时按钮已 disabled，此处仅兜底拦截
+  // TODO(审核通过后)：替换为 ElMessage.warning('请先登录') + router.push('/login')
+  if(m==='chat' && !authStore.isLoggedIn) return
+  if(m==='chat') chatStore.fetchSessions()
   centered.value=false
   activeMode.value=m
   libOpen.value=false
@@ -252,6 +247,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-mode-pill:hover{border-color:#c96442;color:#c96442;transform:translateY(-1px)}
 .ks-mode-pill:active{transform:scale(0.96)}
 .ks-mode-pill.active{background:#c96442;color:#fff;border-color:#c96442;box-shadow:0 2px 8px rgba(201,100,66,0.25);transform:none}
+.ks-mode-pill:disabled{opacity:0.45;cursor:not-allowed;transform:none!important;border-color:#d8d4cc!important;color:#b0aca2!important}
 .ks-mode-pill-icon{padding:7px 12px}
 .ks-tags{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:20px;padding-top:16px;border-top:1px solid #f0ede4}
 .ks-tag-label{font-size:12px;color:#a8a59d;line-height:28px;margin-right:2px}

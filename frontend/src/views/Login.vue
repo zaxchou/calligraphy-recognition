@@ -50,14 +50,6 @@
           <p class="login-hint">未设置密码请使用验证码登录</p>
         </template>
 
-        <!-- 微信登录 -->
-        <div class="wechat-section">
-          <div class="divider-text"><span>微信小程序用户</span></div>
-          <input class="login-input" v-model="mockCode" placeholder="输入昵称模拟微信登录" @keyup.enter="handleWechatLogin" />
-          <button class="login-submit wechat-submit" :disabled="wechatLoading" @click="handleWechatLogin">
-            {{ wechatLoading ? '登录中...' : '模拟微信登录' }}
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -78,12 +70,10 @@ const mode = ref('password')
 const phone = ref('')
 const code = ref('')
 const password = ref('')
-const mockCode = ref('')
 const loading = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
 const showPwd = ref(false)
-const wechatLoading = ref(false)
 let countdownTimer = null
 
 function startCountdown() {
@@ -128,18 +118,6 @@ async function handlePasswordLogin() {
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '登录失败')
   } finally { loading.value = false }
-}
-
-async function handleWechatLogin() {
-  const c = mockCode.value.trim() || 'default_user'
-  wechatLoading.value = true
-  try {
-    await authStore.login(`mock_${c}`)
-    ElMessage.success('登录成功')
-    router.push(route.query.redirect || '/')
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '登录失败')
-  } finally { wechatLoading.value = false }
 }
 </script>
 
@@ -234,11 +212,4 @@ async function handleWechatLogin() {
 .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .login-hint { font-size: 12px; color: var(--stone-gray, #8c8c8c); text-align: center; margin-top: -4px; }
-
-/* 微信登录 */
-.wechat-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #e8e4d8; display: flex; flex-direction: column; gap: 12px; }
-.wechat-submit { background: #07c160; }
-.wechat-submit:hover { background: #06ad56; }
-.divider-text { text-align: center; font-size: 12px; color: var(--stone-gray, #8c8c8c); margin-bottom: 4px; }
-.divider-text span { padding: 0 12px; }
 </style>
