@@ -366,11 +366,11 @@ class CompositionRule(Base):
 
 class CompositionFigure(Base):
     """构图插图表 — 替代 pan.md 中的插图索引
-    
+
     存储正例/反例插图的元数据，用于构图分析时的参考图匹配。
     """
     __tablename__ = "composition_figures"
-    
+
     id = Column(String(36), primary_key=True, default=generate_uuid)
     figure_id = Column(String(20), nullable=False, unique=True, index=True)  # 如 "图一"
     figure_type = Column(String(20), nullable=False)  # "positive" 或 "negative"
@@ -379,11 +379,11 @@ class CompositionFigure(Base):
     source = Column(String(20), default="pan.md")  # 来源
     ruleset_version = Column(String(20), nullable=True)  # 规则集版本号
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         Index("idx_composition_figures_type", "figure_type"),
     )
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
@@ -396,7 +396,7 @@ class CompositionFigure(Base):
             "ruleset_version": self.ruleset_version,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
-    
+
     def to_pan_figure_index(self):
         """转换为 PanFigureIndex dataclass（兼容现有代码）"""
         from app.modules.pantianshou_composition.knowledge_ingest import PanFigureIndex
@@ -406,6 +406,65 @@ class CompositionFigure(Base):
             score_ref=float(self.score_ref) if self.score_ref is not None else None,
             description=self.description or "",
         )
+
+
+# ════════════════════════════════════════════════════════
+# Chat 聊天记录
+# ════════════════════════════════════════════════════════
+
+class ChatSession(Base):
+    """聊天会话表"""
+    __tablename__ = "chat_sessions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(Integer, nullable=False, index=True)
+    title = Column(String(100), nullable=True)  # 首条消息前30字
+    message_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_chat_sessions_user", "user_id"),
+        Index("idx_chat_sessions_updated", "updated_at"),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title or "新对话",
+            "message_count": self.message_count,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class ChatMessage(Base):
+    """聊天消息表"""
+    __tablename__ = "chat_messages"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    session_id = Column(String(36), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # "user" / "assistant"
+    content = Column(Text, nullable=False)
+    sources = Column(JSON, default=None)  # 引用来源（仅 assistant）
+    token_index = Column(Integer, nullable=False)  # 消息序号
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_chat_messages_session", "session_id", "token_index"),
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "role": self.role,
+            "content": self.content,
+            "sources": self.sources,
+            "token_index": self.token_index,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 # 数据库初始化函数
@@ -420,4 +479,6 @@ def init_knowledge_tables(engine):
         SummaryCache.__table__,
         CompositionRule.__table__,
         CompositionFigure.__table__,
+        ChatSession.__table__,
+        ChatMessage.__table__,
     ])

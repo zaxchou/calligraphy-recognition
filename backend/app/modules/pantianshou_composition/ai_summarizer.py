@@ -22,22 +22,17 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
-import httpx
-
 import requests
 
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# 模型配置（从 settings 读取，默认 qwen3.5-plus）
-MODEL = None  # 运行时从 settings.QWEN_MODEL 获取
-
-
-def _get_model() -> str:
-    """获取当前配置的摘要模型，无 thinking 模式"""
-    settings = get_settings()
-    return settings.QWEN_MODEL or "qwen3.5-plus"
+# 模型配置（DeepSeek Flash 优先，Qwen 兜底）
+def _get_llm_config() -> tuple:
+    """获取 LLM 配置 (api_key, base_url, model) — DeepSeek Flash 优先"""
+    from app.services.qwen_llm_client import get_text_llm_config
+    return get_text_llm_config()
 
 # 摘要 prompt
 SYSTEM_PROMPT = """你是一位精通中国画的专业知识助手。你的任务是基于知识库的搜索结果，为用户的问题生成深入、结构化的知识卡片。
@@ -182,8 +177,7 @@ async def generate_summary(
 
     try:
         settings = get_settings()
-        api_key = settings.QWEN_API_KEY or settings.DASHSCOPE_API_KEY
-        base_url = settings.QWEN_BASE_URL
+        api_key, base_url, model = _get_llm_config()
 
         if not api_key:
             logger.warning("AI 摘要: API Key 未配置，跳过")
@@ -203,19 +197,22 @@ async def generate_summary(
 
         # 使用 requests（同步）+ asyncio.to_thread，避免 httpx 在 asyncio 事件循环中的 read 超时问题
         t0 = time.time()
-        model = _get_model()
-        logger.info("[摘要] 开始请求: url=%s, model=%s", url, model)
+        logger.info("[摘要] 开始请求: model=%s", model)
 
         def _do_request():
+            body = {
+                "model": model,
+                "messages": messages,
+                "temperature": 0.3,
+                "max_tokens": 4096,
+            }
+            # DeepSeek 需要关闭 thinking 模式
+            if settings.DEEPSEEK_API_KEY:
+                body["thinking"] = {"type": "disabled"}
             return requests.post(
                 url,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": 0.3,
-                    "max_tokens": 4096,
-                },
+                json=body,
                 timeout=30,
             )
         
@@ -240,10 +237,10 @@ async def generate_summary(
                    elapsed)
         return result
 
-    except httpx.TimeoutException as e:
-        logger.warning("AI 摘要超时: type=%s, msg=%s", type(e).__name__, e)
+    except requests.Timeout as e:
+        logger.warning("AI 摘要超时: %s", e)
         return {"answer": "", "key_points": [], "related_concepts": [], "confidence": 0.0, "sources": []}
-    except httpx.HTTPStatusError as e:
+    except requests.HTTPError as e:
         logger.warning("AI 摘要 API HTTP 错误: %d, body=%s", e.response.status_code, e.response.text[:200])
         return {"answer": "", "key_points": [], "related_concepts": [], "confidence": 0.0, "sources": []}
     except Exception as e:

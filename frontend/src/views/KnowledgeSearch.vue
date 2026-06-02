@@ -70,19 +70,45 @@
     </div>
   </div>
 
-  <div v-else key="chat" class="ks-full-view">
-    <div class="ks-full-top">
-      <div class="ks-mode-row">
-        <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button>
-        <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="activeMode='chat'"><MessageCircle class="icon-xs" /> 专家模式</button>
-        <button class="ks-mode-pill ks-mode-pill-icon" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
+  <div v-else key="chat" class="ks-chat-shell">
+    <transition name="sidebar-slide">
+      <ChatSidebar
+        v-if="sidebarOpen"
+        :sessions="chatStore.sessions"
+        :activeId="chatStore.currentSessionId"
+        @newChat="startNewChat"
+        @select="selectSession"
+        @delete="deleteSession"
+      />
+    </transition>
+    <div class="ks-chat-main">
+      <div class="ks-chat-topbar">
+        <button class="ks-sidebar-toggle" @click="sidebarOpen=!sidebarOpen" :title="sidebarOpen?'收起侧栏':'展开侧栏'">
+          <PanelLeft v-if="sidebarOpen" class="icon-sm" />
+          <PanelLeftOpen v-else class="icon-sm" />
+        </button>
+        <span class="ks-chat-title">写意画专家助手</span>
+        <div class="ks-chat-topbar-right">
+          <button :class="['ks-mode-pill-sm',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button>
+          <button class="ks-mode-pill-sm ks-mode-pill-icon-sm" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
+        </div>
       </div>
-    </div>
-    <div class="ks-full-body">
-      <div class="ks-chat"><div class="ks-chat-msgs" ref="chatMsgsRef">
-        <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-        <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon" /><User v-else class="icon" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" v-html="renderMd(m.content,m.loading)"></div></div></div>
-      </div><div class="ks-chat-input"><textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="输入问题..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="2" :disabled="chatLoading"></textarea><button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading"><Send class="icon" /></button></div></div>
+      <div class="ks-chat-body">
+        <div class="ks-chat-msgs" ref="chatMsgsRef">
+          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
+          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" v-html="renderMd(m.content,m.loading)"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
+        </div>
+        <div class="ks-chat-input-row">
+          <div class="ks-chat-input-wrap">
+            <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向专家助手提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="1" :disabled="chatLoading"></textarea>
+            <button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading">
+              <Send v-if="!chatLoading" class="icon-sm" />
+              <Loader2 v-else class="icon-sm spin" />
+            </button>
+          </div>
+          <p class="ks-chat-footnote">回答基于知识库内容，可能需要核实重要信息</p>
+        </div>
+      </div>
     </div>
   </div>
   </transition>
@@ -102,7 +128,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown } from 'lucide-vue-next'
+import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
@@ -110,18 +136,21 @@ import TableResultCard from '@/components/TableResultCard.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const authStore = useAuthStore()
+const chatStore = useChatStore()
 const isAdmin = computed(() => authStore.isEditor)
 const router = useRouter()
 const route = useRoute()
 import DocumentOutline from '@/components/DocumentOutline.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import ChatSidebar from '@/components/ChatSidebar.vue'
 import ImageRelatedChunks from '@/components/ImageRelatedChunks.vue'
+import { useChatStore } from '../stores/chatStore'
 
 const store = useKnowledgeStore()
 const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), selectedBooks = ref([]), showUploadModal = ref(false), highlightedIndex = ref(-1), reingestingId = ref(null), searchInputRef = ref(null), activeMode = ref('search'), activeResult = ref(null), rightPanelOpen = ref(false), panelTab = ref('outline'), pdfUrl = ref('')
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
-const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null)
+const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true)
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
 function cleanLatex(s){return(s||'').replace(/\$[^$]*\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
@@ -137,10 +166,19 @@ function getFullImageUrl(r){return getImageUrl(r.image?.stored_url||r.associated
 function openPdf(){if(pdfUrl.value)window.open(pdfUrl.value,'_blank')}
 function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite">[$1]</sup>')}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>':'';return t.replace(/\n/g,'<br>')}
+function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>':'';let h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');h=h.replace(/^### (.+)$/gm,'<h3 class="ks-md-h3">$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2 class="ks-md-h2">$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1 class="ks-md-h1">$1</h1>');h=h.replace(/^---$/gm,'<hr class="ks-md-hr">');h=h.replace(/^> (.+)$/gm,'<blockquote class="ks-md-quote">$1</blockquote>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/`([^`\n]+)`/g,'<code class="ks-md-inline-code">$1</code>');h=h.replace(/^\- (.+)$/gm,'<li class="ks-md-li">$1</li>');h=h.replace(/((?:<li class="ks-md-li">.+<\/li>\n?)+)/g,'<ul class="ks-md-ul">$1</ul>');h=h.replace(/^(\d+)[.)] (.+)$/gm,'<li class="ks-md-li-ol">$2</li>');h=h.replace(/((?:<li class="ks-md-li-ol">.+<\/li>\n?)+)/g,'<ol class="ks-md-ol">$1</ol>');h=h.replace(/\n/g,'<br>');return h}
 
 function switchMode(m){
   if(m==='lib'){toggleLib();return}
+  // 专家模式需要登录
+  if(m==='chat'){
+    if(!authStore.isLoggedIn){
+      ElMessage.warning('请先登录后使用专家模式')
+      router.push('/login')
+      return
+    }
+    chatStore.fetchSessions()
+  }
   centered.value=false
   activeMode.value=m
   libOpen.value=false
@@ -175,8 +213,12 @@ async function loadOutline(id){loadingOutline.value=true;try{const r=await fetch
 async function loadMarkdown(id){loadingMarkdown.value=true;try{const r=await fetch(`/api/v1/knowledge/books/${id}/markdown`);if(r.ok)markdownContent.value=(await r.json()).markdown||''}catch{}finally{loadingMarkdown.value=false}}
 async function loadRelated(id){loadingRelated.value=true;try{const r=await fetch(`/api/v1/knowledge/images/${id}/related-chunks`);if(r.ok)relatedChunks.value=(await r.json()).chunks||[]}catch{}finally{loadingRelated.value=false}}
 function onOutlineClick(item){var isCross=item.target_book_id&&item.page&&item.target_book_id!==activeResult.value?.book_id;if(!isCross&&item.title&&markdownContent.value){panelTab.value='markdown';nextTick(()=>{if(mdContentRef.value){const el=mdContentRef.value.querySelector(`[data-section-id="${item.id}"]`)||[...mdContentRef.value.querySelectorAll('h1,h2,h3,h4')].find(h=>h.textContent?.trim()===item.title?.trim());if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}})};if(isCross){window.open(`/api/v1/knowledge/books/${item.target_book_id}/pdf#page=${item.page}`,'_blank')}else if(item.page&&pdfUrl.value&&!item.target_book_id){window.open(`${pdfUrl.value}#page=${item.page}`,'_blank')}}
-async function sendChat(msg){const t=(msg||chatInput.value).trim();if(!t||chatLoading.value)return;if(!msg)chatInput.value='';chatMessages.value.push({role:'user',content:t});chatMessages.value.push({role:'assistant',content:'',thinking:true});chatLoading.value=true;try{var ctx=chatMessages.value.filter(m=>m.role==='user').slice(-4).map(m=>m.content).join('\n');var query=ctx||t;const r=await fetch('/api/v1/knowledge/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:t,limit:5})});const d=await r.json();chatMessages.value.pop();chatMessages.value.push({role:'assistant',content:d.ai_summary?.answer||'未找到相关信息',thinking:false})}catch{chatMessages.value.pop();chatMessages.value.push({role:'assistant',content:'查询失败，请重试',thinking:false})}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
+async function sendChat(msg){const t=(msg||chatInput.value).trim();if(!t||chatLoading.value)return;if(!authStore.isLoggedIn){ElMessage.warning('请先登录');router.push('/login');return}if(!msg)chatInput.value='';chatMessages.value.push({role:'user',content:t});chatMessages.value.push({role:'assistant',content:'',thinking:true,loading:true});chatLoading.value=true;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight});try{const sid=chatStore.currentSessionId;const history=sid?[]:chatMessages.value.filter(m=>!m.thinking&&!m.loading&&m.role!=='system').slice(0,-1).map(m=>({role:m.role,content:m.content}));const r=await fetch('/api/v1/knowledge/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${authStore.token}`},body:JSON.stringify({prompt:t,history,session_id:sid||void 0})});const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';let textEvent=false;while(true){const{value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const lines=buffer.split('\n');buffer=lines.pop()||'';for(const line of lines){if(line.startsWith('event: ')){textEvent=line.slice(7).trim()==='text';continue}if(line.startsWith('data: ')){try{const d=JSON.parse(line.slice(6));const last=chatMessages.value[chatMessages.value.length-1];if(!last||last.role!=='assistant')continue;if(last.thinking){last.thinking=false;last.content=''}if(textEvent){last.content+=d.content||''}else if(d.sources){last.sources=d.sources}if(d.session_id&&!chatStore.currentSessionId){chatStore.setCurrentSession(d.session_id)}}catch{}}}}const last=chatMessages.value[chatMessages.value.length-1];if(last&&last.role==='assistant'){last.thinking=false;last.loading=false;if(!last.content)last.content='未找到相关信息'}chatStore.fetchSessions()}catch{const last=chatMessages.value[chatMessages.value.length-1];if(last&&last.role==='assistant'){last.thinking=false;last.loading=false;last.content='查询失败，请重试'}}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
 function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='auto';chatInputRef.value.style.height=Math.min(chatInputRef.value.scrollHeight,120)+'px'}}
+// Chat sidebar actions
+async function startNewChat(){chatMessages.value=[];chatStore.startNewSession()}
+async function selectSession(id){chatMessages.value=[];chatStore.setCurrentSession(id);chatLoading.value=true;try{const msgs=await chatStore.fetchMessages(id);chatMessages.value=msgs.map(m=>({role:m.role,content:m.content,sources:m.sources||null}))}catch{}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
+async function deleteSession(id){try{await ElMessageBox.confirm('确定删除此对话？','确认删除',{type:'warning'});await chatStore.deleteSession(id);chatMessages.value=[]}catch{}}
 function onUploaded(){store.fetchBooks();store.fetchStats()}
 async function reingest(id){reingestingId.value=id;try{await store.reingestBook(id)}catch{}finally{reingestingId.value=null}}
 async function delBook(id){try{await ElMessageBox.confirm('确定删除此书及其所有关联数据？','确认删除',{type:'warning'});await store.deleteBook(id)}catch{}}
@@ -281,36 +323,91 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-rfoot{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#999}
 .ks-raction{color:#c96442;display:flex;align-items:center;gap:2px}
 
-.ks-full-view{min-height:100vh;display:flex;flex-direction:column;padding:16px 24px}
-.ks-full-top{display:flex;justify-content:center;margin-bottom:8px}
-.ks-full-body{flex:1;display:flex;flex-direction:column;max-width:800px;width:100%;margin:0 auto}
+/* ── ChatGPT-style: 全屏 fixed 布局 ── */
+.ks-chat-shell{position:fixed;inset:0;z-index:9999;display:flex;background:#fafaf8;overflow:hidden}
+.ks-chat-main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
+.ks-chat-topbar{display:flex;align-items:center;gap:8px;padding:0 16px;height:52px;border-bottom:1px solid #e8e6dc;background:#fff;flex-shrink:0}
+.ks-sidebar-toggle{border:none;background:transparent;color:#999;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;transition:all 0.15s}
+.ks-sidebar-toggle:hover{background:#f5f2eb;color:#3d3d3a}
+.ks-chat-title{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:600;color:#141413;flex:1}
+.ks-chat-topbar-right{display:flex;align-items:center;gap:6px}
+.ks-mode-pill-sm{border:1px solid #e0ddd3;background:#fff;padding:4px 10px;border-radius:16px;font-size:12px;color:#5e5d59;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s}
+.ks-mode-pill-sm:hover{border-color:#c96442;color:#c96442}
+.ks-mode-pill-sm.active{background:#c96442;color:#fff;border-color:#c96442}
+.ks-mode-pill-icon-sm{padding:4px 8px}
+.ks-sidebar-toggle .icon-sm,.ks-mode-pill-sm .icon-xs{width:16px;height:16px;flex-shrink:0}
 
-.ks-chat{display:flex;flex-direction:column;flex:1;min-height:200px;max-height:calc(100vh - 180px)}
-.ks-chat-msgs{flex:1;overflow-y:auto;padding:8px 0}
-.ks-chat-welcome{text-align:center;padding:24px 16px;color:#6b6b66}
-.ks-chat-welcome-icon{color:#c96442;width:32px;height:32px;margin-bottom:8px}
-.ks-chat-welcome h3{font-size:22px;margin:0 0 4px;color:#141413;font-family:'Noto Serif SC',serif}
-.ks-chat-welcome p{font-size:13px;margin:0 0 12px;color:#999;max-width:480px;margin-left:auto;margin-right:auto}
-.ks-chat-sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-.ks-sug-btn{border:1px solid #e0ddd3;background:#fff;padding:5px 12px;border-radius:20px;font-size:12px;color:#5e5d59;cursor:pointer}
-.ks-sug-btn:hover{border-color:#c96442;color:#c96442}
-.ks-cmsg{display:flex;gap:8px;margin-bottom:12px;animation:ks-msg-in 0.3s ease both}
-@keyframes ks-msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.ks-cmsg.user{flex-direction:row-reverse}
-.ks-cavatar{width:28px;height:28px;border-radius:50%;background:#f5f2eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ks-cmsg.user .ks-cavatar{background:#c96442;color:#fff}
-.ks-ccontent{max-width:75%}
-.ks-crole{font-size:11px;color:#999;margin-bottom:2px}
-.ks-cmsg.user .ks-crole{text-align:right}
-.ks-ctext{font-size:14px;line-height:1.6;padding:8px 12px;border-radius:10px;background:#fff;border:1px solid #e8e6dc;color:#3d3d3a}
-.ks-cmsg.user .ks-ctext{background:#fdf8f5;border-color:#f0d4c8}
-.ks-cthinking{font-size:13px;color:#b8b4aa;padding:8px 12px;display:flex;align-items:center;gap:6px}
-.ks-chat-input{display:flex;gap:8px;padding:8px 0;border-top:1px solid #f0eee6}
-.ks-chat-ta{flex:1;border:1.5px solid #e0ddd3;border-radius:10px;padding:8px 12px;font-size:14px;resize:none;outline:none;line-height:1.5}
-.ks-chat-ta:focus{border-color:#c96442}
-.ks-chat-send{border:none;background:#c96442;color:#fff;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-.ks-chat-send:hover{background:#a8513a}
-.ks-chat-send:disabled{opacity:0.5;cursor:not-allowed}
+/* ── Chat body ── */
+.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:860px;width:100%;margin:0 auto}
+.ks-chat-msgs{flex:1;overflow-y:auto;padding:16px 0;scroll-behavior:smooth}
+.ks-chat-msgs::-webkit-scrollbar{width:6px}
+.ks-chat-msgs::-webkit-scrollbar-track{background:transparent}
+.ks-chat-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
+.ks-chat-msgs::-webkit-scrollbar-thumb:hover{background:#c0bbb3}
+
+/* ── Welcome ── */
+.ks-chat-welcome{text-align:center;padding:40px 16px;margin-top:10vh}
+.ks-chat-welcome-icon{color:#c96442;width:40px;height:40px;margin-bottom:12px}
+.ks-chat-welcome h3{font-size:24px;margin:0 0 6px;color:#141413;font-family:'Noto Serif SC',serif}
+.ks-chat-welcome p{font-size:14px;margin:0 0 16px;color:#8a877e;max-width:480px;margin-left:auto;margin-right:auto}
+.ks-chat-sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.ks-sug-btn{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
+.ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
+
+/* ── Message bubbles ── */
+.ks-cmsg{display:flex;gap:12px;padding:8px 24px;max-width:860px;margin:0 auto;animation:ks-msg-in 0.25s ease both}
+@keyframes ks-msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ks-cmsg.assistant{background:#fff}
+.ks-cmsg.user{background:transparent;flex-direction:row-reverse}
+.ks-cavatar{width:30px;height:30px;border-radius:4px;background:#f5f2eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#8a877e}
+.ks-cmsg.user .ks-cavatar{background:#c96442;color:#fff;border-radius:4px}
+.ks-cavatar .icon-xs{width:14px;height:14px}
+.ks-ccontent{min-width:0;flex:1}
+.ks-cmsg.user .ks-ccontent{display:flex;flex-direction:column;align-items:flex-end}
+.ks-crole{font-size:11px;font-weight:600;color:#8a877e;margin-bottom:3px}
+.ks-ctext{font-size:15px;line-height:1.75;color:#2c2c2c;padding:0}
+.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:16px 0 8px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
+.ks-ctext :deep(h1){font-size:20px}.ks-ctext :deep(h2){font-size:18px}.ks-ctext :deep(h3){font-size:16px}
+.ks-ctext :deep(p){margin:0 0 10px}
+.ks-ctext :deep(strong){color:#141413;font-weight:600}
+.ks-ctext :deep(blockquote){margin:8px 0;padding:8px 14px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
+.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:8px 0;padding-left:22px}
+.ks-ctext :deep(li){margin:4px 0;line-height:1.7}
+.ks-ctext :deep(li)::marker{color:#c96442}
+.ks-ctext :deep(code){background:#f0eee6;padding:2px 6px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
+.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:12px 0}
+.ks-ctext :deep(a){color:#c96442;text-decoration:underline}
+.ks-cmsg.user .ks-ctext{color:#2c2c2c}
+
+/* ── Sources card ── */
+.ks-csources{margin-top:10px;padding:10px 14px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
+.ks-csrc-title{font-size:12px;font-weight:600;color:#6b6b66;margin-bottom:6px}
+.ks-csrc-item{font-size:12px;color:#8a877e;line-height:1.8;display:flex;flex-wrap:wrap;gap:0 6px}
+.ks-csrc-idx{color:#c96442;font-weight:600;flex-shrink:0}
+.ks-csrc-book{color:#3d3d3a;font-weight:600}
+.ks-csrc-page{color:#6b6b66}
+.ks-csrc-snip{color:#a09d96;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
+
+.ks-cthinking{font-size:14px;color:#8a877e;padding:2px 0;display:flex;align-items:center;gap:6px}
+
+/* ── Input row ── */
+.ks-chat-input-row{padding:8px 24px 12px;flex-shrink:0}
+.ks-chat-input-wrap{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1.5px solid #d8d4cc;border-radius:16px;padding:6px 6px 6px 16px;transition:border-color 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.ks-chat-input-wrap:focus-within{border-color:#c96442;box-shadow:0 1px 8px rgba(201,100,66,0.08)}
+.ks-chat-ta{flex:1;border:none;outline:none;padding:8px 0;font-size:15px;resize:none;line-height:1.5;background:transparent;color:#2c2c2c;font-family:inherit;max-height:160px}
+.ks-chat-ta::placeholder{color:#b0aca2}
+.ks-chat-send{border:none;background:#141413;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s}
+.ks-chat-send:hover{background:#3d3d3a}
+.ks-chat-send:disabled{opacity:0.35;cursor:not-allowed}
+.ks-chat-send .icon-sm{width:16px;height:16px}
+.spin{animation:ks-spin 1s linear infinite}
+@keyframes ks-spin{to{transform:rotate(360deg)}}
+.ks-chat-footnote{text-align:center;font-size:11px;color:#b0aca2;margin-top:6px}
+
+/* ── Sidebar toggle transition ── */
+.sidebar-slide-enter-active,.sidebar-slide-leave-active{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+.sidebar-slide-enter-from,.sidebar-slide-leave-to{width:0;min-width:0;overflow:hidden;opacity:0}
+.sidebar-slide-enter-to,.sidebar-slide-leave-from{width:260px;min-width:260px}
 
 .ks-panel{position:fixed;top:64px;right:0;width:60vw;max-width:960px;min-width:480px;height:calc(100vh - 64px);background:#fff;border-left:1px solid #e8e6dc;display:flex;flex-direction:column;z-index:10000002;box-shadow:-4px 0 20px rgba(0,0,0,0.06)}
 .ks-phdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f0eee6;flex-shrink:0;animation:ks-panel-in 0.3s 0.05s ease both}

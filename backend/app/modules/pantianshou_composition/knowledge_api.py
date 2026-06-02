@@ -12,7 +12,7 @@ import uuid
 import asyncio
 from datetime import datetime
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -2120,35 +2120,79 @@ async def get_private_document_pdf(
     )
 
 
-# ============ 百炼智能体聊天端点 ============
+# ============ RAG 聊天端点（DeepSeek Flash 流式 + 鉴权 + 持久化） ============
 
 class ChatRequest(BaseModel):
-    """百炼智能体聊天请求"""
+    """RAG 聊天请求"""
     prompt: str
-    session_id: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None  # 首轮不带 session_id 时使用
+    session_id: Optional[str] = None  # 会话ID（不传则自动创建新会话）
 
 
 @router.post("/chat")
-async def bailian_chat(request: ChatRequest):
+async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user)):
     """
-    百炼智能体聊天 — 流式 SSE 响应
-    
-    接入阿里云百炼智能体（app_id: b259c13c595445d59bb35efd2afc818f）
-    支持多轮对话（通过 session_id 维护上下文）
-    流式输出（stream=True, incremental_output=True）
+    RAG 聊天 — DeepSeek Flash 流式 SSE 响应（需登录）
+
+    流程:
+    1. Qdrant 搜索相关文本块
+    2. 构建 RAG 上下文 + 对话历史（从 DB 或前端传入）
+    3. DeepSeek Flash 流式生成
+    4. SSE 逐字输出
+    5. 自动保存消息到数据库
+
+    支持多轮对话：传 session_id 时从 DB 加载历史（防前端篡改）
     """
-    from .bailian_service import chat_stream
+    from .knowledge_chat import chat_stream
+    from sqlalchemy import text as sql_text
+    from app.core.database import SessionLocal
 
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="prompt 不能为空")
 
+    # 会话管理
+    session_id = request.session_id
+    if not session_id:
+        # 自动创建新会话
+        session_id = str(uuid.uuid4())
+        db = SessionLocal()
+        try:
+            now = datetime.utcnow()
+            db.execute(
+                sql_text(
+                    "INSERT INTO chat_sessions (id, user_id, title, message_count, created_at, updated_at) "
+                    "VALUES (:id, :uid, :title, 0, :now, :now)"
+                ),
+                {"id": session_id, "uid": user.id, "title": request.prompt[:30], "now": now},
+            )
+            db.commit()
+        finally:
+            db.close()
+
+    # 如果有 session_id，从 DB 加载历史（替代前端传来的 history，防篡改）
+    history = request.history or []
+    if session_id and request.session_id:
+        db = SessionLocal()
+        try:
+            rows = db.execute(
+                sql_text(
+                    "SELECT role, content FROM chat_messages "
+                    "WHERE session_id = :sid ORDER BY token_index LIMIT 20"
+                ),
+                {"sid": session_id},
+            ).fetchall()
+            if rows:
+                history = [{"role": r[0], "content": r[1]} for r in rows]
+        finally:
+            db.close()
+
     return StreamingResponse(
-        chat_stream(request.prompt, request.session_id),
+        chat_stream(request.prompt, history, user_id=user.id, session_id=session_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Nginx 不缓冲
+            "X-Accel-Buffering": "no",
         },
     )
 

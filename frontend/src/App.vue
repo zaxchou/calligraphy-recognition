@@ -15,16 +15,8 @@
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
           <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }"><span class="nav-text">题跋分析</span></router-link>
-          <div v-if="siteConfig.readonly !== 'true'" class="nav-dropdown" @mouseenter="showResearchMenu" @mouseleave="hideResearchMenu">
-            <span class="nav-item nav-dropdown-trigger" :class="{ active: $route.path.startsWith('/composition') || $route.path.startsWith('/qczh') }">
-              <span class="nav-text">构图研究</span>
-              <span class="nav-arrow">▾</span>
-            </span>
-            <div class="nav-dropdown-menu" v-show="researchMenuOpen" @mouseenter="showResearchMenu" @mouseleave="hideResearchMenu">
-              <a class="nav-dropdown-item" @click.prevent="go('/composition')">潘天寿教你构图</a>
-              <a class="nav-dropdown-item" @click.prevent="go('/qczh')">起承转合</a>
-            </div>
-          </div>
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
         <div class="user-area">
           <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
@@ -90,15 +82,12 @@
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/tiba')">
             <span class="nav-text">题跋分析</span>
           </a>
-          <template v-if="siteConfig.readonly !== 'true'">
-            <div class="drawer-section-label">构图研究</div>
-            <a class="drawer-nav-item" @click.prevent="drawerNavigate('/composition')">
-              <span class="nav-text">潘天寿教你构图</span>
-            </a>
-            <a class="drawer-nav-item" @click.prevent="drawerNavigate('/qczh')">
-              <span class="nav-text">起承转合</span>
-            </a>
-          </template>
+          <a v-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/composition')">
+            <span class="nav-text">潘天寿教你构图</span>
+          </a>
+          <a v-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/qczh')">
+            <span class="nav-text">起承转合</span>
+          </a>
           <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
             <div class="drawer-section-label">个人中心</div>
             <a v-if="authStore.isEditor" class="drawer-nav-item" @click.prevent="drawerNavigate('/admin')">
@@ -162,7 +151,6 @@ const authStore = useAuthStore()
 const { locale } = useI18n()
 const mobileMenuOpen = ref(false)
 const userMenuOpen = ref(false)
-const researchMenuOpen = ref(false)
 
 const displayTitle = computed(() => locale.value === 'en' ? 'Molin' : siteConfig.title)
 const displaySubtitle = computed(() => locale.value === 'en' ? 'Chinese Painting & Calligraphy Intelligence' : siteConfig.subtitle)
@@ -174,9 +162,6 @@ function drawerNavigate(path) {
 let closeTimer = null
 function showUserMenu() { clearTimeout(closeTimer); userMenuOpen.value = true }
 function hideUserMenu() { closeTimer = setTimeout(() => { userMenuOpen.value = false }, 200) }
-let researchCloseTimer = null
-function showResearchMenu() { clearTimeout(researchCloseTimer); researchMenuOpen.value = true }
-function hideResearchMenu() { researchCloseTimer = setTimeout(() => { researchMenuOpen.value = false }, 120) }
 
 // 启动时刷新用户信息，确保 role 与数据库同步
 onMounted(() => {
@@ -386,8 +371,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo-img {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 4px;
   object-fit: contain;
   transition: opacity var(--transition-normal);
@@ -446,14 +431,6 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--near-black);
 }
 
-/* active 项加淡色背景，撑满 header 高度 */
-.nav-item.active {
-  background: rgba(201, 100, 66, 0.06);
-  border-radius: 6px;
-  padding-top: 19px;
-  padding-bottom: 19px;
-}
-
 /* 下划线 — 极细暖色线 */
 .nav-item::after {
   content: '';
@@ -470,60 +447,6 @@ h1, h2, h3, h4, h5, h6 {
 .nav-item:hover::after,
 .nav-item.active::after {
   transform: translateX(-50%) scaleX(1);
-}
-
-/* === 导航下拉菜单 === */
-.nav-dropdown {
-  position: relative;
-}
-.nav-dropdown-trigger {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: var(--space-sm) 0;
-  text-decoration: none;
-  position: relative;
-}
-.nav-dropdown-trigger.active {
-  background: rgba(201, 100, 66, 0.06);
-  border-radius: 6px;
-  padding-top: 19px;
-  padding-bottom: 19px;
-}
-.nav-arrow {
-  font-size: 10px;
-  transition: transform 0.2s;
-}
-.nav-dropdown:hover .nav-arrow {
-  transform: rotate(180deg);
-}
-.nav-dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  min-width: 160px;
-  background: #fff;
-  border: 1px solid var(--border-cream, #f0eee6);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  padding: 4px 0;
-  z-index: 100;
-}
-.nav-dropdown-item {
-  display: block;
-  padding: 8px 16px;
-  font-size: 13px;
-  color: var(--olive-gray, #6b6560);
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-.nav-dropdown-item:hover {
-  background: rgba(201, 100, 66, 0.06);
-  color: var(--near-black, #141413);
 }
 
 /* === 移动端汉堡按钮（PC 隐藏） === */
@@ -1058,32 +981,6 @@ h1, h2, h3, h4, h5, h6 {
 .home-header .nav-item:hover .nav-text,
 .home-header .nav-item.active .nav-text {
   color: var(--pure-white);
-}
-
-.home-header .nav-item.active {
-  background: rgba(255, 255, 255, 0.08);
-  padding-top: 19px;
-  padding-bottom: 19px;
-}
-
-.home-header .nav-dropdown-trigger.active {
-  background: rgba(255, 255, 255, 0.08);
-  padding-top: 19px;
-  padding-bottom: 19px;
-}
-
-.home-header .nav-dropdown-menu {
-  background: rgba(30, 30, 29, 0.95);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.home-header .nav-dropdown-item {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.home-header .nav-dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
 }
 
 .home-header .nav-item::after {

@@ -254,6 +254,13 @@ if composition is not None:
         prefix=settings.API_V1_STR + "/knowledge",
         tags=["知识库"]
     )
+    # Chat 会话管理路由（同 prefix）
+    from app.modules.pantianshou_composition.chat_api import router as chat_api_router
+    app.include_router(
+        chat_api_router,
+        prefix=settings.API_V1_STR + "/knowledge",
+        tags=["聊天会话"]
+    )
 
 if _arrow_demo_router is not None:
     app.include_router(

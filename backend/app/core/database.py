@@ -339,6 +339,35 @@ def run_migrations():
         logger.info("Migration: ensured artist_change_requests table exists")
         conn.commit()
 
+        # ── Chat 聊天记录表 ──
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id TEXT(36) PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                title TEXT,
+                message_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated ON chat_sessions(updated_at)")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT(36) PRIMARY KEY,
+                session_id TEXT(36) NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                sources TEXT,
+                token_index INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id, token_index)")
+        logger.info("Migration: ensured chat_sessions + chat_messages tables")
+        conn.commit()
+
         # ── seal_images 表 + seals.source 列 ──
         conn.execute("""
             CREATE TABLE IF NOT EXISTS seal_images (
