@@ -13,7 +13,7 @@
       </div>
       <div class="ks-mode-row">
         <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索模式</button>
-        <button :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')" :disabled="!authStore.isLoggedIn" :title="authStore.isLoggedIn?'':'登录后使用'"><MessageCircle class="icon-xs" /> 专家模式</button>
+        <button v-if="siteConfig.readonly !== 'true' || authStore.isLoggedIn" :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')" :disabled="!authStore.isLoggedIn" :title="authStore.isLoggedIn?'':'登录后使用'"><MessageCircle class="icon-xs" /> 专家模式</button>
         <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
       </div>
       <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
@@ -28,7 +28,7 @@
       </div>
       <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
     </header>
-    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button :class="['ks-mode-pill']" @click="switchMode('chat')" :disabled="!authStore.isLoggedIn" :title="authStore.isLoggedIn?'':'登录后使用'"><MessageCircle class="icon-xs" /> 专家模式</button></div>
+    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button v-if="siteConfig.readonly !== 'true' || authStore.isLoggedIn" :class="['ks-mode-pill']" @click="switchMode('chat')" :disabled="!authStore.isLoggedIn" :title="authStore.isLoggedIn?'':'登录后使用'"><MessageCircle class="icon-xs" /> 专家模式</button></div>
     <div class="ks-body-wrap" :class="{'with-panel':rightPanelOpen}">
       <div class="ks-main">
         <div class="ks-search-panel">
@@ -134,6 +134,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
 import TableResultCard from '@/components/TableResultCard.vue'
 import { useAuthStore } from '../stores/authStore'
+import { siteConfig } from '../config'
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()
