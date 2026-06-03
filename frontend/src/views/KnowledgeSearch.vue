@@ -118,7 +118,7 @@
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderMd(m.content,m.loading)"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
+          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderMd(m.content,m.loading)"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span><a v-if="s.url" :href="'#'+s.url" class="ks-csrc-link">{{ s.name || s.book }} &rarr;</a></div></div></div></div>
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
@@ -322,7 +322,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-card-body :deep(.ks-cite){color:#c96442;cursor:pointer;font-weight:600;text-decoration:underline;text-underline-offset:2px}
 .ks-points{margin-top:12px;padding-top:10px;border-top:1px solid #f0eee6}
 .ks-points-label{font-size:12px;font-weight:600;color:#6b6b66;margin-bottom:4px}
-.ks-points ul{margin:0;padding:0 0 0 18px;font-size:13px;color:#5e5d59;line-height:1.7}
+.ks-points ul{margin:0;padding:0 0 0 18px;font-size:13px;color:#5e5d59;line-height:1.5}
 .ks-sources{margin-top:8px;padding-top:8px;border-top:1px solid #f0eee6;display:flex;flex-wrap:wrap;gap:4px}
 .ks-sources-label{font-size:12px;color:#999}
 .ks-src{border:none;background:#f5f2eb;padding:2px 8px;border-radius:4px;font-size:12px;color:#6b6b66;cursor:pointer}
@@ -398,11 +398,11 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-ctext{font-size:14px;line-height:1.6;color:#2c2c2c;padding:0}
 .ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:10px 0 4px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
 .ks-ctext :deep(h1){font-size:20px}.ks-ctext :deep(h2){font-size:18px}.ks-ctext :deep(h3){font-size:16px}
-.ks-ctext :deep(p){margin:0 0 10px}
+.ks-ctext :deep(p){margin:0 0 6px}
 .ks-ctext :deep(strong){color:#141413;font-weight:600}
-.ks-ctext :deep(blockquote){margin:8px 0;padding:8px 14px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
+.ks-ctext :deep(blockquote){margin:6px 0;padding:6px 12px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
 .ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:8px 0;padding-left:22px}
-.ks-ctext :deep(li){margin:4px 0;line-height:1.7}
+.ks-ctext :deep(li){margin:4px 0;line-height:1.5}
 .ks-ctext :deep(li)::marker{color:#c96442}
 .ks-ctext :deep(code){background:#f0eee6;padding:2px 6px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
 .ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:12px 0}
@@ -454,7 +454,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-pbody{flex:1;overflow-y:auto}
 .ks-detail{padding:14px 18px}
 .ks-dmeta{margin-bottom:10px}.ks-dchap{font-size:13px;font-weight:600;color:#303133}.ks-dpage{font-size:12px;color:#999;margin-left:8px;display:inline-flex;align-items:center;gap:3px}
-.ks-dctx{margin:10px 0}.ks-dctx-mrk{font-size:11px;color:#c0bdb3;margin:4px 0}.ks-dctx-txt{font-size:13px;color:#999;line-height:1.7;margin:0}
+.ks-dctx{margin:10px 0}.ks-dctx-mrk{font-size:11px;color:#c0bdb3;margin:4px 0}.ks-dctx-txt{font-size:13px;color:#999;line-height:1.5;margin:0}
 .ks-dcontent{font-size:14px;line-height:1.8;color:#3d3d3a;padding:12px;background:#fdfcf9;border:1px solid #f0eee6;border-radius:10px;margin:10px 0}
 .ks-dcontent :deep(.ks-hl){background:#fef0e0;color:#c96442;font-weight:600;border-radius:2px;padding:0 2px}
 .ks-dims{margin:10px 0}.ks-dims-label{font-size:12px;font-weight:600;color:#6b6b66;margin-bottom:6px;display:flex;align-items:center;gap:4px}
@@ -542,5 +542,9 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 
 .ks-cite{cursor:pointer;color:#c96442;font-size:12px;font-weight:600;vertical-align:super;padding:0 2px;border-radius:2px;transition:background 0.15s}
 .ks-cite:hover{background:rgba(201,100,66,0.08);text-decoration:underline}
+
+
+.ks-csrc-link{color:#c96442;text-decoration:none;font-weight:500;flex-shrink:0;margin-left:4px}
+.ks-csrc-link:hover{text-decoration:underline}
 
 </style>
