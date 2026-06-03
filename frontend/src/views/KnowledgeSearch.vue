@@ -117,7 +117,13 @@
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="s.url" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
+          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]">
+            <div class="ks-ccontent">
+              <div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div>
+              <div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div>
+              <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="s.url" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div>
+            </div>
+          </div>
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
@@ -174,7 +180,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen, ExternalLink } from 'lucide-vue-next'
+import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen, ExternalLink } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
@@ -518,18 +524,15 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-sug-btn{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
 
-/* ── Message bubbles ── */
-.ks-cmsg{display:flex;gap:12px;padding:8px 24px;max-width:860px;margin:0 auto;animation:ks-msg-in 0.25s ease both}
+/* ── Message bubbles — DeepSeek style ── */
+.ks-cmsg{padding:16px 24px;max-width:860px;margin:0 auto;animation:ks-msg-in 0.25s ease both}
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.assistant{background:#fff}
-.ks-cmsg.user{background:transparent;flex-direction:row-reverse}
-.ks-cavatar{width:30px;height:30px;border-radius:4px;background:#f5f2eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#8a877e}
-.ks-cmsg.user .ks-cavatar{background:#c96442;color:#fff;border-radius:4px}
-.ks-cavatar .icon-xs{width:14px;height:14px}
-.ks-ccontent{min-width:0;flex:1}
-.ks-cmsg.user .ks-ccontent{display:flex;flex-direction:column;align-items:flex-end}
-.ks-crole{font-size:11px;font-weight:600;color:#8a877e;margin-bottom:3px}
-.ks-ctext{font-size:15px;line-height:1.75;color:#2c2c2c;padding:0}
+.ks-cmsg.user{display:flex;justify-content:flex-end}
+.ks-cmsg.user .ks-ctext{background:#f5f0ea;border:1px solid #e8e0d4;border-radius:16px 16px 4px 16px;padding:10px 16px;display:inline-block;max-width:80%;font-size:15px;line-height:1.6;color:#2c2c2c}
+.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.75;color:#1a1a1a;padding:0}
+.ks-ccontent{min-width:0}
+.ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
 .ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:16px 0 8px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
 .ks-ctext :deep(h1){font-size:20px}.ks-ctext :deep(h2){font-size:18px}.ks-ctext :deep(h3){font-size:16px}
 .ks-ctext :deep(p){margin:0 0 10px}
@@ -541,12 +544,12 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-ctext :deep(code){background:#f0eee6;padding:2px 6px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
 .ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:12px 0}
 .ks-ctext :deep(a){color:#c96442;text-decoration:underline}
-.ks-cmsg.user .ks-ctext{color:#2c2c2c}
 
 /* ── Sources card ── */
-.ks-csources{margin-top:10px;padding:10px 14px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
+.ks-csources{margin-top:12px;padding:10px 14px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
 .ks-csrc-title{font-size:12px;font-weight:600;color:#6b6b66;margin-bottom:6px}
-.ks-csrc-item{font-size:12px;color:#8a877e;line-height:1.8;display:flex;flex-wrap:wrap;gap:0 6px}
+.ks-csrc-item{font-size:12px;color:#8a877e;line-height:1.8;display:flex;flex-wrap:wrap;gap:0 6px;padding:3px 4px;border-radius:4px;transition:background 0.15s}
+.ks-csrc-item:hover{background:#f0ede5}
 .ks-csrc-idx{color:#c96442;font-weight:600;flex-shrink:0}
 .ks-csrc-book{color:#3d3d3a;font-weight:600}
 .ks-csrc-page{color:#6b6b66}
@@ -570,7 +573,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-cite-book-info{font-size:13px;color:#5e5d59;margin-bottom:10px}
 .ks-cite-snippet{font-size:14px;line-height:1.7;color:#3d3d3a;background:#faf9f7;padding:12px;border-radius:8px;border-left:3px solid #c96442;margin:0}
 
-.ks-cthinking{font-size:14px;color:#8a877e;padding:2px 0;display:flex;align-items:center;gap:6px}
+.ks-cthinking{font-size:14px;color:#8a877e;padding:8px 0;display:flex;align-items:center;gap:6px;animation:ks-pulse 1.5s ease-in-out infinite}
+@keyframes ks-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 
 /* ── Input row ── */
 .ks-chat-input-row{padding:8px 24px 12px;flex-shrink:0}
