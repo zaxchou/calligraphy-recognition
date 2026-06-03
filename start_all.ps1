@@ -55,10 +55,18 @@ if (-not $SkipQdrant) {
     if (Test-Path $qdrantExe) {
         Start-Process -FilePath $qdrantExe -WorkingDirectory "$BACKEND_DIR\qdrant_bin" -WindowStyle Normal
         Write-Host "  OK - Qdrant window opened" -ForegroundColor Green
-    # Wait for Qdrant to be ready before starting Backend
+    # Wait for Qdrant to be ready before starting Backend (TCP socket, 2s timeout per attempt)
     Write-Host "  Waiting for Qdrant to be ready..." -ForegroundColor DarkGray
+    $waitStart = Get-Date
     for ($j = 0; $j -lt 30; $j++) {
-        try { $r = Invoke-WebRequest -Uri "http://localhost:6333" -TimeoutSec 2 -ErrorAction Stop; if ($r.StatusCode -eq 200) { Write-Host "  Qdrant ready ($($j+1)s)" -ForegroundColor Green; break } } catch { Start-Sleep 1 }
+        try {
+            $tcp = New-Object System.Net.Sockets.TcpClient
+            $connected = $tcp.BeginConnect("127.0.0.1", 6333, $null, $null)
+            $ok = $connected.AsyncWaitHandle.WaitOne(2000)
+            $tcp.Close()
+            if ($ok) { $elapsed = [int]((Get-Date) - $waitStart).TotalSeconds; Write-Host "  Qdrant ready (${elapsed}s)" -ForegroundColor Green; break }
+        } catch {}
+        Start-Sleep -.5
     }
 
     } else { Write-Host "  SKIP - Qdrant not installed" -ForegroundColor DarkGray }
