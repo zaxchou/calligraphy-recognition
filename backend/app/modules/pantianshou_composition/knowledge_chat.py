@@ -47,15 +47,17 @@ SYSTEM_PROMPT = """你是一位精通中国画的专业知识助手，专注于�
 4. 如果搜索结果不足以完整回答，诚实说明知识库中还缺少哪些方面
 5. 使用专业但易懂的语言，体现中国画的专业深度
 6. 不要编造搜索结果中没有的信息
-7. 使用 Markdown 格式化回答（标题、列表、加粗等），让回答清晰易读"""
+7. 使用 Markdown 格式化回答（标题、列表、加粗等），让回答清晰可读
+8. 统计类问题时，以搜索结果中实际出现的作品为准（搜索结果列表），不要仅依赖作品统计摘要中的数字
+9. 如果用户指出你的回答有误，重新检查搜索结果并纠正，不要坚持错误"""
 
 
 # ── 意图分类 + 画家上下文注入（Phase 2）──
 
-import re as _re
+import re
 
-_AGGREGATE_KW = _re.compile(r'几幅|多少幅|多少张|共画|画过几|数量|总数|统计|有哪些作品|哪些画')
-_TEMPORAL_KW = _re.compile(r'最后几年|晚年|晚期|早期|早期|最近|最后|前期|中期|晚期|什么时候|哪个时期')
+_AGGREGATE_KW = re.compile(r'几幅|多少幅|多少张|共画|画过几|数量|总数|统计|有哪些作品|哪些画|有哪些')
+_TEMPORAL_KW = re.compile(r'最后几年|晚年|晚期|早期|最近|最后|前期|中期|什么时候|哪个时期')
 _KNOWN_ARTISTS = [
     '李鱓', '郑燮', '朱耷', '潘天寿', '刘海勇', '吴昌硕', '齐白石',
     '徐渭', '陈淳', '八大山人', '石涛', '扬州八怪', '文征明', '任伯年',
@@ -73,18 +75,33 @@ def _detect_intent(query: str) -> str:
 
 
 def _extract_artist(query: str) -> Optional[str]:
-    """从查询中提取画家名"""
+    """从查询中提取画家名（先查硬编码列表，再查 DB）"""
     for name in _KNOWN_ARTISTS:
         if name in query:
             return name
+    # 回退：查 DB 中是否有匹配的画家名（只查一次，缓存结果）
+    try:
+        db = SessionLocal()
+        try:
+            rows = db.execute(
+                sql_text("SELECT name FROM artists WHERE LENGTH(name) >= 2")
+            ).fetchall()
+            for row in rows:
+                if row[0] and row[0] in query:
+                    return row[0]
+        finally:
+            db.close()
+    except Exception:
+        pass
     return None
 
 
 def _get_artist_context(artist_name: str, intent: str) -> str:
-    """从 SQLite 查询画家统计数据，注入 RAG 上下文"""
-    from app.core.database import SessionLocal
-    from sqlalchemy import text as sql_text
+    """从 SQLite 查询画家统计数据，注入 RAG 上下文
 
+    注意：意象统计用 LIKE 匹配 content 字段（而非 objects_mentioned），
+    因为 objects_mentioned 可能不完整，而 content 是完整的索引文本。
+    """
     db = SessionLocal()
     parts = []
     try:
@@ -96,37 +113,34 @@ def _get_artist_context(artist_name: str, intent: str) -> str:
         if row and row[0]:
             parts.append(f"【{artist_name}作品统计】共 {row[0]} 幅，创作年份 {row[1]}-{row[2]}")
 
-        # 按年份段统计
-        if intent in ("temporal", "aggregate"):
-            rows = db.execute(
-                sql_text(
-                    "SELECT CASE "
-                    "  WHEN year < 1720 THEN '早期(1720前)' "
-                    "  WHEN year < 1740 THEN '中期(1720-1740)' "
-                    "  WHEN year >= 1740 THEN '晚期(1740后)' "
-                    "END as period, COUNT(*) as cnt "
-                    "FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL "
-                    "GROUP BY period ORDER BY MIN(year)"
-                ),
-                {"a": artist_name},
-            ).fetchall()
-            if rows:
-                periods = [f"{r[0]}: {r[1]}幅" for r in rows]
-                parts.append(f"年份分布: {', '.join(periods)}")
-
-        # 意象统计（竹/梅/兰/菊/荷/牡丹等）
-        if intent == "aggregate":
-            for obj in ['竹', '梅', '兰', '菊', '荷', '牡丹', '松', '牡丹', '山水']:
-                cnt = db.execute(
+        # 动态年份段：根据画家实际年份范围计算三等分
+        if intent in ("temporal", "aggregate") and row and row[0]:
+            min_year, max_year = int(row[1]), int(row[2])
+            span = max_year - min_year
+            if span > 10:
+                t1 = min_year + span // 3
+                t2 = min_year + 2 * span // 3
+                rows = db.execute(
                     sql_text(
-                        "SELECT COUNT(*) FROM tubi_analyses "
-                        "WHERE artist = :a AND content_analysis IS NOT NULL "
-                        "AND json_extract(content_analysis, '$.objects_mentioned') LIKE :pat"
+                        "SELECT CASE "
+                        "  WHEN year < :t1 THEN :early "
+                        "  WHEN year < :t2 THEN :mid "
+                        "  ELSE :late END as period, COUNT(*) as cnt "
+                        "FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL "
+                        "GROUP BY period ORDER BY MIN(year)"
                     ),
-                    {"a": artist_name, "pat": f"%{obj}%"},
-                ).fetchone()[0]
-                if cnt > 0:
-                    parts.append(f"含「{obj}」: {cnt}幅")
+                    {"a": artist_name, "t1": t1, "t2": t2,
+                     "early": f"早期({min_year}-{t1})", "mid": f"中期({t1}-{t2})", "late": f"晚期({t2}-{max_year})"},
+                ).fetchall()
+                if rows:
+                    periods = [f"{r[0]}: {r[1]}幅" for r in rows]
+                    parts.append(f"年份分布: {', '.join(periods)}")
+
+        # 意象统计：注释掉，因为 title LIKE 匹配太宽（如题跋含"菊"但非菊花主题的画）
+        # 让 LLM 从搜索结果列表中直接统计，更准确
+        # if intent == "aggregate":
+        #     for obj in ['竹', '梅', '兰', '菊', '荷', '牡丹', '松', '山水']:
+        #         ...
 
         # 情感分布
         rows = db.execute(
@@ -317,10 +331,23 @@ async def chat_stream(
         yield _sse_event("error", {"message": "DeepSeek API Key 未配置"})
         return
 
-    # ① 搜索 Qdrant
+    # ① 搜索 Qdrant — 追问时补充上一轮主题词
     t0 = time.time()
+    search_query = query
+    if history:
+        # 从历史中提取最近一轮用户问题，作为补充搜索词
+        last_user_q = ""
+        for msg in reversed(history):
+            if msg.get("role") == "user":
+                last_user_q = msg.get("content", "")
+                break
+        # 如果当前问题偏短/偏追问（<15字且有疑问词），合并上一轮问题
+        if last_user_q and len(query) < 15 and len(last_user_q) > len(query):
+            search_query = f"{last_user_q} {query}"
+            logger.info("[RAG聊天] 追问补充搜索: '%s'", search_query[:60])
+
     try:
-        search_results = await _search_for_chat(query, limit=10)
+        search_results = await _search_for_chat(search_query, limit=10)
     except Exception as e:
         logger.error("RAG 聊天搜索失败: %s", e, exc_info=True)
         search_results = []
