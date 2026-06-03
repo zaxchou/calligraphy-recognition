@@ -50,6 +50,107 @@ SYSTEM_PROMPT = """你是一位精通中国画的专业知识助手，专注于�
 7. 使用 Markdown 格式化回答（标题、列表、加粗等），让回答清晰易读"""
 
 
+# ── 意图分类 + 画家上下文注入（Phase 2）──
+
+import re as _re
+
+_AGGREGATE_KW = _re.compile(r'几幅|多少幅|多少张|共画|画过几|数量|总数|统计|有哪些作品|哪些画')
+_TEMPORAL_KW = _re.compile(r'最后几年|晚年|晚期|早期|早期|最近|最后|前期|中期|晚期|什么时候|哪个时期')
+_KNOWN_ARTISTS = [
+    '李鱓', '郑燮', '朱耷', '潘天寿', '刘海勇', '吴昌硕', '齐白石',
+    '徐渭', '陈淳', '八大山人', '石涛', '扬州八怪', '文征明', '任伯年',
+    '林良', '吕纪', '沈周', '唐寅', '仇英',
+]
+
+
+def _detect_intent(query: str) -> str:
+    """轻量意图分类（关键词检测，不调 LLM）"""
+    if _AGGREGATE_KW.search(query):
+        return "aggregate"
+    if _TEMPORAL_KW.search(query):
+        return "temporal"
+    return "normal"
+
+
+def _extract_artist(query: str) -> Optional[str]:
+    """从查询中提取画家名"""
+    for name in _KNOWN_ARTISTS:
+        if name in query:
+            return name
+    return None
+
+
+def _get_artist_context(artist_name: str, intent: str) -> str:
+    """从 SQLite 查询画家统计数据，注入 RAG 上下文"""
+    from app.core.database import SessionLocal
+    from sqlalchemy import text as sql_text
+
+    db = SessionLocal()
+    parts = []
+    try:
+        # 基本统计
+        row = db.execute(
+            sql_text("SELECT COUNT(*), MIN(year), MAX(year) FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL"),
+            {"a": artist_name},
+        ).fetchone()
+        if row and row[0]:
+            parts.append(f"【{artist_name}作品统计】共 {row[0]} 幅，创作年份 {row[1]}-{row[2]}")
+
+        # 按年份段统计
+        if intent in ("temporal", "aggregate"):
+            rows = db.execute(
+                sql_text(
+                    "SELECT CASE "
+                    "  WHEN year < 1720 THEN '早期(1720前)' "
+                    "  WHEN year < 1740 THEN '中期(1720-1740)' "
+                    "  WHEN year >= 1740 THEN '晚期(1740后)' "
+                    "END as period, COUNT(*) as cnt "
+                    "FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL "
+                    "GROUP BY period ORDER BY MIN(year)"
+                ),
+                {"a": artist_name},
+            ).fetchall()
+            if rows:
+                periods = [f"{r[0]}: {r[1]}幅" for r in rows]
+                parts.append(f"年份分布: {', '.join(periods)}")
+
+        # 意象统计（竹/梅/兰/菊/荷/牡丹等）
+        if intent == "aggregate":
+            for obj in ['竹', '梅', '兰', '菊', '荷', '牡丹', '松', '牡丹', '山水']:
+                cnt = db.execute(
+                    sql_text(
+                        "SELECT COUNT(*) FROM tubi_analyses "
+                        "WHERE artist = :a AND content_analysis IS NOT NULL "
+                        "AND json_extract(content_analysis, '$.objects_mentioned') LIKE :pat"
+                    ),
+                    {"a": artist_name, "pat": f"%{obj}%"},
+                ).fetchone()[0]
+                if cnt > 0:
+                    parts.append(f"含「{obj}」: {cnt}幅")
+
+        # 情感分布
+        rows = db.execute(
+            sql_text(
+                "SELECT json_extract(content_analysis, '$.combined_sentiment.polarity') as pol, COUNT(*) as cnt "
+                "FROM tubi_analyses "
+                "WHERE artist = :a AND content_analysis IS NOT NULL "
+                "AND json_extract(content_analysis, '$.combined_sentiment.polarity') IS NOT NULL "
+                "GROUP BY pol"
+            ),
+            {"a": artist_name},
+        ).fetchall()
+        if rows:
+            dist = [f"{r[0]}: {r[1]}幅" for r in rows]
+            parts.append(f"情感分布: {', '.join(dist)}")
+
+    except Exception as e:
+        logger.warning("Artist context query failed: %s", e)
+    finally:
+        db.close()
+
+    return "\n".join(parts)
+
+
 async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """执行 Qdrant 搜索，返回相关文本块（复用现有搜索基础设施）"""
     from .embedding_service import EmbeddingService
@@ -240,6 +341,15 @@ async def chat_stream(
         if user_id is not None and session_id is not None:
             _save_chat_messages(user_id, session_id, query, msg, [])
         return
+
+    # ②.5 意图分类 + 画家上下文注入
+    intent = _detect_intent(query)
+    artist_name = _extract_artist(query)
+    if intent != "normal" and artist_name:
+        artist_ctx = _get_artist_context(artist_name, intent)
+        if artist_ctx:
+            rag_context = f"{artist_ctx}\n\n{rag_context}"
+            logger.info("[RAG聊天] 画家上下文注入: artist=%s, intent=%s", artist_name, intent)
 
     # ③ 构建完整消息
     messages = _build_messages(query, rag_context, history)
