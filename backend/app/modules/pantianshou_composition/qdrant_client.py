@@ -148,25 +148,23 @@ def search_cases(vector: List[float], limit: int = 3) -> List[Dict[str, Any]]:
 
 
 def ensure_collection(collection: str, vector_size: int = 512, recreate: bool = False) -> bool:
-    if not _base_url():
-        return False
-    if not recreate:
-        exists = _request("GET", f"/collections/{collection}", timeout=5.0)
-        if exists is not None:
-            return True
-    _request("DELETE", f"/collections/{collection}", timeout=10.0)
-    created = _request(
-        "PUT",
-        f"/collections/{collection}",
-        json={
-            "vectors": {
-                "size": int(vector_size),
-                "distance": "Cosine",
-            }
-        },
-        timeout=20.0,
-    )
-    return created is not None
+    """Ensure Qdrant collection exists. Does NOT delete/recreate on 502 (unreachable)."""
+    data = _request("GET", f"/collections/{collection}", timeout=5.0)
+    if data is not None:
+        # Collection exists (200) - healthy, return True
+        return True
+    # data is None = Qdrant unreachable (502/connection failed)
+    # Do NOT delete or recreate - just return False
+    if recreate:
+        _request("DELETE", f"/collections/{collection}", timeout=10.0)
+        r = _request(
+            "PUT",
+            f"/collections/{collection}",
+            json={"vectors": {"size": vector_size, "distance": "Cosine"}},
+            timeout=10.0,
+        )
+        return r is not None
+    return False
 
 
 def upsert_points(collection: str, points: List[Dict[str, Any]], wait: bool = True) -> bool:
