@@ -328,6 +328,7 @@ async function sendChat(msg) {
   chatMessages.value.push({ role: 'user', content: t })
   chatMessages.value.push({ role: 'assistant', content: '', thinking: true, loading: true })
   chatLoading.value = true
+  showScrollBtn.value = false
   nextTick(() => { if (chatMsgsRef.value) chatMsgsRef.value.scrollTop = chatMsgsRef.value.scrollHeight })
 
   try {
@@ -400,8 +401,8 @@ function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='au
 function onChatScroll(){const el=chatMsgsRef.value;if(!el)return;showScrollBtn.value=el.scrollHeight-el.scrollTop-el.clientHeight>200}
 function scrollToBottom(){if(chatMsgsRef.value)chatMsgsRef.value.scrollTo({top:chatMsgsRef.value.scrollHeight,behavior:'smooth'})}
 // Chat sidebar actions
-async function startNewChat(){chatMessages.value=[];chatStore.startNewSession()}
-async function selectSession(id){chatMessages.value=[];chatStore.setCurrentSession(id);chatLoading.value=true;try{const msgs=await chatStore.fetchMessages(id);chatMessages.value=msgs.map(m=>({role:m.role,content:m.content,sources:m.sources||null}))}catch{}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
+function startNewChat(){chatMessages.value=[];chatStore.startNewSession();showScrollBtn.value=false}
+async function selectSession(id){chatMessages.value=[];chatStore.setCurrentSession(id);chatLoading.value=true;showScrollBtn.value=false;try{const msgs=await chatStore.fetchMessages(id);chatMessages.value=msgs.map(m=>({role:m.role,content:m.content,sources:m.sources||null}))}catch{}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
 async function deleteSession(id){try{await ElMessageBox.confirm('确定删除此对话？','确认删除',{type:'warning'});await chatStore.deleteSession(id);chatMessages.value=[]}catch{}}
 function onUploaded(){store.fetchBooks();store.fetchStats()}
 async function reingest(id){reingestingId.value=id;try{await store.reingestBook(id)}catch{}finally{reingestingId.value=null}}
