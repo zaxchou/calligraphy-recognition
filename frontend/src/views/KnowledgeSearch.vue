@@ -117,7 +117,7 @@
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
+          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="s.url" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
@@ -143,13 +143,38 @@
 
   <UploadModal v-model:visible="showUploadModal" @upload-success="onUploaded" />
   <div v-if="previewVisible" class="ks-preview-overlay" @click="previewVisible=false"><button v-if="previewList.length>1" class="ks-preview-nav ks-preview-prev" @click.stop="prevPreview"><ChevronLeft class="icon" /></button><img :src="previewImageUrl" class="ks-preview-img" @click.stop /><button v-if="previewList.length>1" class="ks-preview-nav ks-preview-next" @click.stop="nextPreview"><ChevronRight class="icon" /></button><button class="ks-preview-close" @click="previewVisible=false"><X class="icon" /></button><span v-if="previewList.length>1" class="ks-preview-counter">{{previewIndex+1}}/{{previewList.length}}</span></div>
+
+  <!-- 引用来源弹窗 -->
+  <Teleport to="body">
+    <div v-if="citationSource" class="ks-cite-overlay" @click="closeCitation">
+      <div class="ks-cite-modal" @click.stop>
+        <div class="ks-cite-modal-hd">
+          <span class="ks-cite-modal-idx">[{{ citationSource.index }}]</span>
+          <span class="ks-cite-modal-title">{{ citationSource.name || citationSource.book || '引用来源' }}</span>
+          <button class="ks-cite-modal-close" @click="closeCitation"><X class="icon-sm" /></button>
+        </div>
+        <div class="ks-cite-modal-body">
+          <div v-if="citationSource._source==='database'" class="ks-cite-db">
+            <span class="ks-cite-type">{{ {artwork:'画作',artist:'艺术家',seal:'印章'}[citationSource.type]||'实体' }}</span>
+            <a v-if="citationSource.url" :href="citationSource.url" target="_blank" rel="noopener" class="ks-cite-go">查看详情 →</a>
+          </div>
+          <div v-else class="ks-cite-book-info">
+            <span v-if="citationSource.book">《{{ citationSource.book }}》</span>
+            <span v-if="citationSource.page">第{{ citationSource.page }}页</span>
+            <span v-if="citationSource.chapter">· {{ citationSource.chapter }}</span>
+          </div>
+          <p v-if="citationSource.snippet" class="ks-cite-snippet">"{{ citationSource.snippet }}"</p>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen } from 'lucide-vue-next'
+import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen, ExternalLink } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UploadModal from '@/components/UploadModal.vue'
@@ -172,7 +197,7 @@ const store = useKnowledgeStore()
 const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), selectedBooks = ref([]), showUploadModal = ref(false), highlightedIndex = ref(-1), reingestingId = ref(null), searchInputRef = ref(null), activeMode = ref('search'), activeResult = ref(null), rightPanelOpen = ref(false), panelTab = ref('outline'), pdfUrl = ref('')
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
-const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true)
+const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true), citationSource = ref(null)
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
 function cleanLatex(s){return(s||'').replace(/\$[^$]*\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
@@ -191,18 +216,18 @@ function onChatContentClick(e) {
   if (cite) {
     const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g, ''))
     if (idx) {
-      // 向上找最近一条 assistant 消息的 sources
       const msgs = chatMessages.value
       for (let i = msgs.length - 1; i >= 0; i--) {
         const m = msgs[i]
         if (m.role === 'assistant' && m.sources) {
           const s = m.sources.find(x => x.index === idx)
-          if (s) { console.log('引用来源:', s); return }
+          if (s) { citationSource.value = s; return }
         }
       }
     }
   }
 }
+function closeCitation(){citationSource.value=null}
 function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite" data-idx="$1">[$1]</sup>')}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function renderMd(t, l) {
@@ -525,6 +550,24 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-csrc-book{color:#3d3d3a;font-weight:600}
 .ks-csrc-page{color:#6b6b66}
 .ks-csrc-snip{color:#a09d96;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
+.ks-csrc-link{color:#c96442;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:2px}
+.ks-csrc-link:hover{text-decoration:underline}
+
+/* 引用弹窗 */
+.ks-cite-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center}
+.ks-cite-modal{background:#fff;border-radius:12px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.15);overflow:hidden}
+.ks-cite-modal-hd{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #ece9e0}
+.ks-cite-modal-idx{color:#c96442;font-weight:700;font-size:14px;flex-shrink:0}
+.ks-cite-modal-title{font-size:14px;font-weight:600;color:#141413;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-cite-modal-close{border:none;background:transparent;color:#999;cursor:pointer;padding:4px;border-radius:4px}
+.ks-cite-modal-close:hover{background:#f5f2eb;color:#3d3d3a}
+.ks-cite-modal-body{padding:16px}
+.ks-cite-db{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.ks-cite-type{background:#fef0e8;color:#c96442;font-size:12px;padding:2px 8px;border-radius:4px;font-weight:600}
+.ks-cite-go{color:#c96442;font-size:13px;text-decoration:none;font-weight:600}
+.ks-cite-go:hover{text-decoration:underline}
+.ks-cite-book-info{font-size:13px;color:#5e5d59;margin-bottom:10px}
+.ks-cite-snippet{font-size:14px;line-height:1.7;color:#3d3d3a;background:#faf9f7;padding:12px;border-radius:8px;border-left:3px solid #c96442;margin:0}
 
 .ks-cthinking{font-size:14px;color:#8a877e;padding:2px 0;display:flex;align-items:center;gap:6px}
 
