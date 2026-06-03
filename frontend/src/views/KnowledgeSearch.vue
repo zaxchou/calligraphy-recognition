@@ -117,7 +117,7 @@
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="s.url" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
+          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="s.url" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
@@ -213,18 +213,19 @@ function getFullImageUrl(r){return getImageUrl(r.image?.stored_url||r.associated
 function openPdf(){if(pdfUrl.value)window.open(pdfUrl.value,'_blank')}
 function onChatContentClick(e) {
   const cite = e.target.closest('.ks-cite')
+  console.log('[CITE-DEBUG] click:', e.target.tagName, e.target.className, 'found cite:', !!cite)
   if (cite) {
     const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g, ''))
-    if (idx) {
+        if (idx) {
       const msgs = chatMessages.value
       for (let i = msgs.length - 1; i >= 0; i--) {
         const m = msgs[i]
         if (m.role === 'assistant' && m.sources) {
           const s = m.sources.find(x => x.index === idx)
-          if (s) { citationSource.value = s; return }
+                    if (s) { citationSource.value = s; console.log('[CITE-DEBUG] citationSource set!'); return }
         }
       }
-    }
+          }
   }
 }
 function closeCitation(){citationSource.value=null}
