@@ -38,18 +38,12 @@
             <div v-if="store.relatedImages?.length" class="ks-related-img-row"><div v-for="(ri,i) in store.relatedImages.slice(0,6)" :key="ri.url" class="ks-related-img-thumb" @click="openImagePreview(ri,store.relatedImages.slice(0,6),i)"><img :src="getImageUrl(ri.stored_url||ri.url)" /><span>{{ ri.display_label||ri.figure_id||'' }}</span></div></div>
             <div v-if="store.aiSummary.key_points?.length" class="ks-points"><div class="ks-points-label">核心要点</div><ul><li v-for="(p,i) in store.aiSummary.key_points" :key="i">{{ cleanLatex(p) }}</li></ul></div>
             <div v-if="store.aiSummary.sources?.length" class="ks-sources"><span class="ks-sources-label">参考来源：</span><button v-for="(s,i) in store.aiSummary.sources" :key="i" class="ks-src" @click="scrollToResult(s)">《{{ (s.book||'').replace(/[《》]/g,'') }}》p.{{ s.page||'?' }}</button></div>
-        
-
-    /div>
-    </div>
-
-  </div>
+          </div>
           <div v-if="hasSearched&&!store.searchLoading" class="ks-results">
             <div class="ks-rbar"><span>共{{ store.searchResults.length }}条结果</span><button class="ks-clear-btn" @click="clearSearch">清除</button></div>
             <div v-if="store.searchResults.length===0" class="ks-empty"><FileSearch class="ks-empty-icon" /><p>未找到相关结果</p></div>
             <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" :style="{animationDelay:`${i*0.06}s`}" @click="openDetail(r,i)">
-              <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div>
-
+              <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div></div>
     <!-- Citation Modal -->
     <div v-if="citationModal.show" class="citation-overlay" @click="closeCitation">
       <div class="citation-modal" @click.stop>
@@ -70,7 +64,7 @@
       </div>
     </div>
 
-</div></template>
+</template>
               <template v-else-if="r.result_type==='table'"><TableResultCard :result="r" @click="openDetail(r,i)" /></template>
               <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span v-if="r.source==='private'" class="ks-source-badge private" title="私人文档">📁</span><span v-else class="ks-source-badge public" title="公共知识库">📚</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
             </div></div>
@@ -89,6 +83,11 @@
             <div class="ks-dnav"><button class="ks-dnav-btn" :disabled="loadingChunk||chunkIndex<=0" @click="loadPrevChunk"><ChevronLeft class="icon-xs" />上一段</button><span class="ks-dnav-info" v-if="chunkIndex>0">第{{ chunkIndex+1 }}段</span><button class="ks-dnav-btn" :disabled="loadingChunk" @click="loadNextChunk">下一段<ChevronRight class="icon-xs" /></button></div>
           </div>
           <div class="ks-ptabs"><button :class="{active:panelTab==='outline'}" @click="panelTab='outline'"><ListTree class="icon-xs" />大纲</button><button v-if="markdownContent" :class="{active:panelTab==='markdown'}" @click="panelTab='markdown'"><FileCode class="icon-xs" />原文</button><button v-if="activeResult?.associated_images?.length" :class="{active:panelTab==='images'}" @click="panelTab='images'"><ImageIcon class="icon-xs" />配图</button></div>
+          <div v-show="panelTab==='outline'" class="ks-ptab"><input v-model="outlineFilter" class="ks-outline-filter" placeholder="筛选大纲标题..." /><DocumentOutline :outline="filteredOutline" :loading="loadingOutline" @item-click="onOutlineClick" /></div>
+          <div v-show="panelTab==='markdown'" class="ks-ptab" ref="mdContentRef"><MarkdownViewer :markdown="markdownContent" :loading="loadingMarkdown" /></div>
+          <div v-show="panelTab==='images'" class="ks-ptab"><div class="ks-pimg-grid"><div v-for="(img,i) in activeResult?.associated_images" :key="i" class="ks-pimg-item" @click="openImagePreview(img,activeResult?.associated_images,i)"><img :src="getImageUrl(img.stored_url||img.url||img.id)" /><span v-if="img.figure_id">{{ img.figure_id }}</span></div></div></div>
+        </div>
+      </div></transition>
     </div>
   </div>
 
@@ -118,7 +117,7 @@
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderMd(m.content,m.loading)"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span><a v-if="s.url" :href="'#'+s.url" class="ks-csrc-link">{{ s.name || s.book }} &rarr;</a></div></div></div></div>
+          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
@@ -132,28 +131,7 @@
         </div>
       </div>
     </div>
-  <
-
-    <!-- Citation Modal -->
-    <div v-if="citationModal.show" class="citation-overlay" @click="closeCitation">
-      <div class="citation-modal" @click.stop>
-        <div class="citation-modal-header">
-          <span class="citation-modal-title">????</span>
-          <button class="citation-modal-close" @click="closeCitation">&times;</button>
-        </div>
-        <div class="citation-modal-body">
-          <div class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.book }}</span></div>
-          <div v-if="citationModal.source.page" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">?{{ citationModal.source.page }}?</span></div>
-          <div v-if="citationModal.source.chapter" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.chapter }}</span></div>
-          <div v-if="citationModal.source.snippet" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value citation-snippet">{{ citationModal.source.snippet }}</span></div>
-          <div v-if="citationModal.source.url" class="citation-modal-row">
-            <span class="citation-modal-label">??</span>
-            <a :href="'#'+citationModal.source.url" class="citation-modal-link" @click="closeCitation">{{ citationModal.source.name || citationModal.source.book }} &rarr;</a>
-          </div>
-        </div>
-      </div>
-    </div>
-/div>
+  </div>
   </transition>
 
   <transition name="drop"><div v-if="libOpen" class="ks-lib-pop">
@@ -194,20 +172,6 @@ const store = useKnowledgeStore()
 const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), selectedBooks = ref([]), showUploadModal = ref(false), highlightedIndex = ref(-1), reingestingId = ref(null), searchInputRef = ref(null), activeMode = ref('search'), activeResult = ref(null), rightPanelOpen = ref(false), panelTab = ref('outline'), pdfUrl = ref('')
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
-const citationModal = reactive({ show: false, source: null })
-function openCitation(idx) {
-  const msgs = chatMessages.value
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    const m = msgs[i]
-    if (m.role === 'assistant' && m.sources) {
-      const s = m.sources.find(x => x.index === idx)
-      if (s) { citationModal.source = s; citationModal.show = true; return }
-    }
-  }
-}
-function closeCitation() { citationModal.show = false; citationModal.source = null }
-
-
 const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true)
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
@@ -222,9 +186,21 @@ function statusLabel(s){return s==='completed'?'✓':s==='processing'?'处理中
 function getImageUrl(u){if(!u)return'';if(u.startsWith('http'))return u;if(u.startsWith('/api/'))return u;if(/^[a-f0-9-]{36}$/.test(u))return'/api/v1/knowledge/images/'+u;return'/api/v1/knowledge/'+u.replace(/^\/+/,'')}
 function getFullImageUrl(r){return getImageUrl(r.image?.stored_url||r.associated_images?.[0]?.stored_url)}
 function openPdf(){if(pdfUrl.value)window.open(pdfUrl.value,'_blank')}
-function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite">[$1]</sup>')}
+const citationModal = reactive({ show: false, source: null })
+function openCitation(idx) {
+  const msgs = chatMessages.value
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i]
+    if (m.role === 'assistant' && m.sources) {
+      const s = m.sources.find(x => x.index === idx)
+      if (s) { citationModal.source = s; citationModal.show = true; return }
+    }
+  }
+}
+function closeCitation() { citationModal.show = false; citationModal.source = null }
+function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite" data-idx="$1">[$1]</sup>')}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>':'';let h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');h=h.replace(/^### (.+)$/gm,'<h3 class="ks-md-h3">$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2 class="ks-md-h2">$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1 class="ks-md-h1">$1</h1>');h=h.replace(/^---$/gm,'<hr class="ks-md-hr">');h=h.replace(/^> (.+)$/gm,'<blockquote class="ks-md-quote">$1</blockquote>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\[(\d+)\]/g,'<sup class="ks-cite" data-idx="$1">[$1]</sup>');h=h.replace(/`([^`\n]+)`/g,'<code class="ks-md-inline-code">$1</code>');h=h.replace(/^\- (.+)$/gm,'<li class="ks-md-li">$1</li>');h=h.replace(/((?:<li class="ks-md-li">.+<\/li>\n?)+)/g,'<ul class="ks-md-ul">$1</ul>');h=h.replace(/^(\d+)[.)] (.+)$/gm,'<li class="ks-md-li-ol">$2</li>');h=h.replace(/((?:<li class="ks-md-li-ol">.+<\/li>\n?)+)/g,'<ol class="ks-md-ol">$1</ol>');h=h.replace(/\n/g,'<br>');return h}
+function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>':'';let h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');h=h.replace(/^### (.+)$/gm,'<h3 class="ks-md-h3">$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2 class="ks-md-h2">$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1 class="ks-md-h1">$1</h1>');h=h.replace(/^---$/gm,'<hr class="ks-md-hr">');h=h.replace(/^> (.+)$/gm,'<blockquote class="ks-md-quote">$1</blockquote>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/`([^`\n]+)`/g,'<code class="ks-md-inline-code">$1</code>');h=h.replace(/^\- (.+)$/gm,'<li class="ks-md-li">$1</li>');h=h.replace(/((?:<li class="ks-md-li">.+<\/li>\n?)+)/g,'<ul class="ks-md-ul">$1</ul>');h=h.replace(/^(\d+)[.)] (.+)$/gm,'<li class="ks-md-li-ol">$2</li>');h=h.replace(/((?:<li class="ks-md-li-ol">.+<\/li>\n?)+)/g,'<ol class="ks-md-ol">$1</ol>');h=h.replace(/\n/g,'<br>');return h}
 
 function switchMode(m){
   if(m==='lib'){toggleLib();return}
@@ -270,13 +246,6 @@ async function loadOutline(id){loadingOutline.value=true;try{const r=await fetch
 async function loadMarkdown(id){loadingMarkdown.value=true;try{const r=await fetch(`/api/v1/knowledge/books/${id}/markdown`);if(r.ok)markdownContent.value=(await r.json()).markdown||''}catch{}finally{loadingMarkdown.value=false}}
 async function loadRelated(id){loadingRelated.value=true;try{const r=await fetch(`/api/v1/knowledge/images/${id}/related-chunks`);if(r.ok)relatedChunks.value=(await r.json()).chunks||[]}catch{}finally{loadingRelated.value=false}}
 function onOutlineClick(item){var isCross=item.target_book_id&&item.page&&item.target_book_id!==activeResult.value?.book_id;if(!isCross&&item.title&&markdownContent.value){panelTab.value='markdown';nextTick(()=>{if(mdContentRef.value){const el=mdContentRef.value.querySelector(`[data-section-id="${item.id}"]`)||[...mdContentRef.value.querySelectorAll('h1,h2,h3,h4')].find(h=>h.textContent?.trim()===item.title?.trim());if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}})};if(isCross){window.open(`/api/v1/knowledge/books/${item.target_book_id}/pdf#page=${item.page}`,'_blank')}else if(item.page&&pdfUrl.value&&!item.target_book_id){window.open(`${pdfUrl.value}#page=${item.page}`,'_blank')}}
-function onChatContentClick(e) {
-  const cite = e.target.closest('.ks-cite')
-  if (cite) {
-    const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g,''))
-    if (idx) openCitation(idx)
-  }
-}
 async function sendChat(msg){const t=(msg||chatInput.value).trim();if(!t||chatLoading.value)return;if(!authStore.isLoggedIn){ElMessage.warning('请先登录');router.push('/login');return}if(!msg)chatInput.value='';chatMessages.value.push({role:'user',content:t});chatMessages.value.push({role:'assistant',content:'',thinking:true,loading:true});chatLoading.value=true;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight});try{const sid=chatStore.currentSessionId;const history=sid?[]:chatMessages.value.filter(m=>!m.thinking&&!m.loading&&m.role!=='system').slice(0,-1).map(m=>({role:m.role,content:m.content}));const r=await fetch('/api/v1/knowledge/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${authStore.token}`},body:JSON.stringify({prompt:t,history,session_id:sid||void 0})});const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';let textEvent=false;while(true){const{value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const lines=buffer.split('\n');buffer=lines.pop()||'';for(const line of lines){if(line.startsWith('event: ')){textEvent=line.slice(7).trim()==='text';continue}if(line.startsWith('data: ')){try{const d=JSON.parse(line.slice(6));const last=chatMessages.value[chatMessages.value.length-1];if(!last||last.role!=='assistant')continue;if(last.thinking){last.thinking=false;last.content=''}if(textEvent){last.content+=d.content||''}else if(d.sources){last.sources=d.sources}if(d.session_id&&!chatStore.currentSessionId){chatStore.setCurrentSession(d.session_id)}}catch{}}}}const last=chatMessages.value[chatMessages.value.length-1];if(last&&last.role==='assistant'){last.thinking=false;last.loading=false;if(!last.content)last.content='未找到相关信息'}chatStore.fetchSessions()}catch{const last=chatMessages.value[chatMessages.value.length-1];if(last&&last.role==='assistant'){last.thinking=false;last.loading=false;last.content='查询失败，请重试'}}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
 function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='auto';chatInputRef.value.style.height=Math.min(chatInputRef.value.scrollHeight,120)+'px'}}
 // Chat sidebar actions
@@ -410,28 +379,27 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-chat-msgs::-webkit-scrollbar-thumb:hover{background:#c0bbb3}
 
 /* ── Welcome ── */
-.ks-chat-welcome{text-align:center;padding:20px 16px;margin-top:4vh}
+.ks-chat-welcome{text-align:center;padding:40px 16px;margin-top:10vh}
 .ks-chat-welcome-icon{color:#c96442;width:40px;height:40px;margin-bottom:12px}
-.ks-chat-welcome h3{font-size:20px;margin:0 0 6px;color:#141413;font-family:'Noto Serif SC',serif}
+.ks-chat-welcome h3{font-size:24px;margin:0 0 6px;color:#141413;font-family:'Noto Serif SC',serif}
 .ks-chat-welcome p{font-size:14px;margin:0 0 16px;color:#8a877e;max-width:480px;margin-left:auto;margin-right:auto}
 .ks-chat-sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .ks-sug-btn{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
 
 /* ── Message bubbles ── */
-.ks-cmsg{display:flex;gap:12px;padding:6px 20px;max-width:860px;margin:0 auto;animation:ks-msg-in 0.25s ease both}
+.ks-cmsg{display:flex;gap:12px;padding:8px 24px;max-width:860px;margin:0 auto;animation:ks-msg-in 0.25s ease both}
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.ks-cmsg.assistant{background:transparent}
+.ks-cmsg.assistant{background:#fff}
 .ks-cmsg.user{background:transparent;flex-direction:row-reverse}
-.ks-cavatar{width:28px;height:28px;border-radius:4px;background:#f5f2eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#8a877e}
+.ks-cavatar{width:30px;height:30px;border-radius:4px;background:#f5f2eb;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#8a877e}
 .ks-cmsg.user .ks-cavatar{background:#c96442;color:#fff;border-radius:4px}
 .ks-cavatar .icon-xs{width:14px;height:14px}
 .ks-ccontent{min-width:0;flex:1}
-.ks-cmsg.assistant .ks-ccontent{background:#fff;border-radius:0 12px 12px 12px;padding:8px 14px;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
-.ks-cmsg.user .ks-ccontent{background:#f0ebe0;border-radius:12px 0 12px 12px;padding:8px 14px;display:flex;flex-direction:column;align-items:flex-end}
+.ks-cmsg.user .ks-ccontent{display:flex;flex-direction:column;align-items:flex-end}
 .ks-crole{font-size:11px;font-weight:600;color:#8a877e;margin-bottom:3px}
-.ks-ctext{font-size:14px;line-height:1.6;color:#2c2c2c;padding:0}
-.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:10px 0 4px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
+.ks-ctext{font-size:15px;line-height:1.75;color:#2c2c2c;padding:0}
+.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:16px 0 8px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
 .ks-ctext :deep(h1){font-size:20px}.ks-ctext :deep(h2){font-size:18px}.ks-ctext :deep(h3){font-size:16px}
 .ks-ctext :deep(p){margin:0 0 10px}
 .ks-ctext :deep(strong){color:#141413;font-weight:600}
@@ -445,7 +413,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-cmsg.user .ks-ctext{color:#2c2c2c}
 
 /* ── Sources card ── */
-.ks-csources{margin-top:8px;padding:6px 10px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
+.ks-csources{margin-top:10px;padding:10px 14px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
 .ks-csrc-title{font-size:12px;font-weight:600;color:#6b6b66;margin-bottom:6px}
 .ks-csrc-item{font-size:12px;color:#8a877e;line-height:1.8;display:flex;flex-wrap:wrap;gap:0 6px}
 .ks-csrc-idx{color:#c96442;font-weight:600;flex-shrink:0}
@@ -559,27 +527,6 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 @media(max-width:1024px){.ks-panel{width:100vw;min-width:auto;top:64px;height:calc(100vh - 64px);z-index:10000002}.ks-body-wrap.with-panel .ks-main{margin-right:0}.ks-lib-pop{right:12px;width:calc(100vw-24px)}}
 
 
-/* Citation Modal */
-.citation-overlay{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center}
-.citation-modal{background:#fff;border-radius:12px;width:480px;max-width:90vw;max-height:70vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18)}
-.citation-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #eee}
-.citation-modal-title{font-size:15px;font-weight:600;color:#141413}
-.citation-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#8a877e;padding:0 4px}
-.citation-modal-close:hover{color:#141413}
-.citation-modal-body{padding:16px 20px}
-.citation-modal-row{display:flex;gap:12px;margin-bottom:10px}
-.citation-modal-label{font-size:12px;color:#8a877e;min-width:48px;flex-shrink:0}
-.citation-modal-value{font-size:13px;color:#2c2c2c;line-height:1.5}
-.citation-snippet{font-style:italic;color:#6b6b66}
-.citation-modal-link{color:#c96442;text-decoration:none;font-weight:500;font-size:13px}
-.citation-modal-link:hover{text-decoration:underline}
-
-
-.ks-cite{cursor:pointer;color:#c96442;font-size:12px;font-weight:600;vertical-align:super;padding:0 2px;border-radius:2px;transition:background 0.15s}
-.ks-cite:hover{background:rgba(201,100,66,0.08);text-decoration:underline}
-
-
-/* Citation */
 .ks-cite{cursor:pointer;color:#c96442;font-size:12px;font-weight:600;vertical-align:super;padding:0 2px;border-radius:2px;transition:background 0.15s}
 .ks-cite:hover{background:rgba(201,100,66,0.08);text-decoration:underline}
 .ks-csrc-link{color:#c96442;text-decoration:none;font-weight:500;flex-shrink:0;margin-left:4px}
