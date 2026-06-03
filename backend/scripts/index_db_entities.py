@@ -39,7 +39,7 @@ for row in rows:
             "content": text, "source": "database",
         }, text))
 
-# Artworks
+# Artworks — enriched with sentiment, analysis, inscription
 rows = db.execute("SELECT * FROM tubi_analyses WHERE status IN ('analyzed','uploaded') ORDER BY id").fetchall()
 print(f"Artworks: {len(rows)}")
 for row in rows:
@@ -48,10 +48,41 @@ for row in rows:
     artist = d.get("artist") or ""
     parts = [f"# {title} — {artist}" if artist else f"# {title}"]
     if d.get("year"): parts.append(f"创作年份: {d['year']}年")
+    if d.get("period"): parts.append(f"艺术时期: {d['period']}")
     if d.get("material"): parts.append(f"材质: {d['material']}")
+    if d.get("mounting_format"): parts.append(f"装裱: {d['mounting_format']}")
+    w = d.get("artwork_width_cm")
+    h = d.get("artwork_height_cm")
+    if w and h: parts.append(f"尺寸: {w}x{h} cm")
+    if d.get("current_location"): parts.append(f"现藏: {d['current_location']}")
     if d.get("style_tags"): parts.append(f"风格: {d['style_tags']}")
     if d.get("subject_tags"): parts.append(f"题材: {d['subject_tags']}")
     if d.get("technique_tags"): parts.append(f"技法: {d['technique_tags']}")
+    if d.get("theme_tags"): parts.append(f"主题: {d['theme_tags']}")
+    # 题跋内容（关键：包含画家自述、情感表达）
+    if d.get("inscription_content"): parts.append(f"题跋: {d['inscription_content'][:500]}")
+    if d.get("inscription_modern"): parts.append(f"题跋译文: {d['inscription_modern'][:300]}")
+    if d.get("inscription_author"): parts.append(f"款识作者: {d['inscription_author']}")
+    # AI 分析（包含情绪、意境等判断）
+    if d.get("analysis_note"): parts.append(f"AI分析: {d['analysis_note'][:500]}")
+    # 情感分析数据
+    cs = d.get("combined_sentiment")
+    if cs:
+        try:
+            import json as _json
+            sentiment = _json.loads(cs) if isinstance(cs, str) else cs
+            if isinstance(sentiment, dict):
+                vs = sentiment.get("vader_normalized", 0)
+                dims = sentiment.get("dimensions", {})
+                if vs:
+                    polarity = "正面" if vs > 0.1 else "负面" if vs < -0.1 else "中性"
+                    parts.append(f"情感倾向: {polarity} (分数: {vs:.2f})")
+                if dims:
+                    for dim_name, dim_val in dims.items():
+                        if isinstance(dim_val, dict) and dim_val.get("score"):
+                            parts.append(f"情感维度-{dim_name}: {dim_val['score']:.1f}")
+        except Exception:
+            pass
     text = "\n".join(parts)
     if text.strip():
         entities.append(("artwork", f"artwork-{d['id']}", {

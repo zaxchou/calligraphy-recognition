@@ -108,9 +108,9 @@
           <PanelLeft v-if="sidebarOpen" class="icon-sm" />
           <PanelLeftOpen v-else class="icon-sm" />
         </button>
-        <button class="ks-back-btn" @click="goCentered"><ChevronLeft class="icon-xs" /> 返回搜索</button>
         <span class="ks-chat-title">写意画专家助手</span>
         <div class="ks-chat-topbar-right">
+          <button class="ks-back-btn" @click="goCentered"><ChevronLeft class="icon-xs" /> 返回搜索</button>
           <button :class="['ks-mode-pill-sm',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button>
           <button class="ks-mode-pill-sm ks-mode-pill-icon-sm" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
         </div>
