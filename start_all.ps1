@@ -55,6 +55,12 @@ if (-not $SkipQdrant) {
     if (Test-Path $qdrantExe) {
         Start-Process -FilePath $qdrantExe -WorkingDirectory "$BACKEND_DIR\qdrant_bin" -WindowStyle Normal
         Write-Host "  OK - Qdrant window opened" -ForegroundColor Green
+    # Wait for Qdrant to be ready before starting Backend
+    Write-Host "  Waiting for Qdrant to be ready..." -ForegroundColor DarkGray
+    for ($j = 0; $j -lt 30; $j++) {
+        try { $r = Invoke-WebRequest -Uri "http://localhost:6333" -TimeoutSec 2 -ErrorAction Stop; if ($r.StatusCode -eq 200) { Write-Host "  Qdrant ready ($($j+1)s)" -ForegroundColor Green; break } } catch { Start-Sleep 1 }
+    }
+
     } else { Write-Host "  SKIP - Qdrant not installed" -ForegroundColor DarkGray }
 }
 
