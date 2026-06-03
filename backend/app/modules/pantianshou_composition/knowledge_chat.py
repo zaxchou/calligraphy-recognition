@@ -50,7 +50,9 @@ SYSTEM_PROMPT = """你是「小墨」，一位精通中国画的专业知识助�
 7. 使用 Markdown 格式化回答（标题、列表、加粗等），让回答清晰可读
 8. 统计类问题时，以搜索结果中实际出现的作品为准（搜索结果列表），不要仅依赖作品统计摘要中的数字
 9. 如果用户指出你的回答有误，重新检查搜索结果并纠正，不要坚持错误
-10. 你的名字是小墨，如果用户问起，可以用这个名字自我介绍"""
+10. 你的名字是小墨，如果用户问起，可以用这个名字自我介绍
+11. 多轮对话时，注意用户说的"他""这个""那幅"等代词指代的是上一轮讨论的艺术家或作品，务必保持上下文连贯
+12. 用户说"还有呢""继续""更多"时，是在要求补充上一轮的回答，不要切换到完全无关的话题"""
 
 
 # ── 意图分类 + 画家上下文注入（Phase 2）──
@@ -342,14 +344,15 @@ async def chat_stream(
     t0 = time.time()
     search_query = query
     if history:
-        # 从历史中提取最近一轮用户问题，作为补充搜索词
+        # 从历史中提取最近的用户问题主题词
         last_user_q = ""
         for msg in reversed(history):
             if msg.get("role") == "user":
                 last_user_q = msg.get("content", "")
                 break
-        # 如果当前问题偏短/偏追问（<15字且有疑问词），合并上一轮问题
-        if last_user_q and len(query) < 15 and len(last_user_q) > len(query):
+        # 短追问（<20字）或含代词时，合并上一轮问题作为搜索词
+        has_pronoun = any(w in query for w in ['他','她','它','这个','那个','还有','继续','更多','那幅','这幅'])
+        if last_user_q and (len(query) < 20 or has_pronoun):
             search_query = f"{last_user_q} {query}"
             logger.info("[RAG聊天] 追问补充搜索: '%s'", search_query[:60])
 
