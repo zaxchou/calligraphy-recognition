@@ -117,7 +117,7 @@
       </div>
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
-          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
+          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><div style="color:green;font-size:12px;margin-bottom:8px">DEBUG: reactive={{ reactive }}, citeFn={{ typeof onChatContentClick }}, modal={{ typeof citationModal }}</div><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
           <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderMd(m.content,m.loading)"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span><a v-if="s.url" :href="'#'+s.url" class="ks-csrc-link">{{ s.name || s.book }} &rarr;</a></div></div></div></div>
         </div>
         <div class="ks-chat-input-row">
@@ -241,13 +241,13 @@ function openCitation(idx) {
     const m = msgs[i];
     if (m.role === 'assistant' && m.sources) {
       const s = m.sources.find(x => x.index === idx);
-      if (s) { citationModal.source = s; citationModal.show = true; return; }
+      if (s) { console.log('openCitation called:', idx, 'found source:', s); citationModal.source = s; citationModal.show = true; return; }
     }
   }
 }
 function closeCitation() { citationModal.show = false; citationModal.source = null; }
 function onChatContentClick(e) {
-  const cite = e.target.closest('.ks-cite')
+  console.log('onChatContentClick fired', e.target.tagName, e.target.className); const cite = e.target.closest('.ks-cite')
   if (cite) {
     const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g,''))
     if (idx) openCitation(idx)
