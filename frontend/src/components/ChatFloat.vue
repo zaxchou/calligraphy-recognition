@@ -243,7 +243,7 @@ async function send(msg) {
 .cf-msg{padding:6px 0}
 .cf-msg.assistant{background:#fff;padding:8px 12px;border-radius:8px;margin-bottom:4px}
 .cf-msg.user{display:flex;justify-content:flex-end}
-.cf-msg.user .cf-text{background:#e8e4dc;border-radius:16px 16px 4px 16px;padding:8px 12px;display:inline-block;max-width:80%;font-size:14px;line-height:1.45;color:#1a1a1a}
+.cf-msg.user .cf-text{background:#e8e4dc;border-radius:16px 16px 4px 16px;padding:8px 12px;display:inline-block;max-width:85%;font-size:14px;line-height:1.45;color:#1a1a1a}
 .cf-msg.assistant .cf-text{font-size:14px;line-height:1.5;color:#1a1a1a}
 .cf-msg.assistant .cf-text :deep(strong){color:#141413;font-weight:600}
 .cf-msg.assistant .cf-text :deep(h2),.cf-msg.assistant .cf-text :deep(h3){margin:8px 0 2px;color:#141413;font-family:'Noto Serif SC',serif;font-size:14px}
