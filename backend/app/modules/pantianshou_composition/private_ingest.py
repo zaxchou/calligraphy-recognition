@@ -57,7 +57,7 @@ def _split_sentences(text: str) -> List[str]:
     sentences = []
     for part in raw_sentences:
         part = part.strip()
-        if not part:
+        if not part or re.match(r'^[。！？；\n]+$', part):
             continue
         # 对长句用 jieba 辅助再切分（超过 200 字无条件切）
         if len(part) > 200:
@@ -265,12 +265,12 @@ def process_private_pdf_sync(
         if book:
             book.status = "completed"
         db.commit()
-            # 使搜索缓存失效
-            from .hybrid_search import invalidate_bm25_cache
-            try:
-                invalidate_bm25_cache()
-            except Exception:
-                pass
+        # 使搜索缓存失效
+        from .hybrid_search import invalidate_bm25_cache
+        try:
+            invalidate_bm25_cache()
+        except Exception:
+            pass
 
         logger.info("私人文档处理完成: book_id=%s, chunks=%d, vectors=%d",
                    book_id, result["chunks_created"], result["vectors_written"])

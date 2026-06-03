@@ -28,8 +28,11 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# 模型配置
-MODEL = "qwen-turbo"
+# 模型配置：DeepSeek 优先
+def _get_model() -> str:
+    from app.services.qwen_llm_client import get_text_llm_config
+    _, _, model = get_text_llm_config()
+    return model
 
 # 改写 prompt
 SYSTEM_PROMPT = """你是中国画专业知识领域的搜索查询优化助手。用户会在知识库中搜索中国画相关内容，你的任务是改写和扩展搜索查询，帮助搜索到更相关的结果。
@@ -98,7 +101,7 @@ def _call_llm_sync(url: str, api_key: str, messages: list) -> Optional[str]:
             url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": MODEL,
+                "model": _get_model(),
                 "messages": messages,
                 "temperature": 0.3,
                 "max_tokens": 300,
@@ -122,9 +125,8 @@ async def rewrite_query(query: str) -> Dict[str, Any]:
         return {"original": query, "rewrites": [], "intent": "人物"}
 
     try:
-        settings = get_settings()
-        api_key = settings.QWEN_API_KEY or settings.DASHSCOPE_API_KEY
-        base_url = settings.QWEN_BASE_URL
+        from app.services.qwen_llm_client import get_text_llm_config
+        api_key, base_url, model = get_text_llm_config()
 
         if not api_key:
             logger.warning("Query 改写: API Key 未配置，跳过改写")

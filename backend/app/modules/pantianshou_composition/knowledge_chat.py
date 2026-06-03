@@ -150,7 +150,7 @@ def _build_messages(
     if history:
         for msg in history[-20:]:  # 最多 10 轮 (20 条消息)
             role = msg.get("role", "user")
-            content = msg.get("content", "")
+            content = msg.get("content", "")[:1000]  # 单条截断防爆
             if role in ("user", "assistant") and content:
                 messages.append({"role": role, "content": content})
 

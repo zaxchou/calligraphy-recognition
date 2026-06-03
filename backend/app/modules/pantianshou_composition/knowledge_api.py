@@ -2194,10 +2194,20 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
             db.close()
 
     # 如果有 session_id，从 DB 加载历史（替代前端传来的 history，防篡改）
+    # 同时验证 session 所有权
     history = request.history or []
     if request.session_id:
         db = SessionLocal()
         try:
+            owner = db.execute(
+                sql_text("SELECT user_id FROM chat_sessions WHERE id = :sid"),
+                {"sid": session_id},
+            ).fetchone()
+            if not owner:
+                raise HTTPException(status_code=404, detail="会话不存在")
+            if owner[0] != user.id:
+                raise HTTPException(status_code=403, detail="无权访问此会话")
+
             rows = db.execute(
                 sql_text(
                     "SELECT role, content FROM chat_messages "

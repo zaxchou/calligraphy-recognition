@@ -206,22 +206,21 @@ async def llm_rerank(
         return []
     
     try:
-        from app.core.config import get_settings
-        settings = get_settings()
-        api_key = settings.QWEN_API_KEY or settings.DASHSCOPE_API_KEY
+        from app.services.qwen_llm_client import get_text_llm_config
+        api_key, base_url, model = get_text_llm_config()
         if not api_key:
             logger.warning("LLM rerank: API Key 未配置，回退到启发式精排")
             return heuristic_rerank(query, results, top_k, content_field)
-        
+
         import httpx
-        
+
         # 构建 prompt
         context_parts = []
         for i, r in enumerate(candidates[:10]):
             content = r.get("payload", {}).get(content_field, "") or ""
             snippet = content[:300]
             context_parts.append(f"[文档{i+1}] {snippet}")
-        
+
         prompt = f"""请根据以下查询，对文档列表进行相关性评分（0-10分）。
 
 查询：{query}
@@ -233,20 +232,23 @@ async def llm_rerank(
 文档编号:分数
 
 只输出最相关的 {top_k} 个文档，按相关性从高到低排列。"""
-        
+
+        # DeepSeek 需要关闭 thinking
+        extra_body = {"thinking": {"type": "disabled"}} if "deepseek" in model.lower() else {"enable_thinking": False}
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{settings.QWEN_BASE_URL}/chat/completions",
+                f"{base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "qwen3.5-plus",
+                    "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.0,
                     "max_tokens": 200,
-                    "enable_thinking": settings.QWEN_THINKING_ENABLED,
+                    **extra_body,
                 }
             )
             

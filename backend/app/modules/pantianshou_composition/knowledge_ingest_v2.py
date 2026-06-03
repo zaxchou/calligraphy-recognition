@@ -159,14 +159,20 @@ class KnowledgeIngestV2:
             texts_to_vectorize = []
             chunk_records = []
             book_info = {"title": book.title, "author": book.author} if book else {}
-            
+
+            # 批量去重：一次查询所有已存在的 hash
+            all_hashes = [chunk.compute_hash() for chunk in chunks]
+            existing_hashes = set()
+            if all_hashes:
+                for batch_start in range(0, len(all_hashes), 500):
+                    batch = all_hashes[batch_start:batch_start + 500]
+                    rows = self.db.query(TextChunk.content_hash).filter(
+                        TextChunk.content_hash.in_(batch)
+                    ).all()
+                    existing_hashes.update(r[0] for r in rows)
+
             for chunk in chunks:
-                # 检查是否已存在
-                existing = self.db.query(TextChunk).filter(
-                    TextChunk.content_hash == chunk.compute_hash()
-                ).first()
-                
-                if existing:
+                if chunk.compute_hash() in existing_hashes:
                     result["duplicates_skipped"] += 1
                     continue
                 

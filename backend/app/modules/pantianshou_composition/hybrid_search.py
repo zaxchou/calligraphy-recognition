@@ -19,7 +19,7 @@ import math
 import os
 import pickle
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.modules.pantianshou_composition.qdrant_client import (
@@ -45,6 +45,7 @@ class BM25Index:
         self.b = b    # 文档长度归一化
         self._docs: Dict[str, Dict[str, Any]] = {}  # doc_id -> payload
         self._doc_tokens: Dict[str, List[str]] = {}  # doc_id -> token list
+        self._doc_tf: Dict[str, Counter] = {}         # doc_id -> term frequency Counter
         self._doc_collection: Dict[str, str] = {}    # doc_id -> collection name
         self._df: Dict[str, int] = defaultdict(int)   # term -> document frequency
         self._avg_dl: float = 0.0
@@ -132,6 +133,7 @@ class BM25Index:
                 full_text = " ".join(text_parts)
                 tokens = self._tokenize(full_text)
                 self._doc_tokens[doc_id] = tokens
+                self._doc_tf[doc_id] = Counter(tokens)
                 
                 # 更新文档频率
                 seen_terms = set(tokens)
@@ -157,7 +159,7 @@ class BM25Index:
     
     def _bm25_score(self, term: str, doc_id: str) -> float:
         """计算单个 term 对单个文档的 BM25 分数"""
-        tf = self._doc_tokens.get(doc_id, []).count(term)
+        tf = self._doc_tf.get(doc_id, Counter()).get(term, 0)
         if tf == 0:
             return 0.0
         
@@ -240,6 +242,7 @@ class BM25Index:
                 ]
                 for doc_id in docs_to_remove:
                     tokens = self._doc_tokens.pop(doc_id, [])
+                    self._doc_tf.pop(doc_id, None)
                     for term in set(tokens):
                         self._df[term] = max(0, self._df[term] - 1)
                     del self._docs[doc_id]
@@ -248,6 +251,7 @@ class BM25Index:
         else:
             self._docs.clear()
             self._doc_tokens.clear()
+            self._doc_tf.clear()
             self._doc_collection.clear()
             self._df.clear()
             self._loaded_collections.clear()
@@ -426,11 +430,10 @@ async def hybrid_search(
     actual_vector_weight = vector_weight
     actual_bm25_weight = bm25_weight
     
-    import re as _re
-    zh_chars = _re.findall(r'[\u4e00-\u9fff]', query_text)
+    zh_chars = re.findall(r'[\u4e00-\u9fff]', query_text)
     is_short_query = (
         len(zh_chars) <= 6 and
-        not _re.search(r'[怎么如何什么为什么哪哪里多少]', query_text) and
+        not re.search(r'[怎么如何什么为什么哪哪里多少]', query_text) and
         len(query_text.strip()) <= 12
     )
     

@@ -46,7 +46,7 @@ class EmbeddingResult:
 
 
 class EmbeddingService:
-    """向量化服务
+    """向量化服务（单例模式）
 
     改进点:
     - requests 同步调用 + asyncio.to_thread（Python 3.14 兼容）
@@ -54,6 +54,13 @@ class EmbeddingService:
     - 指数退避重试
     - 文本和图像统一使用阿里云百炼平台（QWEN_API_KEY）
     """
+
+    _instance: Optional["EmbeddingService"] = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     # 阿里云百炼文本 Embedding API（OpenAI 兼容格式）— 文本用
     DASHSCOPE_TEXT_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings"
