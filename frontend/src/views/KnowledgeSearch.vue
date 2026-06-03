@@ -235,6 +235,17 @@ async function loadOutline(id){loadingOutline.value=true;try{const r=await fetch
 async function loadMarkdown(id){loadingMarkdown.value=true;try{const r=await fetch(`/api/v1/knowledge/books/${id}/markdown`);if(r.ok)markdownContent.value=(await r.json()).markdown||''}catch{}finally{loadingMarkdown.value=false}}
 async function loadRelated(id){loadingRelated.value=true;try{const r=await fetch(`/api/v1/knowledge/images/${id}/related-chunks`);if(r.ok)relatedChunks.value=(await r.json()).chunks||[]}catch{}finally{loadingRelated.value=false}}
 function onOutlineClick(item){var isCross=item.target_book_id&&item.page&&item.target_book_id!==activeResult.value?.book_id;if(!isCross&&item.title&&markdownContent.value){panelTab.value='markdown';nextTick(()=>{if(mdContentRef.value){const el=mdContentRef.value.querySelector(`[data-section-id="${item.id}"]`)||[...mdContentRef.value.querySelectorAll('h1,h2,h3,h4')].find(h=>h.textContent?.trim()===item.title?.trim());if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}})};if(isCross){window.open(`/api/v1/knowledge/books/${item.target_book_id}/pdf#page=${item.page}`,'_blank')}else if(item.page&&pdfUrl.value&&!item.target_book_id){window.open(`${pdfUrl.value}#page=${item.page}`,'_blank')}}
+function openCitation(idx) {
+  const msgs = chatMessages.value;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (m.role === 'assistant' && m.sources) {
+      const s = m.sources.find(x => x.index === idx);
+      if (s) { citationModal.source = s; citationModal.show = true; return; }
+    }
+  }
+}
+function closeCitation() { citationModal.show = false; citationModal.source = null; }
 function onChatContentClick(e) {
   const cite = e.target.closest('.ks-cite')
   if (cite) {
