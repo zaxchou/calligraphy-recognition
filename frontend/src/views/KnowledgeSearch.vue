@@ -115,7 +115,7 @@
         </div>
       </div>
       <div class="ks-chat-body">
-        <div class="ks-chat-msgs" ref="chatMsgsRef">
+        <div class="ks-chat-msgs" ref="chatMsgsRef" @scroll="onChatScroll">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>小墨</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
           <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]">
             <div class="ks-ccontent">
@@ -125,6 +125,7 @@
             </div>
           </div>
         </div>
+        <button v-if="showScrollBtn" class="ks-scroll-bottom" @click="scrollToBottom"><ChevronDown class="icon-sm" /></button>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
             <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向小墨提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="1" :disabled="chatLoading"></textarea>
@@ -203,7 +204,7 @@ const store = useKnowledgeStore()
 const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), selectedBooks = ref([]), showUploadModal = ref(false), highlightedIndex = ref(-1), reingestingId = ref(null), searchInputRef = ref(null), activeMode = ref('search'), activeResult = ref(null), rightPanelOpen = ref(false), panelTab = ref('outline'), pdfUrl = ref('')
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
-const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true), citationSource = ref(null)
+const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true), citationSource = ref(null), showScrollBtn = ref(false)
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
 function cleanLatex(s){return(s||'').replace(/\$[^$]*\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
@@ -396,6 +397,8 @@ async function sendChat(msg) {
   }
 }
 function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='auto';chatInputRef.value.style.height=Math.min(chatInputRef.value.scrollHeight,120)+'px'}}
+function onChatScroll(){const el=chatMsgsRef.value;if(!el)return;showScrollBtn.value=el.scrollHeight-el.scrollTop-el.clientHeight>200}
+function scrollToBottom(){if(chatMsgsRef.value)chatMsgsRef.value.scrollTo({top:chatMsgsRef.value.scrollHeight,behavior:'smooth'})}
 // Chat sidebar actions
 async function startNewChat(){chatMessages.value=[];chatStore.startNewSession()}
 async function selectSession(id){chatMessages.value=[];chatStore.setCurrentSession(id);chatLoading.value=true;try{const msgs=await chatStore.fetchMessages(id);chatMessages.value=msgs.map(m=>({role:m.role,content:m.content,sources:m.sources||null}))}catch{}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
@@ -506,7 +509,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 
 /* ── ChatGPT-style: 全屏 fixed 布局 ── */
 .ks-chat-shell{position:fixed;inset:0;z-index:9999;display:flex;background:#fafaf8;overflow:hidden}
-.ks-chat-main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
+.ks-chat-main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
 .ks-chat-topbar{display:flex;align-items:center;gap:8px;padding:0 20px;height:48px;border-bottom:1px solid #e8e6dc;background:#fff;flex-shrink:0}
 .ks-sidebar-toggle{border:none;background:transparent;color:#999;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;transition:all 0.15s}
 .ks-sidebar-toggle:hover{background:#f5f2eb;color:#3d3d3a}
@@ -521,12 +524,14 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-back-btn:hover{background:#e8e4d8;color:#141413}
 
 /* ── Chat body ── */
-.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:860px;width:100%;margin:0 auto;padding:0 24px}
+.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:860px;width:100%;margin:0 auto;padding:0 24px;position:relative}
 .ks-chat-msgs{flex:1;overflow-y:auto;padding:20px 0;scroll-behavior:smooth}
 .ks-chat-msgs::-webkit-scrollbar{width:6px}
 .ks-chat-msgs::-webkit-scrollbar-track{background:transparent}
 .ks-chat-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
 .ks-chat-msgs::-webkit-scrollbar-thumb:hover{background:#c0bbb3}
+.ks-scroll-bottom{position:absolute;bottom:80px;right:32px;width:36px;height:36px;border-radius:50%;border:1px solid #d8d4cc;background:#fff;color:#5e5d59;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s;z-index:10}
+.ks-scroll-bottom:hover{background:#f5f2eb;border-color:#c96442;color:#c96442}
 
 /* ── Welcome ── */
 .ks-chat-welcome{text-align:center;padding:40px 16px;margin-top:10vh}
@@ -542,7 +547,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.assistant{background:#fff;padding:14px 20px;border-radius:10px;margin-bottom:2px}
 .ks-cmsg.user{display:flex;justify-content:flex-end;padding:6px 0}
-.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:18px 18px 4px 18px;padding:9px 14px;display:inline-block;max-width:85%;font-size:14px;line-height:1.45;color:#1a1a1a}
+.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:18px 18px 4px 18px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;line-height:1.45;color:#1a1a1a;word-break:break-word;white-space:pre-wrap}
 .ks-cmsg.assistant .ks-ctext{font-size:14px;line-height:1.5;color:#1a1a1a;padding:0}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}

@@ -121,8 +121,8 @@
       <router-view />
     </main>
 
-    <!-- 全局浮动聊天窗（登录用户可见，readonly 模式隐藏） -->
-    <ChatFloat v-if="siteConfig.readonly !== 'true'" />
+    <!-- 全局浮动聊天窗（登录用户可见，readonly 模式隐藏，知识库小墨模式内隐藏） -->
+    <ChatFloat v-if="siteConfig.readonly !== 'true' && !$route.path.startsWith('/knowledge')" />
 
     <!-- 底部（annotate 页面隐藏） -->
     <footer v-if="!$route.path.startsWith('/annotate')" class="main-footer">
