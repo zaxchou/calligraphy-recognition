@@ -111,7 +111,6 @@
         <span class="ks-chat-title">小墨</span>
         <div class="ks-chat-topbar-right">
           <button class="ks-back-btn" @click="goCentered"><ChevronLeft class="icon-xs" /> 返回搜索</button>
-          <button :class="['ks-mode-pill-sm',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button>
           <button class="ks-mode-pill-sm ks-mode-pill-icon-sm" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
         </div>
       </div>
@@ -236,7 +235,7 @@ function onChatContentClick(e) {
   }
 }
 function closeCitation(){citationSource.value=null}
-function chatLink(url){if(!url)return'';const m=url.match(/\/tiba\/[a-f0-9-]+/);if(m)return'#'+m[0];const a=url.match(/\/artist\/[^)\s]+/);if(a)return'#'+a[0];return url.startsWith('/')?'#'+url:url}
+function chatLink(url){if(!url)return'';const m=url.match(/\/tiba\/[a-f0-9-]{8,}/);if(m)return'#'+m[0];const a=url.match(/\/artist\/[^)\s]+/);if(a)return'#'+a[0];return url.startsWith('/')?'#'+url:url}
 function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite" data-idx="$1">[$1]</sup>')}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function renderMd(t, l) {
@@ -252,12 +251,12 @@ function renderMd(t, l) {
   h = h.replace(/^> (.+)$/gm, '<blockquote class="ks-md-quote">$1</blockquote>')
   // Markdown 链接 [text](url) — /tiba/xxx 和 /artist/xxx 转为 Vue Router hash 格式
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-    // 提取路径：支持完整URL（http://xxx/tiba/yyy）和相对路径（/tiba/yyy）
-    const tibaMatch = url.match(/\/tiba\/[a-f0-9-]+/)
+    const tibaMatch = url.match(/\/tiba\/[a-f0-9-]{8,}/)
     const artistMatch = url.match(/\/artist\/[^)\s]+/)
     let href = url
     if (tibaMatch) href = '#' + tibaMatch[0]
     else if (artistMatch) href = '#' + artistMatch[0]
+    else if (url.startsWith('/')) href = '#' + url
     return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`
   })
   // 行内格式

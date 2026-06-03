@@ -103,7 +103,7 @@ function autoResize() {
 
 function chatLink(url) {
   if (!url) return ''
-  const t = url.match(/\/tiba\/[a-f0-9-]+/)
+  const t = url.match(/\/tiba\/[a-f0-9-]{8,}/)
   if (t) return '#' + t[0]
   const a = url.match(/\/artist\/[^)\s]+/)
   if (a) return '#' + a[0]
@@ -133,12 +133,14 @@ function renderMd(t) {
   h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
   h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  // Markdown 链接 [text](url) — 提取 /tiba/UUID 或 /artist/名 路径转为 hash 格式
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-    const t2 = url.match(/\/tiba\/[a-f0-9-]+/)
-    const a2 = url.match(/\/artist\/[^)\s]+/)
+    const tibaMatch = url.match(/\/tiba\/[a-f0-9-]{8,}/)
+    const artistMatch = url.match(/\/artist\/[^)\s]+/)
     let href = url
-    if (t2) href = '#' + t2[0]
-    else if (a2) href = '#' + a2[0]
+    if (tibaMatch) href = '#' + tibaMatch[0]
+    else if (artistMatch) href = '#' + artistMatch[0]
+    else if (url.startsWith('/')) href = '#' + url
     return `<a href="${href}" target="_blank">${text}</a>`
   })
   h = h.replace(/^- (.+)$/gm, '<li>$1</li>')
