@@ -98,10 +98,6 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     # 合并后按分数排序（确保 DB 实体和文本结果公平竞争 top-8 位置）
     filtered.sort(key=lambda r: r.get("score", 0), reverse=True)
     return filtered
-    except Exception as e:
-        logger.warning("Chat DB search failed: %s", e)
-
-    return filtered
 
 
 def _build_rag_context(
@@ -331,10 +327,34 @@ async def chat_stream(
         query[:50], len(total_text), llm_elapsed, time.time() - t0,
     )
 
-    # ⑤ 构建来源列表（先 text 事件发引用卡片，再发 done）
+    # ⑤ 构建来源列表
     sources = []
     for i, r in enumerate(search_results[:8], 1):
         payload = r.get("payload", {})
+        source = payload.get("source", "")
+
+        # DB 实体（画作/艺术家/印章）
+        if source == "database":
+            entity_type = payload.get("type", "")
+            name = payload.get("name", "") or payload.get("title", "")
+            url = payload.get("url", "")
+            artist = payload.get("artist", "")
+            type_label = {"artwork": "画作", "artist": "艺术家", "seal": "印章"}.get(entity_type, "实体")
+            slot = {
+                "index": i,
+                "book": f"{type_label}: {name}" + (f" — {artist}" if artist else ""),
+                "page": 0,
+                "chapter": "",
+                "snippet": (payload.get("content", "") or "")[:120],
+                "_source": "database",
+                "type": entity_type,
+                "url": url,
+                "name": name,
+            }
+            sources.append(slot)
+            continue
+
+        # 书本片段
         metadata = payload.get("metadata") or {}
         book_title = ""
         if isinstance(metadata, dict):
@@ -353,12 +373,6 @@ async def chat_stream(
             "chapter": chapter.strip() if chapter and chapter.strip() != "正文" else "",
             "snippet": snippet,
         }
-        src = payload.get("_source", "")
-        if src == "database":
-            slot["_source"] = "database"
-            slot["type"] = payload.get("type", "")
-            slot["url"] = payload.get("url", "")
-            slot["name"] = payload.get("name", "") or payload.get("title", "")
         sources.append(slot)
 
     yield _sse_event("done", {
