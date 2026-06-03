@@ -42,11 +42,12 @@ SYSTEM_PROMPT = """你是一位精通中国画的专业知识助手，专注于�
 
 规则:
 1. 基于提供的知识库内容回答问题，引用原文时标注来源编号如 [1]、[2]
-2. 如果搜索结果足以回答，给出深入、结构化的解释，控制在 300-600 字
-3. 如果搜索结果不足以完整回答，在已有内容基础上诚实说明知识库中还缺少哪些方面
-4. 使用专业但易懂的语言，体现中国画的专业深度
-5. 不要编造搜索结果中没有的信息
-6. 使用 Markdown 格式化回答（标题、列表、加粗等），让回答清晰易读"""
+2. 如果搜索结果中有画作/艺术家/印章的实体信息（标记为【画作】【艺术家】【印章】），请直接提供它们的链接地址
+3. 如果搜索结果足以回答，给出深入、结构化的解释，控制在 300-600 字
+4. 如果搜索结果不足以完整回答，在已有内容基础上诚实说明知识库中还缺少哪些方面
+5. 使用专业但易懂的语言，体现中国画的专业深度
+6. 不要编造搜索结果中没有的信息
+7. 使用 Markdown 格式化回答（标题、列表、加粗等），让回答清晰易读"""
 
 
 async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -94,6 +95,12 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.warning("Chat DB search failed: %s", e)
 
+    # 合并后按分数排序（确保 DB 实体和文本结果公平竞争 top-8 位置）
+    filtered.sort(key=lambda r: r.get("score", 0), reverse=True)
+    return filtered
+    except Exception as e:
+        logger.warning("Chat DB search failed: %s", e)
+
     return filtered
 
 
@@ -102,12 +109,34 @@ def _build_rag_context(
     max_items: int = 8,
     max_chars_per_item: int = 500,
 ) -> str:
-    """将搜索结果构建为 RAG 上下文"""
+    """将搜索结果构建为 RAG 上下文，支持 DB 实体和书本片段"""
     parts = []
     for i, r in enumerate(search_results[:max_items], 1):
         payload = r.get("payload", {})
+        source = payload.get("source", "")
 
-        # 书名
+        # DB 实体（画作/艺术家/印章）
+        if source == "database":
+            entity_type = payload.get("type", "")
+            name = payload.get("name", "") or payload.get("title", "")
+            url = payload.get("url", "")
+            artist = payload.get("artist", "")
+            year = payload.get("year", "")
+            content = payload.get("content", "")[:max_chars_per_item]
+
+            type_label = {"artwork": "画作", "artist": "艺术家", "seal": "印章"}.get(entity_type, "实体")
+            part = f"[{i}] 【{type_label}】{name}"
+            if artist:
+                part += f" — {artist}"
+            if year:
+                part += f" ({year}年)"
+            if url:
+                part += f"\n链接: {url}"
+            part += f"\n{content}"
+            parts.append(part)
+            continue
+
+        # 书本片段
         metadata = payload.get("metadata") or {}
         book_title = ""
         if isinstance(metadata, dict):
