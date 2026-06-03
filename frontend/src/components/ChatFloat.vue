@@ -1,0 +1,278 @@
+<template>
+  <div class="cf-shell" v-if="authStore.isLoggedIn">
+    <!-- 浮动按钮 -->
+    <button v-if="!open" class="cf-fab" @click="openChat" title="写意画专家">
+      <MessageCircle class="cf-fab-icon" />
+    </button>
+
+    <!-- 聊天面板 -->
+    <transition name="cf-panel">
+      <div v-if="open" class="cf-panel">
+        <div class="cf-hdr">
+          <span class="cf-hdr-title">写意画专家</span>
+          <button class="cf-hdr-btn" @click="open=false"><X class="icon-sm" /></button>
+        </div>
+        <div class="cf-body">
+          <div class="cf-msgs" ref="msgsRef">
+            <div v-if="messages.length===0" class="cf-welcome">
+              <Sparkles class="cf-welcome-icon" />
+              <p>有任何关于中国画的问题，随时问我</p>
+              <div class="cf-sugs">
+                <button v-for="s in suggestions" :key="s" class="cf-sug" @click="send(s)">{{ s }}</button>
+              </div>
+            </div>
+            <div v-for="(m,i) in messages" :key="m.id||i" :class="['cf-msg',m.role]">
+              <div v-if="m.thinking" class="cf-thinking"><Sparkles class="icon-xs" />思考中...</div>
+              <div v-else class="cf-text" v-html="renderMd(m.content)" @click="onContentClick"></div>
+              <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="cf-sources">
+                <div v-for="s in m.sources" :key="s.index" class="cf-src" @click="citationSource=s">
+                  <span class="cf-src-idx">[{{ s.index }}]</span>
+                  <span class="cf-src-book">{{ s.book }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cf-input-row">
+            <textarea ref="inputRef" v-model="input" class="cf-ta" placeholder="问点什么..." @keydown.enter.exact.prevent="send()" @input="autoResize" rows="1" :disabled="loading"></textarea>
+            <button class="cf-send" @click="send()" :disabled="!input.trim()||loading">
+              <Send v-if="!loading" class="icon-sm" /><Loader2 v-else class="icon-sm spin" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 引用弹窗 -->
+    <Teleport to="body">
+      <div v-if="citationSource" class="cf-cite-overlay" @click="citationSource=null">
+        <div class="cf-cite-modal" @click.stop>
+          <div class="cf-cite-hd">
+            <span class="cf-cite-idx">[{{ citationSource.index }}]</span>
+            <span class="cf-cite-title">{{ citationSource.book }}</span>
+            <button class="cf-cite-close" @click="citationSource=null"><X class="icon-sm" /></button>
+          </div>
+          <div class="cf-cite-body">
+            <div v-if="citationSource._source==='database'" class="cf-cite-db">
+              <span class="cf-cite-type">{{ {artwork:'画作',artist:'艺术家',seal:'印章'}[citationSource.type]||'实体' }}</span>
+              <a v-if="citationSource.url" :href="chatLink(citationSource.url)" class="cf-cite-go">查看详情 →</a>
+            </div>
+            <div v-else class="cf-cite-book">
+              <span v-if="citationSource.book">《{{ citationSource.book }}》</span>
+              <span v-if="citationSource.page">第{{ citationSource.page }}页</span>
+            </div>
+            <p v-if="citationSource.snippet" class="cf-cite-snippet">"{{ citationSource.snippet }}"</p>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup>
+import { ref, nextTick } from 'vue'
+import { MessageCircle, X, Sparkles, Send, Loader2 } from 'lucide-vue-next'
+import { useAuthStore } from '../stores/authStore'
+
+const authStore = useAuthStore()
+const open = ref(false)
+const messages = ref([])
+const input = ref('')
+const loading = ref(false)
+const msgsRef = ref(null)
+const inputRef = ref(null)
+const sessionId = ref(null)
+const citationSource = ref(null)
+
+const suggestions = [
+  '写意画中的气韵生动是什么意思？',
+  '潘天寿的构图法则有哪些？',
+  '李鱓最消极的一幅画是哪幅？',
+]
+
+function openChat() {
+  open.value = true
+  nextTick(() => inputRef.value?.focus())
+}
+
+function autoResize() {
+  if (inputRef.value) {
+    inputRef.value.style.height = 'auto'
+    inputRef.value.style.height = Math.min(inputRef.value.scrollHeight, 80) + 'px'
+  }
+}
+
+function chatLink(url) {
+  if (!url) return ''
+  const t = url.match(/\/tiba\/[a-f0-9-]+/)
+  if (t) return '#' + t[0]
+  const a = url.match(/\/artist\/[^)\s]+/)
+  if (a) return '#' + a[0]
+  return url.startsWith('/') ? '#' + url : url
+}
+
+function onContentClick(e) {
+  const cite = e.target.closest('.ks-cite')
+  if (!cite) return
+  const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g, ''))
+  if (!idx) return
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const m = messages.value[i]
+    if (m.role === 'assistant' && m.sources) {
+      const s = m.sources.find(x => x.index === idx)
+      if (s) { citationSource.value = s; return }
+    }
+  }
+}
+
+function renderMd(t) {
+  if (!t) return ''
+  let h = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>')
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>')
+  h = h.replace(/^---$/gm, '<hr>')
+  h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    const t2 = url.match(/\/tiba\/[a-f0-9-]+/)
+    const a2 = url.match(/\/artist\/[^)\s]+/)
+    let href = url
+    if (t2) href = '#' + t2[0]
+    else if (a2) href = '#' + a2[0]
+    return `<a href="${href}" target="_blank">${text}</a>`
+  })
+  h = h.replace(/^- (.+)$/gm, '<li>$1</li>')
+  h = h.replace(/\[(\d+)\]/g, '<sup class="ks-cite" data-idx="$1">[$1]</sup>')
+  h = h.replace(/\n/g, '<br>')
+  return h
+}
+
+async function send(msg) {
+  const t = (msg || input.value).trim()
+  if (!t || loading.value) return
+  if (!msg) input.value = ''
+
+  messages.value.push({ role: 'user', content: t })
+  messages.value.push({ role: 'assistant', content: '', thinking: true, loading: true })
+  loading.value = true
+  nextTick(() => { if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight })
+
+  try {
+    const body = { prompt: t }
+    if (sessionId.value) body.session_id = sessionId.value
+
+    const r = await fetch('/api/v1/knowledge/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
+      body: JSON.stringify(body),
+    })
+
+    const reader = r.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let textEvent = false
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (line.startsWith('event: ')) { textEvent = line.slice(7).trim() === 'text'; continue }
+        if (line.startsWith('data: ')) {
+          try {
+            const d = JSON.parse(line.slice(6))
+            const last = messages.value[messages.value.length - 1]
+            if (!last || last.role !== 'assistant') continue
+            if (last.thinking) { last.thinking = false; last.content = '' }
+            if (textEvent) { last.content += d.content || '' }
+            else if (d.sources) { last.sources = d.sources }
+            if (d.session_id && !sessionId.value) sessionId.value = d.session_id
+          } catch {}
+        }
+      }
+    }
+
+    const last = messages.value[messages.value.length - 1]
+    if (last && last.role === 'assistant') {
+      last.thinking = false; last.loading = false
+      if (!last.content) last.content = '未找到相关信息'
+    }
+  } catch {
+    const last = messages.value[messages.value.length - 1]
+    if (last && last.role === 'assistant') {
+      last.thinking = false; last.loading = false; last.content = '查询失败，请重试'
+    }
+  } finally {
+    loading.value = false
+    nextTick(() => { if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight })
+  }
+}
+</script>
+
+<style scoped>
+.cf-shell{position:fixed;bottom:20px;right:20px;z-index:99998}
+.cf-fab{width:52px;height:52px;border-radius:50%;border:none;background:#c96442;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(201,100,66,0.35);transition:all 0.2s}
+.cf-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(201,100,66,0.45)}
+.cf-fab-icon{width:22px;height:22px}
+.cf-panel-enter-active{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+.cf-panel-leave-active{transition:all 0.2s ease}
+.cf-panel-enter-from,.cf-panel-leave-to{opacity:0;transform:translateY(16px) scale(0.95)}
+.cf-panel{position:fixed;bottom:20px;right:20px;width:400px;height:560px;background:#fafaf8;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.18);display:flex;flex-direction:column;overflow:hidden;z-index:99999}
+.cf-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e8e6dc;background:#fff}
+.cf-hdr-title{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:600;color:#141413}
+.cf-hdr-btn{border:none;background:transparent;color:#999;cursor:pointer;padding:4px;border-radius:6px}
+.cf-hdr-btn:hover{background:#f5f2eb;color:#3d3d3a}
+.cf-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.cf-msgs{flex:1;overflow-y:auto;padding:12px 16px}
+.cf-msgs::-webkit-scrollbar{width:4px}
+.cf-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:2px}
+.cf-welcome{text-align:center;padding:32px 16px;color:#8a877e}
+.cf-welcome-icon{color:#c96442;width:28px;height:28px;margin-bottom:8px}
+.cf-welcome p{font-size:14px;margin:0 0 12px}
+.cf-sugs{display:flex;flex-direction:column;gap:6px;align-items:center}
+.cf-sug{border:1px solid #d8d4cc;background:#fff;padding:6px 12px;border-radius:16px;font-size:12px;color:#5e5d59;cursor:pointer;transition:all 0.15s}
+.cf-sug:hover{border-color:#c96442;color:#c96442}
+.cf-msg{padding:6px 0}
+.cf-msg.assistant{background:#fff;padding:8px 12px;border-radius:8px;margin-bottom:4px}
+.cf-msg.user{display:flex;justify-content:flex-end}
+.cf-msg.user .cf-text{background:#e8e4dc;border-radius:16px 16px 4px 16px;padding:8px 12px;display:inline-block;max-width:80%;font-size:14px;line-height:1.45;color:#1a1a1a}
+.cf-msg.assistant .cf-text{font-size:14px;line-height:1.5;color:#1a1a1a}
+.cf-msg.assistant .cf-text :deep(strong){color:#141413;font-weight:600}
+.cf-msg.assistant .cf-text :deep(h2),.cf-msg.assistant .cf-text :deep(h3){margin:8px 0 2px;color:#141413;font-family:'Noto Serif SC',serif;font-size:14px}
+.cf-msg.assistant .cf-text :deep(ul),.cf-msg.assistant .cf-text :deep(ol){margin:2px 0;padding-left:18px}
+.cf-msg.assistant .cf-text :deep(li){margin:1px 0;line-height:1.5}
+.cf-msg.assistant .cf-text :deep(code){background:#f0eee6;padding:1px 4px;border-radius:3px;font-size:12px}
+.cf-msg.assistant .cf-text :deep(blockquote){margin:4px 0;padding:4px 10px;border-left:3px solid #c96442;background:#faf9f7;font-style:italic}
+.cf-msg.assistant .cf-text :deep(a){color:#c96442}
+.cf-thinking{font-size:13px;color:#8a877e;padding:4px 0;display:flex;align-items:center;gap:4px;animation:cf-pulse 1.5s ease-in-out infinite}
+@keyframes cf-pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.cf-sources{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+.cf-src{display:flex;align-items:center;gap:3px;padding:2px 6px;background:#f5f2eb;border-radius:4px;font-size:11px;cursor:pointer;transition:background 0.15s}
+.cf-src:hover{background:#ece9e0}
+.cf-src-idx{color:#c96442;font-weight:600}
+.cf-src-book{color:#5e5d59}
+.cf-input-row{display:flex;align-items:flex-end;gap:6px;padding:8px 12px;border-top:1px solid #e8e6dc;background:#fff}
+.cf-ta{flex:1;border:1px solid #d8d4cc;border-radius:12px;padding:6px 10px;font-size:13px;line-height:1.4;resize:none;outline:none;background:#fff;font-family:inherit;max-height:80px}
+.cf-ta:focus{border-color:#c96442}
+.cf-ta::placeholder{color:#b0aca2}
+.cf-send{border:none;background:#141413;color:#fff;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.cf-send:disabled{opacity:0.3;cursor:not-allowed}
+.spin{animation:cf-spin 1s linear infinite}
+@keyframes cf-spin{to{transform:rotate(360deg)}}
+
+/* 引用弹窗 */
+.cf-cite-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center}
+.cf-cite-modal{background:#fff;border-radius:12px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.15);overflow:hidden}
+.cf-cite-hd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #ece9e0}
+.cf-cite-idx{color:#c96442;font-weight:700;font-size:14px}
+.cf-cite-title{font-size:14px;font-weight:600;color:#141413;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-cite-close{border:none;background:transparent;color:#999;cursor:pointer;padding:4px;border-radius:4px}
+.cf-cite-body{padding:14px}
+.cf-cite-db{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cf-cite-type{background:#fef0e8;color:#c96442;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600}
+.cf-cite-go{color:#c96442;font-size:12px;text-decoration:none;font-weight:600}
+.cf-cite-book{font-size:13px;color:#5e5d59;margin-bottom:8px}
+.cf-cite-snippet{font-size:13px;line-height:1.6;color:#3d3d3a;background:#faf9f7;padding:10px;border-radius:6px;border-left:3px solid #c96442;margin:0}
+</style>

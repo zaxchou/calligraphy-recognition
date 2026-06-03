@@ -105,17 +105,23 @@ def _get_artist_context(artist_name: str, intent: str) -> str:
     db = SessionLocal()
     parts = []
     try:
-        # 基本统计
+        # 基本统计（不限 year IS NOT NULL，避免漏掉 PDF 索引的作品）
         row = db.execute(
-            sql_text("SELECT COUNT(*), MIN(year), MAX(year) FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL"),
+            sql_text("SELECT COUNT(*), MIN(year), MAX(year) FROM tubi_analyses WHERE artist = :a"),
             {"a": artist_name},
         ).fetchone()
         if row and row[0]:
-            parts.append(f"【{artist_name}作品统计】共 {row[0]} 幅，创作年份 {row[1]}-{row[2]}")
+            year_info = f"，创作年份 {row[1]}-{row[2]}" if row[1] and row[2] else ""
+            parts.append(f"【{artist_name}作品统计】共 {row[0]} 幅{year_info}")
 
-        # 动态年份段：根据画家实际年份范围计算三等分
+        # 动态年份段：只在有足够年份数据时计算
         if intent in ("temporal", "aggregate") and row and row[0]:
-            min_year, max_year = int(row[1]), int(row[2])
+            year_row = db.execute(
+                sql_text("SELECT COUNT(*), MIN(year), MAX(year) FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL"),
+                {"a": artist_name},
+            ).fetchone()
+            if year_row and year_row[0] >= 5:
+                min_year, max_year = int(year_row[1]), int(year_row[2])
             span = max_year - min_year
             if span > 10:
                 t1 = min_year + span // 3

@@ -121,6 +121,9 @@
       <router-view />
     </main>
 
+    <!-- 全局浮动聊天窗（登录用户可见，readonly 模式隐藏） -->
+    <ChatFloat v-if="siteConfig.readonly !== 'true'" />
+
     <!-- 底部（annotate 页面隐藏） -->
     <footer v-if="!$route.path.startsWith('/annotate')" class="main-footer">
       <div class="footer-content">
@@ -144,6 +147,7 @@ import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
 import { useI18n } from 'vue-i18n'
 import NotificationBell from './components/NotificationBell.vue'
+import ChatFloat from './components/ChatFloat.vue'
 import { siteConfig } from './config'
 
 const router = useRouter()
