@@ -1,4 +1,4 @@
-"""
+﻿"""
 知识库 RAG 聊天 — DeepSeek Flash 流式 SSE
 
 替代 bailian_service.py，用 Qdrant 向量搜索 + DeepSeek Flash 实现快速流式问答。
@@ -315,13 +315,20 @@ async def chat_stream(
         chapter = payload.get("chapter", "") or payload.get("chapter_title", "")
         snippet = (payload.get("content", "") or "")[:120]
 
-        sources.append({
-            "index": i,
-            "book": book_title,
-            "page": page,
-            "chapter": chapter.strip() if chapter and chapter.strip() != "正文" else "",
-            "snippet": snippet,
-        })
+        slot = {
+                "index": i,
+                "book": book_title,
+                "page": page,
+                "chapter": chapter.strip() if chapter and chapter.strip() != "正文" else "",
+                "snippet": snippet,
+            }
+        src = payload.get("_source", "")
+        if src == "database":
+            slot["_source"] = "database"
+            slot["type"] = payload.get("type", "")
+            slot["url"] = payload.get("url", "")
+            slot["name"] = payload.get("name", "") or payload.get("title", "")
+        sources.append(slot)
 
     yield _sse_event("done", {
         "sources": sources,
