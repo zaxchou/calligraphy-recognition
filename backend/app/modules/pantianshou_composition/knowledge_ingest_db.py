@@ -10,7 +10,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DB_PATH = os.path.join(BASE_DIR, "data", "calligraphy.db")
 
 def get_db():
-    db = sqlite3.connect(DB_PATH)
+    db = sqlite3.connect('file:Z:/molin-wiki/backend/data/calligraphy.db?mode=ro', uri=True)
     db.row_factory = sqlite3.Row
     return db
 
@@ -118,7 +118,7 @@ def main():
             eid, text = build_artist_text(row)
             if text.strip():
                 entities.append(("artist", eid, {
-                    "type": "artist", "entity_id": eid, "name": row["name"],
+                    "type": "artist", "entity_id": eid, "name": row["name"], "url": f"/artist/{row["name"]}",
                     "content": text, "source": "database",
                 }, text))
 
@@ -130,7 +130,7 @@ def main():
             if text.strip():
                 row_d = dict(row)
                 entities.append(("artwork", eid, {
-                    "type": "artwork", "entity_id": eid,
+                    "type": "artwork", "entity_id": eid, "url": f"/tiba/{row_d.get("image_id", "")}", "image_id": row_d.get("image_id", ""),
                     "artist": row_d.get("artist", ""),
                     "title": row_d.get("title", ""), "year": row_d.get("year"),
                     "content": text, "source": "database",
@@ -145,7 +145,7 @@ def main():
             eid, text = build_seal_text(row)
             if text.strip():
                 entities.append(("seal", eid, {
-                    "type": "seal", "entity_id": eid, "name": row["name"],
+                    "type": "seal", "entity_id": eid, "name": row["name"], "url": f"/admin/seals",
                     "content": text, "source": "database",
                 }, text))
 
