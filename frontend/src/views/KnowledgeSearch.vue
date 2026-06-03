@@ -108,6 +108,7 @@
           <PanelLeft v-if="sidebarOpen" class="icon-sm" />
           <PanelLeftOpen v-else class="icon-sm" />
         </button>
+        <button class="ks-back-btn" @click="goCentered"><ChevronLeft class="icon-xs" /> 返回搜索</button>
         <span class="ks-chat-title">写意画专家助手</span>
         <div class="ks-chat-topbar-right">
           <button :class="['ks-mode-pill-sm',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button>
@@ -502,7 +503,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 /* ── ChatGPT-style: 全屏 fixed 布局 ── */
 .ks-chat-shell{position:fixed;inset:0;z-index:9999;display:flex;background:#fafaf8;overflow:hidden}
 .ks-chat-main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
-.ks-chat-topbar{display:flex;align-items:center;gap:8px;padding:0 16px;height:52px;border-bottom:1px solid #e8e6dc;background:#fff;flex-shrink:0}
+.ks-chat-topbar{display:flex;align-items:center;gap:8px;padding:0 20px;height:48px;border-bottom:1px solid #e8e6dc;background:#fff;flex-shrink:0}
 .ks-sidebar-toggle{border:none;background:transparent;color:#999;cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;transition:all 0.15s}
 .ks-sidebar-toggle:hover{background:#f5f2eb;color:#3d3d3a}
 .ks-chat-title{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:600;color:#141413;flex:1}
@@ -512,10 +513,12 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-mode-pill-sm.active{background:#c96442;color:#fff;border-color:#c96442}
 .ks-mode-pill-icon-sm{padding:4px 8px}
 .ks-sidebar-toggle .icon-sm,.ks-mode-pill-sm .icon-xs{width:16px;height:16px;flex-shrink:0}
+.ks-back-btn{border:none;background:#f5f2eb;color:#5e5d59;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s}
+.ks-back-btn:hover{background:#e8e4d8;color:#141413}
 
 /* ── Chat body ── */
-.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:900px;width:100%;margin:0 auto;padding:0 16px}
-.ks-chat-msgs{flex:1;overflow-y:auto;padding:24px 0;scroll-behavior:smooth}
+.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:860px;width:100%;margin:0 auto;padding:0 24px}
+.ks-chat-msgs{flex:1;overflow-y:auto;padding:20px 0;scroll-behavior:smooth}
 .ks-chat-msgs::-webkit-scrollbar{width:6px}
 .ks-chat-msgs::-webkit-scrollbar-track{background:transparent}
 .ks-chat-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
@@ -531,24 +534,24 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
 
 /* ── Message bubbles — DeepSeek style ── */
-.ks-cmsg{padding:16px 24px;max-width:860px;margin:0 auto;animation:ks-msg-in 0.25s ease both}
-@keyframes ks-msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.ks-cmsg.assistant{background:#fff}
-.ks-cmsg.user{display:flex;justify-content:flex-end}
-.ks-cmsg.user .ks-ctext{background:#f5f0ea;border:1px solid #e8e0d4;border-radius:16px 16px 4px 16px;padding:12px 18px;display:inline-block;max-width:70%;font-size:15px;line-height:1.6;color:#2c2c2c}
-.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.8;color:#1a1a1a;padding:0}
+.ks-cmsg{padding:12px 0;max-width:860px;margin:0 auto;animation:ks-msg-in 0.2s ease both}
+@keyframes ks-msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.ks-cmsg.assistant{background:#fff;padding:16px 20px;border-radius:12px;margin-bottom:4px}
+.ks-cmsg.user{display:flex;justify-content:flex-end;padding:8px 0}
+.ks-cmsg.user .ks-ctext{background:#f5f0ea;border:1px solid #e8e0d4;border-radius:18px 18px 4px 18px;padding:10px 16px;display:inline-block;max-width:65%;font-size:15px;line-height:1.5;color:#2c2c2c}
+.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.55;color:#1a1a1a;padding:0}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
-.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:16px 0 8px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
-.ks-ctext :deep(h1){font-size:20px}.ks-ctext :deep(h2){font-size:18px}.ks-ctext :deep(h3){font-size:16px}
-.ks-ctext :deep(p){margin:0 0 10px}
+.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:12px 0 4px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
+.ks-ctext :deep(h1){font-size:18px}.ks-ctext :deep(h2){font-size:16px}.ks-ctext :deep(h3){font-size:15px}
+.ks-ctext :deep(p){margin:0 0 6px}
 .ks-ctext :deep(strong){color:#141413;font-weight:600}
-.ks-ctext :deep(blockquote){margin:8px 0;padding:8px 14px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
-.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:8px 0;padding-left:22px}
-.ks-ctext :deep(li){margin:4px 0;line-height:1.7}
+.ks-ctext :deep(blockquote){margin:6px 0;padding:6px 12px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
+.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:4px 0;padding-left:20px}
+.ks-ctext :deep(li){margin:2px 0;line-height:1.55}
 .ks-ctext :deep(li)::marker{color:#c96442}
 .ks-ctext :deep(code){background:#f0eee6;padding:2px 6px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
-.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:12px 0}
+.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:10px 0}
 .ks-ctext :deep(a){color:#c96442;text-decoration:underline}
 
 /* ── Sources card ── */
