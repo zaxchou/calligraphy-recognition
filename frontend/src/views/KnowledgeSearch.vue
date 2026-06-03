@@ -248,6 +248,12 @@ function renderMd(t, l) {
   h = h.replace(/^---$/gm, '<hr class="ks-md-hr">')
   // 引用
   h = h.replace(/^> (.+)$/gm, '<blockquote class="ks-md-quote">$1</blockquote>')
+  // Markdown 链接 [text](url) — /tiba/xxx 和 /artist/xxx 转为 Vue Router hash 格式
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    let href = url
+    if (url.startsWith('/tiba/') || url.startsWith('/artist/')) href = '#' + url
+    return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`
+  })
   // 行内格式
   h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   h = h.replace(/`([^`\n]+)`/g, '<code class="ks-md-inline-code">$1</code>')
@@ -508,8 +514,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-sidebar-toggle .icon-sm,.ks-mode-pill-sm .icon-xs{width:16px;height:16px;flex-shrink:0}
 
 /* ── Chat body ── */
-.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:860px;width:100%;margin:0 auto}
-.ks-chat-msgs{flex:1;overflow-y:auto;padding:16px 0;scroll-behavior:smooth}
+.ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:900px;width:100%;margin:0 auto;padding:0 16px}
+.ks-chat-msgs{flex:1;overflow-y:auto;padding:24px 0;scroll-behavior:smooth}
 .ks-chat-msgs::-webkit-scrollbar{width:6px}
 .ks-chat-msgs::-webkit-scrollbar-track{background:transparent}
 .ks-chat-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
@@ -529,8 +535,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.assistant{background:#fff}
 .ks-cmsg.user{display:flex;justify-content:flex-end}
-.ks-cmsg.user .ks-ctext{background:#f5f0ea;border:1px solid #e8e0d4;border-radius:16px 16px 4px 16px;padding:10px 16px;display:inline-block;max-width:80%;font-size:15px;line-height:1.6;color:#2c2c2c}
-.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.75;color:#1a1a1a;padding:0}
+.ks-cmsg.user .ks-ctext{background:#f5f0ea;border:1px solid #e8e0d4;border-radius:16px 16px 4px 16px;padding:12px 18px;display:inline-block;max-width:70%;font-size:15px;line-height:1.6;color:#2c2c2c}
+.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.8;color:#1a1a1a;padding:0}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
 .ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:16px 0 8px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
