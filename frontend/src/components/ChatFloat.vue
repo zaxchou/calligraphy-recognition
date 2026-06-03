@@ -167,6 +167,11 @@ async function send(msg) {
       body: JSON.stringify(body),
     })
 
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '')
+      throw new Error(`HTTP ${r.status}: ${errText.slice(0, 100)}`)
+    }
+
     const reader = r.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
@@ -199,7 +204,8 @@ async function send(msg) {
       last.thinking = false; last.loading = false
       if (!last.content) last.content = '未找到相关信息'
     }
-  } catch {
+  } catch(e) {
+    console.error('[小墨] 发送失败:', e)
     const last = messages.value[messages.value.length - 1]
     if (last && last.role === 'assistant') {
       last.thinking = false; last.loading = false; last.content = '查询失败，请重试'
