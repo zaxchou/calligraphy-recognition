@@ -1,6 +1,5 @@
 ﻿﻿﻿﻿﻿<template>
-<!-- cache-bust: citation popup feature v2 -->
-<div class="ks-root">
+<div class="ks-root" data-chat-v="2">
 
   <transition name="view-switch" mode="out-in">
   <div v-if="centered" key="center" class="ks-center-wrap">
