@@ -13,7 +13,7 @@
       </div>
       <div class="ks-mode-row">
         <button :class="['ks-mode-pill',{active:activeMode==='search'}]" @click="activeMode='search'"><Search class="icon-xs" /> 搜索模式</button>
-        <button v-if="siteConfig.readonly !== 'true' || authStore.isLoggedIn" :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button>
+        <button v-if="siteConfig.readonly !== 'true' || authStore.isLoggedIn" :class="['ks-mode-pill',{active:activeMode==='chat'}]" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 小墨</button>
         <button class="ks-mode-pill ks-mode-pill-icon" @click="switchMode('lib')" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-xs" /></button>
       </div>
       <div class="ks-tags"><span class="ks-tag-label">搜索历史：</span><button v-for="t in store.searchHistory.slice(0,8)" :key="t.id" class="ks-tag" @click="searchByTag(t.query)">{{ t.query }}</button></div>
@@ -28,7 +28,7 @@
       </div>
       <button class="ks-barlib-btn" @click="toggleLib" :class="{active:libOpen}" title="书库管理"><BookOpen class="icon-sm" /></button>
     </header>
-    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button v-if="siteConfig.readonly !== 'true' || authStore.isLoggedIn" :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 专家模式</button></div>
+    <div class="ks-mode-row ks-mode-row-inline"><button :class="['ks-mode-pill',{active:true}]" @click="goCentered"><Search class="icon-xs" /> 搜索模式</button><button v-if="siteConfig.readonly !== 'true' || authStore.isLoggedIn" :class="['ks-mode-pill']" @click="switchMode('chat')"><MessageCircle class="icon-xs" /> 小墨</button></div>
     <div class="ks-body-wrap" :class="{'with-panel':rightPanelOpen}">
       <div class="ks-main">
         <div class="ks-search-panel">
@@ -108,7 +108,7 @@
           <PanelLeft v-if="sidebarOpen" class="icon-sm" />
           <PanelLeftOpen v-else class="icon-sm" />
         </button>
-        <span class="ks-chat-title">写意画专家助手</span>
+        <span class="ks-chat-title">小墨</span>
         <div class="ks-chat-topbar-right">
           <button class="ks-back-btn" @click="goCentered"><ChevronLeft class="icon-xs" /> 返回搜索</button>
           <button :class="['ks-mode-pill-sm',{active:activeMode==='search'}]" @click="goCentered"><Search class="icon-xs" /> 搜索</button>
@@ -117,7 +117,7 @@
       </div>
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
-          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
+          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>小墨</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
           <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]">
             <div class="ks-ccontent">
               <div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div>
@@ -128,7 +128,7 @@
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
-            <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向专家助手提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="1" :disabled="chatLoading"></textarea>
+            <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向小墨提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="1" :disabled="chatLoading"></textarea>
             <button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading">
               <Send v-if="!chatLoading" class="icon-sm" />
               <Loader2 v-else class="icon-sm spin" />
@@ -276,7 +276,7 @@ function renderMd(t, l) {
 
 function switchMode(m){
   if(m==='lib'){toggleLib();return}
-  // 专家模式：未登录时跳转登录页
+  // 小墨：未登录时跳转登录页
   if(m==='chat'){
     if(!authStore.isLoggedIn){
       router.push('/login')

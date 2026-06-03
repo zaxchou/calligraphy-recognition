@@ -1,7 +1,7 @@
 <template>
   <div class="cf-shell" v-if="authStore.isLoggedIn">
     <!-- 浮动按钮 -->
-    <button v-if="!open" class="cf-fab" @click="openChat" title="写意画专家">
+    <button v-if="!open" class="cf-fab" @click="openChat" title="小墨">
       <MessageCircle class="cf-fab-icon" />
     </button>
 
@@ -9,7 +9,7 @@
     <transition name="cf-panel">
       <div v-if="open" class="cf-panel">
         <div class="cf-hdr">
-          <span class="cf-hdr-title">写意画专家</span>
+          <span class="cf-hdr-title">小墨</span>
           <button class="cf-hdr-btn" @click="open=false"><X class="icon-sm" /></button>
         </div>
         <div class="cf-body">
