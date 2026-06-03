@@ -40,24 +40,7 @@
             <div v-if="store.aiSummary.sources?.length" class="ks-sources"><span class="ks-sources-label">参考来源：</span><button v-for="(s,i) in store.aiSummary.sources" :key="i" class="ks-src" @click="scrollToResult(s)">《{{ (s.book||'').replace(/[《》]/g,'') }}》p.{{ s.page||'?' }}</button></div>
         
 
-    <!-- Citation Modal -->
-    <div v-if="citationModal.show" class="citation-overlay" @click="closeCitation">
-      <div class="citation-modal" @click.stop>
-        <div class="citation-modal-header">
-          <span class="citation-modal-title">????</span>
-          <button class="citation-modal-close" @click="closeCitation">&times;</button>
-        </div>
-        <div class="citation-modal-body">
-          <div class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.book }}</span></div>
-          <div v-if="citationModal.source.page" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">?{{ citationModal.source.page }}?</span></div>
-          <div v-if="citationModal.source.chapter" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.chapter }}</span></div>
-          <div v-if="citationModal.source.snippet" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value citation-snippet">{{ citationModal.source.snippet }}</span></div>
-          <div v-if="citationModal.source.url" class="citation-modal-row">
-            <span class="citation-modal-label">??</span>
-            <a :href="'#'+citationModal.source.url" class="citation-modal-link" @click="closeCitation">{{ citationModal.source.name || citationModal.source.book }} &rarr;</a>
-          </div>
-        </div>
-      </div>
+    /div>
     </div>
 
   </div>
@@ -149,7 +132,28 @@
         </div>
       </div>
     </div>
-  </div>
+  <
+
+    <!-- Citation Modal -->
+    <div v-if="citationModal.show" class="citation-overlay" @click="closeCitation">
+      <div class="citation-modal" @click.stop>
+        <div class="citation-modal-header">
+          <span class="citation-modal-title">????</span>
+          <button class="citation-modal-close" @click="closeCitation">&times;</button>
+        </div>
+        <div class="citation-modal-body">
+          <div class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.book }}</span></div>
+          <div v-if="citationModal.source.page" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">?{{ citationModal.source.page }}?</span></div>
+          <div v-if="citationModal.source.chapter" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.chapter }}</span></div>
+          <div v-if="citationModal.source.snippet" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value citation-snippet">{{ citationModal.source.snippet }}</span></div>
+          <div v-if="citationModal.source.url" class="citation-modal-row">
+            <span class="citation-modal-label">??</span>
+            <a :href="'#'+citationModal.source.url" class="citation-modal-link" @click="closeCitation">{{ citationModal.source.name || citationModal.source.book }} &rarr;</a>
+          </div>
+        </div>
+      </div>
+    </div>
+/div>
   </transition>
 
   <transition name="drop"><div v-if="libOpen" class="ks-lib-pop">
