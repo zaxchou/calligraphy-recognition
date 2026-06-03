@@ -101,9 +101,6 @@ defineEmits(['newChat', 'select', 'delete'])
   background: #fdf8f5;
   border: 1px solid #f0d4c8;
 }
-.cs-item.expired {
-  opacity: 0.55;
-}
 .cs-item-main {
   display: flex;
   align-items: flex-start;
@@ -138,14 +135,6 @@ defineEmits(['newChat', 'select', 'delete'])
   display: flex;
   align-items: center;
   gap: 4px;
-}
-.cs-expired-tag {
-  background: #f0e4d0;
-  color: #a88650;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-weight: 600;
 }
 .cs-del-btn {
   border: none;

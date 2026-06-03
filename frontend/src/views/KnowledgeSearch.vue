@@ -117,7 +117,7 @@
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef">
           <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>写意画专家助手</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
-          <div v-for="(m,i) in chatMessages" :key="i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
+          <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]"><div class="ks-cavatar"><Bot v-if="m.role==='assistant'" class="icon-xs" /><User v-else class="icon-xs" /></div><div class="ks-ccontent"><div class="ks-crole">{{ m.role==='user'?'你':'专家助手' }}</div><div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div><div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div><div v-if="m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item"><span class="ks-csrc-idx">[{{ s.index }}]</span><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div></div></div>
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Bot, User, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
@@ -190,24 +190,45 @@ function onChatContentClick(e) {
   const cite = e.target.closest('.ks-cite')
   if (cite) {
     const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g, ''))
-    if (idx) openCitation(idx)
-  }
-}
-const citationModal = reactive({ show: false, source: null })
-function openCitation(idx) {
-  const msgs = chatMessages.value
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    const m = msgs[i]
-    if (m.role === 'assistant' && m.sources) {
-      const s = m.sources.find(x => x.index === idx)
-      if (s) { citationModal.source = s; citationModal.show = true; return }
+    if (idx) {
+      // 向上找最近一条 assistant 消息的 sources
+      const msgs = chatMessages.value
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i]
+        if (m.role === 'assistant' && m.sources) {
+          const s = m.sources.find(x => x.index === idx)
+          if (s) { console.log('引用来源:', s); return }
+        }
+      }
     }
   }
 }
-function closeCitation() { citationModal.show = false; citationModal.source = null }
 function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite" data-idx="$1">[$1]</sup>')}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function renderMd(t,l){if(!t)return l?'<span class="ks-loading-dots">...</span>':'';let h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');h=h.replace(/^### (.+)$/gm,'<h3 class="ks-md-h3">$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2 class="ks-md-h2">$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1 class="ks-md-h1">$1</h1>');h=h.replace(/^---$/gm,'<hr class="ks-md-hr">');h=h.replace(/^> (.+)$/gm,'<blockquote class="ks-md-quote">$1</blockquote>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/`([^`\n]+)`/g,'<code class="ks-md-inline-code">$1</code>');h=h.replace(/^\- (.+)$/gm,'<li class="ks-md-li">$1</li>');h=h.replace(/((?:<li class="ks-md-li">.+<\/li>\n?)+)/g,'<ul class="ks-md-ul">$1</ul>');h=h.replace(/^(\d+)[.)] (.+)$/gm,'<li class="ks-md-li-ol">$2</li>');h=h.replace(/((?:<li class="ks-md-li-ol">.+<\/li>\n?)+)/g,'<ol class="ks-md-ol">$1</ol>');h=h.replace(/\n/g,'<br>');return h}
+function renderMd(t, l) {
+  if (!t) return l ? '<span class="ks-loading-dots">...</span>' : ''
+  let h = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // 标题
+  h = h.replace(/^### (.+)$/gm, '<h3 class="ks-md-h3">$1</h3>')
+  h = h.replace(/^## (.+)$/gm, '<h2 class="ks-md-h2">$1</h2>')
+  h = h.replace(/^# (.+)$/gm, '<h1 class="ks-md-h1">$1</h1>')
+  // 分割线
+  h = h.replace(/^---$/gm, '<hr class="ks-md-hr">')
+  // 引用
+  h = h.replace(/^> (.+)$/gm, '<blockquote class="ks-md-quote">$1</blockquote>')
+  // 行内格式
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  h = h.replace(/`([^`\n]+)`/g, '<code class="ks-md-inline-code">$1</code>')
+  // 无序列表
+  h = h.replace(/^- (.+)$/gm, '<li class="ks-md-li">$1</li>')
+  h = h.replace(/((?:<li class="ks-md-li">.+<\/li>\n?)+)/g, '<ul class="ks-md-ul">$1</ul>')
+  // 有序列表
+  h = h.replace(/^(\d+)[.)] (.+)$/gm, '<li class="ks-md-li-ol">$2</li>')
+  h = h.replace(/((?:<li class="ks-md-li-ol">.+<\/li>\n?)+)/g, '<ol class="ks-md-ol">$1</ol>')
+  // 换行
+  h = h.replace(/\n/g, '<br>')
+  return h
+}
 
 function switchMode(m){
   if(m==='lib'){toggleLib();return}
@@ -253,7 +274,84 @@ async function loadOutline(id){loadingOutline.value=true;try{const r=await fetch
 async function loadMarkdown(id){loadingMarkdown.value=true;try{const r=await fetch(`/api/v1/knowledge/books/${id}/markdown`);if(r.ok)markdownContent.value=(await r.json()).markdown||''}catch{}finally{loadingMarkdown.value=false}}
 async function loadRelated(id){loadingRelated.value=true;try{const r=await fetch(`/api/v1/knowledge/images/${id}/related-chunks`);if(r.ok)relatedChunks.value=(await r.json()).chunks||[]}catch{}finally{loadingRelated.value=false}}
 function onOutlineClick(item){var isCross=item.target_book_id&&item.page&&item.target_book_id!==activeResult.value?.book_id;if(!isCross&&item.title&&markdownContent.value){panelTab.value='markdown';nextTick(()=>{if(mdContentRef.value){const el=mdContentRef.value.querySelector(`[data-section-id="${item.id}"]`)||[...mdContentRef.value.querySelectorAll('h1,h2,h3,h4')].find(h=>h.textContent?.trim()===item.title?.trim());if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}})};if(isCross){window.open(`/api/v1/knowledge/books/${item.target_book_id}/pdf#page=${item.page}`,'_blank')}else if(item.page&&pdfUrl.value&&!item.target_book_id){window.open(`${pdfUrl.value}#page=${item.page}`,'_blank')}}
-async function sendChat(msg){const t=(msg||chatInput.value).trim();if(!t||chatLoading.value)return;if(!authStore.isLoggedIn){ElMessage.warning('请先登录');router.push('/login');return}if(!msg)chatInput.value='';chatMessages.value.push({role:'user',content:t});chatMessages.value.push({role:'assistant',content:'',thinking:true,loading:true});chatLoading.value=true;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight});try{const sid=chatStore.currentSessionId;const history=sid?[]:chatMessages.value.filter(m=>!m.thinking&&!m.loading&&m.role!=='system').slice(0,-1).map(m=>({role:m.role,content:m.content}));const r=await fetch('/api/v1/knowledge/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${authStore.token}`},body:JSON.stringify({prompt:t,history,session_id:sid||void 0})});const reader=r.body.getReader();const decoder=new TextDecoder();let buffer='';let textEvent=false;while(true){const{value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const lines=buffer.split('\n');buffer=lines.pop()||'';for(const line of lines){if(line.startsWith('event: ')){textEvent=line.slice(7).trim()==='text';continue}if(line.startsWith('data: ')){try{const d=JSON.parse(line.slice(6));const last=chatMessages.value[chatMessages.value.length-1];if(!last||last.role!=='assistant')continue;if(last.thinking){last.thinking=false;last.content=''}if(textEvent){last.content+=d.content||''}else if(d.sources){last.sources=d.sources}if(d.session_id&&!chatStore.currentSessionId){chatStore.setCurrentSession(d.session_id)}}catch{}}}}const last=chatMessages.value[chatMessages.value.length-1];if(last&&last.role==='assistant'){last.thinking=false;last.loading=false;if(!last.content)last.content='未找到相关信息'}chatStore.fetchSessions()}catch{const last=chatMessages.value[chatMessages.value.length-1];if(last&&last.role==='assistant'){last.thinking=false;last.loading=false;last.content='查询失败，请重试'}}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
+async function sendChat(msg) {
+  const t = (msg || chatInput.value).trim()
+  if (!t || chatLoading.value) return
+  if (!authStore.isLoggedIn) { ElMessage.warning('请先登录'); router.push('/login'); return }
+  if (!msg) chatInput.value = ''
+
+  // 添加用户消息和 assistant 占位
+  chatMessages.value.push({ role: 'user', content: t })
+  chatMessages.value.push({ role: 'assistant', content: '', thinking: true, loading: true })
+  chatLoading.value = true
+  nextTick(() => { if (chatMsgsRef.value) chatMsgsRef.value.scrollTop = chatMsgsRef.value.scrollHeight })
+
+  try {
+    const sid = chatStore.currentSessionId
+    // 有 session_id 时由后端从 DB 加载历史，首轮时传前端 history
+    const history = sid ? [] : chatMessages.value
+      .filter(m => !m.thinking && !m.loading && m.role !== 'system')
+      .slice(0, -1)
+      .map(m => ({ role: m.role, content: m.content }))
+
+    const r = await fetch('/api/v1/knowledge/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
+      body: JSON.stringify({ prompt: t, history, session_id: sid || undefined }),
+    })
+
+    // SSE 流式读取
+    const reader = r.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let textEvent = false
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          textEvent = line.slice(7).trim() === 'text'
+          continue
+        }
+        if (line.startsWith('data: ')) {
+          try {
+            const d = JSON.parse(line.slice(6))
+            const last = chatMessages.value[chatMessages.value.length - 1]
+            if (!last || last.role !== 'assistant') continue
+            if (last.thinking) { last.thinking = false; last.content = '' }
+            if (textEvent) { last.content += d.content || '' }
+            else if (d.sources) { last.sources = d.sources }
+            if (d.session_id && !chatStore.currentSessionId) {
+              chatStore.setCurrentSession(d.session_id)
+            }
+          } catch {}
+        }
+      }
+    }
+
+    const last = chatMessages.value[chatMessages.value.length - 1]
+    if (last && last.role === 'assistant') {
+      last.thinking = false
+      last.loading = false
+      if (!last.content) last.content = '未找到相关信息'
+    }
+    chatStore.fetchSessions()
+  } catch {
+    const last = chatMessages.value[chatMessages.value.length - 1]
+    if (last && last.role === 'assistant') {
+      last.thinking = false
+      last.loading = false
+      last.content = '查询失败，请重试'
+    }
+  } finally {
+    chatLoading.value = false
+    nextTick(() => { if (chatMsgsRef.value) chatMsgsRef.value.scrollTop = chatMsgsRef.value.scrollHeight })
+  }
+}
 function autoResize(){if(chatInputRef.value){chatInputRef.value.style.height='auto';chatInputRef.value.style.height=Math.min(chatInputRef.value.scrollHeight,120)+'px'}}
 // Chat sidebar actions
 async function startNewChat(){chatMessages.value=[];chatStore.startNewSession()}

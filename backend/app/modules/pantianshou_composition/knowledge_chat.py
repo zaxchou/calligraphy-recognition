@@ -12,11 +12,15 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
+from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
+from sqlalchemy import text as sql_text
 
 from app.core.config import get_settings
+from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +77,6 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             continue
         filtered.append(r)
 
-
     # ---- DB entity search ----
     try:
         db_results = qdrant_client.search_knowledge_db(
@@ -81,14 +84,13 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             limit=limit,
             score_threshold=0.5,
         )
-        seen_db = {}
+        seen_db_ids = set()
         for r in db_results:
             entity_id = r.get("payload", {}).get("entity_id", "")
-            key = entity_id
-            if key and key not in seen_db or r.get("score", 0) > seen_db.get(key, -1):
-                seen_db[key] = r.get("score", 0)
+            if entity_id and entity_id not in seen_db_ids:
+                seen_db_ids.add(entity_id)
                 filtered.append(r)
-        logger.info("Chat DB search: %d unique entities found", len(seen_db))
+        logger.info("Chat DB search: %d unique entities found", len(seen_db_ids))
     except Exception as e:
         logger.warning("Chat DB search failed: %s", e)
 
@@ -316,12 +318,12 @@ async def chat_stream(
         snippet = (payload.get("content", "") or "")[:120]
 
         slot = {
-                "index": i,
-                "book": book_title,
-                "page": page,
-                "chapter": chapter.strip() if chapter and chapter.strip() != "正文" else "",
-                "snippet": snippet,
-            }
+            "index": i,
+            "book": book_title,
+            "page": page,
+            "chapter": chapter.strip() if chapter and chapter.strip() != "正文" else "",
+            "snippet": snippet,
+        }
         src = payload.get("_source", "")
         if src == "database":
             slot["_source"] = "database"
@@ -342,24 +344,19 @@ async def chat_stream(
 
 def _save_chat_messages(user_id: int, session_id: str, user_query: str, assistant_answer: str, sources: list):
     """保存本轮对话到 chat_messages + 更新 chat_sessions"""
-    import uuid
-    from datetime import datetime
-    from app.core.database import SessionLocal
-    from sqlalchemy import text
-
     db = SessionLocal()
     try:
         now = datetime.utcnow()
         # 获取当前最大 token_index
         row = db.execute(
-            text("SELECT COALESCE(MAX(token_index), -1) FROM chat_messages WHERE session_id = :sid"),
+            sql_text("SELECT COALESCE(MAX(token_index), -1) FROM chat_messages WHERE session_id = :sid"),
             {"sid": session_id},
         ).fetchone()
         next_idx = (row[0] or -1) + 1
 
         # 插入 user 消息
         db.execute(
-            text(
+            sql_text(
                 "INSERT INTO chat_messages (id, session_id, role, content, sources, token_index, created_at) "
                 "VALUES (:id, :sid, 'user', :content, NULL, :idx, :now)"
             ),
@@ -369,7 +366,7 @@ def _save_chat_messages(user_id: int, session_id: str, user_query: str, assistan
 
         # 插入 assistant 消息
         db.execute(
-            text(
+            sql_text(
                 "INSERT INTO chat_messages (id, session_id, role, content, sources, token_index, created_at) "
                 "VALUES (:id, :sid, 'assistant', :content, :sources, :idx, :now)"
             ),
@@ -385,7 +382,7 @@ def _save_chat_messages(user_id: int, session_id: str, user_query: str, assistan
 
         # 更新会话：title（首条消息前30字）、message_count、updated_at
         db.execute(
-            text(
+            sql_text(
                 "UPDATE chat_sessions SET "
                 "title = CASE WHEN message_count = 0 THEN :title ELSE title END, "
                 "message_count = message_count + 2, "

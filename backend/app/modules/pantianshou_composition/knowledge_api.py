@@ -2195,7 +2195,7 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
 
     # 如果有 session_id，从 DB 加载历史（替代前端传来的 history，防篡改）
     history = request.history or []
-    if session_id and request.session_id:
+    if request.session_id:
         db = SessionLocal()
         try:
             rows = db.execute(
