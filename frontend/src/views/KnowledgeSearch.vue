@@ -122,7 +122,7 @@
             <div class="ks-ccontent">
               <div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div>
               <div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div>
-              <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="s.url" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div>
+              <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="chatLink(s.url)" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div>
             </div>
           </div>
         </div>
@@ -236,6 +236,7 @@ function onChatContentClick(e) {
   }
 }
 function closeCitation(){citationSource.value=null}
+function chatLink(url){if(!url)return'';const m=url.match(/\/tiba\/[a-f0-9-]+/);if(m)return'#'+m[0];const a=url.match(/\/artist\/[^)\s]+/);if(a)return'#'+a[0];return url.startsWith('/')?'#'+url:url}
 function renderCitations(t){return(t||'').replace(/\[(\d+)\]/g,'<sup class="ks-cite" data-idx="$1">[$1]</sup>')}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function renderMd(t, l) {
@@ -251,8 +252,12 @@ function renderMd(t, l) {
   h = h.replace(/^> (.+)$/gm, '<blockquote class="ks-md-quote">$1</blockquote>')
   // Markdown 链接 [text](url) — /tiba/xxx 和 /artist/xxx 转为 Vue Router hash 格式
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+    // 提取路径：支持完整URL（http://xxx/tiba/yyy）和相对路径（/tiba/yyy）
+    const tibaMatch = url.match(/\/tiba\/[a-f0-9-]+/)
+    const artistMatch = url.match(/\/artist\/[^)\s]+/)
     let href = url
-    if (url.startsWith('/tiba/') || url.startsWith('/artist/')) href = '#' + url
+    if (tibaMatch) href = '#' + tibaMatch[0]
+    else if (artistMatch) href = '#' + artistMatch[0]
     return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`
   })
   // 行内格式
