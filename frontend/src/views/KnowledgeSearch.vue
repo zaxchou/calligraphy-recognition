@@ -538,25 +538,25 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-sug-btn{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
 
-/* ── Message bubbles — DeepSeek style ── */
-.ks-cmsg{padding:12px 0;max-width:860px;margin:0 auto;animation:ks-msg-in 0.2s ease both}
+/* ── Message bubbles — DeepSeek compact style ── */
+.ks-cmsg{padding:8px 0;max-width:860px;margin:0 auto;animation:ks-msg-in 0.2s ease both}
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.ks-cmsg.assistant{background:#fff;padding:16px 20px;border-radius:12px;margin-bottom:4px}
-.ks-cmsg.user{display:flex;justify-content:flex-end;padding:8px 0}
-.ks-cmsg.user .ks-ctext{background:#f5f0ea;border:1px solid #e8e0d4;border-radius:18px 18px 4px 18px;padding:10px 16px;display:inline-block;max-width:65%;font-size:15px;line-height:1.5;color:#2c2c2c}
-.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.55;color:#1a1a1a;padding:0}
+.ks-cmsg.assistant{background:#fff;padding:14px 20px;border-radius:10px;margin-bottom:2px}
+.ks-cmsg.user{display:flex;justify-content:flex-end;padding:6px 0}
+.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:18px 18px 4px 18px;padding:9px 14px;display:inline-block;max-width:65%;font-size:14px;line-height:1.45;color:#1a1a1a}
+.ks-cmsg.assistant .ks-ctext{font-size:14px;line-height:1.5;color:#1a1a1a;padding:0}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
-.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:12px 0 4px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
-.ks-ctext :deep(h1){font-size:18px}.ks-ctext :deep(h2){font-size:16px}.ks-ctext :deep(h3){font-size:15px}
-.ks-ctext :deep(p){margin:0 0 6px}
+.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:10px 0 2px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
+.ks-ctext :deep(h1){font-size:17px}.ks-ctext :deep(h2){font-size:15px}.ks-ctext :deep(h3){font-size:14px}
+.ks-ctext :deep(p){margin:0 0 4px}
 .ks-ctext :deep(strong){color:#141413;font-weight:600}
-.ks-ctext :deep(blockquote){margin:6px 0;padding:6px 12px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
-.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:4px 0;padding-left:20px}
-.ks-ctext :deep(li){margin:2px 0;line-height:1.55}
+.ks-ctext :deep(blockquote){margin:4px 0;padding:4px 10px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
+.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:2px 0;padding-left:18px}
+.ks-ctext :deep(li){margin:1px 0;line-height:1.5}
 .ks-ctext :deep(li)::marker{color:#c96442}
-.ks-ctext :deep(code){background:#f0eee6;padding:2px 6px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
-.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:10px 0}
+.ks-ctext :deep(code){background:#f0eee6;padding:1px 5px;border-radius:3px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
+.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:8px 0}
 .ks-ctext :deep(a){color:#c96442;text-decoration:underline}
 
 /* ── Sources card ── */
