@@ -6,8 +6,8 @@ from typing import List, Dict, Any, Optional
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-DB_PATH = os.path.join(BASE_DIR, "backend", "data", "calligraphy.db")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DB_PATH = os.path.join(BASE_DIR, "data", "calligraphy.db")
 
 def get_db():
     db = sqlite3.connect(DB_PATH)
@@ -98,7 +98,7 @@ def main():
 
     do_all = not (args.artists_only or args.artworks_only or args.seals_only)
 
-    sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
+    sys.path.insert(0, BASE_DIR)
     from app.modules.pantianshou_composition.embedding_service import EmbeddingService
     from app.modules.pantianshou_composition import qdrant_client as qc
 
