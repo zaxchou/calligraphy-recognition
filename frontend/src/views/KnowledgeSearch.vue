@@ -1,4 +1,5 @@
 ﻿﻿﻿﻿﻿<template>
+<!-- cache-bust: citation popup feature v2 -->
 <div class="ks-root">
 
   <transition name="view-switch" mode="out-in">
