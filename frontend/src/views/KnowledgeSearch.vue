@@ -129,7 +129,7 @@
         </div>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
-            <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向小墨提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="1" :disabled="chatLoading"></textarea>
+            <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向小墨提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="2" :disabled="chatLoading"></textarea>
             <button class="ks-chat-send" @click="sendChat()" :disabled="!chatInput.trim()||chatLoading">
               <Send v-if="!chatLoading" class="icon-sm" />
               <Loader2 v-else class="icon-sm spin" />
