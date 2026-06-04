@@ -553,7 +553,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.assistant{background:#fff;padding:14px 20px;border-radius:10px;margin-bottom:2px}
 .ks-cmsg.user{display:flex;justify-content:flex-end;padding:6px 0}
-.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:18px 18px 4px 18px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;line-height:1.45;color:#1a1a1a;word-break:break-word;white-space:pre-wrap}
+.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:18px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;line-height:1.45;color:#1a1a1a;word-break:break-word;white-space:pre-wrap}
 .ks-cmsg.assistant .ks-ctext{font-size:14px;line-height:1.5;color:#1a1a1a;padding:0}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
@@ -601,7 +601,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 @keyframes ks-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 
 /* ── Input row ── */
-.ks-chat-input-row{padding:0 24px 12px;flex-shrink:0}
+.ks-chat-input-row{padding:0 12px 12px;flex-shrink:0}
 .ks-chat-input-wrap{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1px solid #d8d4cc;border-radius:16px;padding:10px 10px 10px 18px;transition:border-color 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.04)}
 .ks-chat-input-wrap:focus-within{border-color:#c96442}
 .ks-chat-ta{flex:1;border:none;outline:none;padding:10px 0;font-size:15px;resize:none;line-height:1.5;background:transparent;color:#2c2c2c;font-family:inherit;min-height:48px;max-height:160px}
