@@ -234,7 +234,7 @@ function onSearch() { currentPage.value = 1; loadWorks() }
 function clearSearch() { searchQuery.value = ''; currentPage.value = 1; loadWorks() }
 
 function goToWork(w) {
-  const id = w.id || w.db_id
+  const id = w.image_id || w.id || w.db_id
   if (id) {
     const resolved = router.resolve({ name: 'TibaDetail', params: { id } })
     window.open(resolved.href, '_blank')

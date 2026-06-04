@@ -521,7 +521,7 @@ async function handleSubmitChange() {
 function openDetailInNewWindow(item) {
   const url = router.resolve({
     name: 'TibaDetail',
-    params: { id: item.id }
+    params: { id: item.image_id || item.id }
   }).href
   window.open(url, '_blank')
 }

@@ -230,7 +230,6 @@ const artistName = computed(() => route.params.name)
 const loading = ref(true)
 const notFound = ref(false)
 const artist = ref(null)
-const stats = ref({})
 const expandedAnecdote = ref(-1)
 const activeToc = ref('')
 const showBackTop = ref(false)
@@ -492,19 +491,6 @@ async function fetchArtist() {
   }
 }
 
-async function fetchStats() {
-  if (!artist.value?.id) return
-  try {
-    const res = await fetch(`${API_BASE}/artists/${artist.value.id}/stats`)
-    if (res.ok) {
-      const data = await res.json()
-      stats.value = data.stats || {}
-    }
-  } catch (e) {
-    console.error('获取统计数据失败:', e)
-  }
-}
-
 let tocObserver = null
 let backTopHandler = null
 
@@ -531,7 +517,6 @@ onMounted(async () => {
   await fetchArtist()
   if (artist.value) {
     document.title = `${artist.value.name} - 画家百科`
-    await fetchStats()
   }
   loading.value = false
   setTimeout(setupTocObserver, 200)

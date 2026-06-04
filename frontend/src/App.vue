@@ -14,7 +14,7 @@
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
-          <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }"><span class="nav-text">题跋分析</span></router-link>
+          <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click.native="handleTibaNav"><span class="nav-text">题跋分析</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
@@ -178,6 +178,13 @@ function navigateAndClose() {
   mobileMenuOpen.value = false
 }
 function handleLogout() { authStore.logout(); router.push('/'); userMenuOpen.value = false }
+function handleTibaNav(e) {
+  // 如果已经在题跋详情页，强制返回首页（Vue Router 不会自动触发）
+  if (route.path.startsWith('/tiba/') && route.params.id) {
+    e.preventDefault()
+    router.push('/tiba')
+  }
+}
 function toggleLang() {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
   localStorage.setItem('lang', locale.value)

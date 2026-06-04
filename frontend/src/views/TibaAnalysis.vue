@@ -1,13 +1,14 @@
 <template>
-  <div class="tubi-analysis tubi-page">
-
-    <!-- 初始加载状态：防止直接访问详情页时闪现首页框架 -->
-    <div v-if="initialLoading" class="initial-loading-overlay">
-      <div class="initial-loading-content">
-        <el-icon class="loading-icon" :size="48"><Loading /></el-icon>
-        <p class="loading-text">正在加载作品...</p>
-      </div>
+  <!-- 初始加载：只显示遮罩，不渲染任何页面内容 -->
+  <div v-if="initialLoading" style="position:fixed;inset:0;background:#f5f4ed;z-index:99999;display:flex;align-items:center;justify-content:center;">
+    <div style="text-align:center;color:#3d3d3d;">
+      <div style="width:40px;height:40px;border:3px solid #e8e4d8;border-top-color:#c45a3c;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div>
+      <p style="margin:0;font-size:15px;color:#8c8c8c;">正在加载作品...</p>
     </div>
+  </div>
+
+  <!-- 加载完成后才渲染页面内容 -->
+  <div v-else class="tubi-analysis tubi-page">
 
     <!-- 首页概览视图 -->
     <TibaHome
@@ -102,7 +103,7 @@
 import { siteConfig } from '../config'
 import { ref, reactive, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import {
-  Picture, Loading, Edit, HomeFilled, Clock, Search, ArrowLeft, ArrowRight, ArrowDown, Collection
+  Loading, Search
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
@@ -111,20 +112,15 @@ import { tibaApi } from '../api'
 import { getSharedAnalyticsData, setSharedAnalyticsData } from '../tiba/sharedCache'
 import { ARTISTS } from '../tiba/constants'
 import {
-  calculateAge,
-  calculateYear,
   getDisplayAge,
   formatDate
 } from '../tiba/utils'
-import ArtistStatsCard from '../tiba/ArtistStatsCard.vue'
-import TibaRankingCard from '../components/tiba/TibaRankingCard.vue'
-import TibaGallery from '../components/tiba/TibaGallery.vue'
 import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
-import TibaComparison from '../components/tiba/TibaComparison.vue'
 import TibaSearchDialog from '../components/tiba/TibaSearchDialog.vue'
 import TibaImagePreviewDialog from '../components/tiba/TibaImagePreviewDialog.vue'
 import TibaImageZoomDialog from '../components/tiba/TibaImageZoomDialog.vue'
-import TibaHome from './TibaHome.vue'
+import { defineAsyncComponent } from 'vue'
+const TibaHome = defineAsyncComponent(() => import('./TibaHome.vue'))
 import TibaDetail from './TibaDetail.vue'
 
 const router = useRouter()
@@ -133,7 +129,7 @@ const uploadedImages = ref([])
 const currentImage = ref(null)
 
 // 初始加载状态：防止直接访问详情页时闪现首页框架
-const initialLoading = ref(false)
+const initialLoading = ref(!!route.params.id)
 
 const canvasRef = ref(null)
 const editDialogRef = ref(null)
@@ -181,6 +177,11 @@ const historyHasMore = ref(true)
 // 全量作品列表（用于 prev/next 导航）
 // 使用 sharedCache 与 TibaHome 共享数据，避免重复 API 请求
 const fullItemList = ref([])
+const MAX_UPLOADED = 50  // 限制内存中缓存的作品数量
+function pushUploaded(img) {
+  uploadedImages.value.push(img)
+  if (uploadedImages.value.length > MAX_UPLOADED) uploadedImages.value.splice(0, uploadedImages.value.length - MAX_UPLOADED)
+}
 async function loadFullItemList(force = false) {
   const cached = getSharedAnalyticsData()
   if (cached && !force) {
@@ -264,10 +265,9 @@ function loadMoreGallery() {
 // 在 historyList 或 fullItemList 中查找作品索引
 function _findItemIndex(id) {
   let idx = historyList.value.findIndex(item => item.id === id)
-  if (idx >= 0) { console.log('_findItemIndex found in historyList at', idx); return { list: historyList.value, idx, isFullList: false } }
+  if (idx >= 0) return { list: historyList.value, idx, isFullList: false }
   idx = fullItemList.value.findIndex(item => item.id === id)
-  if (idx >= 0) { console.log('_findItemIndex found in fullItemList at', idx, 'total items:', fullItemList.value.length); return { list: fullItemList.value, idx, isFullList: true } }
-  console.log('_findItemIndex NOT FOUND, historyList:', historyList.value.length, 'fullItemList:', fullItemList.value.length)
+  if (idx >= 0) return { list: fullItemList.value, idx, isFullList: true }
   return null
 }
 
@@ -591,7 +591,10 @@ function onArtistChange(artist) {
 // 返回首页
 function backToHome() {
   currentImage.value = null
+  initialLoading.value = false
   analyzeStatus.value = 'idle'
+  // 返回首页时加载历史列表
+  if (!historyList.value.length) loadHistory()
   analysisNote.value = ''
   positionAnalysis.value = null
   areaStats.value = {
@@ -1418,7 +1421,6 @@ async function loadHistory(page = 1) {
     const skip = (page - 1) * historyPageSize.value
     const artistParam = currentArtist.value || undefined
     const response = await tibaApi.getAllResults(skip, historyPageSize.value, artistParam)
-    console.log('历史记录API响应:', response)
     if (response.success) {
       const items = (response.data || []).map(item => {
         const analysisNote = item.analysis_note || ''
@@ -1447,7 +1449,6 @@ async function loadHistory(page = 1) {
       }
       historyPage.value = page
       historyHasMore.value = items.length >= historyPageSize.value
-      console.log('历史记录加载成功:', historyList.value.length, '条，还有更多:', historyHasMore.value)
       // 加载完成后更新趋势图
       await nextTick()
       updateTrendChart()
@@ -1489,7 +1490,7 @@ async function loadHistoryItem(row) {
       // 添加到当前会话
       const exists = uploadedImages.value.find(img => img.id === historyImage.id)
       if (!exists) {
-        uploadedImages.value.push(historyImage)
+        pushUploaded(historyImage)
       }
 
       // 选中该图片
@@ -1554,7 +1555,7 @@ async function loadHistoryItem(row) {
         // 添加到当前会话
         const exists = uploadedImages.value.find(img => img.id === historyImage.id)
         if (!exists) {
-          uploadedImages.value.push(historyImage)
+          pushUploaded(historyImage)
         }
 
         // 选中该图片（selectImage 内部会自动加载 fullItemList）
@@ -1630,7 +1631,7 @@ async function loadAndSelectImage(imageId) {
       // 添加到当前会话
       const exists = uploadedImages.value.find(img => img.id === image.id)
       if (!exists) {
-        uploadedImages.value.push(image)
+        pushUploaded(image)
       }
 
       // 选中该图片
@@ -2216,17 +2217,14 @@ onMounted(async () => {
         // 先保存数据到 uploadedImages（供后续使用）
         const exists = uploadedImages.value.find(img => img.id === historyImage.id)
         if (!exists) {
-          uploadedImages.value.push(historyImage)
+          pushUploaded(historyImage)
         }
 
-        // 先加载全量作品列表（确保 prev/next 数据就绪），历史列表不阻塞 UI
-        // 先设置 currentArtist，否则 loadHistory 会按默认画家（李鱓）过滤
+        // 先设置 currentArtist
         if (historyImage.artist) currentArtist.value = historyImage.artist
-        await loadFullItemList()
-        loadHistory()
-
-        // 所有数据就绪后才设置 currentImage，确保 TibaDetail 首次渲染时 prev/next 有数据
         selectImage(historyImage)
+        // 非阻塞加载历史列表（底部作品库需要），不阻塞详情渲染
+        loadHistory()
         ElMessage({ message: '已加载指定作品', type: 'success', customClass: 'toast-transparent', center: true })
       }
     } catch (error) {
@@ -2240,7 +2238,6 @@ onMounted(async () => {
       // 失败时也加载历史列表
       loadHistory()
     } finally {
-      // 无论成功失败，都关闭 loading
       initialLoading.value = false
     }
   } else {
@@ -2297,15 +2294,12 @@ async function loadAlbumNavigation() {
   const recordId = currentImage.value.image_id || currentImage.value.id
   if (!recordId) return
 
-  console.log('[册页导航] 加载导航，recordId:', recordId, 'currentImage:', currentImage.value)
 
   try {
     const res = await tibaApi.getAlbumNavigation(recordId)
-    console.log('[册页导航] API响应:', res)
     if (res.success) {
       const data = res.data
       Object.assign(albumNavigation, data)
-      console.log('[册页导航] 已设置:', albumNavigation)
     }
   } catch (e) {
     console.error('[册页导航] 加载失败:', e)
@@ -2314,7 +2308,6 @@ async function loadAlbumNavigation() {
 
 async function navigateToAlbumItem(item) {
   if (item.is_current) return
-  console.log('[册页导航] 点击item:', item)
   
   // 先在当前会话中找
   let targetImage = uploadedImages.value.find(img => 
@@ -2332,7 +2325,6 @@ async function navigateToAlbumItem(item) {
   }
   
   // 没找到，通过 API 加载
-  console.log('[册页导航] 未找到，通过API加载:', item.id)
   try {
     const response = await tibaApi.getAnalysisResult(item.id)
     if (response.success) {
@@ -2376,7 +2368,7 @@ async function navigateToAlbumItem(item) {
       }
       
       // 添加到当前会话
-      uploadedImages.value.push(historyImage)
+      pushUploaded(historyImage)
       selectImage(historyImage)
     }
   } catch (error) {
@@ -2394,6 +2386,13 @@ watch(currentImage, (newVal) => {
 
 // 监听路由参数变化：列表内点击详情时重新加载完整数据（含 dzi_url 等）
 watch(() => route.params.id, async (newId, oldId) => {
+  // 从详情页返回首页
+  if (!newId && oldId) {
+    currentImage.value = null
+    initialLoading.value = false
+    if (!historyList.value.length) loadHistory()
+    return
+  }
   if (!newId || !oldId || String(newId) === String(oldId)) return
   try {
     const response = await tibaApi.getAnalysisResult(newId)
@@ -2429,6 +2428,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 <style src="../tiba/TibaAnalysis.css" scoped></style>
 
 <style scoped>
+@keyframes spin { to { transform: rotate(360deg); } }
 /* 初始加载遮罩：防止直接访问详情页时闪现首页框架 */
 .initial-loading-overlay {
   position: fixed;

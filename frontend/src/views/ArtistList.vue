@@ -119,6 +119,17 @@ function debouncedSearch() {
   }, 300)
 }
 
+// 拼音预计算缓存（只算一次）
+let _pinyinCache = null
+function getPinyinInitials(name) {
+  if (!_pinyinCache) _pinyinCache = {}
+  if (!_pinyinCache[name]) {
+    const py = pinyin(name, { toneType: 'none', type: 'array' })
+    _pinyinCache[name] = py.map(p => (p[0] || '').toLowerCase()).join('')
+  }
+  return _pinyinCache[name]
+}
+
 function handlePinyinSearch() {
   pinyinSearchNames.value = []
   const kw = keyword.value.trim().toLowerCase()
@@ -126,8 +137,7 @@ function handlePinyinSearch() {
     const matching = []
     for (const name of store.letterNames) {
       if (!name) continue
-      const py = pinyin(name, { toneType: 'none', type: 'array' })
-      const initials = py.map(p => (p[0] || '').toLowerCase()).join('')
+      const initials = getPinyinInitials(name)
       if (initials.includes(kw) || name.toLowerCase().includes(kw)) {
         matching.push(name)
       }
@@ -159,8 +169,7 @@ function onLetterSelect(letter) {
   const matching = []
   for (const name of store.letterNames) {
     if (!name) continue
-    const py = pinyin(name, { toneType: 'none', type: 'array' })
-    const first = (py[0]?.charAt(0) || '').toUpperCase()
+    const first = (getPinyinInitials(name)[0] || '').toUpperCase()
     if (first === letter || (letter === '#' && !/[A-Z]/.test(first))) {
       matching.push(name)
     }

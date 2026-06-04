@@ -74,12 +74,14 @@
 ### GitHub
 - **仓库:** `https://github.com/zaxchou/molin-wiki.git`
 - **默认分支:** `master`
-- **GitHub Token:** 已配到 GitHub MCP server 的 env，不写文件里
+- **GitHub Token:** `GH_TOKEN` 环境变量（已在 `~/.bashrc` 持久化）
+- **GitHub CLI:** `gh` v2.93.0，安装在 `C:/Users/zax/.local/bin/gh.exe`
 - **推送方式:** `git push origin master`（--force 只在明确要求时用）
+- **gh 常用:** `gh repo view`、`gh pr list`、`gh api ...`
 
 ### MCP 服务器
 - **Memory MCP:** `@modelcontextprotocol/server-memory` — 知识图谱记忆
-- **GitHub MCP:** `@modelcontextprotocol/server-github` — GitHub API 操作（已配 token）
+- **GitHub CLI:** `gh` v2.93.0 — GitHub API 操作（已配 token）
 
 ### Claude-Mem（会话记忆服务）
 - **用途：** 跨会话持久记忆，记录工作历史和上下文

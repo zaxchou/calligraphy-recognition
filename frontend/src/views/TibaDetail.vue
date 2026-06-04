@@ -1128,7 +1128,7 @@ const verdictSnippet = computed(() => {
   const cs = combinedSentiment.value
   if (!cs) return ''
   const r = cs.reasoning
-  if (r) return r.length > 50 ? r.slice(0, 50) + '…' : r
+  if (r) { const translated = translateContent(r); return translated.length > 50 ? translated.slice(0, 50) + '…' : translated }
   const s = cs.summary || ''
   const m = s.match(/综合判断[：:]\s*([\s\S]*?)(?=积极面|消极面|$)/)
   const text = m ? m[1].trim() : s
