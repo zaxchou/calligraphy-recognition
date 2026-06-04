@@ -22,12 +22,24 @@
               </div>
             </div>
             <div v-for="(m,i) in messages" :key="m.id||i" :class="['cf-msg',m.role]">
-              <div v-if="m.thinking" class="cf-thinking"><Sparkles class="icon-xs" />思考中...</div>
+              <div v-if="m.thinking" class="cf-thinking"><Sparkles class="icon-xs" />思考中 {{ thinkSeconds }}s...</div>
               <div v-else class="cf-text" v-html="renderMd(m.content)" @click="onContentClick"></div>
               <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="cf-sources">
                 <div v-for="s in m.sources" :key="s.index" class="cf-src" @click="citationSource=s">
                   <span class="cf-src-idx">[{{ s.index }}]</span>
                   <span class="cf-src-book">{{ s.book }}</span>
+                </div>
+              </div>
+              <!-- 缩略图画廊 -->
+              <div v-if="m.role==='assistant'&&m.sources" class="cf-gallery">
+                <div class="cf-gallery-title">🖼 相关作品</div>
+                <div class="cf-gallery-grid">
+                  <template v-for="s in m.sources" :key="'img-'+s.index">
+                    <a v-if="s.thumbnail_url" :href="chatLink(s.url)" target="_blank" class="cf-gallery-card">
+                      <div class="cf-gallery-img-wrap"><img :src="s.thumbnail_url" :alt="s.name||s.book" class="cf-gallery-img" loading="lazy" @error="$event.target.parentElement.style.display='none'" /></div>
+                      <div class="cf-gallery-meta"><span class="cf-gallery-name">{{ s.name || s.book }}</span></div>
+                    </a>
+                  </template>
                 </div>
               </div>
             </div>
@@ -72,17 +84,20 @@
 import { ref, nextTick } from 'vue'
 import { MessageCircle, X, Sparkles, Send, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
+import { useChatStore } from '../stores/chatStore'
 import { ElMessage } from 'element-plus'
 
 const authStore = useAuthStore()
+const chatStore = useChatStore()
 const open = ref(false)
 const messages = ref([])
 const input = ref('')
 const loading = ref(false)
 const msgsRef = ref(null)
 const inputRef = ref(null)
-const sessionId = ref(null)
 const citationSource = ref(null)
+const thinkSeconds = ref(0)
+let thinkTimer = null
 
 const suggestions = [
   '写意画中的气韵生动是什么意思？',
@@ -137,6 +152,8 @@ function renderMd(t) {
   h = h.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
   h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  // Markdown 图片 ![alt](url) → <img> 缩略图（必须在链接之前处理）
+  h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="chat-thumb" loading="lazy" onerror="this.style.display=\'none\'" />')
   // Markdown 链接 [text](url) — 提取 /tiba/UUID 或 /artist/名 路径转为 hash 格式
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
     const tibaMatch = url.match(/\/tiba\/[a-f0-9-]{8,}/)
@@ -161,11 +178,14 @@ async function send(msg) {
   messages.value.push({ role: 'user', content: t })
   messages.value.push({ role: 'assistant', content: '', thinking: true, loading: true })
   loading.value = true
+  thinkSeconds.value = 0
+  if (thinkTimer) clearInterval(thinkTimer)
+  thinkTimer = setInterval(() => { thinkSeconds.value++ }, 1000)
   nextTick(() => { if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight })
 
   try {
     const body = { prompt: t }
-    if (sessionId.value) body.session_id = sessionId.value
+    if (chatStore.floatSessionId) body.session_id = chatStore.floatSessionId
 
     const r = await fetch('/api/v1/knowledge/chat', {
       method: 'POST',
@@ -196,10 +216,10 @@ async function send(msg) {
             const d = JSON.parse(line.slice(6))
             const last = messages.value[messages.value.length - 1]
             if (!last || last.role !== 'assistant') continue
-            if (last.thinking) { last.thinking = false; last.content = '' }
+            if (last.thinking) { last.thinking = false; last.content = ''; if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null } }
             if (textEvent) { last.content += d.content || '' }
             else if (d.sources) { last.sources = d.sources }
-            if (d.session_id && !sessionId.value) sessionId.value = d.session_id
+            if (d.session_id && !chatStore.floatSessionId) chatStore.setFloatSession(d.session_id)
           } catch {}
         }
       }
@@ -208,6 +228,7 @@ async function send(msg) {
     const last = messages.value[messages.value.length - 1]
     if (last && last.role === 'assistant') {
       last.thinking = false; last.loading = false
+      if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
       if (!last.content) last.content = '未找到相关信息'
     }
   } catch(e) {
@@ -216,6 +237,7 @@ async function send(msg) {
     if (last && last.role === 'assistant') {
       last.thinking = false; last.loading = false; last.content = '查询失败，请重试'
     }
+    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
     try { ElMessage.error('小墨暂时无法回答，请稍后重试') } catch {}
   } finally {
     loading.value = false
@@ -288,4 +310,16 @@ async function send(msg) {
 .cf-cite-go{color:#c96442;font-size:12px;text-decoration:none;font-weight:600}
 .cf-cite-book{font-size:13px;color:#5e5d59;margin-bottom:8px}
 .cf-cite-snippet{font-size:13px;line-height:1.6;color:#3d3d3a;background:#faf9f7;padding:10px;border-radius:6px;border-left:3px solid #c96442;margin:0}
+.chat-thumb{display:block;max-width:160px;max-height:120px;border-radius:6px;margin:8px 0;cursor:pointer;border:1px solid #e8e4d8;object-fit:cover;transition:transform 0.2s}
+.chat-thumb:hover{transform:scale(1.05)}
+.cf-gallery{margin-top:10px;border-top:1px solid #eae6de;padding-top:10px}
+.cf-gallery-title{font-size:12px;font-weight:600;color:#5c5346;margin-bottom:8px}
+.cf-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.cf-gallery-card{display:block;text-decoration:none;border-radius:6px;overflow:hidden;background:#fff;border:1px solid #e8e4d8;transition:box-shadow 0.2s,transform 0.15s}
+.cf-gallery-card:hover{box-shadow:0 3px 10px rgba(0,0,0,0.1);transform:translateY(-2px)}
+.cf-gallery-img-wrap{width:100%;aspect-ratio:4/3;overflow:hidden;background:#f5f0e8}
+.cf-gallery-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.3s}
+.cf-gallery-card:hover .cf-gallery-img{transform:scale(1.06)}
+.cf-gallery-meta{padding:4px 6px}
+.cf-gallery-name{font-size:11px;color:#3a3222;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>

@@ -120,9 +120,10 @@
           <div v-if="chatMessages.length===0 && chatLoading" class="ks-chat-loading"><Loader2 class="icon spin" /><span>加载中...</span></div>
           <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]">
             <div class="ks-ccontent">
-              <div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div>
+              <div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中 {{ thinkSeconds }}s...</div>
               <div v-else class="ks-ctext" @click="onChatContentClick" v-html="renderCitations(renderMd(m.content,m.loading))"></div>
               <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="chatLink(s.url)" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div>
+              <div v-if="m.role==='assistant'&&m.sources" class="ks-gallery"><div class="ks-gallery-title">🖼 相关作品</div><div class="ks-gallery-grid"><template v-for="s in m.sources" :key="'g-'+s.index"><a v-if="s.thumbnail_url" :href="chatLink(s.url)" target="_blank" class="ks-gallery-card"><div class="ks-gallery-img-wrap"><img :src="s.thumbnail_url" :alt="s.name||s.book" class="ks-gallery-img" loading="lazy" @error="$event.target.parentElement.style.display='none'" /></div><div class="ks-gallery-meta"><span class="ks-gallery-name">{{ s.name || s.book }}</span></div></a></template></div></div>
             </div>
           </div>
           <button v-if="showScrollBtn" class="ks-scroll-bottom" @click="scrollToBottom">↓</button>
@@ -205,7 +206,8 @@ const store = useKnowledgeStore()
 const searchInput = ref(''), hasSearched = ref(false), centered = ref(true), selectedBooks = ref([]), showUploadModal = ref(false), highlightedIndex = ref(-1), reingestingId = ref(null), searchInputRef = ref(null), activeMode = ref('search'), activeResult = ref(null), rightPanelOpen = ref(false), panelTab = ref('outline'), pdfUrl = ref('')
 const documentOutline = ref([]), loadingOutline = ref(false), markdownContent = ref(''), loadingMarkdown = ref(false), relatedChunks = ref([]), loadingRelated = ref(false), libOpen = ref(false), previewVisible = ref(false), previewImageUrl = ref(''), previewList = ref([]), previewIndex = ref(0), mdContentRef = ref(null), chunkIndex = ref(0), loadingChunk = ref(false)
 const outlineFilter = ref(''), filteredOutline = computed(()=>{var f=outlineFilter.value.trim();if(!f)return documentOutline.value;f=f.toLowerCase();return documentOutline.value.filter(o=>(o.title||'').toLowerCase().includes(f))})
-const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true), citationSource = ref(null), showScrollBtn = ref(false)
+const chatMessages = ref([]), chatInput = ref(''), chatLoading = ref(false), chatMsgsRef = ref(null), chatInputRef = ref(null), sidebarOpen = ref(true), citationSource = ref(null), showScrollBtn = ref(false), thinkSeconds = ref(0)
+let thinkTimer = null
 const chatSuggestions = ['写意画中的"气韵生动"如何理解？','潘天寿的构图有哪些核心法则？','花鸟画中墨分五色的具体运用','写意与工笔的根本区别是什么？']
 
 function cleanLatex(s){return(s||'').replace(/\$[^$]*\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[\{\}]/g,'')}
@@ -251,6 +253,8 @@ function renderMd(t, l) {
   h = h.replace(/^---$/gm, '<hr class="ks-md-hr">')
   // 引用
   h = h.replace(/^> (.+)$/gm, '<blockquote class="ks-md-quote">$1</blockquote>')
+  // Markdown 图片 ![alt](url) → <img> 缩略图（必须在链接之前处理）
+  h = h.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="chat-thumb" loading="lazy" onerror="this.style.display=\'none\'" />')
   // Markdown 链接 [text](url) — /tiba/xxx 和 /artist/xxx 转为 Vue Router hash 格式
   h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
     const tibaMatch = url.match(/\/tiba\/[a-f0-9-]{8,}/)
@@ -270,8 +274,10 @@ function renderMd(t, l) {
   // 有序列表
   h = h.replace(/^(\d+)[.)] (.+)$/gm, '<li class="ks-md-li-ol">$2</li>')
   h = h.replace(/((?:<li class="ks-md-li-ol">.+<\/li>\n?)+)/g, '<ol class="ks-md-ol">$1</ol>')
-  // 换行
-  h = h.replace(/\n/g, '<br>')
+  // 换行：只处理非 HTML 标签内的 \n，避免列表/标题内部多出 <br>
+  h = h.replace(/(<[^>]+>)\n/g, '$1')   // 标签后的 \n 直接去掉
+  h = h.replace(/\n(<[^>]+>)/g, '$1')   // 标签前的 \n 直接去掉
+  h = h.replace(/\n/g, '<br>')           // 剩余的 \n 才转 <br>
   return h
 }
 
@@ -329,6 +335,9 @@ async function sendChat(msg) {
   chatMessages.value.push({ role: 'user', content: t })
   chatMessages.value.push({ role: 'assistant', content: '', thinking: true, loading: true })
   chatLoading.value = true
+  thinkSeconds.value = 0
+  if (thinkTimer) clearInterval(thinkTimer)
+  thinkTimer = setInterval(() => { thinkSeconds.value++ }, 1000)
   showScrollBtn.value = false
   nextTick(() => { if (chatMsgsRef.value) chatMsgsRef.value.scrollTop = chatMsgsRef.value.scrollHeight })
 
@@ -368,7 +377,7 @@ async function sendChat(msg) {
             const d = JSON.parse(line.slice(6))
             const last = chatMessages.value[chatMessages.value.length - 1]
             if (!last || last.role !== 'assistant') continue
-            if (last.thinking) { last.thinking = false; last.content = '' }
+            if (last.thinking) { last.thinking = false; last.content = ''; if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null } }
             if (textEvent) { last.content += d.content || '' }
             else if (d.sources) { last.sources = d.sources }
             if (d.session_id && !chatStore.currentSessionId) {
@@ -383,6 +392,7 @@ async function sendChat(msg) {
     if (last && last.role === 'assistant') {
       last.thinking = false
       last.loading = false
+      if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
       if (!last.content) last.content = '未找到相关信息'
     }
     chatStore.fetchSessions()
@@ -393,6 +403,7 @@ async function sendChat(msg) {
       last.loading = false
       last.content = '查询失败，请重试'
     }
+    if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
   } finally {
     chatLoading.value = false
     nextTick(() => { if (chatMsgsRef.value) chatMsgsRef.value.scrollTop = chatMsgsRef.value.scrollHeight })
@@ -404,7 +415,7 @@ function scrollToBottom(){if(chatMsgsRef.value)chatMsgsRef.value.scrollTo({top:c
 // Chat sidebar actions
 function startNewChat(){chatMessages.value=[];chatStore.startNewSession();showScrollBtn.value=false}
 async function selectSession(id){chatMessages.value=[];chatStore.setCurrentSession(id);chatLoading.value=true;showScrollBtn.value=false;try{const msgs=await chatStore.fetchMessages(id);chatMessages.value=msgs.map(m=>({role:m.role,content:m.content,sources:m.sources||null}))}catch{}finally{chatLoading.value=false;nextTick(()=>{if(chatMsgsRef.value)chatMsgsRef.value.scrollTop=chatMsgsRef.value.scrollHeight})}}
-async function deleteSession(id){try{await ElMessageBox.confirm('确定删除此对话？','确认删除',{type:'warning'});await chatStore.deleteSession(id);chatMessages.value=[]}catch{}}
+async function deleteSession(id){if(!confirm('确定删除此对话？'))return;try{await chatStore.deleteSession(id);chatMessages.value=[];ElMessage.success('已删除')}catch(e){ElMessage.error('删除失败：' + (e?.response?.data?.detail || e.message))}}
 function onUploaded(){store.fetchBooks();store.fetchStats()}
 async function reingest(id){reingestingId.value=id;try{await store.reingestBook(id)}catch{}finally{reingestingId.value=null}}
 async function delBook(id){try{await ElMessageBox.confirm('确定删除此书及其所有关联数据？','确认删除',{type:'warning'});await store.deleteBook(id)}catch{}}
@@ -548,26 +559,28 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 .ks-sug-btn{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
 
-/* ── Message bubbles — DeepSeek compact style ── */
+/* ── Message bubbles ── */
 .ks-cmsg{padding:8px 0;max-width:860px;margin:0 auto;animation:ks-msg-in 0.2s ease both}
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.assistant{background:#fff;padding:14px 20px;border-radius:10px;margin-bottom:2px}
 .ks-cmsg.user{display:flex;justify-content:flex-end;padding:6px 0}
-.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:16px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;line-height:1.45;color:#1a1a1a;word-break:break-word;white-space:pre-wrap}
-.ks-cmsg.assistant .ks-ctext{font-size:14px;line-height:1.5;color:#1a1a1a;padding:0}
+.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:16px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;color:#333;word-break:break-word;white-space:pre-wrap}
+.ks-cmsg.assistant .ks-ctext{font-size:15px;line-height:1.7;color:#333;padding:0}
+/* 统一字体：所有子元素继承，不单独设 font-family */
+.ks-ctext :deep(*){font-family:'Arial','PingFang SC','Microsoft YaHei',sans-serif;line-height:1.7}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
-.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:10px 0 2px;color:#141413;font-family:'Noto Serif SC',serif;font-weight:600}
-.ks-ctext :deep(h1){font-size:17px}.ks-ctext :deep(h2){font-size:15px}.ks-ctext :deep(h3){font-size:14px}
-.ks-ctext :deep(p){margin:0 0 4px}
-.ks-ctext :deep(strong){color:#141413;font-weight:600}
-.ks-ctext :deep(blockquote){margin:4px 0;padding:4px 10px;border-left:3px solid #c96442;background:#faf9f7;color:#5e5d59;font-style:italic;border-radius:0 6px 6px 0}
-.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:2px 0;padding-left:18px}
-.ks-ctext :deep(li){margin:1px 0;line-height:1.5}
+.ks-ctext :deep(h1),.ks-ctext :deep(h2),.ks-ctext :deep(h3){margin:16px 0 8px;color:#333;font-weight:600}
+.ks-ctext :deep(h2){font-size:16px}.ks-ctext :deep(h3){font-size:15px}
+.ks-ctext :deep(p){margin:0 0 10px}
+.ks-ctext :deep(strong){color:#333;font-weight:600}
+.ks-ctext :deep(blockquote){margin:10px 0;padding:10px 14px;border-left:3px solid #c96442;background:#faf9f7;color:#555;border-radius:0 6px 6px 0}
+.ks-ctext :deep(ul),.ks-ctext :deep(ol){margin:8px 0;padding-left:22px}
+.ks-ctext :deep(li){margin:4px 0}
 .ks-ctext :deep(li)::marker{color:#c96442}
-.ks-ctext :deep(code){background:#f0eee6;padding:1px 5px;border-radius:3px;font-size:13px;font-family:'JetBrains Mono',monospace;color:#c96442}
-.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:8px 0}
-.ks-ctext :deep(a){color:#c96442;text-decoration:underline}
+.ks-ctext :deep(code){background:#f0eee6;padding:2px 5px;border-radius:3px;font-size:13px;color:#c96442}
+.ks-ctext :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:14px 0}
+.ks-ctext :deep(a){color:#c96442;text-decoration:underline;text-underline-offset:2px}
 
 /* ── Sources card ── */
 .ks-csources{margin-top:12px;padding:10px 14px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
@@ -721,5 +734,17 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 .citation-snippet{font-style:italic;color:#6b6b66}
 .citation-modal-link{color:#c96442;text-decoration:none;font-weight:500;font-size:13px}
 .citation-modal-link:hover{text-decoration:underline}
+.chat-thumb{display:block;max-width:200px;max-height:150px;border-radius:6px;margin:14px auto;cursor:pointer;border:1px solid #e8e4d8;object-fit:cover;transition:transform 0.2s}
+.chat-thumb:hover{transform:scale(1.05)}
+.ks-gallery{margin-top:16px;border-top:1px solid #eae6de;padding-top:14px;padding-bottom:4px}
+.ks-gallery-title{font-size:13px;font-weight:600;color:#5c5346;margin-bottom:10px}
+.ks-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;justify-items:center}
+.ks-gallery-card{display:block;text-decoration:none;border-radius:6px;overflow:hidden;background:#fff;border:1px solid #e8e4d8;transition:box-shadow 0.2s,transform 0.15s;width:100%;max-width:120px}
+.ks-gallery-card:hover{box-shadow:0 3px 10px rgba(0,0,0,0.1);transform:translateY(-2px)}
+.ks-gallery-img-wrap{width:100%;aspect-ratio:3/4;overflow:hidden;background:#f5f0e8}
+.ks-gallery-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.3s}
+.ks-gallery-card:hover .ks-gallery-img{transform:scale(1.06)}
+.ks-gallery-meta{padding:4px 5px}
+.ks-gallery-name{font-size:11px;color:#3a3222;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 </style>

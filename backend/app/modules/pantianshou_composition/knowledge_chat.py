@@ -52,7 +52,8 @@ SYSTEM_PROMPT = """你是「小墨」，一位精通中国画的专业知识助�
 9. 如果用户指出你的回答有误，重新检查搜索结果并纠正，不要坚持错误
 10. 你的名字是小墨，如果用户问起，可以用这个名字自我介绍
 11. 多轮对话时，注意用户说的"他""这个""那幅"等代词指代的是上一轮讨论的艺术家或作品，务必保持上下文连贯
-12. 用户说"还有呢""继续""更多"时，是在要求补充上一轮的回答，不要切换到完全无关的话题"""
+12. 用户说"还有呢""继续""更多"时，是在要求补充上一轮的回答，不要切换到完全无关的话题
+13. 搜索结果中的画作如果包含"缩略图:"行（格式如 `缩略图: /static/thumbnails/xxx.jpg`），必须在该作品介绍末尾用 Markdown 嵌入该图片。格式为 [![作品名](缩略图的URL)](链接的URL)。例如搜索结果有"链接: /tiba/abc"和"缩略图: /static/thumbnails/abc.jpg"时，输出 [![作品名](/static/thumbnails/abc.jpg)](/tiba/abc)。没有"缩略图:"行的作品不要编造图片URL"""
 
 
 # ── 意图分类 + 画家上下文注入（Phase 2）──
@@ -250,8 +251,40 @@ def _build_rag_context(
     search_results: List[Dict[str, Any]],
     max_items: int = 8,
     max_chars_per_item: int = 500,
-) -> str:
+) -> tuple:
     """将搜索结果构建为 RAG 上下文，支持 DB 实体和书本片段"""
+    # 预查询画作缩略图（entity_id 格式: "artwork-123"，需去掉前缀）
+    artwork_ids = []
+    for r in search_results[:max_items]:
+        payload = r.get("payload", {})
+        if payload.get("source") == "database" and payload.get("type") == "artwork":
+            eid = payload.get("entity_id", "")
+            if eid:
+                try:
+                    artwork_ids.append(int(eid.split("-", 1)[1]) if "-" in eid else int(eid))
+                except (ValueError, TypeError):
+                    pass
+
+    thumb_map: Dict[int, str] = {}
+    if artwork_ids:
+        try:
+            db = SessionLocal()
+            try:
+                param_dict = {f"id{i}": v for i, v in enumerate(artwork_ids)}
+                placeholders = ",".join([f":id{i}" for i in range(len(artwork_ids))])
+                rows = db.execute(
+                    sql_text(f"SELECT id, thumbnail_path FROM tubi_analyses WHERE id IN ({placeholders})"),
+                    param_dict,
+                ).fetchall()
+                for row in rows:
+                    if row[1]:
+                        fn = row[1].replace("\\", "/").split("/")[-1]
+                        thumb_map[row[0]] = f"/static/thumbnails/{fn}"
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning("Thumbnail lookup failed: %s", e)
+
     parts = []
     for i, r in enumerate(search_results[:max_items], 1):
         payload = r.get("payload", {})
@@ -274,6 +307,18 @@ def _build_rag_context(
                 part += f" ({year}年)"
             if url:
                 part += f"\n链接: {url}"
+
+            # 画作附加缩略图
+            if entity_type == "artwork":
+                eid = payload.get("entity_id", "")
+                try:
+                    int_id = int(eid.split("-", 1)[1]) if "-" in eid else int(eid)
+                    thumb_url = thumb_map.get(int_id, "")
+                except (ValueError, TypeError):
+                    thumb_url = ""
+                if thumb_url:
+                    part += f"\n缩略图: {thumb_url}"
+
             part += f"\n{content}"
             parts.append(part)
             continue
@@ -296,7 +341,7 @@ def _build_rag_context(
         part += f":\n{snippet}"
         parts.append(part)
 
-    return "\n\n".join(parts)
+    return "\n\n".join(parts), thumb_map
 
 
 def _build_messages(
@@ -381,7 +426,7 @@ async def chat_stream(
     )
 
     # ② 构建 RAG 上下文
-    rag_context = _build_rag_context(search_results)
+    rag_context, thumb_map = _build_rag_context(search_results)
     if not rag_context.strip():
         msg = "抱歉，未在知识库中找到相关信息。请尝试换个关键词或更具体的问题。"
         yield _sse_event("text", {"content": msg})
@@ -510,6 +555,14 @@ async def chat_stream(
                 "url": url,
                 "name": name,
             }
+            # 画作附缩略图
+            if entity_type == "artwork":
+                eid = payload.get("entity_id", "")
+                try:
+                    int_id = int(eid.split("-", 1)[1]) if "-" in eid else int(eid)
+                    slot["thumbnail_url"] = thumb_map.get(int_id, "")
+                except (ValueError, TypeError):
+                    pass
             sources.append(slot)
             continue
 

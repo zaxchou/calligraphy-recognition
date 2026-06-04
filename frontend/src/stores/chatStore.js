@@ -4,7 +4,8 @@ import api from '../api'
 
 export const useChatStore = defineStore('chat', () => {
   const sessions = ref([])          // 会话列表
-  const currentSessionId = ref(null) // 当前活跃会话ID
+  const currentSessionId = ref(null) // 当前活跃会话ID（KnowledgeSearch 用）
+  const floatSessionId = ref(null)   // 浮窗会话ID（ChatFloat 用，跨组件生命周期）
   const loading = ref(false)
 
   const currentSession = computed(() =>
@@ -42,14 +43,13 @@ export const useChatStore = defineStore('chat', () => {
 
   // 删除会话
   async function deleteSession(sessionId) {
-    try {
-      await api.delete(`/knowledge/chat/sessions/${sessionId}`)
-      sessions.value = sessions.value.filter(s => s.id !== sessionId)
-      if (currentSessionId.value === sessionId) {
-        currentSessionId.value = null
-      }
-    } catch (e) {
-      console.error('删除会话失败:', e)
+    await api.delete(`/knowledge/chat/sessions/${sessionId}`)
+    sessions.value = sessions.value.filter(s => s.id !== sessionId)
+    if (currentSessionId.value === sessionId) {
+      currentSessionId.value = null
+    }
+    if (floatSessionId.value === sessionId) {
+      floatSessionId.value = null
     }
   }
 
@@ -62,9 +62,13 @@ export const useChatStore = defineStore('chat', () => {
     currentSessionId.value = sessionId
   }
 
+  function setFloatSession(sessionId) {
+    floatSessionId.value = sessionId
+  }
+
   return {
-    sessions, currentSessionId, currentSession, loading,
+    sessions, currentSessionId, floatSessionId, currentSession, loading,
     fetchSessions, fetchMessages, deleteSession,
-    startNewSession, setCurrentSession,
+    startNewSession, setCurrentSession, setFloatSession,
   }
 })
