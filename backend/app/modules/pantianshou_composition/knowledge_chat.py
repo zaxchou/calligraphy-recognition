@@ -67,6 +67,11 @@ _KNOWN_ARTISTS = [
     '林良', '吕纪', '沈周', '唐寅', '仇英',
 ]
 
+# 画家名 DB 缓存（name list, expire time）
+_artist_cache: Optional[List[str]] = None
+_artist_cache_ts: float = 0
+_ARTIST_CACHE_TTL = 300  # 5 min
+
 
 def _detect_intent(query: str) -> str:
     """轻量意图分类（关键词检测，不调 LLM）"""
@@ -78,24 +83,29 @@ def _detect_intent(query: str) -> str:
 
 
 def _extract_artist(query: str) -> Optional[str]:
-    """从查询中提取画家名（先查硬编码列表，再查 DB）"""
+    """从查询中提取画家名（先查硬编码列表，再查带缓存的 DB）"""
+    global _artist_cache, _artist_cache_ts
     for name in _KNOWN_ARTISTS:
         if name in query:
             return name
-    # 回退：查 DB 中是否有匹配的画家名（只查一次，缓存结果）
-    try:
-        db = SessionLocal()
+    # DB 回退（缓存 5 分钟）
+    now = time.time()
+    if _artist_cache is None or now - _artist_cache_ts > _ARTIST_CACHE_TTL:
         try:
-            rows = db.execute(
-                sql_text("SELECT name FROM artists WHERE LENGTH(name) >= 2")
-            ).fetchall()
-            for row in rows:
-                if row[0] and row[0] in query:
-                    return row[0]
-        finally:
-            db.close()
-    except Exception:
-        pass
+            db = SessionLocal()
+            try:
+                rows = db.execute(
+                    sql_text("SELECT name FROM artists WHERE LENGTH(name) >= 2")
+                ).fetchall()
+                _artist_cache = [row[0] for row in rows if row[0]]
+                _artist_cache_ts = now
+            finally:
+                db.close()
+        except Exception:
+            _artist_cache = []
+    for name in _artist_cache or []:
+        if name in query:
+            return name
     return None
 
 
@@ -527,9 +537,10 @@ async def chat_stream(
         "session_id": session_id,
     })
 
-    # ⑥ 持久化消息到数据库
+    # ⑥ 持久化消息到数据库（异步，不阻塞流式）
     if user_id is not None and session_id is not None and total_text:
-        _save_chat_messages(user_id, session_id, query, total_text, sources)
+        import asyncio
+        await asyncio.to_thread(_save_chat_messages, user_id, session_id, query, total_text, sources)
 
 
 def _save_chat_messages(user_id: int, session_id: str, user_query: str, assistant_answer: str, sources: list):

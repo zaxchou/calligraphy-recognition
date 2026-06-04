@@ -116,7 +116,8 @@
       </div>
       <div class="ks-chat-body">
         <div class="ks-chat-msgs" ref="chatMsgsRef" @scroll="onChatScroll">
-          <div v-if="chatMessages.length===0" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>小墨</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
+          <div v-if="chatMessages.length===0 && !chatLoading" class="ks-chat-welcome"><Sparkles class="ks-chat-welcome-icon" /><h3>小墨</h3><p>基于专业知识库，解答写意花鸟画、构图法则、笔墨技法等问题</p><div class="ks-chat-sugs"><button v-for="s in chatSuggestions" :key="s" class="ks-sug-btn" @click="sendChat(s)">{{ s }}</button></div></div>
+          <div v-if="chatMessages.length===0 && chatLoading" class="ks-chat-loading"><Loader2 class="icon spin" /><span>加载中...</span></div>
           <div v-for="(m,i) in chatMessages" :key="m.id||i" :class="['ks-cmsg',m.role]">
             <div class="ks-ccontent">
               <div v-if="m.thinking" class="ks-cthinking"><Sparkles class="icon-xs" />思考中...</div>
@@ -539,6 +540,9 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-chat-welcome-icon{color:#c96442;width:40px;height:40px;margin-bottom:12px}
 .ks-chat-welcome h3{font-size:24px;margin:0 0 6px;color:#141413;font-family:'Noto Serif SC',serif}
 .ks-chat-welcome p{font-size:14px;margin:0 0 16px;color:#8a877e;max-width:480px;margin-left:auto;margin-right:auto}
+.ks-chat-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:60px 0;color:#b8b4aa;font-size:14px}
+.spin{animation:ks-spin 1s linear infinite}
+@keyframes ks-spin{to{transform:rotate(360deg)}}
 .ks-chat-sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .ks-sug-btn{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
 .ks-sug-btn:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}

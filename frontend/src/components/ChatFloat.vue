@@ -72,6 +72,7 @@
 import { ref, nextTick } from 'vue'
 import { MessageCircle, X, Sparkles, Send, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
+import { ElMessage } from 'element-plus'
 
 const authStore = useAuthStore()
 const open = ref(false)
@@ -212,6 +213,7 @@ async function send(msg) {
     if (last && last.role === 'assistant') {
       last.thinking = false; last.loading = false; last.content = '查询失败，请重试'
     }
+    try { ElMessage.error('小墨暂时无法回答，请稍后重试') } catch {}
   } finally {
     loading.value = false
     nextTick(() => { if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight })
