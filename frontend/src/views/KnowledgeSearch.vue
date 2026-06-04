@@ -604,7 +604,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 .ks-chat-input-row{padding:8px 32px 16px;flex-shrink:0}
 .ks-chat-input-wrap{display:flex;align-items:flex-end;gap:8px;background:#fff;border:1px solid #d8d4cc;border-radius:16px;padding:10px 10px 10px 18px;transition:border-color 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.04)}
 .ks-chat-input-wrap:focus-within{border-color:#c96442;box-shadow:0 4px 20px rgba(0,0,0,0.08),0 1px 8px rgba(201,100,66,0.1)}
-.ks-chat-ta{flex:1;border:none;outline:none;padding:8px 0;font-size:15px;resize:none;line-height:1.5;background:transparent;color:#2c2c2c;font-family:inherit;max-height:160px}
+.ks-chat-ta{flex:1;border:none;outline:none;padding:10px 0;font-size:15px;resize:none;line-height:1.5;background:transparent;color:#2c2c2c;font-family:inherit;min-height:48px;max-height:160px}
 .ks-chat-ta::placeholder{color:#b0aca2}
 .ks-chat-send{border:none;background:#141413;color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.2s}
 .ks-chat-send:hover{background:#3d3d3a}
