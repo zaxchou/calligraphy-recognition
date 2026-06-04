@@ -125,8 +125,8 @@
               <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="ks-csources"><div class="ks-csrc-title">📖 引用来源</div><div v-for="s in m.sources" :key="s.index" class="ks-csrc-item" @click="citationSource=s" style="cursor:pointer"><span class="ks-csrc-idx">[{{ s.index }}]</span><template v-if="s._source==='database'||s.url"><a class="ks-csrc-link" :href="chatLink(s.url)" target="_blank" rel="noopener"><span v-if="s.name||s.book" class="ks-csrc-book">{{ s.name||s.book }}</span><ExternalLink class="icon-xs" style="width:12px;height:12px;vertical-align:middle;margin-left:2px" /></a></template><template v-else><span class="ks-csrc-book">{{ s.book }}</span><span v-if="s.page" class="ks-csrc-page">第{{ s.page }}页</span></template><span v-if="s.snippet" class="ks-csrc-snip">"{{ s.snippet }}"</span></div></div>
             </div>
           </div>
+          <button v-if="showScrollBtn" class="ks-scroll-bottom" @click="scrollToBottom">↓</button>
         </div>
-        <button v-if="showScrollBtn" class="ks-scroll-bottom" @click="scrollToBottom"><ChevronDown class="icon-sm" /></button>
         <div class="ks-chat-input-row">
           <div class="ks-chat-input-wrap">
             <textarea ref="chatInputRef" v-model="chatInput" class="ks-chat-ta" placeholder="向小墨提问..." @keydown.enter.exact.prevent="sendChat()" @input="autoResize" rows="1" :disabled="chatLoading"></textarea>
@@ -180,7 +180,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Search, Loader2, BookOpen, ChevronRight, ChevronLeft, Library, RefreshCw, Trash2, X, Sparkles, Image as ImageIcon, MessageCircle, Send, FileSearch, ListTree, FileCode, FileDown, PanelLeft, PanelLeftOpen, ExternalLink } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
@@ -412,8 +412,9 @@ function openImagePreview(img,list,n){previewList.value=list&&list.length>1?list
 function nextPreview(){if(previewIndex.value<previewList.value.length-1){previewIndex.value++;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function prevPreview(){if(previewIndex.value>0){previewIndex.value--;var ni=previewList.value[previewIndex.value];previewImageUrl.value=getImageUrl(ni.stored_url||ni.url||ni.id||ni)}}
 function onPreviewKey(e){if(e.key==='ArrowRight')nextPreview();else if(e.key==='ArrowLeft')prevPreview();else if(e.key==='Escape')previewVisible.value=false}
+watch(activeMode, (v) => { document.body.style.overflow = v === 'chat' ? 'hidden' : '' })
 onMounted(async()=>{await Promise.all([store.fetchBooks(),store.fetchStats(),store.fetchSearchHistory()]);const urlQ=route.query.q;if(urlQ){searchInput.value=urlQ;await performSearch()}else{nextTick(()=>searchInputRef.value?.focus())};document.addEventListener('keydown',onPreviewKey)})
-onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
+onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);document.body.style.overflow=''})
 </script>
 
 <style scoped>
@@ -532,7 +533,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey)})
 .ks-chat-msgs::-webkit-scrollbar-track{background:transparent}
 .ks-chat-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
 .ks-chat-msgs::-webkit-scrollbar-thumb:hover{background:#c0bbb3}
-.ks-scroll-bottom{position:absolute;bottom:80px;right:32px;width:36px;height:36px;border-radius:50%;border:1px solid #d8d4cc;background:#fff;color:#5e5d59;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s;z-index:10}
+.ks-scroll-bottom{position:fixed;bottom:80px;right:32px;width:36px;height:36px;border-radius:50%;border:1px solid #d8d4cc;background:#fff;color:#5e5d59;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);transition:all 0.2s;z-index:10;font-size:18px;font-weight:700;line-height:1}
 .ks-scroll-bottom:hover{background:#f5f2eb;border-color:#c96442;color:#c96442}
 
 /* ── Welcome ── */
