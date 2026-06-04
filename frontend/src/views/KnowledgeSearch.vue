@@ -553,7 +553,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 @keyframes ks-msg-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .ks-cmsg.assistant{background:#fff;padding:14px 20px;border-radius:10px;margin-bottom:2px}
 .ks-cmsg.user{display:flex;justify-content:flex-end;padding:6px 0}
-.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:18px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;line-height:1.45;color:#1a1a1a;word-break:break-word;white-space:pre-wrap}
+.ks-cmsg.user .ks-ctext{background:#e8e4dc;border-radius:16px;padding:9px 14px;display:inline-block;max-width:85%;min-width:fit-content;font-size:14px;line-height:1.45;color:#1a1a1a;word-break:break-word;white-space:pre-wrap}
 .ks-cmsg.assistant .ks-ctext{font-size:14px;line-height:1.5;color:#1a1a1a;padding:0}
 .ks-ccontent{min-width:0}
 .ks-cmsg.user .ks-ccontent{display:flex;justify-content:flex-end}
