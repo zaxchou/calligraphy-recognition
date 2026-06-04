@@ -2167,9 +2167,9 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
 
     支持多轮对话：传 session_id 时从 DB 加载历史（防前端篡改）
     """
-    from .knowledge_chat import chat_stream
-    from sqlalchemy import text as sql_text
-    from app.core.database import SessionLocal
+    from .knowledge_chat import chat_stream as _chat_stream
+    from sqlalchemy import text as _sql_text
+    from app.core.database import SessionLocal as _SessionLocal
 
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="prompt 不能为空")
@@ -2179,11 +2179,11 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
     if not session_id:
         # 自动创建新会话
         session_id = str(uuid.uuid4())
-        db = SessionLocal()
+        db = _SessionLocal()
         try:
             now = datetime.utcnow()
             db.execute(
-                sql_text(
+                _sql_text(
                     "INSERT INTO chat_sessions (id, user_id, title, message_count, created_at, updated_at) "
                     "VALUES (:id, :uid, :title, 0, :now, :now)"
                 ),
@@ -2197,10 +2197,10 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
     # 同时验证 session 所有权
     history = request.history or []
     if request.session_id:
-        db = SessionLocal()
+        db = _SessionLocal()
         try:
             owner = db.execute(
-                sql_text("SELECT user_id FROM chat_sessions WHERE id = :sid"),
+                _sql_text("SELECT user_id FROM chat_sessions WHERE id = :sid"),
                 {"sid": session_id},
             ).fetchone()
             if not owner:
@@ -2209,7 +2209,7 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
                 raise HTTPException(status_code=403, detail="无权访问此会话")
 
             rows = db.execute(
-                sql_text(
+                _sql_text(
                     "SELECT role, content FROM chat_messages "
                     "WHERE session_id = :sid ORDER BY token_index LIMIT 20"
                 ),
@@ -2221,7 +2221,7 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
             db.close()
 
     return StreamingResponse(
-        chat_stream(request.prompt, history, user_id=user.id, session_id=session_id),
+        _chat_stream(request.prompt, history, user_id=user.id, session_id=session_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

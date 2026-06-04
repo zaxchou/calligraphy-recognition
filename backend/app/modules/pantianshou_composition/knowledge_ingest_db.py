@@ -10,7 +10,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DB_PATH = os.path.join(BASE_DIR, "data", "calligraphy.db")
 
 def get_db():
-    db = sqlite3.connect('file:Z:/molin-wiki/backend/data/calligraphy.db?mode=ro', uri=True)
+    db = sqlite3.connect(f'file:{DB_PATH}?mode=ro', uri=True)
     db.row_factory = sqlite3.Row
     return db
 

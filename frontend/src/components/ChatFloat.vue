@@ -92,7 +92,10 @@ const suggestions = [
 
 function openChat() {
   open.value = true
-  nextTick(() => inputRef.value?.focus())
+  nextTick(() => {
+    if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight
+    if (inputRef.value) inputRef.value.focus()
+  })
 }
 
 function autoResize() {

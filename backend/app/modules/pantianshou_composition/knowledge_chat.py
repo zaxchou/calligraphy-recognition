@@ -234,6 +234,18 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     return filtered
 
 
+def _extract_book_title(payload: Dict[str, Any]) -> str:
+    """从 payload 提取书名（搜索结果和 sources 共用）"""
+    metadata = payload.get("metadata") or {}
+    if isinstance(metadata, dict):
+        raw_title = metadata.get("book_title", "")
+        if raw_title and "中国写意花鸟画教程" in raw_title:
+            return "写意教程"
+        if raw_title:
+            return raw_title
+    return payload.get("book", "") or payload.get("book_title", "") or "知识库"
+
+
 def _build_rag_context(
     search_results: List[Dict[str, Any]],
     max_items: int = 8,
@@ -267,17 +279,7 @@ def _build_rag_context(
             continue
 
         # 书本片段
-        metadata = payload.get("metadata") or {}
-        book_title = ""
-        if isinstance(metadata, dict):
-            raw_title = metadata.get("book_title", "")
-            if raw_title and "中国写意花鸟画教程" in raw_title:
-                book_title = "写意教程"
-            elif raw_title:
-                book_title = raw_title
-        if not book_title:
-            book_title = payload.get("book", "") or payload.get("book_title", "") or "知识库"
-
+        book_title = _extract_book_title(payload)
         page = payload.get("page_start", 0)
         chapter = payload.get("chapter", "") or payload.get("chapter_title", "")
         content = payload.get("content", "")
@@ -512,13 +514,7 @@ async def chat_stream(
             continue
 
         # 书本片段
-        metadata = payload.get("metadata") or {}
-        book_title = ""
-        if isinstance(metadata, dict):
-            raw_title = metadata.get("book_title", "")
-            book_title = "写意教程" if ("写意花鸟画教程" in raw_title) else raw_title
-        if not book_title:
-            book_title = payload.get("book", "") or payload.get("book_title", "") or "知识库"
+        book_title = _extract_book_title(payload)
         page = payload.get("page_start", 0)
         chapter = payload.get("chapter", "") or payload.get("chapter_title", "")
         snippet = (payload.get("content", "") or "")[:120]
