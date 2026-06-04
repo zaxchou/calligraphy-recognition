@@ -189,7 +189,7 @@ async function loadFullItemList(force = false) {
     return
   }
   try {
-    const res = await tibaApi.getAllResults(0, 2000)
+    const res = await tibaApi.getAllResults(0, 2000, currentArtist.value || undefined)
     if (res.success) {
       const data = (res.data || []).map(item => ({
         ...item,
