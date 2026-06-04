@@ -9,12 +9,15 @@
         "--mcp"
       ]
     },
-    "mimo-image-recognition": {
-      "command": "uvx",
-      "args": [
-        "--refresh",
-        "mimo-image-recognition-mcp"
-      ]
+    "mimo-vision": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["C:/Users/zax/.claude/mcp-servers/mimo-vision/server.py"],
+      "env": {
+        "MIMO_API_KEY": "sk-chcza5u0uyfeoczd4eousiefxt2zl2rtvyxk3qe4o0ndw4ok",
+        "MIMO_API_BASE": "https://api.xiaomimimo.com/v1",
+        "MIMO_MODEL": "mimo-v2.5"
+      }
     }
   }
 }

@@ -109,6 +109,22 @@
           </div>
         </div>
 
+        <!-- 微信绑定 -->
+        <div class="uc-card">
+          <h3 class="uc-block-title">账号绑定</h3>
+          <div class="uc-bind-row">
+            <span class="uc-bind-label">微信</span>
+            <span v-if="profile?.has_wechat" class="uc-bind-status bound">已绑定</span>
+            <span v-else class="uc-bind-status">未绑定</span>
+            <button
+              v-if="!profile?.has_wechat"
+              class="uc-btn small"
+              style="background:#07c160;color:#fff;"
+              @click="handleBindWechat"
+            >绑定微信</button>
+          </div>
+        </div>
+
         <!-- 我的贡献 -->
         <div class="uc-card">
           <h3 class="uc-block-title">我的贡献</h3>
@@ -284,6 +300,11 @@ async function handleChangePassword() {
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '修改失败')
   } finally { pwdSaving.value = false }
+}
+
+function handleBindWechat() {
+  const base = import.meta.env.VITE_API_BASE || ''
+  window.location.href = `${base}/api/v1/auth/wechat/qrcode?action=bind&redirect=${encodeURIComponent('/user/center')}`
 }
 </script>
 
@@ -465,6 +486,18 @@ async function handleChangePassword() {
 .uc-btn.primary { background: #c45a3c; color: #fff; }
 .uc-btn.primary:hover { opacity: 0.9; }
 .uc-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.uc-btn.small { padding: 5px 14px; font-size: 12px; }
+
+/* 绑定行 */
+.uc-bind-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+.uc-bind-label { font-size: 14px; color: #3a3222; min-width: 40px; }
+.uc-bind-status { font-size: 13px; color: #999; }
+.uc-bind-status.bound { color: #07c160; }
 
 /* 响应式 */
 @media (max-width: 640px) {

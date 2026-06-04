@@ -80,7 +80,6 @@
 ### MCP 服务器
 - **Memory MCP:** `@modelcontextprotocol/server-memory` — 知识图谱记忆
 - **GitHub MCP:** `@modelcontextprotocol/server-github` — GitHub API 操作（已配 token）
-- **MIMO 图片识别:** `mimo-image-recognition-mcp` — 调用小米 MIMO 多模态模型进行图片理解、OCR。**只当模型为 `mimo-v2.5-pro` 时使用此工具做图片识别**
 
 ### Claude-Mem（会话记忆服务）
 - **用途：** 跨会话持久记忆，记录工作历史和上下文

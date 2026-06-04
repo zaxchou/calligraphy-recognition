@@ -7,17 +7,20 @@ import hashlib
 import logging
 import os
 import time
+import urllib.parse
 import uuid
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, File, HTTPException, Depends, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, Depends, Query, Request, UploadFile
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import DATA_DIR, get_settings
 from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_optional_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 
@@ -446,8 +449,267 @@ async def wechat_login(req: WechatLoginRequest, db: Session = Depends(get_db)):
 
 
 # ════════════════════════════════════════════════════════════════
-# User Profile
+# WeChat Web OAuth（网页扫码登录）
 # ════════════════════════════════════════════════════════════════
+
+# state 防 CSRF 存储（内存，TTL 5 分钟）
+_oauth_states: dict = {}  # {state: {"action": "login"|"bind", "user_id": int|None, "expires_at": float}}
+
+
+def _cleanup_expired_states():
+    """清理过期的 OAuth state"""
+    now = time.time()
+    expired = [k for k, v in _oauth_states.items() if v["expires_at"] < now]
+    for k in expired:
+        del _oauth_states[k]
+
+
+def _resolve_frontend_base(settings, request: Request = None) -> str:
+    """从配置或请求中推导前端 base URL"""
+    if settings.WECHAT_REDIRECT_URI:
+        if "/api/" in settings.WECHAT_REDIRECT_URI:
+            return settings.WECHAT_REDIRECT_URI.split("/api/")[0]
+        return settings.WECHAT_REDIRECT_URI.rstrip("/")
+    if request:
+        return str(request.base_url).rstrip("/")
+    return ""
+
+
+def _redirect_error(frontend_base: str, error: str) -> RedirectResponse:
+    """OAuth 失败时 redirect 到前端错误页，而非返回 JSON"""
+    return RedirectResponse(
+        url=f"{frontend_base}/#/auth/callback?error={urllib.parse.quote(error)}",
+        status_code=302,
+    )
+
+
+@router.get("/wechat/qrcode")
+async def wechat_qrcode(
+    action: str = Query("login", pattern="^(login|bind)$"),
+    redirect: str = Query("/"),
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_optional_user),
+):
+    """
+    生成微信扫码登录授权 URL 并 302 跳转。
+
+    - action=login: 新用户扫码注册/登录（无需登录）
+    - action=bind: 已登录用户绑定微信（需要先登录）
+    """
+    _cleanup_expired_states()
+
+    settings = get_settings()
+
+    # 生成随机 state，存入用户信息
+    state = uuid.uuid4().hex
+    state_data = {
+        "action": action,
+        "redirect": redirect,
+        "expires_at": time.time() + 300,  # 5 分钟有效
+    }
+
+    if action == "bind":
+        if not user:
+            raise HTTPException(status_code=401, detail="绑定微信需要先登录")
+        state_data["user_id"] = user.id
+
+    _oauth_states[state] = state_data
+
+    if settings.WECHAT_MOCK_MODE:
+        # Mock 模式：直接跳转到 mock-callback
+        callback_url = f"/api/v1/auth/wechat/mock-callback?state={state}"
+        return RedirectResponse(url=callback_url, status_code=302)
+
+    # 真实模式：跳转微信授权页
+    if not settings.WEBSITE_APP_ID:
+        raise HTTPException(status_code=503, detail="微信网站应用配置未就绪（缺少 WEBSITE_APP_ID）")
+
+    redirect_uri = settings.WECHAT_REDIRECT_URI
+    if not redirect_uri:
+        raise HTTPException(status_code=503, detail="微信回调地址未配置（缺少 WECHAT_REDIRECT_URI）")
+
+    wechat_url = (
+        "https://open.weixin.qq.com/connect/qrconnect?"
+        f"appid={settings.WEBSITE_APP_ID}"
+        f"&redirect_uri={urllib.parse.quote(redirect_uri, safe='')}"
+        f"&response_type=code"
+        f"&scope=snsapi_login"
+        f"&state={state}"
+        f"#wechat_redirect"
+    )
+
+    return RedirectResponse(url=wechat_url, status_code=302)
+
+
+def _find_or_create_wechat_user(db: Session, openid: str, unionid: Optional[str] = None) -> tuple[User, bool]:
+    """查找或创建微信用户，返回 (user, is_new)"""
+    user = db.query(User).filter(User.wechat_openid == openid).first()
+    is_new = False
+
+    if not user:
+        user = User(
+            wechat_openid=openid,
+            wechat_unionid=unionid,
+            nickname=f"微信用户{openid[-6:]}",
+            role="reader",
+        )
+        db.add(user)
+        try:
+            db.commit()
+            db.refresh(user)
+            _assign_uid(db, user)
+            is_new = True
+            logger.info(f"微信扫码自动注册: id={user.id}, uid={user.uid}")
+        except Exception:
+            db.rollback()
+            db.expire_all()
+            user = db.query(User).filter(User.wechat_openid == openid).first()
+            if not user:
+                raise HTTPException(status_code=500, detail="用户创建失败")
+    elif unionid and not user.wechat_unionid:
+        user.wechat_unionid = unionid
+        db.commit()
+
+    return user, is_new
+
+
+def _bind_wechat_to_user(db: Session, user_id: int, openid: str, unionid: Optional[str] = None) -> User:
+    """将微信 openid 绑定到已登录用户"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if user.wechat_openid:
+        raise HTTPException(status_code=409, detail="你已绑定微信，如需更换请联系管理员")
+
+    user.wechat_openid = openid
+    if unionid:
+        user.wechat_unionid = unionid
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="该微信已被其他账号绑定")
+    db.refresh(user)
+    logger.info(f"用户 {user.id} 绑定微信成功: openid={openid[:16]}...")
+    return user
+
+
+@router.get("/wechat/callback")
+async def wechat_callback(
+    code: str = Query(...),
+    state: str = Query(...),
+    db: Session = Depends(get_db),
+    request: Request = None,
+):
+    """
+    微信 OAuth 回调（真实模式）。
+    所有错误都 redirect 到前端错误页，不返回 JSON。
+    """
+    settings = get_settings()
+    frontend_base = _resolve_frontend_base(settings, request)
+
+    # 校验 state
+    _cleanup_expired_states()
+    state_data = _oauth_states.pop(state, None)
+    if not state_data or state_data["expires_at"] < time.time():
+        return _redirect_error(frontend_base, "授权链接已过期，请重新扫码")
+
+    action = state_data.get("action", "login")
+
+    if not settings.WEBSITE_APP_ID or not settings.WEBSITE_APP_SECRET:
+        return _redirect_error(frontend_base, "微信网站应用配置未就绪")
+
+    # 用 code 换 access_token
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.weixin.qq.com/sns/oauth2/access_token",
+                params={
+                    "appid": settings.WEBSITE_APP_ID,
+                    "secret": settings.WEBSITE_APP_SECRET,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                },
+            )
+            data = resp.json()
+    except Exception as e:
+        logger.error(f"微信 OAuth 换 token 失败: {e}")
+        return _redirect_error(frontend_base, "微信服务暂时不可用")
+
+    if "errcode" in data and data["errcode"] != 0:
+        logger.warning(f"微信 OAuth 错误: {data}")
+        return _redirect_error(frontend_base, f"微信授权失败: {data.get('errmsg', '未知错误')}")
+
+    openid = data.get("openid")
+    unionid = data.get("unionid")
+    if not openid:
+        return _redirect_error(frontend_base, "无法获取微信 openid")
+
+    # 根据 action 处理
+    try:
+        if action == "bind":
+            bind_user_id = state_data.get("user_id")
+            if not bind_user_id:
+                return _redirect_error(frontend_base, "绑定缺少用户信息")
+            user = _bind_wechat_to_user(db, bind_user_id, openid, unionid)
+            is_new = False
+        else:
+            user, is_new = _find_or_create_wechat_user(db, openid, unionid)
+    except HTTPException as e:
+        return _redirect_error(frontend_base, e.detail)
+
+    token = create_access_token(user_id=user.id, role=user.role, tier=user.subscription_tier or "free")
+    redirect_to = state_data.get("redirect", "/")
+    callback_url = f"{frontend_base}/#/auth/callback?token={token}&is_new={str(is_new).lower()}&redirect={urllib.parse.quote(redirect_to)}"
+    return RedirectResponse(url=callback_url, status_code=302)
+
+
+@router.get("/wechat/mock-callback")
+async def wechat_mock_callback(
+    state: str = Query(...),
+    db: Session = Depends(get_db),
+    request: Request = None,
+):
+    """
+    Mock 模式回调 — 跳过微信 API，直接用 mock openid 走注册/登录流程。
+    所有错误都 redirect 到前端错误页，不返回 JSON。
+    """
+    settings = get_settings()
+    frontend_base = _resolve_frontend_base(settings, request)
+
+    _cleanup_expired_states()
+
+    # 校验 state
+    state_data = _oauth_states.pop(state, None)
+    if not state_data or state_data["expires_at"] < time.time():
+        return _redirect_error(frontend_base, "授权链接已过期，请重新扫码")
+
+    action = state_data.get("action", "login")
+
+    # 生成 mock openid（state 唯一且稳定，确保同一流程得到同一 openid）
+    mock_seed = f"web_mock_{state}"
+    openid = _generate_mock_openid(mock_seed)
+
+    logger.info(f"[Mock] 微信扫码回调: state={state[:8]}... action={action}, openid={openid}")
+
+    # 根据 action 处理
+    try:
+        if action == "bind":
+            bind_user_id = state_data.get("user_id")
+            if not bind_user_id:
+                return _redirect_error(frontend_base, "绑定缺少用户信息")
+            user = _bind_wechat_to_user(db, bind_user_id, openid)
+            is_new = False
+        else:
+            user, is_new = _find_or_create_wechat_user(db, openid)
+    except HTTPException as e:
+        return _redirect_error(frontend_base, e.detail)
+
+    token = create_access_token(user_id=user.id, role=user.role, tier=user.subscription_tier or "free")
+    redirect_to = state_data.get("redirect", "/")
+    callback_url = f"{frontend_base}/#/auth/callback?token={token}&is_new={str(is_new).lower()}&redirect={urllib.parse.quote(redirect_to)}"
+    return RedirectResponse(url=callback_url, status_code=302)
 
 class SetPasswordRequest(BaseModel):
     password: str
@@ -489,6 +751,7 @@ async def get_profile(
         "role": user.role,
         "score": user.score or 0,
         "has_password": bool(user.password_hash),
+        "has_wechat": bool(user.wechat_openid),
         "nickname_changed_at": user.nickname_changed_at.isoformat() if user.nickname_changed_at else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "claimed_artists": [c.artist_name for c in claims],

@@ -39,6 +39,49 @@ def run_migrations():
         cur = conn.execute("PRAGMA table_info(users)")
         cols = {row[1] for row in cur.fetchall()}
 
+        # 修复 wechat_openid NOT NULL 约束（早期迁移遗留）
+        cur2 = conn.execute("PRAGMA table_info(users)")
+        col_info = {row[1]: row for row in cur2.fetchall()}
+        if "wechat_openid" in col_info and col_info["wechat_openid"][3]:  # notnull=1
+            logger.info("Migration: rebuilding users table to make wechat_openid nullable")
+            all_cols = [row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+            col_list = ", ".join(all_cols)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute(f"CREATE TABLE users_new AS SELECT {col_list} FROM users")
+                conn.execute("DROP TABLE users")
+                # IMPORTANT: keep this DDL in sync with User model (app/models/user.py)
+                conn.execute("""
+                    CREATE TABLE users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        wechat_openid TEXT UNIQUE,
+                        wechat_unionid TEXT,
+                        nickname TEXT UNIQUE,
+                        avatar_url TEXT,
+                        email TEXT,
+                        phone TEXT,
+                        role TEXT DEFAULT 'free_user',
+                        subscription_tier TEXT DEFAULT 'free',
+                        subscription_expires_at DATETIME,
+                        storage_used_bytes INTEGER DEFAULT 0,
+                        ai_calls_this_month INTEGER DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        password_hash TEXT,
+                        uid TEXT UNIQUE,
+                        nickname_changed_at TIMESTAMP,
+                        score INTEGER DEFAULT 0
+                    )
+                """)
+                conn.execute(f"INSERT INTO users ({col_list}) SELECT {col_list} FROM users_new")
+                conn.execute("DROP TABLE users_new")
+                conn.execute("COMMIT")
+                logger.info("Migration: users table rebuilt, wechat_openid now nullable")
+            except Exception:
+                conn.execute("ROLLBACK")
+                logger.error("Migration: users table rebuild failed, rolled back")
+                raise
+
         if "uid" not in cols:
             conn.execute("ALTER TABLE users ADD COLUMN uid TEXT")
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_uid ON users(uid)")
