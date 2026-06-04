@@ -528,7 +528,7 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 
 /* ── Chat body ── */
 .ks-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:920px;width:100%;margin:0 auto;padding:0 32px;position:relative}
-.ks-chat-msgs{flex:1;overflow-y:auto;padding:16px 0 8px;scroll-behavior:smooth}
+.ks-chat-msgs{flex:1;overflow-y:auto;padding:16px 8px 8px;scroll-behavior:smooth}
 .ks-chat-msgs::-webkit-scrollbar{width:6px}
 .ks-chat-msgs::-webkit-scrollbar-track{background:transparent}
 .ks-chat-msgs::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
