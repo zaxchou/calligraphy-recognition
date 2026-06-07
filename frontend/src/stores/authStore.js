@@ -7,7 +7,9 @@ const USER_KEY = 'auth_user'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY) || null)
-  const userInfo = ref(JSON.parse(localStorage.getItem(USER_KEY) || 'null'))
+  let parsedUser = null
+  try { parsedUser = JSON.parse(localStorage.getItem(USER_KEY)) } catch {}
+  const userInfo = ref(parsedUser)
   const loading = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)

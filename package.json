@@ -4,7 +4,8 @@
   "description": "墨林百科 — 基于 AI 的中国书画分析与知识平台",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "commitlint": "commitlint --edit"
   },
   "repository": {
     "type": "git",
@@ -17,5 +18,9 @@
   "bugs": {
     "url": "https://github.com/zaxchou/molin-wiki/issues"
   },
-  "homepage": "https://github.com/zaxchou/molin-wiki#readme"
+  "homepage": "https://github.com/zaxchou/molin-wiki#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2"
+  }
 }

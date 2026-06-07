@@ -18,8 +18,13 @@ logging.basicConfig(
 from app.core.config import get_settings
 settings = get_settings()
 
-# 启动时检查 JWT Secret 是否为默认值
-if settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
+# 启动时检查：生产环境禁止默认 JWT Secret 和 Mock 模式
+if os.getenv("ENVIRONMENT") == "production":
+    if settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
+        raise RuntimeError("生产环境禁止使用默认 JWT_SECRET_KEY，请在 .env 中设置自定义值")
+    if settings.WECHAT_MOCK_MODE:
+        raise RuntimeError("生产环境禁止 WECHAT_MOCK_MODE=true，请在 .env 中设为 false")
+elif settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
     logging.getLogger(__name__).warning(
         "⚠️  JWT_SECRET_KEY 使用默认值，生产环境请在 .env 中修改！"
     )
@@ -334,7 +339,7 @@ def get_public_site_settings(db: Session = Depends(get_db)):
 
 
 @app.get("/health")
-def health_check():
+def health_check_root():
     return {
         "status": "healthy",
         "version": settings.VERSION
@@ -352,7 +357,8 @@ if __name__ == "__main__":
 import threading
 import time as _time
 
-_worker_running = False
+_stop_event = threading.Event()
+_worker_started = False
 
 def _recover_stale_jobs(logger):
     """启动时恢复：把卡在 processing 超过 2 分钟的任务重置为 queued"""
@@ -363,13 +369,13 @@ def _recover_stale_jobs(logger):
         cutoff = (_dt.now() - _td(minutes=2)).strftime("%Y-%m-%d %H:%M:%S")
         # Reset stuck jobs
         stuck_jobs = db.execute(
-            __import__("sqlalchemy").text(
+            text(
                 "UPDATE tubi_jobs SET status='queued', last_error='recovered' WHERE status='processing' AND updated_at < :cutoff"
             ), {"cutoff": cutoff}
         )
         # Reset stuck analyses
         stuck_analyses = db.execute(
-            __import__("sqlalchemy").text(
+            text(
                 "UPDATE tubi_analyses SET status='uploaded' WHERE status='analyzing' AND updated_at < :cutoff"
             ), {"cutoff": cutoff}
         )
@@ -383,7 +389,6 @@ def _recover_stale_jobs(logger):
 
 def _embedded_worker_loop():
     """DB 轮询模式：直接查 tubi_jobs 表，不需要 Redis"""
-    global _worker_running
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
     from app.core.database import SessionLocal
@@ -396,7 +401,7 @@ def _embedded_worker_loop():
     # 启动时恢复：把卡在 processing 超过 2 分钟的任务重置为 queued
     _recover_stale_jobs(logger)
 
-    while _worker_running:
+    while not _stop_event.is_set():
         db = SessionLocal()
         image_id = None
         try:
@@ -430,15 +435,15 @@ def _embedded_worker_loop():
 
 @app.on_event("startup")
 def _start_embedded_worker():
-    global _worker_running
-    if _worker_running:
+    global _worker_started
+    if _worker_started:
         return
-    _worker_running = True
+    _worker_started = True
+    _stop_event.clear()
     t = threading.Thread(target=_embedded_worker_loop, daemon=True, name="tiba-worker")
     t.start()
 
 
 @app.on_event("shutdown")
 def _stop_embedded_worker():
-    global _worker_running
-    _worker_running = False
+    _stop_event.set()

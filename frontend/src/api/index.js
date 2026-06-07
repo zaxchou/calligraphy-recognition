@@ -48,10 +48,13 @@ api.interceptors.response.use(
       return api(config)
     }
 
-    // Phase 1: 401 自动清除 token（由页面组件决定是否跳转登录页）
+    // 401 自动清除 token 并跳转登录页
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
+      if (!window.location.hash.includes('#/login')) {
+        window.location.hash = '#/login'
+      }
     }
 
     console.error('API Error:', error)

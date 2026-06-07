@@ -6,6 +6,7 @@ Phase 3: 废弃纯微信登录，新增手机号真实登录系统。
 import hashlib
 import logging
 import os
+import secrets
 import time
 import urllib.parse
 import uuid
@@ -32,9 +33,28 @@ logger = logging.getLogger(__name__)
 _verify_codes: dict = {}  # {phone: {"code": "123456", "expires_at": timestamp, "sent_at": timestamp}}
 
 
+def _cleanup_expired_codes():
+    """清理过期验证码，每次发送/验证时调用"""
+    now = time.time()
+    expired = [k for k, v in _verify_codes.items() if now > v["expires_at"]]
+    for k in expired:
+        del _verify_codes[k]
+
+
 # ════════════════════════════════════════════════════════════════
 # Pydantic Schemas
 # ════════════════════════════════════════════════════════════════
+
+import re
+_PHONE_RE = re.compile(r"^1[3-9]\d{9}$")
+
+def _validate_phone(v: str) -> str:
+    """公共手机号验证"""
+    v = v.strip()
+    if not _PHONE_RE.match(v):
+        raise ValueError("手机号格式不正确")
+    return v
+
 
 class SendCodeRequest(BaseModel):
     phone: str
@@ -42,10 +62,7 @@ class SendCodeRequest(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, v: str) -> str:
-        v = v.strip()
-        if not v or len(v) < 11:
-            raise ValueError("手机号格式不正确")
-        return v
+        return _validate_phone(v)
 
 
 class RegisterRequest(BaseModel):
@@ -57,10 +74,7 @@ class RegisterRequest(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, v: str) -> str:
-        v = v.strip()
-        if not v or len(v) < 11:
-            raise ValueError("手机号格式不正确")
-        return v
+        return _validate_phone(v)
 
 
 class LoginCodeRequest(BaseModel):
@@ -70,10 +84,7 @@ class LoginCodeRequest(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, v: str) -> str:
-        v = v.strip()
-        if not v or len(v) < 11:
-            raise ValueError("手机号格式不正确")
-        return v
+        return _validate_phone(v)
 
 
 class LoginPasswordRequest(BaseModel):
@@ -133,22 +144,21 @@ def _check_code(phone: str, code: str) -> bool:
             return True
         return False
 
-    # 生产模式：查 Redis / 短信服务
-    entry = _verify_codes.get(phone)
+    # 生产模式：原子 pop 避免并发重放
+    _cleanup_expired_codes()
+    entry = _verify_codes.pop(phone, None)
     if not entry:
         return False
-    if time.time() > entry["expires_at"]:
-        del _verify_codes[phone]
-        return False
     if entry["code"] != code:
+        # 验证码错误，放回去（允许重试）
+        _verify_codes[phone] = entry
         return False
-    # 验证成功，清理
-    del _verify_codes[phone]
     return True
 
 
 def _can_send_code(phone: str) -> tuple[bool, Optional[int]]:
     """检查能否发送验证码。返回 (可以发送, 剩余等待秒数)。"""
+    _cleanup_expired_codes()
     entry = _verify_codes.get(phone)
     if not entry:
         return True, None
@@ -157,17 +167,6 @@ def _can_send_code(phone: str) -> tuple[bool, Optional[int]]:
         return False, int(60 - elapsed)
     return True, None
 
-
-def _user_to_auth_response(user: User, token: str) -> dict:
-    return {
-        "token": token,
-        "user_id": user.id,
-        "uid": user.uid,
-        "nickname": user.nickname,
-        "avatar_url": user.avatar_url,
-        "role": user.role,
-        "phone": user.phone,
-    }
 
 
 # ════════════════════════════════════════════════════════════════
@@ -202,8 +201,7 @@ async def send_code(req: SendCodeRequest):
         logger.info(f"[Mock] 验证码已发送到 {phone}，验证码: {code}")
     else:
         # 生产模式：生成随机6位验证码 + 调用短信服务
-        import random
-        code = "".join(str(random.randint(0, 9)) for _ in range(6))
+        code = "".join(str(secrets.randbelow(10)) for _ in range(6))
         logger.info(f"[PROD] 验证码: {phone} -> {code}")
         # TODO: 接入真实短信服务（阿里云/腾讯云）
 
@@ -486,7 +484,7 @@ def _redirect_error(frontend_base: str, error: str) -> RedirectResponse:
 @router.get("/wechat/qrcode")
 async def wechat_qrcode(
     action: str = Query("login", pattern="^(login|bind)$"),
-    redirect: str = Query("/"),
+    redirect: str = Query("/", pattern="^/"),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_optional_user),
 ):
@@ -499,6 +497,10 @@ async def wechat_qrcode(
     _cleanup_expired_states()
 
     settings = get_settings()
+
+    # 防 open redirect：只允许相对路径，不允许 //evil.com
+    if not redirect.startswith("/") or redirect.startswith("//"):
+        redirect = "/"
 
     # 生成随机 state，存入用户信息
     state = uuid.uuid4().hex
