@@ -11,8 +11,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 /** 硬编码默认值（后端不可用时回退） */
 const DEFAULTS = {
   title: '墨林百科',
-  subtitle: '最智能的中国画与书法大库',
-  full_title: '墨林百科 - 最智能的中国画与书法大库',
+  subtitle: '中国画与书法智能研究库',
+  full_title: '墨林百科 - 中国画与书法智能研究库',
   domain: 'molin.wiki',
   footer: '墨林百科 © 2026',
   author: '周豪 Zax',

@@ -19,7 +19,6 @@ function http2Preload() {
           links.push({ tag: 'link', attrs: { rel: 'preload', href: '/' + chunk.fileName, as: 'style' }, injectTo: 'head' })
         }
       }
-      links.push({ tag: 'link', attrs: { rel: 'preload', href: '/openseadragon/openseadragon.js', as: 'script' }, injectTo: 'head' })
       return links
     }
   }
@@ -34,6 +33,17 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'echarts': ['echarts'],
+          'element-plus': ['element-plus', '@element-plus/icons-vue'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600,
   },
   server: {
     host: '0.0.0.0',

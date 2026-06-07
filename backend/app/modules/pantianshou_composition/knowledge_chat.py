@@ -136,25 +136,25 @@ def _get_artist_context(artist_name: str, intent: str) -> str:
             ).fetchone()
             if year_row and year_row[0] >= 5:
                 min_year, max_year = int(year_row[1]), int(year_row[2])
-            span = max_year - min_year
-            if span > 10:
-                t1 = min_year + span // 3
-                t2 = min_year + 2 * span // 3
-                rows = db.execute(
-                    sql_text(
-                        "SELECT CASE "
-                        "  WHEN year < :t1 THEN :early "
-                        "  WHEN year < :t2 THEN :mid "
-                        "  ELSE :late END as period, COUNT(*) as cnt "
-                        "FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL "
-                        "GROUP BY period ORDER BY MIN(year)"
-                    ),
-                    {"a": artist_name, "t1": t1, "t2": t2,
-                     "early": f"早期({min_year}-{t1})", "mid": f"中期({t1}-{t2})", "late": f"晚期({t2}-{max_year})"},
-                ).fetchall()
-                if rows:
-                    periods = [f"{r[0]}: {r[1]}幅" for r in rows]
-                    parts.append(f"年份分布: {', '.join(periods)}")
+                span = max_year - min_year
+                if span > 10:
+                    t1 = min_year + span // 3
+                    t2 = min_year + 2 * span // 3
+                    rows = db.execute(
+                        sql_text(
+                            "SELECT CASE "
+                            "  WHEN year < :t1 THEN :early "
+                            "  WHEN year < :t2 THEN :mid "
+                            "  ELSE :late END as period, COUNT(*) as cnt "
+                            "FROM tubi_analyses WHERE artist = :a AND year IS NOT NULL "
+                            "GROUP BY period ORDER BY MIN(year)"
+                        ),
+                        {"a": artist_name, "t1": t1, "t2": t2,
+                         "early": f"早期({min_year}-{t1})", "mid": f"中期({t1}-{t2})", "late": f"晚期({t2}-{max_year})"},
+                    ).fetchall()
+                    if rows:
+                        periods = [f"{r[0]}: {r[1]}幅" for r in rows]
+                        parts.append(f"年份分布: {', '.join(periods)}")
 
         # 意象统计：注释掉，因为 title LIKE 匹配太宽（如题跋含"菊"但非菊花主题的画）
         # 让 LLM 从搜索结果列表中直接统计，更准确
@@ -247,6 +247,14 @@ def _extract_book_title(payload: Dict[str, Any]) -> str:
     return payload.get("book", "") or payload.get("book_title", "") or "知识库"
 
 
+def _parse_entity_int_id(eid: str) -> Optional[int]:
+    """从 entity_id（如 'artwork-123'）提取整数 ID"""
+    try:
+        return int(eid.split("-", 1)[1]) if "-" in eid else int(eid)
+    except (ValueError, TypeError):
+        return None
+
+
 def _build_rag_context(
     search_results: List[Dict[str, Any]],
     max_items: int = 8,
@@ -260,10 +268,9 @@ def _build_rag_context(
         if payload.get("source") == "database" and payload.get("type") == "artwork":
             eid = payload.get("entity_id", "")
             if eid:
-                try:
-                    artwork_ids.append(int(eid.split("-", 1)[1]) if "-" in eid else int(eid))
-                except (ValueError, TypeError):
-                    pass
+                int_id = _parse_entity_int_id(eid)
+                if int_id is not None:
+                    artwork_ids.append(int_id)
 
     thumb_map: Dict[int, str] = {}
     if artwork_ids:
@@ -311,10 +318,10 @@ def _build_rag_context(
             # 画作附加缩略图
             if entity_type == "artwork":
                 eid = payload.get("entity_id", "")
-                try:
-                    int_id = int(eid.split("-", 1)[1]) if "-" in eid else int(eid)
+                int_id = _parse_entity_int_id(eid)
+                if int_id is not None:
                     thumb_url = thumb_map.get(int_id, "")
-                except (ValueError, TypeError):
+                else:
                     thumb_url = ""
                 if thumb_url:
                     part += f"\n缩略图: {thumb_url}"
@@ -558,11 +565,9 @@ async def chat_stream(
             # 画作附缩略图
             if entity_type == "artwork":
                 eid = payload.get("entity_id", "")
-                try:
-                    int_id = int(eid.split("-", 1)[1]) if "-" in eid else int(eid)
+                int_id = _parse_entity_int_id(eid)
+                if int_id is not None:
                     slot["thumbnail_url"] = thumb_map.get(int_id, "")
-                except (ValueError, TypeError):
-                    pass
             sources.append(slot)
             continue
 

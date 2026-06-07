@@ -459,103 +459,6 @@ const analysisState = computed(() => ({
   positionAnalysis: positionAnalysis.value
 }))
 
-// 艺术家统计数据
-const artistStats = computed(() => {
-  const total = historyList.value.length || 0
-  const liShanData = historyList.value.filter(item => item.artist === '李鱓')
-  const zhengXieData = historyList.value.filter(item => item.artist === '郑燮')
-
-  const avg = (list, key) => {
-    const nums = list.map(item => Number(item[key])).filter(n => Number.isFinite(n))
-    if (nums.length === 0) return 0
-    return Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10
-  }
-
-  // 获取 form_types 数组（兼容 positionAnalysis 和 position_analysis）
-  const getFormTypes = (item) => {
-    return item?.positionAnalysis?.form_types || item?.position_analysis?.form_types || []
-  }
-
-  // 获取 overlap_ratio（兼容 positionAnalysis 和 position_analysis）
-  const getOverlapRatio = (item) => {
-    const ratio = item?.positionAnalysis?.overlap_ratio ?? item?.position_analysis?.overlap_ratio
-    return Number.isFinite(ratio) ? ratio : 0
-  }
-
-  // 计算形式丰富度：平均每幅画匹配的类型数量
-  const calcFormRichness = (list) => {
-    const counts = list.map(item => {
-      const formTypes = getFormTypes(item)
-      return formTypes.filter(ft => ft.matched).length
-    }).filter(n => n > 0)
-    if (counts.length === 0) return 0
-    return Math.round((counts.reduce((a, b) => a + b, 0) / counts.length) * 10) / 10
-  }
-
-  // 计算主导形式占比：最常出现的类型 / 总数
-  const calcDominantFormPercent = (list) => {
-    if (list.length === 0) return { name: '-', percent: 0 }
-    // 统计每种类型出现的次数
-    const typeCounts = {}
-    list.forEach(item => {
-      const formTypes = getFormTypes(item)
-      formTypes.filter(ft => ft.matched).forEach(ft => {
-        typeCounts[ft.name] = (typeCounts[ft.name] || 0) + 1
-      })
-    })
-    // 找到出现次数最多的类型
-    let maxCount = 0
-    let dominantName = '-'
-    Object.entries(typeCounts).forEach(([name, count]) => {
-      if (count > maxCount) {
-        maxCount = count
-        dominantName = name
-      }
-    })
-    const percent = list.length > 0 ? Math.round((maxCount / list.length) * 1000) / 10 : 0
-    return { name: dominantName, percent }
-  }
-
-  // 计算题跋侵入度：平均重叠率
-  const calcInvasionPercent = (list) => {
-    const ratios = list.map(item => getOverlapRatio(item)).filter(r => r > 0)
-    if (ratios.length === 0) return 0
-    return Math.round((ratios.reduce((a, b) => a + b, 0) / ratios.length) * 1000) / 10
-  }
-
-  const build = (list) => {
-    const count = list.length
-    const countPercent = total > 0 ? (count / total) * 100 : 0
-    const fmt = (n) => `${Number(n).toFixed(1).replace(/\.0$/, '')}%`
-    const formRichness = calcFormRichness(list)
-    const dominantForm = calcDominantFormPercent(list)
-    const invasionPercent = calcInvasionPercent(list)
-
-    return {
-      count,
-      countPercent,
-      countDisplay: `${count}`,
-      avgInscription: avg(list, 'inscriptionPercent'),
-      avgPainting: avg(list, 'paintingPercent'),
-      avgBlank: avg(list, 'blankPercent'),
-      formRichness,
-      formRichnessDisplay: `${formRichness} 种/幅`,
-      dominantFormName: dominantForm.name,
-      dominantFormPercent: dominantForm.percent,
-      dominantFormDisplay: `${dominantForm.name} ${dominantForm.percent}%`,
-      invasionPercent,
-      invasionDisplay: fmt(invasionPercent)
-    }
-  }
-
-  return {
-    total,
-    liShan: build(liShanData),
-    zhengXie: build(zhengXieData)
-  }
-})
-
-
 
 // 跳转到排行榜页面
 function navigateToRanking() {
@@ -597,11 +500,9 @@ function backToHome() {
   if (!historyList.value.length) loadHistory()
   analysisNote.value = ''
   positionAnalysis.value = null
-  areaStats.value = {
-    inscriptionPercent: 0,
-    paintingPercent: 0,
-    blankPercent: 0
-  }
+  areaStats.inscriptionPercent = 0
+  areaStats.paintingPercent = 0
+  areaStats.blankPercent = 0
   // 返回列表页URL，保留 artist 参数
   if (route.params.id) {
     const query = currentArtist.value && currentArtist.value !== '李鱓' 

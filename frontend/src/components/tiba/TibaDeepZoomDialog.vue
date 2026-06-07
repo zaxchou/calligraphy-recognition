@@ -29,6 +29,7 @@
 <script setup>
 import { ref, onBeforeUnmount, onMounted } from 'vue'
 import { ZoomIn, ZoomOut, Refresh, FullScreen, RefreshRight, Close } from '@element-plus/icons-vue'
+import { ensureOpenSeadragon } from '../../utils/openseadragon'
 
 const props = defineProps({
   imageUrl: String,
@@ -46,14 +47,20 @@ function initViewer() {
   _initRetry++
   const el = viewerRef.value
   if (!el || el.offsetWidth === 0) {
-    if (_initRetry < 30) setTimeout(() => initViewer(), 200)
+    if (_initRetry < 30) setTimeout(initViewer, 200)
     return
   }
   const OSD = window.OpenSeadragon
-  if (!OSD) {
-    if (_initRetry < 30) setTimeout(() => initViewer(), 200)
-    return
+  if (OSD) {
+    _createViewer(el, OSD)
+  } else {
+    ensureOpenSeadragon().then(OSD => {
+      if (OSD) _createViewer(el, OSD)
+    })
   }
+}
+
+function _createViewer(el, OSD) {
   if (viewer) { viewer.destroy(); viewer = null }
   viewer = OSD({
     element: el,
@@ -77,7 +84,7 @@ function initViewer() {
     preserveImageSizeOnResize: true,
   })
   viewer.addHandler('open', () => { viewerReady.value = true })
-  viewer.addHandler('open-failed', (e) => { console.error('[OSD] open-failed', e.message) })
+  viewer.addHandler('open-failed', (e) => { viewerReady.value = true; console.error('[OSD] open-failed', e.message) })
 }
 
 function handleKeydown(e) {
@@ -86,6 +93,7 @@ function handleKeydown(e) {
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
+  _initRetry = 0
   setTimeout(initViewer, 150)
 })
 

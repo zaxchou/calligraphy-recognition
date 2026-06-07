@@ -2,11 +2,11 @@
   <Teleport to="body">
     <div v-if="visible" class="sl-overlay" @keydown.escape="close" tabindex="-1">
       <div class="sl-toolbar">
+        <button class="sl-btn sl-btn-close" @click="close" title="关闭"><el-icon><Close /></el-icon></button>
         <button class="sl-btn" @click="zoomIn" title="放大"><el-icon><ZoomIn /></el-icon></button>
         <button class="sl-btn" @click="zoomOut" title="缩小"><el-icon><ZoomOut /></el-icon></button>
         <button class="sl-btn" @click="resetZoom" title="重置"><el-icon><Refresh /></el-icon></button>
         <button class="sl-btn" @click="toggleRotate" title="旋转"><el-icon><RefreshRight /></el-icon></button>
-        <button class="sl-btn sl-btn-close" @click="close" title="关闭"><el-icon><Close /></el-icon></button>
       </div>
 
       <button v-if="images.length > 1" class="sl-arrow sl-left" @click.stop="prev" :disabled="index === 0">
@@ -40,6 +40,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from 'vue'
 import { ZoomIn, ZoomOut, Refresh, RefreshRight, Close } from '@element-plus/icons-vue'
+import { ensureOpenSeadragon } from '../../utils/openseadragon'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -76,12 +77,27 @@ const currentDesc = computed(() => {
   return img ? (img.description || '') : ''
 })
 
+let _initRetry = 0
+
 function initViewer() {
-  destroyViewer()
+  _initRetry++
   const el = viewerRef.value
-  if (!el || el.offsetWidth === 0) return
+  if (!el || el.offsetWidth === 0) {
+    if (_initRetry < 30) setTimeout(initViewer, 200)
+    return
+  }
   const OSD = window.OpenSeadragon
-  if (!OSD) return
+  if (OSD) {
+    _startViewer(el, OSD)
+  } else {
+    ensureOpenSeadragon().then(OSD => {
+      if (OSD) _startViewer(el, OSD)
+    })
+  }
+}
+
+function _startViewer(el, OSD) {
+  if (viewer) { viewer.destroy(); viewer = null }
   viewerReady.value = false
   viewer = OSD({
     element: el,
@@ -155,6 +171,7 @@ function onKeydown(e) {
 watch(() => props.visible, (v) => {
   if (v) {
     index.value = 0
+    _initRetry = 0
     nextTick(() => setTimeout(initViewer, 200))
   } else {
     destroyViewer()

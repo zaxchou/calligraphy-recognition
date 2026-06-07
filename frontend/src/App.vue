@@ -14,7 +14,7 @@
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
           <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
-          <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click.native="handleTibaNav"><span class="nav-text">题跋分析</span></router-link>
+          <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="handleTibaNav"><span class="nav-text">题跋分析</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
@@ -142,7 +142,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
 import { useI18n } from 'vue-i18n'
@@ -151,6 +151,7 @@ import ChatFloat from './components/ChatFloat.vue'
 import { siteConfig } from './config'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { locale } = useI18n()
 const mobileMenuOpen = ref(false)

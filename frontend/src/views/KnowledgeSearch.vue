@@ -44,26 +44,6 @@
             <div v-if="store.searchResults.length===0" class="ks-empty"><FileSearch class="ks-empty-icon" /><p>未找到相关结果</p></div>
             <div class="ks-rlist"><div v-for="(r,i) in store.searchResults" :key="r.chunk_id||r.vector_id||i" :class="['ks-rcard',{'active':highlightedIndex===i,'img':r.result_type==='image'}]" :style="{animationDelay:`${i*0.06}s`}" @click="openDetail(r,i)">
               <template v-if="r.result_type==='image'"><div class="ks-rimg"><img :src="getImageUrl(r.image?.stored_url||r.image?.url||r.associated_images?.[0]?.stored_url||r.associated_images?.[0]?.url)" /></div><div class="ks-rbody"><div class="ks-rhead"><span class="ks-badge"><ImageIcon class="icon-xs" />配图</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><div class="ks-rfoot"><span>{{ r.book_title }}</span><span class="ks-raction">查看大图 <ChevronRight class="icon-xs" /></span></div></div>
-    <!-- Citation Modal -->
-    <div v-if="citationModal.show" class="citation-overlay" @click="closeCitation">
-      <div class="citation-modal" @click.stop>
-        <div class="citation-modal-header">
-          <span class="citation-modal-title">????</span>
-          <button class="citation-modal-close" @click="closeCitation">&times;</button>
-        </div>
-        <div class="citation-modal-body">
-          <div class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.book }}</span></div>
-          <div v-if="citationModal.source.page" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">?{{ citationModal.source.page }}?</span></div>
-          <div v-if="citationModal.source.chapter" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value">{{ citationModal.source.chapter }}</span></div>
-          <div v-if="citationModal.source.snippet" class="citation-modal-row"><span class="citation-modal-label">??</span><span class="citation-modal-value citation-snippet">{{ citationModal.source.snippet }}</span></div>
-          <div v-if="citationModal.source.url" class="citation-modal-row">
-            <span class="citation-modal-label">??</span>
-            <a :href="'#'+citationModal.source.url" class="citation-modal-link" @click="closeCitation">{{ citationModal.source.name || citationModal.source.book }} &rarr;</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
 </template>
               <template v-else-if="r.result_type==='table'"><TableResultCard :result="r" @click="openDetail(r,i)" /></template>
               <template v-else><div class="ks-rbody"><div class="ks-rhead"><span class="ks-rchap">{{ getChapter(r) }}</span><span v-if="r.source==='private'" class="ks-source-badge private" title="私人文档">📁</span><span v-else class="ks-source-badge public" title="公共知识库">📚</span><span class="ks-rscore" :class="getScoreClass(r.score)">{{ formatScore(r.score) }}%</span></div><p class="ks-rsnip" v-html="highlightSnippet(r)"></p><div class="ks-rfoot"><span><BookOpen class="icon-xs" />{{ r.book_title }}·p.{{ r.page_start||'?' }}</span><span class="ks-raction">查看原文 <ChevronRight class="icon-xs" /></span></div></div></template>
@@ -223,7 +203,6 @@ function getFullImageUrl(r){return getImageUrl(r.image?.stored_url||r.associated
 function openPdf(){if(pdfUrl.value)window.open(pdfUrl.value,'_blank')}
 function onChatContentClick(e) {
   const cite = e.target.closest('.ks-cite')
-  console.log('[CITE-DEBUG] click:', e.target.tagName, e.target.className, 'found cite:', !!cite)
   if (cite) {
     const idx = parseInt(cite.getAttribute('data-idx') || cite.textContent.replace(/[\[\]]/g, ''))
         if (idx) {
@@ -232,7 +211,7 @@ function onChatContentClick(e) {
         const m = msgs[i]
         if (m.role === 'assistant' && m.sources) {
           const s = m.sources.find(x => x.index === idx)
-                    if (s) { citationSource.value = s; console.log('[CITE-DEBUG] citationSource set!'); return }
+                    if (s) { citationSource.value = s; return }
         }
       }
           }

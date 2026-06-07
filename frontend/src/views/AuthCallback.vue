@@ -36,6 +36,7 @@ onMounted(async () => {
 
   const token = route.query.token
   const isNew = route.query.is_new === 'true'
+  const rawRedirect = route.query.redirect || '/'  // 在 replaceState 前缓存
 
   if (!token) {
     status.value = 'error'
@@ -56,7 +57,7 @@ onMounted(async () => {
     message.value = isNew ? '注册成功！正在跳转...' : '登录成功！正在跳转...'
 
     // 校验 redirect 参数（防 open redirect）
-    let redirect = route.query.redirect || '/'
+    let redirect = rawRedirect
     if (!redirect.startsWith('/') || redirect.startsWith('//')) {
       redirect = '/'
     }
