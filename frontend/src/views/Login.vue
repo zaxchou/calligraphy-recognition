@@ -10,19 +10,20 @@
       <div class="login-body">
         <!-- 模式切换 -->
         <div class="mode-tabs">
-          <button :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">验证码登录</button>
           <button :class="['mode-tab', { active: mode === 'password' }]" @click="mode = 'password'">密码登录</button>
+          <button :class="['mode-tab', { active: mode === 'register' }]" @click="mode = 'register'">注册</button>
+          <button :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">验证码登录</button>
           <button :class="['mode-tab', { active: mode === 'wechat' }]" @click="mode = 'wechat'">微信扫码</button>
         </div>
 
         <!-- 手机号 / 账号 -->
         <input
-          v-if="mode !== 'wechat'"
+          v-if="mode !== 'wechat' && mode !== 'register'"
           class="login-input"
           v-model="phone"
           :placeholder="mode === 'password' ? 'UID / 手机号 / 邮箱 / 昵称' : '请输入手机号'"
           maxlength="20"
-          type="tel"
+          :type="mode === 'code' ? 'tel' : 'text'"
           @keyup.enter="mode === 'code' ? handleCodeLogin() : handlePasswordLogin()"
         />
 
@@ -50,6 +51,20 @@
             {{ loading ? '登录中...' : '密码登录' }}
           </button>
           <p class="login-hint">未设置密码请使用验证码登录</p>
+        </template>
+
+        <!-- 注册模式 -->
+        <template v-if="mode === 'register'">
+          <input class="login-input" v-model="regUsername" placeholder="用户名（2 位以上）" maxlength="20" @keyup.enter="handleRegister" />
+          <div class="password-row">
+            <input class="login-input" v-model="regPassword" placeholder="密码（6 位以上）" :type="showPwd ? 'text' : 'password'" />
+            <button class="pwd-toggle" @click="showPwd = !showPwd" tabindex="-1">{{ showPwd ? '隐' : '显' }}</button>
+          </div>
+          <input class="login-input" v-model="regNickname" placeholder="昵称（可选，不填则用用户名）" maxlength="20" @keyup.enter="handleRegister" />
+          <button class="login-submit" :disabled="loading" @click="handleRegister">
+            {{ loading ? '注册中...' : '注册' }}
+          </button>
+          <p class="login-hint">注册后自动登录，角色为普通用户</p>
         </template>
 
         <!-- 微信扫码模式 -->
@@ -92,6 +107,9 @@ const mode = ref('password')
 const phone = ref('')
 const code = ref('')
 const password = ref('')
+const regUsername = ref('')
+const regPassword = ref('')
+const regNickname = ref('')
 const loading = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
@@ -140,6 +158,23 @@ async function handlePasswordLogin() {
     router.push(route.query.redirect || '/')
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '登录失败')
+  } finally { loading.value = false }
+}
+
+async function handleRegister() {
+  if (!regUsername.value.trim()) { ElMessage.warning('请输入用户名'); return }
+  if (!regPassword.value || regPassword.value.length < 6) { ElMessage.warning('密码至少 6 位'); return }
+  loading.value = true
+  try {
+    await authStore.register({
+      username: regUsername.value.trim(),
+      password: regPassword.value,
+      nickname: regNickname.value.trim() || undefined,
+    })
+    ElMessage.success('注册成功')
+    router.push(route.query.redirect || '/')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.detail || '注册失败')
   } finally { loading.value = false }
 }
 

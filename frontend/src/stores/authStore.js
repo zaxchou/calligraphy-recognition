@@ -69,10 +69,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ── 注册 ──
-  async function register(phone, code, nickname, password) {
+  async function register({ phone, code, username, nickname, password }) {
     loading.value = true
     try {
-      const resp = await api.post('/auth/register', { phone, code, nickname, password })
+      const payload = {}
+      if (phone) { payload.phone = phone; payload.code = code }
+      if (username) { payload.username = username }
+      if (nickname) payload.nickname = nickname
+      if (password) payload.password = password
+      const resp = await api.post('/auth/register', payload)
       _saveSession(resp)
       return resp
     } finally {
