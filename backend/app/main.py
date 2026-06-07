@@ -18,12 +18,14 @@ logging.basicConfig(
 from app.core.config import get_settings
 settings = get_settings()
 
-# 启动时检查：生产环境禁止默认 JWT Secret 和 Mock 模式
+# 启动时检查：生产环境禁止默认 JWT Secret
 if os.getenv("ENVIRONMENT") == "production":
     if settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
         raise RuntimeError("生产环境禁止使用默认 JWT_SECRET_KEY，请在 .env 中设置自定义值")
     if settings.WECHAT_MOCK_MODE:
-        raise RuntimeError("生产环境禁止 WECHAT_MOCK_MODE=true，请在 .env 中设为 false")
+        logging.getLogger(__name__).warning(
+            "⚠️  WECHAT_MOCK_MODE=true（生产环境建议关闭，当前保留用于注册验证码）"
+        )
 elif settings.JWT_SECRET_KEY == "calligraphy-jwt-secret-change-in-production":
     logging.getLogger(__name__).warning(
         "⚠️  JWT_SECRET_KEY 使用默认值，生产环境请在 .env 中修改！"
