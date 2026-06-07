@@ -12,8 +12,8 @@
         <div class="mode-tabs">
           <button :class="['mode-tab', { active: mode === 'password' }]" @click="mode = 'password'">密码登录</button>
           <button :class="['mode-tab', { active: mode === 'register' }]" @click="mode = 'register'">注册</button>
-          <button :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">验证码登录</button>
-          <button :class="['mode-tab', { active: mode === 'wechat' }]" @click="mode = 'wechat'">微信扫码</button>
+          <button v-if="siteConfig.login_phone_enabled !== 'false'" :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">手机登录</button>
+          <button v-if="siteConfig.login_wechat_enabled !== 'false'" :class="['mode-tab', { active: mode === 'wechat' }]" @click="mode = 'wechat'">微信登录</button>
         </div>
 
         <!-- 手机号 / 账号 -->
