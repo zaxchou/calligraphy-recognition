@@ -66,15 +66,21 @@ class SendCodeRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    phone: str
-    code: str
+    # 方式一：手机号注册（需要验证码）
+    phone: Optional[str] = None
+    code: Optional[str] = None
+    # 方式二：用户名注册（不需要验证码）
+    username: Optional[str] = None
+    # 通用字段
     nickname: Optional[str] = None
     password: Optional[str] = None
 
     @field_validator("phone")
     @classmethod
-    def validate_phone(cls, v: str) -> str:
-        return _validate_phone(v)
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return _validate_phone(v)
+        return v
 
 
 class LoginCodeRequest(BaseModel):
@@ -219,26 +225,43 @@ async def send_code(req: SendCodeRequest):
 @router.post("/register")
 async def register(req: RegisterRequest, db: Session = Depends(get_db)):
     """
-    手机号注册。
-    - 验证码校验 → 创建用户（role=reader）→ 返回JWT
-    - 可选设置密码
+    注册。支持两种方式：
+    - 方式一：手机号 + 验证码注册
+    - 方式二：用户名 + 密码注册（不需要验证码）
     """
-    phone = req.phone.strip()
+    # 判断注册方式
+    if req.phone:
+        # 手机号注册：需要验证码
+        phone = req.phone.strip()
+        if not req.code or not _check_code(phone, req.code):
+            raise HTTPException(status_code=400, detail="验证码错误或已过期")
+        existing = db.query(User).filter(User.phone == phone).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="该手机号已注册")
+        user = User(
+            phone=phone,
+            nickname=req.nickname or f"用户{phone[-4:]}",
+            role="reader",
+            password_hash=hash_password(req.password) if req.password else None,
+        )
+    elif req.username:
+        # 用户名注册：需要密码
+        username = req.username.strip()
+        if len(username) < 2:
+            raise HTTPException(status_code=400, detail="用户名至少 2 个字符")
+        if not req.password or len(req.password) < 6:
+            raise HTTPException(status_code=400, detail="密码至少 6 位")
+        existing = db.query(User).filter(User.nickname == username).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="该用户名已注册")
+        user = User(
+            nickname=username,
+            role="reader",
+            password_hash=hash_password(req.password),
+        )
+    else:
+        raise HTTPException(status_code=400, detail="请提供手机号或用户名")
 
-    if not _check_code(phone, req.code):
-        raise HTTPException(status_code=400, detail="验证码错误或已过期")
-
-    # 检查手机号是否已注册
-    existing = db.query(User).filter(User.phone == phone).first()
-    if existing:
-        raise HTTPException(status_code=409, detail="该手机号已注册")
-
-    user = User(
-        phone=phone,
-        nickname=req.nickname or f"用户{phone[-4:]}",
-        role="reader",
-        password_hash=hash_password(req.password) if req.password else None,
-    )
     db.add(user)
     try:
         db.commit()
@@ -249,12 +272,12 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="注册失败，请重试")
 
     token = create_access_token(user_id=user.id, role=user.role)
-    logger.info(f"新用户注册: id={user.id}, uid={user.uid}, phone={phone}")
+    logger.info(f"新用户注册: id={user.id}, uid={user.uid}, nickname={user.nickname}")
 
     return {
-        **{"token": token, "user_id": user.id, "nickname": user.nickname,
-           "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone,
-           "score": user.score or 0},
+        "token": token, "user_id": user.id, "nickname": user.nickname,
+        "avatar_url": user.avatar_url, "role": user.role, "phone": user.phone,
+        "score": user.score or 0,
         "is_new_user": True,
     }
 
