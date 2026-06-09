@@ -42,11 +42,13 @@ class KnowledgeIngestV2:
     - 传入 figure_first_page 用于区分首次定义和后续引用
     """
     
-    def __init__(self, 
+    def __init__(self,
                  db: Optional[Session] = None,
                  chunk_strategy: str = "semantic",
                  chunk_size: int = 500,
-                 parser_backend: str = "mineru"):
+                 parser_backend: str = "mineru",
+                 artist_id: Optional[int] = None,
+                 document_type: str = "book"):
         """
         初始化入库处理器
         
@@ -61,6 +63,8 @@ class KnowledgeIngestV2:
         self.chunk_strategy = chunk_strategy
         self.chunk_size = chunk_size
         self.parser_backend = parser_backend
+        self.artist_id = artist_id
+        self.document_type = document_type
         
         # 验证 parser_backend
         if parser_backend not in ("mineru",):
@@ -220,7 +224,9 @@ class KnowledgeIngestV2:
                         "page_start": chunk.page_start,
                         "page_end": chunk.page_end,
                         "chunk_index": chunk.chunk_index,
-                        "metadata": {"book_title": book.title}
+                        "metadata": {"book_title": book.title},
+                        "artist_id": self.artist_id,
+                        "document_type": self.document_type,
                     }], book_id)
                     chunk_record.vector_id = vector_id
                     
@@ -448,6 +454,8 @@ class KnowledgeIngestV2:
             stored_path=stored_path,
             stored_url=stored_url,
             status="processing",
+            artist_id=self.artist_id,
+            document_type=self.document_type,
         )
         
         self.db.add(book)
@@ -590,32 +598,27 @@ class KnowledgeIngestV2:
 
 
 # 便捷函数
-async def process_pdf_file(pdf_path: str, 
+async def process_pdf_file(pdf_path: str,
                            task_id: Optional[str] = None,
                            book_id: Optional[str] = None,
-                           parser_backend: str = "mineru") -> Dict[str, Any]:
-    """
-    处理 PDF 文件的便捷函数
-    
-    Args:
-        pdf_path: PDF 文件路径
-        task_id: 任务ID
-        book_id: 书籍ID
-        parser_backend: PDF 解析器后端 ("mineru")
-    
-    Returns:
-        处理结果
-    """
-    with KnowledgeIngestV2(parser_backend=parser_backend) as ingest:
+                           parser_backend: str = "mineru",
+                           artist_id: Optional[int] = None,
+                           document_type: str = "book") -> Dict[str, Any]:
+    """处理 PDF 文件的便捷函数"""
+    with KnowledgeIngestV2(parser_backend=parser_backend,
+                           artist_id=artist_id,
+                           document_type=document_type) as ingest:
         return await ingest.process_pdf(pdf_path, task_id, book_id)
 
 
-def process_pdf_file_sync(pdf_path: str, 
+def process_pdf_file_sync(pdf_path: str,
                           task_id: Optional[str] = None,
                           book_id: Optional[str] = None,
-                          parser_backend: str = "mineru") -> Dict[str, Any]:
+                          parser_backend: str = "mineru",
+                          artist_id: Optional[int] = None,
+                          document_type: str = "book") -> Dict[str, Any]:
     """同步版本"""
-    return asyncio.run(process_pdf_file(pdf_path, task_id, book_id, parser_backend))
+    return asyncio.run(process_pdf_file(pdf_path, task_id, book_id, parser_backend, artist_id, document_type))
 
 
 # 测试代码
