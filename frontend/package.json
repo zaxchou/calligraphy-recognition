@@ -16,7 +16,7 @@
     "element-plus": "^2.4.4",
     "lucide-vue-next": "^1.0.0",
     "openseadragon": "^6.0.2",
-    "pdfjs-dist": "^4.8.69",
+    "pdfjs-dist": "^4.10.38",
     "pinia": "^3.0.4",
     "pinyin-pro": "^3.28.1",
     "three": "^0.184.0",
