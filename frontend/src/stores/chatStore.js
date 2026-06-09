@@ -6,6 +6,7 @@ export const useChatStore = defineStore('chat', () => {
   const sessions = ref([])          // 会话列表
   const currentSessionId = ref(null) // 当前活跃会话ID（KnowledgeSearch 用）
   const floatSessionId = ref(null)   // 浮窗会话ID（ChatFloat 用，跨组件生命周期）
+  const artistExpertSessionId = ref(null) // 画家专家会话ID
   const loading = ref(false)
 
   const currentSession = computed(() =>
@@ -51,6 +52,9 @@ export const useChatStore = defineStore('chat', () => {
     if (floatSessionId.value === sessionId) {
       floatSessionId.value = null
     }
+    if (artistExpertSessionId.value === sessionId) {
+      artistExpertSessionId.value = null
+    }
   }
 
   // 创建新会话（后端会自动创建，这里只设本地状态）
@@ -66,9 +70,13 @@ export const useChatStore = defineStore('chat', () => {
     floatSessionId.value = sessionId
   }
 
+  function setArtistExpertSession(sessionId) {
+    artistExpertSessionId.value = sessionId
+  }
+
   return {
-    sessions, currentSessionId, floatSessionId, currentSession, loading,
+    sessions, currentSessionId, floatSessionId, artistExpertSessionId, currentSession, loading,
     fetchSessions, fetchMessages, deleteSession,
-    startNewSession, setCurrentSession, setFloatSession,
+    startNewSession, setCurrentSession, setFloatSession, setArtistExpertSession,
   }
 })

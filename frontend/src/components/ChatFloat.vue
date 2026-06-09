@@ -9,14 +9,14 @@
     <transition name="cf-panel">
       <div v-if="open" class="cf-panel">
         <div class="cf-hdr">
-          <span class="cf-hdr-title">小墨</span>
+          <span class="cf-hdr-title">{{ isExpertMode ? `${artistName}研究专家` : '小墨' }}</span>
           <button class="cf-hdr-btn" @click="open=false"><X class="icon-sm" /></button>
         </div>
         <div class="cf-body">
           <div class="cf-msgs" ref="msgsRef">
             <div v-if="messages.length===0" class="cf-welcome">
               <Sparkles class="cf-welcome-icon" />
-              <p>有任何关于中国画的问题，随时问我</p>
+              <p>{{ isExpertMode ? `有关于${artistName}的问题，随时问我` : '有任何关于中国画的问题，随时问我' }}</p>
               <div class="cf-sugs">
                 <button v-for="s in suggestions" :key="s" class="cf-sug" @click="send(s)">{{ s }}</button>
               </div>
@@ -81,11 +81,18 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { MessageCircle, X, Sparkles, Send, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { ElMessage } from 'element-plus'
+
+const props = defineProps({
+  artistId: { type: Number, default: null },
+  artistName: { type: String, default: null },
+})
+
+const isExpertMode = computed(() => props.artistId && props.artistName)
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()
@@ -185,7 +192,13 @@ async function send(msg) {
 
   try {
     const body = { prompt: t }
-    if (chatStore.floatSessionId) body.session_id = chatStore.floatSessionId
+    if (isExpertMode.value) {
+      body.artist_id = props.artistId
+      body.artist_name = props.artistName
+      if (chatStore.artistExpertSessionId) body.session_id = chatStore.artistExpertSessionId
+    } else {
+      if (chatStore.floatSessionId) body.session_id = chatStore.floatSessionId
+    }
 
     const r = await fetch('/api/v1/knowledge/chat', {
       method: 'POST',
@@ -219,7 +232,10 @@ async function send(msg) {
             if (last.thinking) { last.thinking = false; last.content = ''; if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null } }
             if (textEvent) { last.content += d.content || '' }
             else if (d.sources) { last.sources = d.sources }
-            if (d.session_id && !chatStore.floatSessionId) chatStore.setFloatSession(d.session_id)
+            if (d.session_id) {
+              if (isExpertMode.value && !chatStore.artistExpertSessionId) chatStore.setArtistExpertSession(d.session_id)
+              else if (!isExpertMode.value && !chatStore.floatSessionId) chatStore.setFloatSession(d.session_id)
+            }
           } catch {}
         }
       }
