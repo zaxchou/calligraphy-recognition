@@ -348,8 +348,10 @@ async def get_private_document_pdf(
 class ChatRequest(BaseModel):
     """RAG 聊天请求"""
     prompt: str
-    history: Optional[List[Dict[str, str]]] = None  # 首轮不带 session_id 时使用
-    session_id: Optional[str] = None  # 会话ID（不传则自动创建新会话）
+    history: Optional[List[Dict[str, str]]] = None
+    session_id: Optional[str] = None
+    artist_id: Optional[int] = None
+    artist_name: Optional[str] = None
 
 
 @router.post("/chat")
@@ -420,7 +422,8 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
             db.close()
 
     return StreamingResponse(
-        _chat_stream(request.prompt, history, user_id=user.id, session_id=session_id),
+        _chat_stream(request.prompt, history, user_id=user.id, session_id=session_id,
+                     artist_id=request.artist_id, artist_name=request.artist_name),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

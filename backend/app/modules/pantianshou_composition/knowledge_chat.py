@@ -56,6 +56,20 @@ SYSTEM_PROMPT = """你是「小墨」，一位精通中国画的专业知识助�
 13. 搜索结果中的画作如果包含"缩略图:"行（格式如 `缩略图: /static/thumbnails/xxx.jpg`），必须在该作品介绍末尾用 Markdown 嵌入该图片。格式为 [![作品名](缩略图的URL)](链接的URL)。例如搜索结果有"链接: /tiba/abc"和"缩略图: /static/thumbnails/abc.jpg"时，输出 [![作品名](/static/thumbnails/abc.jpg)](/tiba/abc)。没有"缩略图:"行的作品不要编造图片URL"""
 
 
+# 画家专家模式 system prompt
+ARTIST_EXPERT_PROMPT = """你是「{artist_name}研究专家」，一位专注于{artist_name}研究的学术专家。
+
+规则:
+1. 你的知识基于{artist_name}相关的学术文献和研究资料
+2. 回答时引用具体文献来源，标注来源编号如 [1]、[2]
+3. 给出深入、结构化的解释，控制在 300-600 字
+4. 使用专业但易懂的学术语言
+5. 不要编造文献中没有的信息
+6. 使用 Markdown 格式化回答
+7. 如果搜索结果不足以完整回答，诚实说明文献中还缺少哪些方面
+8. 用户问到{artist_name}的艺术特色、生平、技法等问题时，优先引用学术文献中的观点和论据"""
+
+
 # ── 意图分类 + 画家上下文注入（Phase 2）──
 
 import re
@@ -185,7 +199,7 @@ def _get_artist_context(artist_name: str, intent: str) -> str:
     return "\n".join(parts)
 
 
-async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int] = None) -> List[Dict[str, Any]]:
     """执行 Qdrant 搜索，返回相关文本块（复用现有搜索基础设施）"""
     from .embedding_service import EmbeddingService
     from . import qdrant_client
@@ -197,11 +211,17 @@ async def _search_for_chat(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     if not q_embedding:
         return []
 
+    # 构建 Qdrant filter
+    query_filter = None
+    if artist_id:
+        query_filter = {"must": [{"key": "artist_id", "match": {"value": artist_id}}]}
+
     results = await do_hybrid_search(
         query_text=query,
         query_vector=q_embedding,
         collection=qdrant_client.KNOWLEDGE_TEXTS_COLLECTION,
         limit=limit,
+        query_filter=query_filter,
     )
 
     # 过滤掉非文本内容（章节元数据等）
@@ -355,9 +375,14 @@ def _build_messages(
     query: str,
     rag_context: str,
     history: Optional[List[Dict[str, str]]] = None,
+    artist_name: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """构建发送给 LLM 的完整消息列表"""
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if artist_name:
+        system_prompt = ARTIST_EXPERT_PROMPT.format(artist_name=artist_name)
+    else:
+        system_prompt = SYSTEM_PROMPT
+    messages = [{"role": "system", "content": system_prompt}]
 
     # 添加历史消息（最近 N 轮）
     if history:
@@ -379,6 +404,8 @@ async def chat_stream(
     history: Optional[List[Dict[str, str]]] = None,
     user_id: Optional[int] = None,
     session_id: Optional[str] = None,
+    artist_id: Optional[int] = None,
+    artist_name: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     """
     RAG 聊天流式 SSE 生成器
@@ -421,7 +448,7 @@ async def chat_stream(
             logger.info("[RAG聊天] 追问补充搜索: '%s'", search_query[:60])
 
     try:
-        search_results = await _search_for_chat(search_query, limit=10)
+        search_results = await _search_for_chat(search_query, limit=10, artist_id=artist_id)
     except Exception as e:
         logger.error("RAG 聊天搜索失败: %s", e, exc_info=True)
         search_results = []
@@ -453,7 +480,7 @@ async def chat_stream(
             logger.info("[RAG聊天] 画家上下文注入: artist=%s, intent=%s", artist_name, intent)
 
     # ③ 构建完整消息
-    messages = _build_messages(query, rag_context, history)
+    messages = _build_messages(query, rag_context, history, artist_name=artist_name)
 
     # ④ 调用 DeepSeek Flash 流式
     url = f"{base_url}/chat/completions"
