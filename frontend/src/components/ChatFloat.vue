@@ -106,11 +106,10 @@ const citationSource = ref(null)
 const thinkSeconds = ref(0)
 let thinkTimer = null
 
-const suggestions = [
-  '写意画中的气韵生动是什么意思？',
-  '潘天寿的构图法则有哪些？',
-  '李鱓最消极的一幅画是哪幅？',
-]
+const suggestions = computed(() => isExpertMode.value
+  ? [`${props.artistName}的代表作有哪些？`, `${props.artistName}的艺术风格特点？`, `${props.artistName}的创作分期？`]
+  : ['写意画中的气韵生动是什么意思？', '潘天寿的构图法则有哪些？', '李鱓最消极的一幅画是哪幅？']
+)
 
 function openChat() {
   open.value = true

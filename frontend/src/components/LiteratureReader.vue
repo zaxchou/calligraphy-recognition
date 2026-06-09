@@ -145,9 +145,19 @@ function onScroll() {
   activeChunkIdx.value = closest
 }
 
-onMounted(() => {
+onMounted(async () => {
   overlayRef.value?.focus()
   mainRef.value?.addEventListener('scroll', onScroll, { passive: true })
+  // 先获取详情（含 outline），再加载 chunks
+  try {
+    const detRes = await fetch(`${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}`)
+    if (detRes.ok) {
+      const det = await detRes.json()
+      if (det.outline && det.outline.length > 0) {
+        outline.value = typeof det.outline === 'string' ? JSON.parse(det.outline) : det.outline
+      }
+    }
+  } catch {}
   loadChunks()
 })
 

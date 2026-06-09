@@ -78,7 +78,8 @@ async def upload_literature(
 
     # 保存文件
     try:
-        file_path, file_url = save_book_upload(file, prefix="literature")
+        content = await file.read()
+        file_path, file_url = save_book_upload(file.filename, content)
     except Exception as e:
         raise HTTPException(500, f"文件保存失败: {str(e)}")
 
@@ -165,7 +166,11 @@ def _try_extract_metadata(book_id: str):
             book.doi = meta['doi']
         db.commit()
     except Exception as e:
-        logger.warning(f"元数据提取失败: {e}")
+        logger.error(f"元数据提取失败: {e}", exc_info=True)
+        try:
+            db.rollback()
+        except Exception:
+            pass
     finally:
         db.close()
 
@@ -176,6 +181,7 @@ async def list_literature(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     sort_by: str = Query("created_at"),
+    sort_dir: str = Query("desc"),
     keyword: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
@@ -191,12 +197,13 @@ async def list_literature(
         )
 
     # 排序
-    sort_map = {
-        'created_at': PdfBook.created_at.desc(),
-        'publish_year': PdfBook.publish_year.desc(),
-        'title': PdfBook.title.asc(),
+    col_map = {
+        'created_at': PdfBook.created_at,
+        'publish_year': PdfBook.publish_year,
+        'title': PdfBook.title,
     }
-    query = query.order_by(sort_map.get(sort_by, PdfBook.created_at.desc()))
+    col = col_map.get(sort_by, PdfBook.created_at)
+    query = query.order_by(col.desc() if sort_dir == 'desc' else col.asc())
 
     total = query.count()
     items = query.offset((page - 1) * page_size).limit(page_size).all()
@@ -353,6 +360,7 @@ async def get_literature_chunks(
     book = db.query(PdfBook).filter(
         PdfBook.id == book_id,
         PdfBook.artist_id == artist_id,
+        PdfBook.document_type == 'literature',
     ).first()
     if not book:
         raise HTTPException(404, "文献不存在")
@@ -386,6 +394,7 @@ async def get_literature_pdf(
     book = db.query(PdfBook).filter(
         PdfBook.id == book_id,
         PdfBook.artist_id == artist_id,
+        PdfBook.document_type == 'literature',
     ).first()
     if not book:
         raise HTTPException(404, "文献不存在")

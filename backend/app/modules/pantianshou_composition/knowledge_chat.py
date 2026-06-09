@@ -472,7 +472,10 @@ async def chat_stream(
 
     # ②.5 意图分类 + 画家上下文注入
     intent = _detect_intent(query)
-    artist_name = _extract_artist(query)
+    if not artist_id:  # 非画家专家模式时，从查询中提取画家名
+        extracted = _extract_artist(query)
+        if extracted:
+            artist_name = extracted
     if intent != "normal" and artist_name:
         artist_ctx = _get_artist_context(artist_name, intent)
         if artist_ctx:

@@ -112,7 +112,10 @@ async def retry_task(task_id: str, db: Session = Depends(get_db)):
 
     # 重新处理
     try:
-        result = process_pdf_file_sync(book.stored_path, task_id=task_id, book_id=book.id)
+        result = process_pdf_file_sync(
+            book.stored_path, task_id=task_id, book_id=book.id,
+            artist_id=book.artist_id, document_type=book.document_type or 'book',
+        )
         return {"message": "任务已重新提交", "result": result}
     except Exception as e:
         raise HTTPException(500, f"重试失败: {str(e)}")
