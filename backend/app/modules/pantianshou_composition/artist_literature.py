@@ -425,3 +425,36 @@ async def get_literature_pdf(
         media_type="application/pdf",
         filename=book.file_name,
     )
+
+
+@router.get("/{book_id}/images")
+async def get_literature_images(
+    artist_id: int,
+    book_id: str,
+    db: Session = Depends(get_db),
+):
+    """获取文献中提取的插图列表"""
+    book = db.query(PdfBook).filter(
+        PdfBook.id == book_id,
+        PdfBook.artist_id == artist_id,
+    ).first()
+    if not book:
+        raise HTTPException(404, "文献不存在")
+
+    from .models import ExtractedImage
+    images = db.query(ExtractedImage).filter(
+        ExtractedImage.book_id == book_id
+    ).order_by(ExtractedImage.page, ExtractedImage.file_name).all()
+
+    return {
+        "images": [
+            {
+                "id": img.id,
+                "file_name": img.file_name,
+                "stored_url": img.stored_url,
+                "page": img.page,
+                "caption": img.caption,
+            }
+            for img in images
+        ]
+    }

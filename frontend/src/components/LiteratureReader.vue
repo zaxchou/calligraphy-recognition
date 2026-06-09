@@ -48,6 +48,13 @@
               第 {{ chunk.page_start }}-{{ chunk.page_end || chunk.page_start }} 页
             </div>
             <div class="alr-chapter-body" v-html="renderMarkdown(chunk.content)"></div>
+            <!-- 该页的插图 -->
+            <div v-if="chunk.page_start && imagesForPage(chunk.page_start).length" class="alr-images">
+              <div v-for="img in imagesForPage(chunk.page_start)" :key="img.id" class="alr-image-item">
+                <img :src="img.stored_url" :alt="img.caption || `第${img.page}页插图`" class="alr-image" loading="lazy" />
+                <div v-if="img.caption" class="alr-image-caption">{{ img.caption }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -84,6 +91,7 @@ const overlayRef = ref(null)
 const mainRef = ref(null)
 const mode = ref('text')
 const chunks = ref([])
+const images = ref([])
 const loadingChunks = ref(true)
 const pdfLoading = ref(false)
 const pdfUrl = ref('')
@@ -134,6 +142,20 @@ async function loadChunks() {
   finally { loadingChunks.value = false }
 }
 
+async function loadImages() {
+  try {
+    const res = await fetch(`${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/images`)
+    if (res.ok) {
+      const data = await res.json()
+      images.value = data.images || []
+    }
+  } catch {}
+}
+
+function imagesForPage(page) {
+  return images.value.filter(img => img.page === page)
+}
+
 function onScroll() {
   if (!mainRef.value || mode.value !== 'text') return
   const scrollTop = mainRef.value.scrollTop
@@ -159,6 +181,7 @@ onMounted(async () => {
     }
   } catch {}
   loadChunks()
+  loadImages()
 })
 
 onBeforeUnmount(() => {
@@ -207,6 +230,11 @@ onBeforeUnmount(() => {
 .alr-chapter-title { font-size: 18px; font-weight: 600; color: #2c2416; font-family: 'Noto Serif SC', serif; margin-bottom: 6px; }
 .alr-chapter-pages { font-size: 12px; color: #b0a890; margin-bottom: 16px; }
 .alr-chapter-body { font-size: 15px; line-height: 1.8; color: #3a3222; }
+.alr-images { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #edeae1; }
+.alr-image-item { flex: 0 0 auto; max-width: 280px; }
+.alr-image { max-width: 100%; max-height: 300px; border-radius: 6px; border: 1px solid #e8e3da; cursor: pointer; transition: transform 0.2s; }
+.alr-image:hover { transform: scale(1.02); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.alr-image-caption { font-size: 12px; color: #8a8578; margin-top: 4px; text-align: center; }
 
 /* PDF 模式 */
 .alr-pdf-main { display: flex; flex-direction: column; }
