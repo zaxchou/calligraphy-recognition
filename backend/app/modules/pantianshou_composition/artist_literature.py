@@ -173,6 +173,11 @@ def _try_extract_metadata(book_id: str):
             book.publish_year = meta['publish_year']
         if not book.doi and meta.get('doi'):
             book.doi = meta['doi']
+        if not book.abstract and meta.get('abstract'):
+            book.abstract = meta['abstract']
+        if not book.keywords and meta.get('keywords'):
+            import json as _json
+            book.keywords = _json.dumps(meta['keywords'], ensure_ascii=False)
         db.commit()
     except Exception as e:
         logger.error(f"元数据提取失败: {e}", exc_info=True)
@@ -235,6 +240,8 @@ async def list_literature(
                 "journal": b.journal,
                 "publish_year": b.publish_year,
                 "doi": b.doi,
+                "abstract": b.abstract,
+                "keywords": b.keywords,
                 "status": b.status,
                 "total_pages": b.total_pages,
                 "chunk_count": chunk_counts.get(b.id, 0),
@@ -274,6 +281,8 @@ async def get_literature_detail(
         "journal": book.journal,
         "publish_year": book.publish_year,
         "doi": book.doi,
+        "abstract": book.abstract,
+        "keywords": book.keywords,
         "status": book.status,
         "total_pages": book.total_pages,
         "chunk_count": chunk_count,

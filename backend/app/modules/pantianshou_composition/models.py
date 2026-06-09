@@ -42,6 +42,8 @@ class PdfBook(Base):
     journal = Column(String(255), nullable=True)
     publish_year = Column(Integer, nullable=True)
     doi = Column(String(255), nullable=True)
+    abstract = Column(Text, nullable=True)
+    keywords = Column(Text, nullable=True)  # JSON array
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

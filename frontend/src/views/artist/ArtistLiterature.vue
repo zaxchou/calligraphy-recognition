@@ -75,6 +75,10 @@
               <span v-if="doc.journal" class="al-meta-item">{{ doc.journal }}</span>
               <span v-if="doc.publish_year" class="al-meta-item">{{ doc.publish_year }}</span>
             </div>
+            <div v-if="doc.abstract" class="al-card-abstract">{{ doc.abstract.slice(0, 120) }}{{ doc.abstract.length > 120 ? '...' : '' }}</div>
+            <div v-if="doc.keywords" class="al-card-keywords">
+              <el-tag v-for="kw in parseKeywords(doc.keywords)" :key="kw" size="small" type="info" class="al-kw-tag">{{ kw }}</el-tag>
+            </div>
             <div class="al-card-bottom">
               <span class="al-card-date">{{ doc.created_at?.slice(0, 10) }}</span>
               <span v-if="doc.doi" class="al-card-doi">DOI: {{ doc.doi }}</span>
@@ -172,6 +176,11 @@ function onSearch() { currentPage.value = 1; loadLiterature() }
 function clearSearch() { searchQuery.value = ''; currentPage.value = 1; loadLiterature() }
 function openReader(doc) { readerBook.value = { ...doc, artist_id: artistId.value } }
 function onUploaded() { showUpload.value = false; loadLiterature() }
+function parseKeywords(kw) {
+  if (!kw) return []
+  try { return typeof kw === 'string' ? JSON.parse(kw) : kw }
+  catch { return [] }
+}
 
 async function fetchArtistId() {
   try {
@@ -252,6 +261,9 @@ onMounted(async () => {
 .al-card-info { min-width: 0; flex: 1; }
 .al-card-title { font-size: 14px; font-weight: 600; color: #2c2416; margin-bottom: 6px; font-family: 'Noto Serif SC', serif; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .al-card-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.al-card-abstract { font-size: 12px; color: #6b6150; line-height: 1.5; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.al-card-keywords { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.al-kw-tag { font-size: 11px; }
 .al-meta-item { font-size: 12px; color: #8a8578; background: #f5f0e8; padding: 2px 8px; border-radius: 4px; }
 .al-card-bottom { display: flex; justify-content: space-between; align-items: center; }
 .al-card-date { font-size: 11px; color: #b0a890; }
