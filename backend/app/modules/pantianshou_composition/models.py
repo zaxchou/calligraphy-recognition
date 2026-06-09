@@ -36,6 +36,12 @@ class PdfBook(Base):
     # Phase 3: 用户私人文档
     owner_id = Column(Integer, nullable=True, index=True)  # NULL = 公共文档
     visibility = Column(String(20), default="public")  # public / private
+    # Phase 4: 画家专属文献库
+    artist_id = Column(Integer, ForeignKey('artists.id'), nullable=True, index=True)
+    document_type = Column(String(20), default='book', nullable=False)  # book / literature
+    journal = Column(String(255), nullable=True)
+    publish_year = Column(Integer, nullable=True)
+    doi = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -420,12 +426,16 @@ class ChatSession(Base):
     user_id = Column(Integer, nullable=False, index=True)
     title = Column(String(100), nullable=True)  # 首条消息前30字
     message_count = Column(Integer, default=0)
+    # Phase 4: 画家专家会话
+    session_type = Column(String(20), default='global', nullable=False)  # global / artist_expert
+    artist_id = Column(Integer, ForeignKey('artists.id'), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         Index("idx_chat_sessions_user", "user_id"),
         Index("idx_chat_sessions_updated", "updated_at"),
+        Index("idx_chat_sessions_artist", "artist_id"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
