@@ -138,6 +138,15 @@ def _try_extract_metadata(book_id: str):
     from .database import get_db as _get_db
     from .metadata_extractor import extract_metadata
     import asyncio
+    import re
+
+    UUID_RE = re.compile(r'^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+
+    def _is_bad_title(t):
+        """判断标题是否为无效值（UUID、纯数字等）"""
+        if not t:
+            return True
+        return bool(UUID_RE.match(t.strip()))
 
     db = next(_get_db())
     try:
@@ -145,8 +154,8 @@ def _try_extract_metadata(book_id: str):
         if not book or not book.full_md:
             return
 
-        # 只在字段为空时提取
-        needs_extract = not book.title or not book.author or not book.journal
+        # 只在字段为空或标题为 UUID 时提取
+        needs_extract = _is_bad_title(book.title) or not book.author or not book.journal
         if not needs_extract:
             return
 
@@ -154,7 +163,7 @@ def _try_extract_metadata(book_id: str):
         if not meta:
             return
 
-        if not book.title and meta.get('title'):
+        if _is_bad_title(book.title) and meta.get('title'):
             book.title = meta['title']
         if not book.author and meta.get('authors'):
             book.author = ', '.join(meta['authors']) if isinstance(meta['authors'], list) else str(meta['authors'])

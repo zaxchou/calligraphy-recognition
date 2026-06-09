@@ -35,7 +35,8 @@ async def extract_metadata(full_md: str) -> Dict[str, Any]:
 
     try:
         import httpx
-        from app.core.config import settings
+        from app.core.config import get_settings
+        settings = get_settings()
 
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
