@@ -68,7 +68,7 @@ async function doUpload() {
     if (form.journal) fd.append('journal', form.journal)
     if (form.publish_year) fd.append('publish_year', form.publish_year)
 
-    const res = await fetch(`${API_BASE}/artists/${props.artistId}/literature/upload`, {
+    const res = await fetch(`${API_BASE}/knowledge/artists/${props.artistId}/literature/upload`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${authStore.token}` },
       body: fd,

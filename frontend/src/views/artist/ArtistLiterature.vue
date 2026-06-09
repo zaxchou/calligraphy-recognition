@@ -194,7 +194,7 @@ async function loadLiterature() {
       sort_dir: sortDir.value,
     })
     if (searchQuery.value) params.set('keyword', searchQuery.value)
-    const res = await fetch(`${API_BASE}/artists/${artistId.value}/literature?${params}`)
+    const res = await fetch(`${API_BASE}/knowledge/artists/${artistId.value}/literature?${params}`)
     if (res.ok) {
       const data = await res.json()
       literature.value = data.items || []

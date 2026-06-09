@@ -114,14 +114,14 @@ function loadPdf() {
   mode.value = 'pdf'
   if (!pdfUrl.value) {
     pdfLoading.value = true
-    pdfUrl.value = `${API_BASE}/artists/${props.book.artist_id}/literature/${props.book.id}/pdf`
+    pdfUrl.value = `${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/pdf`
   }
 }
 
 async function loadChunks() {
   loadingChunks.value = true
   try {
-    const res = await fetch(`${API_BASE}/artists/${props.book.artist_id}/literature/${props.book.id}/chunks`)
+    const res = await fetch(`${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/chunks`)
     if (res.ok) {
       const data = await res.json()
       chunks.value = data.chunks || []
