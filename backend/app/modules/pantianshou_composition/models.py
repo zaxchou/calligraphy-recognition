@@ -37,7 +37,7 @@ class PdfBook(Base):
     owner_id = Column(Integer, nullable=True, index=True)  # NULL = 公共文档
     visibility = Column(String(20), default="public")  # public / private
     # Phase 4: 画家专属文献库
-    artist_id = Column(Integer, ForeignKey('artists.id'), nullable=True, index=True)
+    artist_id = Column(Integer, nullable=True, index=True)  # FK → artists.id（应用层保证）
     document_type = Column(String(20), default='book', nullable=False)  # book / literature
     journal = Column(String(255), nullable=True)
     publish_year = Column(Integer, nullable=True)
@@ -428,7 +428,7 @@ class ChatSession(Base):
     message_count = Column(Integer, default=0)
     # Phase 4: 画家专家会话
     session_type = Column(String(20), default='global', nullable=False)  # global / artist_expert
-    artist_id = Column(Integer, ForeignKey('artists.id'), nullable=True, index=True)
+    artist_id = Column(Integer, nullable=True, index=True)  # FK → artists.id（应用层保证）
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
