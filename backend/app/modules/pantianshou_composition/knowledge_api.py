@@ -39,6 +39,9 @@ router.include_router(books_router, tags=["books"])
 from .knowledge_search import router as search_router
 router.include_router(search_router, tags=["search"])
 
+from .artist_literature import router as literature_router
+router.include_router(literature_router, tags=["artist-literature"])
+
 logger = logging.getLogger(__name__)
 
 
