@@ -9,13 +9,7 @@
       </div>
     </header>
 
-    <nav class="av-sub-nav">
-      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-nav-link">概览</router-link>
-      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="av-nav-link">作品</router-link>
-      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="av-nav-link active">印章</router-link>
-      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="av-nav-link">文献</router-link>
-      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link">分析</router-link>
-    </nav>
+      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistSeals'" />
 
     <div class="as-toolbar">
       <div class="as-search">
@@ -53,6 +47,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import SealLightbox from '@/components/seal/SealLightbox.vue'
+import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 
 const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -112,11 +107,6 @@ onMounted(() => fetchSeals())
 .av-name-link { color: #2c2416; text-decoration: none; }
 .av-name-link:hover { color: #c45a3c; }
 .av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
-
-.av-sub-nav { display: flex; gap: 4px; padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid #e8e3da; overflow-x: auto; }
-.av-nav-link { padding: 8px 18px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
-.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
-.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
 
 .as-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
 .as-search { position: relative; flex: 1; max-width: 320px; }

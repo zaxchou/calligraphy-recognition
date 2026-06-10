@@ -39,6 +39,7 @@ class PdfBook(Base):
     # Phase 4: 画家专属文献库
     artist_id = Column(Integer, nullable=True, index=True)  # FK → artists.id（应用层保证）
     document_type = Column(String(20), default='book', nullable=False)  # book / literature
+    source_type = Column(String(30), nullable=True)  # 论文/专著/期刊文章/会议论文/学位论文
     journal = Column(String(255), nullable=True)
     publish_year = Column(Integer, nullable=True)
     doi = Column(String(255), nullable=True)

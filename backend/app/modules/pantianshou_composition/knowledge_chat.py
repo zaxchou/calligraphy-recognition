@@ -256,6 +256,19 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
         lit_results = [r for r in filtered if r.get('payload', {}).get('artist_id') == artist_id]
         other_results = [r for r in filtered if r.get('payload', {}).get('artist_id') != artist_id]
 
+        # 内容去重：按 content 前 80 字符去重（相邻 chunk 重叠导致内容重复）
+        seen = set()
+        deduped_lit = []
+        for r in lit_results:
+            content = (r.get('payload', {}) or {}).get('content', '') or ''
+            sig = content[:80]
+            if sig not in seen:
+                seen.add(sig)
+                deduped_lit.append(r)
+            else:
+                logger.debug("去重跳过文献 chunk: %s...", content[:40])
+        lit_results = deduped_lit
+
         # 按 book_title 分组
         from collections import defaultdict
         book_groups = defaultdict(list)

@@ -9,13 +9,7 @@
       </div>
     </header>
 
-    <nav class="av-sub-nav">
-      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-nav-link">概览</router-link>
-      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="av-nav-link">作品</router-link>
-      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="av-nav-link">印章</router-link>
-      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="av-nav-link">文献</router-link>
-      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link active">分析</router-link>
-    </nav>
+      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistAnalysis'" />
 
     <div class="aa-header-actions">
       <el-select v-model="selectedArtist" size="small" @change="onArtistChange">
@@ -336,6 +330,7 @@ import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
+import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 import ArtistStatsCard from '@/tiba/ArtistStatsCard.vue'
 import TibaRankingCard from '@/components/tiba/TibaRankingCard.vue'
 import { tibaApi, artistRulesApi } from '@/api'
@@ -946,10 +941,6 @@ function handleChartResize() {
 .av-name-link:hover { color: #c45a3c; }
 .av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
 
-.av-sub-nav { display: flex; gap: 4px; padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid #e8e3da; overflow-x: auto; }
-.av-nav-link { padding: 8px 18px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
-.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
-.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
 .aa-header-actions { display: flex; justify-content: flex-end; margin-bottom: 20px; }
 .aa-header-actions .el-select { width: 140px; }
 

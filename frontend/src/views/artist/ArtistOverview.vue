@@ -49,17 +49,7 @@
         </div>
       </header>
 
-      <nav class="av-sub-nav">
-        <router-link
-          v-for="tab in subNavTabs"
-          :key="tab.name"
-          :to="{ name: tab.name, params: { name: artistName } }"
-          class="av-nav-link"
-          :class="{ active: route.name === tab.name }"
-        >
-          {{ tab.label }}
-        </router-link>
-      </nav>
+      <ArtistSubNav :artist-name="artistName" :current-route="route.name" :artist="artist" />
 
       <div class="av-body">
         <main class="av-main">
@@ -220,6 +210,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { ElMessage } from 'element-plus'
 import { ArrowUp } from '@element-plus/icons-vue'
+import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -279,22 +270,6 @@ const suggestForm = reactive({
   change_summary: '',
 })
 const submitting = ref(false)
-
-const subNavTabs = computed(() => {
-  const tabs = [
-    { label: '概览', name: 'ArtistOverview' },
-    { label: '作品', name: 'ArtistWorks' },
-    { label: '印章', name: 'ArtistSeals' },
-    { label: '文献', name: 'ArtistLiterature' },
-    { label: '分析', name: 'ArtistAnalysis' },
-  ]
-  // 年谱数据 >= 5 条才显示翰墨行旅 tab
-  const chron = parseJsonField(artist.value?.art_chronology)
-  if (chron.length >= 5) {
-    tabs.push({ label: '行旅', name: 'ArtistMap' })
-  }
-  return tabs
-})
 
 const tocItems = computed(() => {
   const items = []
@@ -652,19 +627,6 @@ watch(tocItems, (items) => {
   background: #f5f3ed; border-radius: 6px; white-space: pre-wrap;
   word-break: break-all;
 }
-
-/* ── Sub Nav ── */
-.av-sub-nav {
-  display: flex; gap: 4px; padding: 16px 0; margin-bottom: 32px;
-  border-bottom: 1px solid #e8e3da; overflow-x: auto;
-}
-.av-nav-link {
-  padding: 8px 18px; font-size: 13px; color: #8c7a5c;
-  text-decoration: none; border-radius: 6px;
-  transition: all 0.15s; white-space: nowrap;
-}
-.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
-.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
 
 /* ── Body ── */
 .av-body { display: flex; gap: 48px; align-items: flex-start; }

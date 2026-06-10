@@ -41,10 +41,10 @@ class TextChunk:
 class TextChunker:
     """文本分块器"""
     
-    def __init__(self, 
+    def __init__(self,
                  strategy: str = "semantic",
                  chunk_size: int = 500,
-                 chunk_overlap: float = 0.2,
+                 chunk_overlap: float = 0.05,  # 降低重叠防止内容重复
                  min_chunk_size: int = 100,
                  max_chunk_size: int = 1000):
         """

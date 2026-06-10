@@ -9,13 +9,7 @@
       </div>
     </header>
 
-    <nav class="av-sub-nav">
-      <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-nav-link">概览</router-link>
-      <router-link :to="{ name: 'ArtistWorks', params: { name: artistName } }" class="av-nav-link active">作品</router-link>
-      <router-link :to="{ name: 'ArtistSeals', params: { name: artistName } }" class="av-nav-link">印章</router-link>
-      <router-link :to="{ name: 'ArtistLiterature', params: { name: artistName } }" class="av-nav-link">文献</router-link>
-      <router-link :to="{ name: 'ArtistAnalysis', params: { name: artistName } }" class="av-nav-link">分析</router-link>
-    </nav>
+      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistWorks'" />
 
     <!-- 分类 + 工具栏 -->
     <div class="aw-toolbar">
@@ -174,6 +168,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
+import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -279,12 +274,7 @@ onMounted(() => { loadWorks() })
 .av-name-link:hover { color: #c45a3c; }
 .av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
 
-.av-sub-nav { display: flex; gap: 4px; padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid #e8e3da; overflow-x: auto; }
-.av-nav-link { padding: 8px 18px; font-size: 13px; color: #8c7a5c; text-decoration: none; border-radius: 6px; transition: all 0.15s; white-space: nowrap; }
-.av-nav-link:hover { background: #f5f0e8; color: #3a3222; }
-.av-nav-link.active { background: #fdf6f0; color: #c45a3c; font-weight: 600; }
-
-/* ─── 分类 Tab ─── */
+	/* ─── 分类 Tab ─── */
 .aw-type-tabs { display: flex; gap: 4px; }
 .aw-type-tab { padding: 5px 14px; font-size: 13px; color: #8c7a5c; cursor: pointer; border-radius: 6px; transition: all 0.15s; user-select: none; }
 .aw-type-tab:hover { background: #f5f0e8; color: #3a3222; }

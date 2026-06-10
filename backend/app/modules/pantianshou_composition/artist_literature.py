@@ -8,6 +8,8 @@ import uuid
 import json
 import logging
 import threading
+import time
+from collections import deque
 from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
 from fastapi.responses import FileResponse, JSONResponse
@@ -15,9 +17,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 
-from .database import get_db
+from .database import get_db, SessionLocal
 from .models import PdfBook, KnowledgeTask, TextChunk
 from .knowledge_ingest_v2 import process_pdf_file_sync
+from app.core.config import get_settings
 from .knowledge_storage import save_book_upload
 
 from app.core.auth import require_editor
@@ -26,6 +29,104 @@ from app.models.user import User
 router = APIRouter(prefix="/artists/{artist_id}/literature")
 logger = logging.getLogger(__name__)
 
+# 并发限制：最多同时跑 2 个 MinerU 解析任务
+_pdf_semaphore = threading.Semaphore(2)
+_pdf_queue = []
+_pdf_queue_lock = threading.Lock()
+_pdf_worker_started = False
+
+
+def _enqueue_pdf_task(fn):
+    """将 PDF 处理任务加入队列，由唯一后台线程消费"""
+    global _pdf_worker_started
+    with _pdf_queue_lock:
+        _pdf_queue.append(fn)
+    if not _pdf_worker_started:
+        _pdf_worker_started = True
+        threading.Thread(target=_pdf_worker_loop, daemon=True).start()
+
+
+def _pdf_worker_loop():
+    """后台循环：逐任务消费，最多 2 个并发"""
+    import time
+    while True:
+        task = None
+        with _pdf_queue_lock:
+            if _pdf_queue:
+                task = _pdf_queue.pop(0)
+        if task:
+            with _pdf_semaphore:
+                try:
+                    task()
+                except Exception as e:
+                    logger.error(f"PDF 处理任务失败: {e}")
+        else:
+            time.sleep(1)
+
+
+# 模块加载时恢复 DB 中 queued 的文献任务
+def _recover_queued_tasks():
+    """重启后把 DB 中 queued/failed 的文献任务重新入队"""
+    try:
+        from app.modules.pantianshou_composition.database import DB_PATH as _knowledge_db_path
+        import sqlite3
+        conn = sqlite3.connect(_knowledge_db_path)
+
+        # 先重置 failed 为 queued（失败 1 次的重试）
+        conn.execute(
+            "UPDATE knowledge_tasks SET status='queued', stage='queued', progress=0 "
+            "WHERE task_type='pdf_ingest' AND status='failed' "
+            "AND EXISTS (SELECT 1 FROM pdf_books pb WHERE pb.id = book_id AND pb.document_type='literature')"
+        )
+        # 重置文献状态
+        conn.execute(
+            "UPDATE pdf_books SET status='processing' WHERE document_type='literature' AND status='failed'"
+        )
+
+        rows = conn.execute(
+            "SELECT kt.id, kt.book_id, pb.stored_path, pb.artist_id FROM knowledge_tasks kt "
+            "JOIN pdf_books pb ON kt.book_id = pb.id "
+            "WHERE kt.task_type='pdf_ingest' AND kt.status='queued' "
+            "AND pb.document_type='literature'"
+        ).fetchall()
+        conn.close()
+
+        valid = 0
+        missing = 0
+        for task_id, book_id, pdf_path, aid in rows:
+            if os.path.exists(pdf_path):
+                _enqueue_pdf_task(lambda tid=task_id, bid=book_id, pp=pdf_path, ai=aid: _process_existing_pdf(tid, bid, pp, ai))
+                valid += 1
+            else:
+                missing += 1
+                logger.warning(f"PDF 文件不存在，跳过恢复: {pdf_path}")
+
+        if valid:
+            logger.info(f"恢复 {valid} 个文献任务（{missing} 个因文件缺失跳过）")
+        elif missing:
+            logger.warning(f"{missing} 个文献任务因文件缺失跳过")
+    except Exception as e:
+        logger.warning(f"恢复 queued 任务失败（可忽略）: {e}")
+
+
+def _process_existing_pdf(task_id, book_id, pdf_path, artist_id=None):
+    """处理已存在的 PDF（恢复路径）"""
+    try:
+        process_pdf_file_sync(
+            pdf_path=pdf_path,
+            task_id=task_id,
+            book_id=book_id,
+            artist_id=artist_id,
+            document_type='literature',
+        )
+        _try_extract_metadata(book_id)
+    except Exception as e:
+        logger.error(f"文献恢复处理失败 {book_id}: {e}")
+
+
+# 首次导入时自动恢复
+_recover_queued_tasks()
+
 
 # ============ Pydantic 模型 ============
 
@@ -33,6 +134,7 @@ class LiteratureResponse(BaseModel):
     id: str
     title: Optional[str] = None
     author: Optional[str] = None
+    source_type: Optional[str] = None
     journal: Optional[str] = None
     publish_year: Optional[int] = None
     doi: Optional[str] = None
@@ -56,6 +158,7 @@ class MetadataUpdateRequest(BaseModel):
     journal: Optional[str] = None
     publish_year: Optional[int] = None
     doi: Optional[str] = None
+    source_type: Optional[str] = None
 
 
 # ============ 端点 ============
@@ -65,8 +168,10 @@ async def upload_literature(
     artist_id: int,
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
+    author: Optional[str] = Form(None),
     journal: Optional[str] = Form(None),
     publish_year: Optional[int] = Form(None),
+    keywords: Optional[str] = Form(None),
     doi: Optional[str] = Form(None),
     current_user: User = Depends(require_editor),
     db: Session = Depends(get_db),
@@ -98,8 +203,10 @@ async def upload_literature(
         artist_id=artist_id,
         document_type='literature',
         title=title,
+        author=author,
         journal=journal,
         publish_year=publish_year,
+        keywords=json.dumps([k.strip() for k in keywords.split(',') if k.strip()]) if keywords else keywords,
         doi=doi,
         status='processing',
     )
@@ -118,7 +225,7 @@ async def upload_literature(
     db.add(task)
     db.commit()
 
-    # 后台处理（含 LLM 元数据提取）
+    # 后台处理（排队，最多 2 个并发）
     def _process():
         try:
             process_pdf_file_sync(
@@ -133,7 +240,7 @@ async def upload_literature(
         except Exception as e:
             logger.error(f"文献处理失败: {e}")
 
-    threading.Thread(target=_process, daemon=True).start()
+    _enqueue_pdf_task(_process)
 
     return {"book_id": book_id, "task_id": task_id}
 
@@ -148,7 +255,6 @@ def _try_extract_metadata(book_id: str):
     UUID_RE = re.compile(r'^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
 
     def _is_bad_title(t):
-        """判断标题是否为无效值（UUID、纯数字等）"""
         if not t:
             return True
         return bool(UUID_RE.match(t.strip()))
@@ -159,12 +265,11 @@ def _try_extract_metadata(book_id: str):
         if not book or not book.full_md:
             return
 
-        # 只在字段为空或标题为 UUID 时提取
         needs_extract = _is_bad_title(book.title) or not book.author or not book.journal
         if not needs_extract:
             return
 
-        meta = asyncio.run(extract_metadata(book.full_md))
+        meta = asyncio.run(extract_metadata(book.full_md, filename=book.file_name))
         if not meta:
             return
 
@@ -183,6 +288,8 @@ def _try_extract_metadata(book_id: str):
         if not book.keywords and meta.get('keywords'):
             import json as _json
             book.keywords = _json.dumps(meta['keywords'], ensure_ascii=False)
+        if not book.source_type and meta.get('source_type'):
+            book.source_type = meta['source_type']
         db.commit()
     except Exception as e:
         logger.error(f"元数据提取失败: {e}", exc_info=True)
@@ -243,6 +350,7 @@ async def list_literature(
                 "title": b.title,
                 "author": b.author,
                 "journal": b.journal,
+                "source_type": b.source_type,
                 "publish_year": b.publish_year,
                 "doi": b.doi,
                 "abstract": b.abstract,
@@ -250,6 +358,7 @@ async def list_literature(
                 "status": b.status,
                 "total_pages": b.total_pages,
                 "chunk_count": chunk_counts.get(b.id, 0),
+                "full_md_length": len(b.full_md) if b.full_md else 0,
                 "created_at": b.created_at.isoformat() if b.created_at else None,
             }
             for b in items
@@ -284,6 +393,7 @@ async def get_literature_detail(
         "title": book.title,
         "author": book.author,
         "journal": book.journal,
+        "source_type": book.source_type,
         "publish_year": book.publish_year,
         "doi": book.doi,
         "abstract": book.abstract,
@@ -368,6 +478,8 @@ async def update_literature_metadata(
         book.publish_year = body.publish_year
     if body.doi is not None:
         book.doi = body.doi
+    if body.source_type is not None:
+        book.source_type = body.source_type
 
     db.commit()
     return {"message": "元数据已更新"}
