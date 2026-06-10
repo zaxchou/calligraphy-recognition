@@ -68,6 +68,8 @@ async def extract_metadata(full_md: str) -> Dict[str, Any]:
 
         # 解析 JSON
         text = text.strip()
+        # 清理可能导致 JSON 解析失败的字符
+        text = text.replace('\n', ' ').replace('\r', '').replace('\t', ' ')
         try:
             result = json.loads(text)
         except json.JSONDecodeError:
@@ -77,8 +79,8 @@ async def extract_metadata(full_md: str) -> Dict[str, Any]:
             if start >= 0 and end > start:
                 try:
                     result = json.loads(text[start:end+1])
-                except json.JSONDecodeError:
-                    logger.warning(f"JSON parse failed: {text[start:start+200]}")
+                except json.JSONDecodeError as e:
+                    logger.warning(f"JSON parse failed at pos {e.pos}: {text[max(0,e.pos-20):e.pos+20]}")
                     return {}
             else:
                 logger.warning(f"No JSON in response: {text[:200]}")
