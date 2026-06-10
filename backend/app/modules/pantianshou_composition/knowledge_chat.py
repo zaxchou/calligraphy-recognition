@@ -250,7 +250,7 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
     except Exception as e:
         logger.warning("Chat DB search failed: %s", e)
 
-    # 合并后按分数排序（确保 DB 实体和文本结果公平竞争 top-8 位置）
+    # 合并后混合排序：文献 70% + DB 实体 30%，保证多样性和丰富性
     # 当有 artist_id 时，文献 chunks 优先，并确保每本书至少有 1 条代表性结果
     if artist_id:
         lit_results = [r for r in filtered if r.get('payload', {}).get('artist_id') == artist_id]
@@ -266,16 +266,14 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
             book_groups[bt].sort(key=lambda r: r.get("score", 0), reverse=True)
 
         # 第一步：每本书取 top 1 作为代表（保证多样性）
-        interleaved = []
+        lit_interleaved = []
         remaining = []
         for bt in sorted(book_groups.keys()):
-            interleaved.append(book_groups[bt][0])
+            lit_interleaved.append(book_groups[bt][0])
             remaining.extend(book_groups[bt][1:])
 
-        # 第二步：剩余结果按分数排序，交替填充
+        # 第二步：剩余文献按分数排序，round-robin 交替填充
         remaining.sort(key=lambda r: r.get("score", 0), reverse=True)
-
-        # 重新按 book 分组剩余结果做 round-robin
         remaining_by_book = defaultdict(list)
         for r in remaining:
             bt = r.get('payload', {}).get('book_title', '') or 'unknown'
@@ -285,10 +283,17 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
         for idx in range(max_remaining):
             for bt in sorted(remaining_by_book.keys()):
                 if idx < len(remaining_by_book[bt]):
-                    interleaved.append(remaining_by_book[bt][idx])
+                    lit_interleaved.append(remaining_by_book[bt][idx])
 
+        # DB 实体按分数排序
         other_results.sort(key=lambda r: r.get("score", 0), reverse=True)
-        filtered = interleaved + other_results
+
+        # 混合：文献 7 成 + DB 实体 3 成（目标 8 条）
+        total_slots = 8
+        lit_slots = max(2, round(total_slots * 0.7))  # 至少 2 条文献
+        db_slots = total_slots - lit_slots
+
+        filtered = lit_interleaved[:lit_slots] + other_results[:db_slots]
     else:
         filtered.sort(key=lambda r: r.get("score", 0), reverse=True)
     return filtered
