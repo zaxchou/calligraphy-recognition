@@ -4,26 +4,21 @@
 """
 
 import os
-import re
 import json
-import time
-import shutil
 import uuid
 import asyncio
 from datetime import datetime
 import logging
 from typing import Dict, List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query
-from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from .database import get_db
-from .models import PdfBook, KnowledgeTask, TextChunk, ExtractedImage, SearchHistory, SummaryCache, CompositionRule, CompositionFigure
-from .task_manager import TaskManager
-from .knowledge_ingest_v2 import process_pdf_file_sync
+from .models import PdfBook, TextChunk, ExtractedImage, CompositionRule, CompositionFigure
 
-from app.core.auth import require_admin_role, get_optional_user, get_current_user
+from app.core.auth import require_admin_role, get_current_user
 from app.core.quota import check_ai_quota
 from app.models.user import User
 

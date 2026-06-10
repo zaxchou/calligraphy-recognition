@@ -193,7 +193,7 @@ async function fetchArtistId() {
 }
 
 async function loadLiterature() {
-  if (!artistId.value) return
+  if (!artistId.value) { loading.value = false; return }
   loading.value = true
   try {
     const params = new URLSearchParams({

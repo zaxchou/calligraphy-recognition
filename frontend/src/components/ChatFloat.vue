@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { MessageCircle, X, Sparkles, Send, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
@@ -93,6 +93,14 @@ const props = defineProps({
 })
 
 const isExpertMode = computed(() => props.artistId && props.artistName)
+
+// 切换画家时清除专家 session 和消息
+watch(() => props.artistId, (newId, oldId) => {
+  if (newId !== oldId) {
+    chatStore.setArtistExpertSession(null)
+    messages.value = []
+  }
+})
 
 const authStore = useAuthStore()
 const chatStore = useChatStore()

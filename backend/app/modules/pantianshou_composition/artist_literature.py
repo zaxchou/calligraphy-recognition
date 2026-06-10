@@ -76,10 +76,15 @@ async def upload_literature(
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(400, "仅支持 PDF 文件")
 
-    # 保存文件
+    # 保存文件（限制 50MB）
+    MAX_SIZE = 50 * 1024 * 1024
     try:
         content = await file.read()
+        if len(content) > MAX_SIZE:
+            raise HTTPException(413, "文件大小超过 50MB 限制")
         file_path, file_url = save_book_upload(file.filename, content)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"文件保存失败: {str(e)}")
 
@@ -437,6 +442,7 @@ async def get_literature_images(
     book = db.query(PdfBook).filter(
         PdfBook.id == book_id,
         PdfBook.artist_id == artist_id,
+        PdfBook.document_type == 'literature',
     ).first()
     if not book:
         raise HTTPException(404, "文献不存在")
