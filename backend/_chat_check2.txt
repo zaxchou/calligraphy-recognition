@@ -1,5 +1,0 @@
-Total messages: 0
-
-Recent sessions:
-  id=757be37c user=1 title=hello type=global artist=None
-  id=cb46622d user=1 title=hello type=global artist=None
