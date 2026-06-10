@@ -5,23 +5,23 @@
       <MessageCircle class="cf-fab-icon" />
     </button>
 
-    <!-- 聊天面板 -->
+    <!-- 浮窗模式 -->
     <transition name="cf-panel">
-      <div v-if="open" :class="['cf-panel', expanded ? 'cf-expanded' : '']">
+      <div v-if="open && !expanded" class="cf-panel">
         <div class="cf-hdr">
-          <span class="cf-hdr-title">{{ isExpertMode ? `${artistName}研究专家` : '小墨' }}</span>
+          <span class="cf-hdr-title">{{ isExpertMode ? artistName + '研究专家' : '小墨' }}</span>
           <div class="cf-hdr-actions">
-            <button class="cf-hdr-btn" @click="expanded = !expanded" :title="expanded ? '收起' : '展开完整模式'">
-              <Maximize2 v-if="!expanded" class="icon-sm" /><Minimize2 v-else class="icon-sm" />
+            <button class="cf-hdr-btn" @click="expanded = true" title="展开完整模式">
+              <Maximize2 class="icon-sm" />
             </button>
-            <button class="cf-hdr-btn" @click="open=false; expanded=false"><X class="icon-sm" /></button>
+            <button class="cf-hdr-btn" @click="open=false"><X class="icon-sm" /></button>
           </div>
         </div>
         <div class="cf-body">
           <div class="cf-msgs" ref="msgsRef">
             <div v-if="messages.length===0" class="cf-welcome">
               <Sparkles class="cf-welcome-icon" />
-              <p>{{ isExpertMode ? `有关于${artistName}的问题，随时问我` : '有任何关于中国画的问题，随时问我' }}</p>
+              <p>{{ isExpertMode ? '有关于' + artistName + '的问题，随时问我' : '有任何关于中国画的问题，随时问我' }}</p>
               <div class="cf-sugs">
                 <button v-for="s in suggestions" :key="s" class="cf-sug" @click="send(s)">{{ s }}</button>
               </div>
@@ -35,7 +35,6 @@
                   <span class="cf-src-book">{{ s.book }}</span>
                 </div>
               </div>
-              <!-- 缩略图画廊 -->
               <div v-if="m.role==='assistant'&&m.sources" class="cf-gallery">
                 <div class="cf-gallery-title">🖼 相关作品</div>
                 <div class="cf-gallery-grid">
@@ -58,6 +57,84 @@
         </div>
       </div>
     </transition>
+
+    <!-- 完整模式（全屏） -->
+    <Teleport to="body">
+      <transition name="cf-fullscreen">
+        <div v-if="open && expanded" class="cf-fullscreen">
+          <!-- 左侧：历史会话 -->
+          <aside class="cf-history">
+            <div class="cf-history-hdr">
+              <span class="cf-history-title">对话历史</span>
+              <button class="cf-hdr-btn" @click="startNewChat" title="新对话"><Plus class="icon-sm" /></button>
+            </div>
+            <div class="cf-history-list">
+              <div v-for="s in filteredSessions" :key="s.id" class="cf-history-item" :class="{ active: chatStore.floatSessionId === s.id }" @click="switchSession(s.id)">
+                <div class="cf-history-item-title">{{ s.title || '新对话' }}</div>
+                <div class="cf-history-item-meta">{{ s.message_count || 0 }} 条 · {{ formatTime(s.updated_at) }}</div>
+              </div>
+              <div v-if="filteredSessions.length === 0" class="cf-history-empty">暂无历史对话</div>
+            </div>
+          </aside>
+
+          <!-- 右侧：聊天区 -->
+          <div class="cf-chat-main">
+            <div class="cf-chat-hdr">
+              <div class="cf-chat-hdr-left">
+                <span class="cf-chat-hdr-title">{{ isExpertMode ? artistName + '研究专家' : '小墨 · 知识问答' }}</span>
+                <span class="cf-chat-hdr-sub" v-if="currentSessionTitle">{{ currentSessionTitle }}</span>
+              </div>
+              <div class="cf-hdr-actions">
+                <button class="cf-hdr-btn" @click="expanded = false" title="收起为浮窗">
+                  <Minimize2 class="icon-sm" />
+                </button>
+                <button class="cf-hdr-btn" @click="open=false; expanded=false"><X class="icon-sm" /></button>
+              </div>
+            </div>
+
+            <div class="cf-chat-body">
+              <div class="cf-msgs cf-msgs-full" ref="msgsRefFull">
+                <div v-if="messages.length===0" class="cf-welcome cf-welcome-full">
+                  <Sparkles class="cf-welcome-icon" />
+                  <p>{{ isExpertMode ? '我是' + artistName + '研究专家，基于该画家的学术文献为您解答' : '有任何关于中国画的问题，随时问我' }}</p>
+                  <div class="cf-sugs">
+                    <button v-for="s in suggestions" :key="s" class="cf-sug" @click="send(s)">{{ s }}</button>
+                  </div>
+                </div>
+                <div v-for="(m,i) in messages" :key="'full-'+(m.id||i)" :class="['cf-msg',m.role]">
+                  <div v-if="m.thinking" class="cf-thinking"><Sparkles class="icon-xs" />思考中 {{ thinkSeconds }}s...</div>
+                  <div v-else class="cf-text cf-text-full" v-html="renderMd(m.content)" @click="onContentClick"></div>
+                  <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="cf-sources">
+                    <div v-for="s in m.sources" :key="s.index" class="cf-src" @click="citationSource=s">
+                      <span class="cf-src-idx">[{{ s.index }}]</span>
+                      <span class="cf-src-book">{{ s.book }}</span>
+                    </div>
+                  </div>
+                  <div v-if="m.role==='assistant'&&m.sources" class="cf-gallery">
+                    <div class="cf-gallery-title">🖼 相关作品</div>
+                    <div class="cf-gallery-grid">
+                      <template v-for="s in m.sources" :key="'fimg-'+s.index">
+                        <a v-if="s.thumbnail_url" :href="chatLink(s.url)" target="_blank" class="cf-gallery-card">
+                          <div class="cf-gallery-img-wrap"><img :src="s.thumbnail_url" :alt="s.name||s.book" class="cf-gallery-img" loading="lazy" @error="$event.target.parentElement.style.display='none'" /></div>
+                          <div class="cf-gallery-meta"><span class="cf-gallery-name">{{ s.name || s.book }}</span></div>
+                        </a>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cf-input-row cf-input-full">
+              <textarea ref="inputRefFull" v-model="input" class="cf-ta cf-ta-full" placeholder="输入问题..." @keydown.enter.exact.prevent="send()" @input="autoResize" rows="2" :disabled="loading"></textarea>
+              <button class="cf-send cf-send-full" @click="send()" :disabled="!input.trim()||loading">
+                <Send v-if="!loading" class="icon-sm" /><Loader2 v-else class="icon-sm spin" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
 
     <!-- 引用弹窗 -->
     <Teleport to="body">
@@ -87,7 +164,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { MessageCircle, X, Sparkles, Send, Loader2, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { MessageCircle, X, Sparkles, Send, Loader2, Maximize2, Minimize2, Plus } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { ElMessage } from 'element-plus'
@@ -115,10 +192,54 @@ const messages = ref([])
 const input = ref('')
 const loading = ref(false)
 const msgsRef = ref(null)
+const msgsRefFull = ref(null)
 const inputRef = ref(null)
+const inputRefFull = ref(null)
 const citationSource = ref(null)
 const thinkSeconds = ref(0)
 let thinkTimer = null
+
+// 完整模式：历史会话
+const filteredSessions = computed(() => {
+  if (isExpertMode.value) {
+    return chatStore.sessions.filter(s => s.artist_id === props.artistId)
+  }
+  return chatStore.sessions.filter(s => !s.artist_id)
+})
+const currentSessionTitle = computed(() => {
+  const sid = isExpertMode.value ? chatStore.artistExpertSessionId : chatStore.floatSessionId
+  const s = chatStore.sessions.find(x => x.id === sid)
+  return s?.title || null
+})
+
+async function loadHistory() {
+  await chatStore.fetchSessions()
+}
+
+async function switchSession(sessionId) {
+  const sid = isExpertMode.value ? chatStore.artistExpertSessionId : chatStore.floatSessionId
+  if (sid === sessionId) return
+  if (isExpertMode.value) chatStore.setArtistExpertSession(sessionId)
+  else chatStore.setFloatSession(sessionId)
+  messages.value = []
+  const msgs = await chatStore.fetchMessages(sessionId)
+  messages.value = msgs
+  nextTick(scrollToBottom)
+}
+
+function startNewChat() {
+  if (isExpertMode.value) chatStore.setArtistExpertSession(null)
+  else chatStore.setFloatSession(null)
+  messages.value = []
+}
+
+function formatTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const now = new Date()
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+}
 
 const suggestions = computed(() => isExpertMode.value
   ? [`${props.artistName}的代表作有哪些？`, `${props.artistName}的艺术风格特点？`, `${props.artistName}的创作分期？`]
@@ -127,11 +248,19 @@ const suggestions = computed(() => isExpertMode.value
 
 function openChat() {
   open.value = true
-  nextTick(() => {
-    if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight
-    if (inputRef.value) inputRef.value.focus()
-  })
+  loadHistory()
+  nextTick(scrollToBottom)
 }
+
+function scrollToBottom() {
+  const el = expanded.value ? msgsRefFull.value : msgsRef.value
+  if (el) el.scrollTop = el.scrollHeight
+  const inp = expanded.value ? inputRefFull.value : inputRef.value
+  if (inp) inp.focus()
+}
+
+// 展开/收起时同步滚动和焦点
+watch(expanded, () => nextTick(scrollToBottom))
 
 function autoResize() {
   if (inputRef.value) {
@@ -201,7 +330,7 @@ async function send(msg) {
   thinkSeconds.value = 0
   if (thinkTimer) clearInterval(thinkTimer)
   thinkTimer = setInterval(() => { thinkSeconds.value++ }, 1000)
-  nextTick(() => { if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight })
+  nextTick(scrollToBottom)
 
   try {
     const body = { prompt: t }
@@ -270,7 +399,7 @@ async function send(msg) {
     try { ElMessage.error('小墨暂时无法回答，请稍后重试') } catch {}
   } finally {
     loading.value = false
-    nextTick(() => { if (msgsRef.value) msgsRef.value.scrollTop = msgsRef.value.scrollHeight })
+    nextTick(scrollToBottom)
   }
 }
 </script>
@@ -353,4 +482,33 @@ async function send(msg) {
 .cf-gallery-card:hover .cf-gallery-img{transform:scale(1.06)}
 .cf-gallery-meta{padding:4px 6px}
 .cf-gallery-name{font-size:11px;color:#3a3222;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ─── 完整模式（全屏） ─── */
+.cf-fullscreen-enter-active{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.cf-fullscreen-leave-active{transition:all 0.2s ease}
+.cf-fullscreen-enter-from,.cf-fullscreen-leave-to{opacity:0}
+.cf-fullscreen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100000;display:flex;background:#faf8f5}
+.cf-history{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e8e3da;display:flex;flex-direction:column}
+.cf-history-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid #e8e3da}
+.cf-history-title{font-size:14px;font-weight:600;color:#2c2416}
+.cf-history-list{flex:1;overflow-y:auto;padding:8px}
+.cf-history-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.12s}
+.cf-history-item:hover{background:#f5f0e8}
+.cf-history-item.active{background:#fdf6f0;border-left:3px solid #c45a3c}
+.cf-history-item-title{font-size:13px;color:#2c2416;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-history-item-meta{font-size:11px;color:#b0a890;margin-top:2px}
+.cf-history-empty{text-align:center;padding:40px 16px;color:#b0a890;font-size:13px}
+.cf-chat-main{flex:1;display:flex;flex-direction:column;min-width:0}
+.cf-chat-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid #e8e3da;background:#fff}
+.cf-chat-hdr-left{display:flex;align-items:baseline;gap:12px;min-width:0}
+.cf-chat-hdr-title{font-family:'Noto Serif SC',serif;font-size:16px;font-weight:600;color:#2c2416}
+.cf-chat-hdr-sub{font-size:13px;color:#8a8578;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-chat-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.cf-msgs-full{flex:1;overflow-y:auto;padding:24px 32px;max-width:800px;margin:0 auto;width:100%}
+.cf-welcome-full{text-align:center;padding:80px 0}
+.cf-welcome-full p{font-size:16px;color:#5e5d59;margin-bottom:20px}
+.cf-text-full{font-size:15px;line-height:1.7}
+.cf-input-full{padding:16px 24px;border-top:1px solid #e8e3da;background:#fff;max-width:800px;margin:0 auto;width:100%;box-sizing:border-box}
+.cf-ta-full{min-height:48px;font-size:15px}
+.cf-send-full{width:44px;height:44px}
 </style>
