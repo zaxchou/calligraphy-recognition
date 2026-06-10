@@ -10,6 +10,21 @@
         <span class="alr-topbar-author" v-if="artistName">{{ artistName }}</span>
       </div>
       <div class="alr-topbar-right">
+        <div class="alr-search" v-if="mode === 'text'">
+          <el-input v-model="searchQuery" size="small" placeholder="搜索内文..." clearable
+            @keyup.enter="doSearch" @clear="clearSearch" style="width: 200px">
+            <template #append>
+              <el-button @click="doSearch" :icon="Search" />
+            </template>
+          </el-input>
+          <span v-if="searchResults.length" class="alr-search-count">
+            {{ searchIdx + 1 }}/{{ searchResults.length }}
+          </span>
+          <el-button-group v-if="searchResults.length" size="small" style="margin-left: 4px">
+            <el-button @click="prevMatch" :disabled="searchResults.length === 0">‹</el-button>
+            <el-button @click="nextMatch" :disabled="searchResults.length === 0">›</el-button>
+          </el-button-group>
+        </div>
         <el-button-group size="small">
           <el-button :type="mode === 'text' ? 'primary' : 'default'" @click="mode = 'text'">正文</el-button>
           <el-button :type="mode === 'pdf' ? 'primary' : 'default'" @click="loadPdf">原 PDF</el-button>
@@ -43,7 +58,7 @@
             :ref="el => { chunkRefs[idx] = el }"
             class="alr-chunk"
           >
-            <div v-if="chunk.chapter_title" class="alr-chapter-title">{{ chunk.chapter_title }}</div>
+            <div v-if="chunk.chapter_title && (idx === 0 || chunk.chapter_title !== chunks[idx-1].chapter_title)" class="alr-chapter-title">{{ chunk.chapter_title }}</div>
             <div class="alr-chapter-pages" v-if="chunk.page_start">
               第 {{ chunk.page_start }}-{{ chunk.page_end || chunk.page_start }} 页
             </div>
@@ -75,7 +90,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
 
 const props = defineProps({
@@ -98,6 +113,11 @@ const pdfUrl = ref('')
 const activeChunkIdx = ref(0)
 const chunkRefs = reactive({})
 
+// 内文搜索
+const searchQuery = ref('')
+const searchResults = ref([])  // [{chunkIdx, start, end}]
+const searchIdx = ref(-1)
+
 const outline = ref([])
 try {
   outline.value = typeof props.book.outline === 'string' ? JSON.parse(props.book.outline) : (props.book.outline || [])
@@ -105,11 +125,54 @@ try {
 
 function renderMarkdown(text) {
   if (!text) return ''
-  return text
+  let h = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>')
+  // 搜索高亮
+  if (searchQuery.value && searchResults.value.length) {
+    const q = searchQuery.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`(${q})`, 'gi')
+    h = h.replace(re, '<mark class="alr-highlight">$1</mark>')
+  }
+  return h
+}
+
+function doSearch() {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) { searchResults.value = []; searchIdx.value = -1; return }
+  const results = []
+  chunks.value.forEach((c, idx) => {
+    if (!c.content) return
+    const lower = c.content.toLowerCase()
+    let pos = 0
+    while ((pos = lower.indexOf(q, pos)) !== -1) {
+      results.push({ chunkIdx: idx, start: pos, end: pos + q.length })
+      pos += 1
+    }
+  })
+  searchResults.value = results
+  searchIdx.value = results.length > 0 ? 0 : -1
+  if (results.length > 0) scrollToChunk(results[0].chunkIdx)
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  searchResults.value = []
+  searchIdx.value = -1
+}
+
+function nextMatch() {
+  if (!searchResults.value.length) return
+  searchIdx.value = (searchIdx.value + 1) % searchResults.value.length
+  scrollToChunk(searchResults.value[searchIdx.value].chunkIdx)
+}
+
+function prevMatch() {
+  if (!searchResults.value.length) return
+  searchIdx.value = (searchIdx.value - 1 + searchResults.value.length) % searchResults.value.length
+  scrollToChunk(searchResults.value[searchIdx.value].chunkIdx)
 }
 
 function scrollToChunk(idx) {
@@ -196,6 +259,11 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column;
   outline: none;
 }
+
+/* 内文搜索 */
+.alr-search { display: flex; align-items: center; gap: 8px; margin-right: 12px; }
+.alr-search-count { font-size: 12px; color: #8a8578; white-space: nowrap; }
+:deep(.alr-highlight) { background: #ffe082; color: #2c2416; padding: 0 1px; border-radius: 2px; }
 
 .alr-topbar {
   display: flex; align-items: center; justify-content: space-between;
