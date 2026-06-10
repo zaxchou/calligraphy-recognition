@@ -1,14 +1,15 @@
 <template>
   <div class="cf-shell" v-if="authStore.isLoggedIn">
     <!-- 浮动按钮 -->
-    <button v-if="!open" class="cf-fab" @click="openChat" title="小墨">
+    <button v-if="!open" :class="['cf-fab', isExpertMode ? 'cf-fab-expert' : '']" @click="openChat" :title="isExpertMode ? artistName + '研究专家' : '小墨'">
       <MessageCircle class="cf-fab-icon" />
+      <span v-if="isExpertMode" class="cf-fab-badge">{{ artistName.charAt(0) }}</span>
     </button>
 
     <!-- 浮窗模式 -->
     <transition name="cf-panel">
       <div v-if="open && !expanded" class="cf-panel">
-        <div class="cf-hdr">
+        <div :class="['cf-hdr', isExpertMode ? 'cf-hdr-expert' : '']">
           <span class="cf-hdr-title">{{ isExpertMode ? artistName + '研究专家' : '小墨' }}</span>
           <div class="cf-hdr-actions">
             <button class="cf-hdr-btn" @click="expanded = true" title="展开完整模式">
@@ -80,7 +81,7 @@
 
           <!-- 右侧：聊天区 -->
           <div class="cf-chat-main">
-            <div class="cf-chat-hdr">
+            <div :class="['cf-chat-hdr', isExpertMode ? 'cf-hdr-expert' : '']">
               <div class="cf-chat-hdr-left">
                 <span class="cf-chat-hdr-title">{{ isExpertMode ? artistName + '研究专家' : '小墨 · 知识问答' }}</span>
                 <span class="cf-chat-hdr-sub" v-if="currentSessionTitle">{{ currentSessionTitle }}</span>
@@ -414,9 +415,14 @@ async function send(msg) {
 
 <style scoped>
 .cf-shell{position:fixed;bottom:20px;right:20px;z-index:99998}
-.cf-fab{width:52px;height:52px;border-radius:50%;border:none;background:#c96442;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(201,100,66,0.35);transition:all 0.2s}
+.cf-fab{width:52px;height:52px;border-radius:50%;border:none;background:#c96442;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(201,100,66,0.35);transition:all 0.2s;position:relative}
 .cf-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(201,100,66,0.45)}
+.cf-fab-expert{background:#2d6a4f;box-shadow:0 4px 16px rgba(45,106,79,0.35)}
+.cf-fab-expert:hover{box-shadow:0 6px 20px rgba(45,106,79,0.45)}
+.cf-fab-badge{position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:#fff;color:#2d6a4f;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #2d6a4f}
 .cf-fab-icon{width:22px;height:22px}
+.cf-hdr-expert{background:#f0f7f4;border-bottom-color:#b7e4c7}
+.cf-hdr-expert .cf-hdr-title{color:#2d6a4f}
 .cf-panel-enter-active{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
 .cf-panel-leave-active{transition:all 0.2s ease}
 .cf-panel-enter-from,.cf-panel-leave-to{opacity:0;transform:translateY(16px) scale(0.95)}
