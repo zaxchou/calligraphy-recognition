@@ -31,6 +31,8 @@ class SessionOut(BaseModel):
     id: str
     title: str
     message_count: int
+    session_type: Optional[str] = 'global'
+    artist_id: Optional[int] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -73,7 +75,7 @@ def list_sessions(user: User = Depends(get_current_user)):
     try:
         rows = db.execute(
             text(
-                "SELECT id, title, message_count, created_at, updated_at "
+                "SELECT id, title, message_count, session_type, artist_id, created_at, updated_at "
                 "FROM chat_sessions WHERE user_id = :uid ORDER BY updated_at DESC LIMIT 50"
             ),
             {"uid": user.id},
@@ -85,8 +87,8 @@ def list_sessions(user: User = Depends(get_current_user)):
     results = []
     for row in rows:
         try:
-            raw_created = row[3]
-            raw_updated = row[4]
+            raw_created = row[5]
+            raw_updated = row[6]
             created_str = raw_created if isinstance(raw_created, str) else str(raw_created)
             updated_str = raw_updated if isinstance(raw_updated, str) else str(raw_updated)
 
@@ -94,6 +96,8 @@ def list_sessions(user: User = Depends(get_current_user)):
                 id=row[0],
                 title=row[1] or "新对话",
                 message_count=int(row[2] or 0),
+                session_type=row[3] or 'global',
+                artist_id=row[4],
                 created_at=created_str,
                 updated_at=updated_str,
             ))
