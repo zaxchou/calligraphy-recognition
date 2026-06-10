@@ -372,6 +372,7 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
 
     # 会话管理
     session_id = request.session_id
+    session_type = 'artist_expert' if request.artist_id else 'global'
     if not session_id:
         # 自动创建新会话
         session_id = str(uuid.uuid4())
@@ -380,10 +381,10 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
             now = datetime.utcnow()
             db.execute(
                 _sql_text(
-                    "INSERT INTO chat_sessions (id, user_id, title, message_count, created_at, updated_at) "
-                    "VALUES (:id, :uid, :title, 0, :now, :now)"
+                    "INSERT INTO chat_sessions (id, user_id, title, message_count, session_type, artist_id, created_at, updated_at) "
+                    "VALUES (:id, :uid, :title, 0, :stype, :aid, :now, :now)"
                 ),
-                {"id": session_id, "uid": user.id, "title": request.prompt[:30], "now": now},
+                {"id": session_id, "uid": user.id, "title": request.prompt[:30], "stype": session_type, "aid": request.artist_id, "now": now},
             )
             db.commit()
         finally:
