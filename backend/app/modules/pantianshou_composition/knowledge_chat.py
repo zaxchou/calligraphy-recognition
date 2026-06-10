@@ -251,13 +251,30 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
         logger.warning("Chat DB search failed: %s", e)
 
     # 合并后按分数排序（确保 DB 实体和文本结果公平竞争 top-8 位置）
-    # 当有 artist_id 时，文献 chunks 优先（它们来自专属文库，更相关）
+    # 当有 artist_id 时，文献 chunks 优先，并在不同书籍间交替取结果（多样性）
     if artist_id:
         lit_results = [r for r in filtered if r.get('payload', {}).get('artist_id') == artist_id]
         other_results = [r for r in filtered if r.get('payload', {}).get('artist_id') != artist_id]
-        lit_results.sort(key=lambda r: r.get("score", 0), reverse=True)
+
+        # 按 book_title 分组，每组内按分数排序
+        from collections import defaultdict
+        book_groups = defaultdict(list)
+        for r in lit_results:
+            bt = r.get('payload', {}).get('book_title', '') or r.get('payload', {}).get('metadata', {}).get('book_title', '') or 'unknown'
+            book_groups[bt].append(r)
+        for bt in book_groups:
+            book_groups[bt].sort(key=lambda r: r.get("score", 0), reverse=True)
+
+        # Round-robin 交替取结果：每本书轮流取 top 1，避免单本霸榜
+        interleaved = []
+        max_per_book = max((len(v) for v in book_groups.values()), default=0)
+        for idx in range(max_per_book):
+            for bt in sorted(book_groups.keys()):  # 排序保证稳定顺序
+                if idx < len(book_groups[bt]):
+                    interleaved.append(book_groups[bt][idx])
+
         other_results.sort(key=lambda r: r.get("score", 0), reverse=True)
-        filtered = lit_results + other_results
+        filtered = interleaved + other_results
     else:
         filtered.sort(key=lambda r: r.get("score", 0), reverse=True)
     return filtered
@@ -615,9 +632,16 @@ async def chat_stream(
         chapter = payload.get("chapter", "") or payload.get("chapter_title", "")
         snippet = (payload.get("content", "") or "")[:120]
 
+        # 拼接详细引用标签：书名 + 页码 + 章节
+        label = book_title
+        if page:
+            label += f" 第{page}页"
+        if chapter and chapter.strip() and chapter.strip() != "正文":
+            label += f"（{chapter.strip()}）"
+
         slot = {
             "index": i,
-            "book": book_title,
+            "book": label,
             "page": page,
             "chapter": chapter.strip() if chapter and chapter.strip() != "正文" else "",
             "snippet": snippet,
