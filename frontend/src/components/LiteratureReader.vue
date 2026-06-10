@@ -10,26 +10,27 @@
         <span class="alr-topbar-author" v-if="artistName">{{ artistName }}</span>
       </div>
       <div class="alr-topbar-right">
-        <div class="alr-search" v-if="mode === 'text'">
-          <el-input v-model="searchQuery" size="small" placeholder="搜索内文..." clearable
-            @keyup.enter="doSearch" @clear="clearSearch" style="width: 200px">
-            <template #append>
-              <el-button @click="doSearch" :icon="Search" />
-            </template>
-          </el-input>
-          <span v-if="searchResults.length" class="alr-search-count">
-            {{ searchIdx + 1 }}/{{ searchResults.length }}
-          </span>
-          <el-button-group v-if="searchResults.length" size="small" style="margin-left: 4px">
-            <el-button @click="prevMatch" :disabled="searchResults.length === 0">‹</el-button>
-            <el-button @click="nextMatch" :disabled="searchResults.length === 0">›</el-button>
-          </el-button-group>
-        </div>
         <el-button-group size="small">
           <el-button :type="mode === 'text' ? 'primary' : 'default'" @click="mode = 'text'">正文</el-button>
           <el-button :type="mode === 'pdf' ? 'primary' : 'default'" @click="loadPdf">原 PDF</el-button>
         </el-button-group>
       </div>
+    </div>
+
+    <!-- 内文搜索条 -->
+    <div class="alr-searchbar" v-if="mode === 'text'">
+      <el-input v-model="searchQuery" size="small" placeholder="搜索内文..." clearable
+        @keyup.enter="doSearch" @clear="clearSearch" class="alr-search-input">
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+      <template v-if="searchResults.length">
+        <span class="alr-search-count">{{ searchIdx + 1 }} / {{ searchResults.length }} 条匹配</span>
+        <el-button text size="small" @click="prevMatch">‹ 上一个</el-button>
+        <el-button text size="small" @click="nextMatch">下一个 ›</el-button>
+      </template>
+      <span v-else-if="searchQuery && searchResults.length === 0" class="alr-search-count">无匹配</span>
     </div>
 
     <div class="alr-body">
@@ -41,7 +42,7 @@
           :key="idx"
           class="alr-outline-item"
           :class="{ active: activeChunkIdx === idx }"
-          @click="scrollToChunk(idx)"
+          @click="scrollToChunk(item.chunkIdx || idx)"
         >
           {{ item.title || item.chapter_title || `第 ${idx + 1} 节` }}
         </div>
@@ -196,9 +197,18 @@ async function loadChunks() {
     if (res.ok) {
       const data = await res.json()
       chunks.value = data.chunks || []
-      // 如果没有 outline 数据，用 chunk 的 chapter_title 构建目录
+      // 如果没有 outline 数据，用 chunk 的 chapter_title 去重构建目录
       if (outline.value.length === 0 && chunks.value.length > 0) {
-        outline.value = chunks.value.map(c => ({ title: c.chapter_title || `第 ${c.chunk_index + 1} 节` }))
+        const seen = new Set()
+        const deduped = []
+        chunks.value.forEach(c => {
+          const title = c.chapter_title || `第 ${c.chunk_index + 1} 节`
+          if (!seen.has(title)) {
+            seen.add(title)
+            deduped.push({ title, chunkIdx: c.chunk_index })
+          }
+        })
+        outline.value = deduped
       }
     }
   } catch (e) { console.error(e) }
@@ -260,10 +270,15 @@ onBeforeUnmount(() => {
   outline: none;
 }
 
-/* 内文搜索 */
-.alr-search { display: flex; align-items: center; gap: 8px; margin-right: 12px; }
-.alr-search-count { font-size: 12px; color: #8a8578; white-space: nowrap; }
-:deep(.alr-highlight) { background: #ffe082; color: #2c2416; padding: 0 1px; border-radius: 2px; }
+/* 内文搜索条 */
+.alr-searchbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 20px; background: #fff; border-bottom: 1px solid #e8e3da;
+  flex-shrink: 0;
+}
+.alr-search-input { width: 260px; }
+.alr-search-count { font-size: 13px; color: #8a8578; white-space: nowrap; }
+:deep(.alr-highlight) { background: #fff3cd; color: #2c2416; padding: 1px 2px; border-radius: 2px; }
 
 .alr-topbar {
   display: flex; align-items: center; justify-content: space-between;
