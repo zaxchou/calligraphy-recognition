@@ -69,9 +69,10 @@
               <button class="cf-hdr-btn" @click="startNewChat" title="新对话"><Plus class="icon-sm" /></button>
             </div>
             <div class="cf-history-list">
-              <div v-for="s in filteredSessions" :key="s.id" class="cf-history-item" :class="{ active: chatStore.floatSessionId === s.id }" @click="switchSession(s.id)">
+              <div v-for="s in filteredSessions" :key="s.id" class="cf-history-item" :class="{ active: chatStore.floatSessionId === s.id || chatStore.artistExpertSessionId === s.id }" @click="switchSession(s.id)">
                 <div class="cf-history-item-title">{{ s.title || '新对话' }}</div>
                 <div class="cf-history-item-meta">{{ s.message_count || 0 }} 条 · {{ formatTime(s.updated_at) }}</div>
+                <button class="cf-history-del" @click.stop="deleteSession(s.id)" title="删除对话"><X class="icon-xs" /></button>
               </div>
               <div v-if="filteredSessions.length === 0" class="cf-history-empty">暂无历史对话</div>
             </div>
@@ -231,6 +232,13 @@ function startNewChat() {
   if (isExpertMode.value) chatStore.setArtistExpertSession(null)
   else chatStore.setFloatSession(null)
   messages.value = []
+}
+
+async function deleteSession(sessionId) {
+  await chatStore.deleteSession(sessionId)
+  // 如果删的是当前会话，清空消息
+  const sid = isExpertMode.value ? chatStore.artistExpertSessionId : chatStore.floatSessionId
+  if (!sid) messages.value = []
 }
 
 function formatTime(ts) {
@@ -492,11 +500,14 @@ async function send(msg) {
 .cf-history-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid #e8e3da}
 .cf-history-title{font-size:14px;font-weight:600;color:#2c2416}
 .cf-history-list{flex:1;overflow-y:auto;padding:8px}
-.cf-history-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.12s}
+.cf-history-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.12s;position:relative}
 .cf-history-item:hover{background:#f5f0e8}
 .cf-history-item.active{background:#fdf6f0;border-left:3px solid #c45a3c}
-.cf-history-item-title{font-size:13px;color:#2c2416;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-history-item-title{font-size:13px;color:#2c2416;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:20px}
 .cf-history-item-meta{font-size:11px;color:#b0a890;margin-top:2px}
+.cf-history-del{position:absolute;top:10px;right:8px;border:none;background:transparent;color:#ccc;cursor:pointer;padding:2px;border-radius:4px;opacity:0;transition:opacity 0.15s}
+.cf-history-item:hover .cf-history-del{opacity:1}
+.cf-history-del:hover{color:#e74c3c;background:#fef2f2}
 .cf-history-empty{text-align:center;padding:40px 16px;color:#b0a890;font-size:13px}
 .cf-chat-main{flex:1;display:flex;flex-direction:column;min-width:0}
 .cf-chat-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid #e8e3da;background:#fff}
