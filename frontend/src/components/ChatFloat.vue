@@ -497,35 +497,68 @@ async function send(msg) {
 .cf-gallery-meta{padding:4px 6px}
 .cf-gallery-name{font-size:11px;color:#3a3222;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ─── 完整模式（全屏） ─── */
+/* ─── 完整模式（全屏）照搬知识库小墨样式 ─── */
 .cf-fullscreen-enter-active{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
 .cf-fullscreen-leave-active{transition:all 0.2s ease}
 .cf-fullscreen-enter-from,.cf-fullscreen-leave-to{opacity:0}
-.cf-fullscreen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100000;display:flex;background:#faf8f5}
-.cf-history{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e8e3da;display:flex;flex-direction:column}
-.cf-history-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid #e8e3da}
-.cf-history-title{font-size:14px;font-weight:600;color:#2c2416}
+.cf-fullscreen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100000;display:flex;background:#fafaf8;overflow:hidden}
+.cf-history{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e8e6dc;display:flex;flex-direction:column}
+.cf-history-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:48px;border-bottom:1px solid #e8e6dc}
+.cf-history-title{font-size:14px;font-weight:600;color:#141413}
 .cf-history-list{flex:1;overflow-y:auto;padding:8px}
-.cf-history-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:background 0.12s;position:relative}
-.cf-history-item:hover{background:#f5f0e8}
-.cf-history-item.active{background:#fdf6f0;border-left:3px solid #c45a3c}
-.cf-history-item-title{font-size:13px;color:#2c2416;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:20px}
-.cf-history-item-meta{font-size:11px;color:#b0a890;margin-top:2px}
+.cf-history-item{padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:background 0.12s;position:relative}
+.cf-history-item:hover{background:#f5f2eb}
+.cf-history-item.active{background:#fdf8f5;border-left:3px solid #c96442}
+.cf-history-item-title{font-size:13px;color:#141413;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:20px}
+.cf-history-item-meta{font-size:11px;color:#b0aca2;margin-top:2px}
 .cf-history-del{position:absolute;top:10px;right:8px;border:none;background:transparent;color:#ccc;cursor:pointer;padding:2px;border-radius:4px;opacity:0;transition:opacity 0.15s}
 .cf-history-item:hover .cf-history-del{opacity:1}
 .cf-history-del:hover{color:#e74c3c;background:#fef2f2}
-.cf-history-empty{text-align:center;padding:40px 16px;color:#b0a890;font-size:13px}
-.cf-chat-main{flex:1;display:flex;flex-direction:column;min-width:0}
-.cf-chat-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid #e8e3da;background:#fff}
-.cf-chat-hdr-left{display:flex;align-items:baseline;gap:12px;min-width:0}
-.cf-chat-hdr-title{font-family:'Noto Serif SC',serif;font-size:16px;font-weight:600;color:#2c2416}
-.cf-chat-hdr-sub{font-size:13px;color:#8a8578;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cf-chat-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.cf-msgs-full{flex:1;overflow-y:auto;padding:24px 32px;max-width:800px;margin:0 auto;width:100%}
-.cf-welcome-full{text-align:center;padding:80px 0}
-.cf-welcome-full p{font-size:16px;color:#5e5d59;margin-bottom:20px}
-.cf-text-full{font-size:15px;line-height:1.7}
-.cf-input-full{padding:16px 24px;border-top:1px solid #e8e3da;background:#fff;max-width:800px;margin:0 auto;width:100%;box-sizing:border-box}
-.cf-ta-full{min-height:48px;font-size:15px}
-.cf-send-full{width:44px;height:44px}
+.cf-history-empty{text-align:center;padding:40px 16px;color:#b0aca2;font-size:13px}
+.cf-chat-main{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
+.cf-chat-hdr{display:flex;align-items:center;gap:8px;padding:0 20px;height:48px;border-bottom:1px solid #e8e6dc;background:#fff;flex-shrink:0}
+.cf-chat-hdr-left{display:flex;align-items:baseline;gap:12px;min-width:0;flex:1}
+.cf-chat-hdr-title{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:600;color:#141413}
+.cf-chat-hdr-sub{font-size:13px;color:#8a877e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-chat-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-width:920px;width:100%;margin:0 auto;padding:0 32px;position:relative}
+.cf-msgs-full{flex:1;overflow-y:auto;padding:16px 8px 8px;scroll-behavior:smooth}
+.cf-msgs-full::-webkit-scrollbar{width:6px}
+.cf-msgs-full::-webkit-scrollbar-track{background:transparent}
+.cf-msgs-full::-webkit-scrollbar-thumb{background:#d8d4cc;border-radius:3px}
+.cf-welcome-full{text-align:center;padding:40px 16px;margin-top:10vh}
+.cf-welcome-full .cf-welcome-icon{color:#c96442;width:40px;height:40px;margin-bottom:12px}
+.cf-welcome-full p{font-size:14px;color:#8a877e;margin:0 0 16px;max-width:480px;margin-left:auto;margin-right:auto}
+.cf-welcome-full .cf-sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.cf-welcome-full .cf-sug{border:1px solid #d8d4cc;background:#fff;padding:6px 14px;border-radius:20px;font-size:13px;color:#5e5d59;cursor:pointer;transition:all 0.2s}
+.cf-welcome-full .cf-sug:hover{border-color:#c96442;color:#c96442;background:#fdf8f5}
+/* 消息气泡 — 照搬知识库 */
+.cf-fullscreen .cf-msg{padding:8px 0;max-width:860px;margin:0 auto}
+.cf-fullscreen .cf-msg.assistant{background:#fff;padding:14px 20px;border-radius:10px;margin-bottom:2px}
+.cf-fullscreen .cf-msg.user{display:flex;justify-content:flex-end;padding:6px 0}
+.cf-fullscreen .cf-msg.user .cf-text{background:#e8e4dc;border-radius:16px;padding:9px 14px;display:inline-block;max-width:85%;font-size:14px;color:#333;word-break:break-word;white-space:pre-wrap}
+.cf-fullscreen .cf-msg.assistant .cf-text{font-size:15px;line-height:1.7;color:#333;padding:0}
+.cf-fullscreen .cf-text :deep(*){font-family:'Arial','PingFang SC','Microsoft YaHei',sans-serif;line-height:1.7}
+.cf-fullscreen .cf-text :deep(h1),.cf-fullscreen .cf-text :deep(h2),.cf-fullscreen .cf-text :deep(h3){margin:16px 0 8px;color:#333;font-weight:600}
+.cf-fullscreen .cf-text :deep(h2){font-size:16px}.cf-fullscreen .cf-text :deep(h3){font-size:15px}
+.cf-fullscreen .cf-text :deep(p){margin:0 0 10px}
+.cf-fullscreen .cf-text :deep(strong){color:#333;font-weight:600}
+.cf-fullscreen .cf-text :deep(blockquote){margin:10px 0;padding:10px 14px;border-left:3px solid #c96442;background:#faf9f7;color:#555;border-radius:0 6px 6px 0}
+.cf-fullscreen .cf-text :deep(ul),.cf-fullscreen .cf-text :deep(ol){margin:8px 0;padding-left:22px}
+.cf-fullscreen .cf-text :deep(li){margin:4px 0}
+.cf-fullscreen .cf-text :deep(li)::marker{color:#c96442}
+.cf-fullscreen .cf-text :deep(code){background:#f0eee6;padding:2px 5px;border-radius:3px;font-size:13px;color:#c96442}
+.cf-fullscreen .cf-text :deep(hr){border:none;border-top:1px solid #e8e6dc;margin:14px 0}
+.cf-fullscreen .cf-text :deep(a){color:#c96442;text-decoration:underline;text-underline-offset:2px}
+/* Sources card */
+.cf-fullscreen .cf-sources{margin-top:12px;padding:10px 14px;background:#faf9f7;border-radius:8px;border:1px solid #ece9e0}
+.cf-fullscreen .cf-src{display:flex;align-items:center;gap:3px;padding:3px 6px;border-radius:4px;font-size:12px;cursor:pointer;transition:background 0.15s}
+.cf-fullscreen .cf-src:hover{background:#f0ede5}
+.cf-fullscreen .cf-src-idx{color:#c96442;font-weight:600}
+.cf-fullscreen .cf-src-book{color:#8a877e}
+/* 输入区 */
+.cf-input-full{display:flex;align-items:flex-end;gap:6px;padding:12px 20px;border-top:1px solid #e8e6dc;background:#fff;max-width:920px;width:100%;margin:0 auto;box-sizing:border-box}
+.cf-ta-full{flex:1;border:1px solid #d8d4cc;border-radius:12px;padding:8px 12px;font-size:14px;line-height:1.5;resize:none;outline:none;background:#fff;font-family:inherit;max-height:120px;min-height:44px}
+.cf-ta-full:focus{border-color:#c96442}
+.cf-send-full{border:none;background:#141413;color:#fff;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.cf-send-full:disabled{opacity:0.3;cursor:not-allowed}
 </style>

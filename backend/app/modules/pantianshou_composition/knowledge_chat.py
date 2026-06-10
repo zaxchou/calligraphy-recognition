@@ -251,7 +251,15 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
         logger.warning("Chat DB search failed: %s", e)
 
     # 合并后按分数排序（确保 DB 实体和文本结果公平竞争 top-8 位置）
-    filtered.sort(key=lambda r: r.get("score", 0), reverse=True)
+    # 当有 artist_id 时，文献 chunks 优先（它们来自专属文库，更相关）
+    if artist_id:
+        lit_results = [r for r in filtered if r.get('payload', {}).get('artist_id') == artist_id]
+        other_results = [r for r in filtered if r.get('payload', {}).get('artist_id') != artist_id]
+        lit_results.sort(key=lambda r: r.get("score", 0), reverse=True)
+        other_results.sort(key=lambda r: r.get("score", 0), reverse=True)
+        filtered = lit_results + other_results
+    else:
+        filtered.sort(key=lambda r: r.get("score", 0), reverse=True)
     return filtered
 
 
