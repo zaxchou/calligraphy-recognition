@@ -7,10 +7,15 @@
 
     <!-- 聊天面板 -->
     <transition name="cf-panel">
-      <div v-if="open" class="cf-panel">
+      <div v-if="open" :class="['cf-panel', expanded ? 'cf-expanded' : '']">
         <div class="cf-hdr">
           <span class="cf-hdr-title">{{ isExpertMode ? `${artistName}研究专家` : '小墨' }}</span>
-          <button class="cf-hdr-btn" @click="open=false"><X class="icon-sm" /></button>
+          <div class="cf-hdr-actions">
+            <button class="cf-hdr-btn" @click="expanded = !expanded" :title="expanded ? '收起' : '展开完整模式'">
+              <Maximize2 v-if="!expanded" class="icon-sm" /><Minimize2 v-else class="icon-sm" />
+            </button>
+            <button class="cf-hdr-btn" @click="open=false; expanded=false"><X class="icon-sm" /></button>
+          </div>
         </div>
         <div class="cf-body">
           <div class="cf-msgs" ref="msgsRef">
@@ -82,7 +87,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { MessageCircle, X, Sparkles, Send, Loader2 } from 'lucide-vue-next'
+import { MessageCircle, X, Sparkles, Send, Loader2, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { ElMessage } from 'element-plus'
@@ -105,6 +110,7 @@ watch(() => props.artistId, (newId, oldId) => {
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const open = ref(false)
+const expanded = ref(false)
 const messages = ref([])
 const input = ref('')
 const loading = ref(false)
@@ -277,9 +283,11 @@ async function send(msg) {
 .cf-panel-enter-active{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
 .cf-panel-leave-active{transition:all 0.2s ease}
 .cf-panel-enter-from,.cf-panel-leave-to{opacity:0;transform:translateY(16px) scale(0.95)}
-.cf-panel{position:fixed;bottom:20px;right:20px;width:400px;height:560px;background:#fafaf8;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.18);display:flex;flex-direction:column;overflow:hidden;z-index:99999}
+.cf-panel{position:fixed;bottom:20px;right:20px;width:400px;height:560px;background:#fafaf8;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.18);display:flex;flex-direction:column;overflow:hidden;z-index:99999;transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.cf-expanded{width:min(90vw,800px);height:min(85vh,700px);bottom:50%;right:50%;transform:translate(50%,50%)}
 .cf-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e8e6dc;background:#fff}
 .cf-hdr-title{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:600;color:#141413}
+.cf-hdr-actions{display:flex;align-items:center;gap:4px}
 .cf-hdr-btn{border:none;background:transparent;color:#999;cursor:pointer;padding:4px;border-radius:6px}
 .cf-hdr-btn:hover{background:#f5f2eb;color:#3d3d3a}
 .cf-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
