@@ -288,8 +288,8 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
         # DB 实体按分数排序
         other_results.sort(key=lambda r: r.get("score", 0), reverse=True)
 
-        # 混合：文献 7 成 + DB 实体 3 成（目标 8 条）
-        total_slots = 8
+        # 混合：文献 7 成 + DB 实体 3 成（目标 12 条）
+        total_slots = 12
         lit_slots = max(2, round(total_slots * 0.7))  # 至少 2 条文献
         db_slots = total_slots - lit_slots
 
@@ -321,7 +321,7 @@ def _parse_entity_int_id(eid: str) -> Optional[int]:
 
 def _build_rag_context(
     search_results: List[Dict[str, Any]],
-    max_items: int = 8,
+    max_items: int = 12,
     max_chars_per_item: int = 500,
 ) -> tuple:
     """将搜索结果构建为 RAG 上下文，支持 DB 实体和书本片段"""
@@ -612,9 +612,9 @@ async def chat_stream(
         query[:50], len(total_text), llm_elapsed, time.time() - t0,
     )
 
-    # ⑤ 构建来源列表
+    # ⑤ 构建来源列表（和 RAG context 保持一致的条数）
     sources = []
-    for i, r in enumerate(search_results[:8], 1):
+    for i, r in enumerate(search_results[:12], 1):
         payload = r.get("payload", {})
         source = payload.get("source", "")
 
