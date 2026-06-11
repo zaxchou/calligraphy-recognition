@@ -314,14 +314,21 @@ async def _search_for_chat(query: str, limit: int = 10, artist_id: Optional[int]
 
 def _extract_book_title(payload: Dict[str, Any]) -> str:
     """从 payload 提取书名（搜索结果和 sources 共用）"""
+    UUID_RE = re.compile(r'^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+    def _valid(t):
+        return t and not UUID_RE.match(t)
+
     metadata = payload.get("metadata") or {}
     if isinstance(metadata, dict):
         raw_title = metadata.get("book_title", "")
         if raw_title and "中国写意花鸟画教程" in raw_title:
             return "写意教程"
-        if raw_title:
+        if _valid(raw_title):
             return raw_title
-    return payload.get("book", "") or payload.get("book_title", "") or "知识库"
+    bt = payload.get("book", "") or payload.get("book_title", "")
+    if _valid(bt):
+        return bt
+    return "知识库"
 
 
 def _parse_entity_int_id(eid: str) -> Optional[int]:

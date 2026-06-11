@@ -524,11 +524,22 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                     raw_content = payload.get("content", "") or payload.get("text_preview", "")
                     truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
 
+                    # 查书名
+                    bt = _extract_book_title(payload)
+                    bid = book_id
+                    if not bt or bt == "知识库":
+                        try:
+                            bk = db.query(PdfBook).filter(PdfBook.id == bid).first()
+                            if bk and bk.title:
+                                bt = bk.title
+                        except Exception:
+                            pass
+
                     results.append({
                         "chunk_id": None,
                         "vector_id": vector_id,
                         "book_id": book_id,
-                        "book_title": _extract_book_title(payload),
+                        "book_title": bt,
                         "content": truncated_content,
                         "content_full": raw_content,
                         "chapter_title": payload.get("chapter_title", ""),
@@ -574,11 +585,21 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                         content_parts.append(fig_desc)
                     content_text = " | ".join(content_parts) if content_parts else f"图 {fig_id}"
 
+                    # 查书名
+                    img_bt = _extract_book_title(payload)
+                    if book_id and (not img_bt or img_bt == "知识库"):
+                        try:
+                            bk = db.query(PdfBook).filter(PdfBook.id == book_id).first()
+                            if bk and bk.title:
+                                img_bt = bk.title
+                        except Exception:
+                            pass
+
                     results.append({
                         "chunk_id": None,
                         "vector_id": vector_id,
                         "book_id": book_id,
-                        "book_title": _extract_book_title(payload),
+                        "book_title": img_bt,
                         "content": content_text[:200],
                         "content_full": content_text,
                         "chapter_title": chapter,

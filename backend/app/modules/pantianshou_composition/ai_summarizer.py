@@ -22,6 +22,11 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
+# UUID 模式，用于过滤无效的哈希标题
+_UUID_RE = re.compile(r'^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+def _valid(t):
+    return t and not _UUID_RE.match(t)
+
 import requests
 
 from app.core.config import get_settings
@@ -146,10 +151,14 @@ def _build_context(results: List[Dict[str, Any]], max_items: int = 12) -> str:
             raw_title = metadata.get("book_title", "")
             if raw_title and "中国写意花鸟画教程" in raw_title:
                 book_title = "写意教程"  # 简写，节省 token
-            elif raw_title:
+            elif _valid(raw_title):
                 book_title = raw_title
         if not book_title:
-            book_title = payload.get("book", "未知书籍")
+            raw_bt = payload.get("book", "")
+            if _valid(raw_bt):
+                book_title = raw_bt
+            else:
+                book_title = "未知书籍"
         page = payload.get("page_start", 0)
         content = payload.get("content", "")
         chapter = payload.get("chapter", "")
