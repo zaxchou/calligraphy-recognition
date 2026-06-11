@@ -220,21 +220,27 @@ def _extract_book_title(payload: dict) -> str:
     - name (艺术家档案)
     - type (其他类型)
     """
+
+    # UUID/哈希类无效标题过滤
+    UUID_RE = re.compile(r'^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+    def _valid(t):
+        return t and not UUID_RE.match(t)
+
     # 1. PDF 上传: metadata.book_title
     metadata = payload.get("metadata")
     if isinstance(metadata, dict):
         book_title = metadata.get("book_title")
-        if book_title:
+        if _valid(book_title):
             return book_title
 
     # 2. 章节/分类字段
     book = payload.get("book")
-    if book:
+    if _valid(book):
         return book
 
     # 3. 书名字段
     bt = payload.get("book_title")
-    if bt:
+    if _valid(bt):
         return bt
 
     # 4. 艺术家档案: name 字段
@@ -607,9 +613,9 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
                     raw_content = payload.get("content", "") or payload.get("text_preview", "")
                     truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
 
-                    # 查书名
+                    # 查书名（孤立向量中的标题可能是 UUID 文件名，用 DB 覆盖）
                     book_title = _extract_book_title(payload)
-                    if book_id and (not book_title or book_title == "知识库"):
+                    if book_id and (not book_title or book_title == "知识库" or re.match(r'^[0-9a-f]{32}$', book_title)):
                         try:
                             bk = db.query(PdfBook).filter(PdfBook.id == book_id).first()
                             if bk and bk.title:
@@ -783,11 +789,22 @@ async def search(request: SearchRequest, db: Session = Depends(get_db), user: Op
             truncated_content = _truncate_to_sentence_boundary(raw_content, 200, direction="head")
             full_content = _STRIP_LATEX_RE.sub('', payload.get("content", ""))
 
+            # 书名：优先从 SQLite 取（Qdrant payload 可能是旧的 UUID 文件名）
+            db_book_title = None
+            if book_id:
+                try:
+                    bk = db.query(PdfBook).filter(PdfBook.id == book_id).first()
+                    if bk and bk.title:
+                        db_book_title = bk.title
+                except Exception:
+                    pass
+            final_book_title = db_book_title or _extract_book_title(payload)
+
             results.append({
                 "chunk_id": chunk.id if chunk else None,
                 "vector_id": vector_id,
                 "book_id": book_id,
-                "book_title": _extract_book_title(payload),
+                "book_title": final_book_title,
                 "content": truncated_content,
                 "content_full": full_content,  # 完整内容供详情弹窗使用
                 "chapter_title": chapter_title,
