@@ -32,37 +32,37 @@ const routes = [
     path: '/artist/:name',
     name: 'ArtistOverview',
     component: () => import('../views/artist/ArtistOverview.vue'),
-    meta: { title: '画家百科' }
+    meta: { title: '画家百科', transition: 'page-fade' }
   },
   {
     path: '/artist/:name/works',
     name: 'ArtistWorks',
     component: () => import('../views/artist/ArtistWorks.vue'),
-    meta: { title: '画家作品' }
+    meta: { title: '画家作品', transition: 'page-fade' }
   },
   {
     path: '/artist/:name/seals',
     name: 'ArtistSeals',
     component: () => import('../views/artist/ArtistSeals.vue'),
-    meta: { title: '画家印章' }
+    meta: { title: '画家印章', transition: 'page-fade' }
   },
   {
     path: '/artist/:name/literature',
     name: 'ArtistLiterature',
     component: () => import('../views/artist/ArtistLiterature.vue'),
-    meta: { title: '画家文献' }
+    meta: { title: '画家文献', transition: 'page-fade' }
   },
   {
     path: '/artist/:name/analysis',
     name: 'ArtistAnalysis',
     component: () => import('../views/artist/ArtistAnalysisSlides.vue'),
-    meta: { title: '画家数据分析' }
+    meta: { title: '画家数据分析', transition: 'page-fade' }
   },
   {
     path: '/artist/:name/analysis-legacy',
     name: 'ArtistAnalysisLegacy',
     component: () => import('../views/artist/ArtistAnalysis.vue'),
-    meta: { title: '画家数据分析（旧版）' }
+    meta: { title: '画家数据分析（旧版）', transition: 'page-fade' }
   },
   {
     path: '/recognize',

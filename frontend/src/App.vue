@@ -118,7 +118,11 @@
 
     <!-- 主内容区 -->
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component, route: r }">
+        <transition :name="r.meta.transition || 'page-fade'" mode="out-in">
+          <component :is="Component" :key="r.path" />
+        </transition>
+      </router-view>
     </main>
 
     <!-- 全局浮动聊天窗（登录用户可见，readonly 模式隐藏，知识库/画家文献页面隐藏） -->
@@ -316,6 +320,20 @@ h1, h2, h3, h4, h5, h6 {
 ::selection {
   background: var(--cinnabar);
   color: var(--pure-white);
+}
+
+/* ─── 页面过渡动画 ─── */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 /* 滚动条 — 暖色 */
