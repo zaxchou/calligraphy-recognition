@@ -2,36 +2,16 @@
 修复 Qdrant 向量中 book_title 为 UUID 的问题
 用 SQLite 中正确的 book.title 覆盖 Qdrant payload 中的 book_title
 """
-import os
-import sys
-import json
-import re
-import logging
-import urllib.request
+import os, sys, json, re, logging, urllib.request, urllib.error
 
-logging.basicConfig(level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
-# 添加项目根到 sys.path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-# 解析 UUID 模式
 UUID_RE = re.compile(r'^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
-
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = "http://deploy-qdrant-1:6333"
 COLLECTIONS = ["knowledge_texts", "knowledge_images", "knowledge_tables"]
 
-def get_db():
-    """获取 SQLite 连接"""
-    from app.database import SessionLocal
-    from app.modules.pantianshou_composition.models import PdfBook
-    from sqlalchemy.orm import Session
-    db = SessionLocal()
-    return db
-
 def scroll_points(collection):
-    """从 Qdrant 滚动获取所有点"""
     points = []
     offset = None
     while True:
@@ -41,8 +21,7 @@ def scroll_points(collection):
         data = json.dumps(body).encode()
         req = urllib.request.Request(
             f"{QDRANT_URL}/collections/{collection}/points/scroll",
-            data=data,
-            headers={"Content-Type": "application/json"}
+            data=data, headers={"Content-Type": "application/json"}
         )
         resp = json.loads(urllib.request.urlopen(req).read())
         batch = resp.get("result", {}).get("points", [])
@@ -53,36 +32,45 @@ def scroll_points(collection):
         offset = next_offset
     return points
 
-def overwrite_payloads(collection, points):
-    """批量覆写 payload（不改变向量）"""
+def set_payloads(collection, points):
+    """用 set-payload 覆写 book_title 字段"""
     if not points:
         return 0
-    ops = [{"id": p["id"], "payload": p["payload"]} for p in points]
+    ops = [{"id": p["id"], "payload": {"book_title": p["payload"]["book_title"]}} for p in points]
     body = json.dumps({"points": ops}).encode()
     req = urllib.request.Request(
-        f"{QDRANT_URL}/collections/{collection}/points/overwrite",
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST"
+        f"{QDRANT_URL}/collections/{collection}/points/set-payload",
+        data=body, headers={"Content-Type": "application/json"}, method="POST"
     )
-    resp = urllib.request.urlopen(req)
-    result = json.loads(resp.read())
-    return result.get("result", {}).get("num_updated", len(points))
+    try:
+        resp = urllib.request.urlopen(req)
+        result = json.loads(resp.read())
+        return result.get("result", {}).get("num_updated", len(points))
+    except urllib.error.HTTPError as e:
+        logger.error(f"set-payload failed: {e.code} {e.read().decode()}")
+        return 0
 
 def main():
-    from app.database import SessionLocal
-    from app.modules.pantianshou_composition.models import PdfBook
+    import sqlite3
+    for p in ["/app/data/knowledge.db",
+              os.path.join(os.path.dirname(__file__), "..", "data", "knowledge.db")]:
+        if os.path.exists(p):
+            knowledge_db = p
+            break
+    else:
+        logger.error("cannot find knowledge.db")
+        return
 
-    db = SessionLocal()
+    logger.info(f"连接数据库: {knowledge_db}")
+    conn = sqlite3.connect(knowledge_db)
+    rows = conn.execute("SELECT id, title FROM pdf_books").fetchall()
+    conn.close()
 
-    # 预加载所有 book_id -> title
-    all_books = db.query(PdfBook.id, PdfBook.title, PdfBook.file_name).all()
     book_titles = {}
-    for b in all_books:
-        t = b.title or ''
-        if t and not UUID_RE.match(t):
-            book_titles[b.id] = t
-
+    for bid, title in rows:
+        t = title or ''
+        if t and not UUID_RE.match(str(t)):
+            book_titles[bid] = t
     logger.info(f"已加载 {len(book_titles)} 个有效书名")
 
     total_fixed = 0
@@ -93,20 +81,14 @@ def main():
         for p in points:
             pl = p.get("payload", {})
             old_bt = pl.get("book_title", "")
-
-            # 不需要修复
             if old_bt and not UUID_RE.match(old_bt):
                 continue
-
-            # 查找正确书名
             book_id = pl.get("book_id") or pl.get("book")
             if not book_id:
                 continue
             correct = book_titles.get(book_id)
             if not correct:
                 continue
-
-            # 标记修复
             pl["book_title"] = correct
             if isinstance(pl.get("metadata"), dict):
                 pl["metadata"]["book_title"] = correct
@@ -115,12 +97,10 @@ def main():
         if not to_fix:
             logger.info(f"  {collection}: 无需修复")
             continue
-
-        n = overwrite_payloads(collection, to_fix)
+        n = set_payloads(collection, to_fix)
         total_fixed += n
         logger.info(f"  {collection}: 修复了 {n} 个点的 book_title")
 
-    db.close()
     logger.info(f"总计修复 {total_fixed} 个点")
     return total_fixed
 

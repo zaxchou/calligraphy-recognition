@@ -498,6 +498,8 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 .ks-rsnip{font-size:13px;line-height:1.6;color:#5e5d59;margin:4px 0}
 .ks-snip-pre{color:#c0bdb3;font-size:12px}.ks-snip-hl{color:#303133}.ks-snip-post{color:#c0bdb3;font-size:12px}.ks-hl{background:#fef0e0;color:#c96442;font-weight:600;border-radius:2px;padding:0 1px}
 .ks-rfoot{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#999}
+.ks-rfoot span:first-child{display:inline-flex;align-items:center;gap:4px}
+.ks-rfoot .icon-xs{vertical-align:middle}
 .ks-raction{color:#c96442;display:flex;align-items:center;gap:2px}
 
 /* ── ChatGPT-style: 全屏 fixed 布局 ── */
