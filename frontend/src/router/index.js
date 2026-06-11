@@ -28,41 +28,20 @@ const routes = [
     component: () => import('../views/ArtistList.vue'),
     meta: { title: '艺术家百科' }
   },
+  // 画家百科 — 嵌套路由
   {
     path: '/artist/:name',
-    name: 'ArtistOverview',
-    component: () => import('../views/artist/ArtistOverview.vue'),
-    meta: { title: '画家百科' }
-  },
-  {
-    path: '/artist/:name/works',
-    name: 'ArtistWorks',
-    component: () => import('../views/artist/ArtistWorks.vue'),
-    meta: { title: '画家作品' }
-  },
-  {
-    path: '/artist/:name/seals',
-    name: 'ArtistSeals',
-    component: () => import('../views/artist/ArtistSeals.vue'),
-    meta: { title: '画家印章' }
-  },
-  {
-    path: '/artist/:name/literature',
-    name: 'ArtistLiterature',
-    component: () => import('../views/artist/ArtistLiterature.vue'),
-    meta: { title: '画家文献' }
-  },
-  {
-    path: '/artist/:name/analysis',
-    name: 'ArtistAnalysis',
-    component: () => import('../views/artist/ArtistAnalysisSlides.vue'),
-    meta: { title: '画家数据分析' }
-  },
-  {
-    path: '/artist/:name/analysis-legacy',
-    name: 'ArtistAnalysisLegacy',
-    component: () => import('../views/artist/ArtistAnalysis.vue'),
-    meta: { title: '画家数据分析（旧版）' }
+    component: () => import('../components/artist/ArtistPageLayout.vue'),
+    meta: { title: '画家百科' },
+    children: [
+      { path: '', name: 'ArtistOverview', component: () => import('../views/artist/ArtistOverview.vue') },
+      { path: 'works', name: 'ArtistWorks', component: () => import('../views/artist/ArtistWorks.vue'), meta: { title: '作品' } },
+      { path: 'seals', name: 'ArtistSeals', component: () => import('../views/artist/ArtistSeals.vue'), meta: { title: '印章' } },
+      { path: 'literature', name: 'ArtistLiterature', component: () => import('../views/artist/ArtistLiterature.vue'), meta: { title: '文献' } },
+      { path: 'analysis', name: 'ArtistAnalysis', component: () => import('../views/artist/ArtistAnalysisSlides.vue'), meta: { title: '数据分析' } },
+      { path: 'analysis-legacy', name: 'ArtistAnalysisLegacy', component: () => import('../views/artist/ArtistAnalysis.vue'), meta: { title: '数据分析（旧版）' } },
+      { path: 'map', name: 'ArtistMap', component: () => import('../views/MapMode.vue'), meta: { title: '行旅' } },
+    ],
   },
   {
     path: '/recognize',
@@ -206,12 +185,6 @@ const routes = [
     name: 'InscriptionAnnotator',
     component: () => import('../views/InscriptionAnnotator.vue'),
     meta: { title: '题跋标注', requiresAuth: true, requiresEditor: true }
-  },
-  {
-    path: '/artist/:name/map',
-    name: 'ArtistMap',
-    component: () => import('../views/MapMode.vue'),
-    meta: { title: '翰墨行旅' }
   },
   // 旧 route 重定向
   {

@@ -1,7 +1,7 @@
 <template>
   <div class="app">
-    <!-- 顶部导航（annotate 页面隐藏） -->
-    <header v-if="!$route.path.startsWith('/annotate')" class="main-header" :class="{ 'home-header': $route.path === '/' }">
+    <!-- 顶部导航（annotate 和全屏页面隐藏：分析/行旅 tab） -->
+    <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap'))" class="main-header" :class="{ 'home-header': $route.path === '/' }">
       <div class="header-content">
         <router-link to="/" class="logo">
           <img src="/logo.png" alt="墨" class="logo-img">
@@ -121,8 +121,8 @@
       <router-view />
     </main>
 
-    <!-- 全局浮动聊天窗（登录用户可见，readonly 模式隐藏，知识库/画家文献页面隐藏） -->
-    <ChatFloat v-if="siteConfig.readonly !== 'true' && !$route.path.startsWith('/knowledge') && $route.name !== 'ArtistLiterature'" />
+    <!-- 全局浮动聊天窗（所有画家页面隐藏，已在子页面各自挂载 ChatFloat） -->
+    <ChatFloat v-if="siteConfig.readonly !== 'true' && !$route.path.startsWith('/knowledge') && !$route.path.startsWith('/artist/')" />
 
     <!-- 底部（annotate 页面隐藏） -->
     <footer v-if="!$route.path.startsWith('/annotate')" class="main-footer">
@@ -318,17 +318,22 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--pure-white);
 }
 
-/* ─── 页面过渡动画 ─── */
-.page-fade-enter-active {
-  transition: opacity 0.2s ease;
+/* ─── 内容区过渡动画 ─── */
+.page-slide-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.page-fade-leave-active {
-  transition: opacity 0.15s ease;
+.page-slide-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
-.page-fade-enter-from,
-.page-fade-leave-to {
+.page-slide-enter-from {
   opacity: 0;
+  transform: translateY(8px);
 }
+.page-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 
 /* 滚动条 — 暖色 */
 ::-webkit-scrollbar {

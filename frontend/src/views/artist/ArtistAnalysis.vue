@@ -1,16 +1,5 @@
 <template>
-  <div class="av-page">
-    <header class="av-header">
-      <div class="av-header-inner">
-        <h1 class="av-name">
-          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
-          <span class="av-name-suffix">· 分析</span>
-        </h1>
-      </div>
-    </header>
-
-      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistAnalysis'" />
-
+  <div class="aa-page">
     <div class="aa-header-actions">
       <el-select v-model="selectedArtist" size="small" @change="onArtistChange">
         <el-option v-for="artist in artistList" :key="artist" :value="artist" :label="artist" />
@@ -330,7 +319,6 @@ import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, RadarComponent, MarkLineComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 import { Loading, RefreshRight, Download } from '@element-plus/icons-vue'
-import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 import ArtistStatsCard from '@/tiba/ArtistStatsCard.vue'
 import TibaRankingCard from '@/components/tiba/TibaRankingCard.vue'
 import { tibaApi, artistRulesApi } from '@/api'
@@ -929,17 +917,8 @@ function handleChartResize() {
 </script>
 
 <style scoped>
-.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
-
 .dashboard-row { display: flex; gap: 20px; margin-bottom: 24px; }
 @media (max-width: 900px) { .dashboard-row { flex-direction: column; } }
-
-.av-header { padding: 32px 0 12px; }
-.av-header-inner { display: flex; align-items: baseline; }
-.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
-.av-name-link { color: #2c2416; text-decoration: none; }
-.av-name-link:hover { color: #c45a3c; }
-.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
 
 .aa-header-actions { display: flex; justify-content: flex-end; margin-bottom: 20px; }
 .aa-header-actions .el-select { width: 140px; }

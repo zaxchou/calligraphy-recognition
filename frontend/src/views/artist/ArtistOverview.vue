@@ -1,56 +1,16 @@
 <template>
-  <div class="av-page">
-    <div v-if="loading" class="av-loading">加载中...</div>
-
-    <div v-else-if="notFound" class="av-not-found">
-      <div class="av-not-found-icon">?</div>
-      <h2>未找到该画家</h2>
-      <p>请确认名称是否正确，或返回<router-link to="/artists">艺术家列表</router-link>浏览</p>
-    </div>
-
+  <div class="av-overview-page" style="min-height:200px">
+    <template v-if="loading">
+      <div class="av-loading">加载中...</div>
+    </template>
+    <template v-else-if="notFound">
+      <div class="av-not-found">
+        <div class="av-not-found-icon">?</div>
+        <h2>未找到该画家</h2>
+        <p>请确认名称是否正确，或返回<router-link to="/artists">艺术家列表</router-link>浏览</p>
+      </div>
+    </template>
     <template v-else-if="artist">
-      <header class="av-header">
-        <div class="av-header-inner">
-          <div class="av-header-avatar">
-            <img v-if="artist.avatar_url && !avatarError" :src="artist.avatar_url" class="av-avatar-img" alt="" @error="avatarError = true" />
-            <span v-else class="av-avatar-text">{{ artist.name?.charAt(0) || '?' }}</span>
-            <div v-if="artistPhotos.length > 0" class="av-photo-strip">
-              <button v-if="photoScroll > 0" class="av-photo-arrow av-photo-arrow-left" @click.stop="photoScroll = Math.max(0, photoScroll - 1)">&#8249;</button>
-              <div class="av-photo-track">
-                <img
-                  v-for="(p, i) in artistPhotos"
-                  :key="i"
-                  :src="photoThumbUrl(p)"
-                  class="av-photo-thumb"
-                  :class="{ 'av-photo-active': photoZoomIdx === i }"
-                  :style="{ transform: `translateX(${-photoScroll * 36}px)` }"
-                  @click.stop="openPhotoZoom(i)"
-                />
-              </div>
-              <button v-if="photoScroll < artistPhotos.length - 4" class="av-photo-arrow av-photo-arrow-right" @click.stop="photoScroll = Math.min(artistPhotos.length - 4, photoScroll + 1)">&#8250;</button>
-            </div>
-          </div>
-          <div class="av-header-info">
-            <h1 class="av-name">{{ artist.name }}</h1>
-            <p v-if="artist.alias" class="av-alias">{{ artist.alias }}</p>
-            <div class="av-meta">
-              <span v-if="artist.dynasty" class="av-meta-item">{{ artist.dynasty }}</span>
-              <span class="av-meta-item">{{ formatYears(artist.birth_year, artist.death_year) || '生卒年不详' }}</span>
-              <span v-if="artist.art_school" class="av-meta-item av-meta-school">{{ artist.art_school }}</span>
-              <span v-if="artist.hometown" class="av-meta-item">{{ artist.hometown }}</span>
-              <span v-if="artist.occupation" class="av-meta-item">{{ artist.occupation }}</span>
-            </div>
-            <p v-if="artist.summary" class="av-summary">{{ artist.summary }}</p>
-          </div>
-          <div class="av-header-actions">
-            <el-button size="small" plain @click="$router.push({ name: 'ArtistList' })">返回列表</el-button>
-            <el-button size="small" plain @click="openSuggestEdit">我的修改</el-button>
-          </div>
-        </div>
-      </header>
-
-      <ArtistSubNav :artist-name="artistName" :current-route="route.name" :artist="artist" />
-
       <div class="av-body">
         <main class="av-main">
           <section v-if="artist.biography" id="bio-life" class="av-section">
@@ -165,10 +125,6 @@
     </template>
   </div>
 
-  <button class="av-back-top" :class="{ visible: showBackTop }" @click="scrollToTop" title="回到顶部">
-    <el-icon><ArrowUp /></el-icon>
-  </button>
-
   <el-dialog v-model="showSuggestDialog" title="我的修改" width="520px" align-center :close-on-click-modal="false" @open="onSuggestDialogOpen">
     <el-form label-width="80px" label-position="left">
       <el-form-item label="修改字段">
@@ -191,17 +147,6 @@
       <el-button type="primary" :loading="submitting" @click="handleSubmitChange">提交</el-button>
     </template>
   </el-dialog>
-
-  <el-dialog v-model="photoZoomVisible" title="本人照片" width="720px" align-center @closed="photoZoomIdx = -1">
-    <div style="text-align:center">
-      <img v-if="photoZoomIdx >= 0 && artistPhotos[photoZoomIdx]" :src="photoFullUrl(artistPhotos[photoZoomIdx])" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px" />
-      <div v-if="artistPhotos.length > 1" class="av-zoom-nav">
-        <el-button size="small" :disabled="photoZoomIdx <= 0" @click="photoZoomIdx--">上一张</el-button>
-        <span>{{ photoZoomIdx + 1 }} / {{ artistPhotos.length }}</span>
-        <el-button size="small" :disabled="photoZoomIdx >= artistPhotos.length - 1" @click="photoZoomIdx++">下一张</el-button>
-      </div>
-    </div>
-  </el-dialog>
 </template>
 
 <script setup>
@@ -209,8 +154,6 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { ElMessage } from 'element-plus'
-import { ArrowUp } from '@element-plus/icons-vue'
-import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,26 +166,6 @@ const notFound = ref(false)
 const artist = ref(null)
 const expandedAnecdote = ref(-1)
 const activeToc = ref('')
-const showBackTop = ref(false)
-const avatarError = ref(false)
-const photoZoomVisible = ref(false)
-const photoZoomIdx = ref(-1)
-const photoScroll = ref(0)
-
-function openPhotoZoom(idx) {
-  photoZoomIdx.value = idx
-  photoZoomVisible.value = true
-}
-
-function photoThumbUrl(p) {
-  if (typeof p === 'string') return p
-  return p.thumb_url || p.url || ''
-}
-
-function photoFullUrl(p) {
-  if (typeof p === 'string') return p
-  return p.url || ''
-}
 
 const suggestFields = [
   { value: 'summary', label: '概述' },
@@ -315,11 +238,6 @@ const galleryImages = computed(() => {
   return parseJsonField(artist.value.gallery_images)
 })
 
-const artistPhotos = computed(() => {
-  if (!artist.value?.photos) return []
-  return parseJsonField(artist.value.photos)
-})
-
 const references = computed(() => {
   if (!artist.value?.references) return []
   return parseJsonField(artist.value.references)
@@ -351,10 +269,6 @@ function renderMarkdown(text) {
     .replace(/^### (.+)$/gm, '<h3 class="av-md-h3">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="av-md-h2">$1</h2>')
     .replace(/\n/g, '<br>')
-}
-
-function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function scrollToSection(id) {
@@ -467,7 +381,6 @@ async function fetchArtist() {
 }
 
 let tocObserver = null
-let backTopHandler = null
 
 function setupTocObserver() {
   const sectionIds = tocItems.value.map(i => i.id)
@@ -495,12 +408,9 @@ onMounted(async () => {
   }
   loading.value = false
   setTimeout(setupTocObserver, 200)
-  backTopHandler = () => { showBackTop.value = window.scrollY > 600 }
-  window.addEventListener('scroll', backTopHandler, { passive: true })
 })
 
 onUnmounted(() => {
-  if (backTopHandler) window.removeEventListener('scroll', backTopHandler)
   if (tocObserver) tocObserver.disconnect()
 })
 
@@ -513,113 +423,12 @@ watch(tocItems, (items) => {
 </script>
 
 <style scoped>
-.av-page {
-  max-width: var(--container-wide);
-  margin: 0 auto;
-  padding: 0 24px 120px;
-  min-height: 100vh;
-  background: #faf8f5;
-}
 .av-loading { text-align: center; padding: 120px 0; color: #8a8578; }
 .av-not-found { text-align: center; padding: 120px 24px; }
 .av-not-found-icon { width: 80px; height: 80px; margin: 0 auto 20px; border-radius: 50%; background: #f0e8e0; color: #8a8578; display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-family: 'Noto Serif SC', serif; }
 .av-not-found h2 { font-family: 'Noto Serif SC', serif; font-size: 1.4rem; color: #3a3222; margin: 0 0 12px; font-weight: 500; }
 .av-not-found p { color: #8a8578; font-size: 0.9rem; margin: 0; }
 .av-not-found a { color: #c45a3c; text-decoration: none; }
-
-/* ── Header ── */
-.av-header {
-  position: relative;
-  padding: 32px 0 28px;
-  margin-bottom: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #3a3222 0%, #6b5b4a 35%, #8a7a6a 70%);
-}
-.av-header .av-name { color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-.av-header .av-alias { color: rgba(255,255,255,0.75); }
-.av-header .av-summary { color: rgba(255,255,255,0.8); }
-.av-header .av-meta-item { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); }
-.av-header .av-meta-school { background: rgba(196,90,60,0.45); color: #fff; }
-.av-header-inner {
-  position: relative; z-index: 1;
-  display: flex; gap: 24px; align-items: flex-start;
-  padding: 0 32px;
-}
-.av-header-avatar { flex-shrink: 0; margin-top: 0; display: flex; flex-direction: column; align-items: center; gap: 0; }
-.av-avatar-img {
-  width: 150px; height: 150px; border-radius: 12px;
-  object-fit: cover; display: block;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-}
-.av-avatar-text {
-  display: flex; align-items: center; justify-content: center;
-  width: 150px; height: 150px; border-radius: 12px;
-  background: linear-gradient(135deg, #c45a3c, #dbbca8);
-  color: #fff; font-family: 'Noto Serif SC', serif;
-  font-size: 56px; font-weight: 500;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-}
-.av-photo-strip {
-  display: flex; align-items: center; gap: 0;
-  margin-top: 10px; width: 150px; position: relative;
-}
-.av-photo-track {
-  flex: 1; overflow: hidden; display: flex; gap: 4px;
-  width: 140px; min-width: 0;
-}
-.av-photo-thumb {
-  width: 32px; height: 32px; flex-shrink: 0;
-  border-radius: 4px; object-fit: cover; cursor: pointer;
-  border: 2px solid rgba(255,255,255,0.3);
-  transition: border-color .15s, transform .3s;
-}
-.av-photo-thumb:hover, .av-photo-active { border-color: rgba(255,255,255,0.9); }
-.av-photo-arrow {
-  width: 18px; height: 32px; flex-shrink: 0;
-  border: none; background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.6); font-size: 16px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 3px; transition: background .15s;
-}
-.av-photo-arrow:hover { background: rgba(255,255,255,0.25); color: #fff; }
-.av-zoom-nav { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #5c5040; }
-.av-header-info { flex: 1; min-width: 0; }
-.av-name {
-  font-family: 'Noto Serif SC', serif;
-  font-size: 32px; font-weight: 700; color: #2c2416;
-  margin: 0 0 4px; line-height: 1.2; letter-spacing: 0.02em;
-}
-.av-alias {
-  font-size: 15px; color: #6b6050; margin: 0 0 10px;
-  font-family: 'Noto Serif SC', serif;
-}
-.av-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.av-meta-item {
-  display: inline-block; padding: 3px 10px;
-  background: #f0ebe0; color: #5c5040;
-  border-radius: 4px; font-size: 12px; line-height: 1.5;
-}
-.av-meta-school { background: #fdf6f0; color: #c45a3c; font-weight: 500; }
-.av-summary {
-  font-size: 14px; color: #5c5040; line-height: 1.8;
-  margin: 0; max-width: 680px;
-}
-.av-header-actions {
-  flex-shrink: 0; display: flex; flex-direction: column;
-  align-items: flex-end; gap: 10px; padding-top: 4px;
-}
-
-.av-back-top {
-  position: fixed; right: 32px; bottom: 40px; z-index: 100;
-  width: 40px; height: 40px; border-radius: 50%;
-  background: #3a3222; color: #fff; border: none;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 18px; opacity: 0; pointer-events: none;
-  transition: opacity 0.3s; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-}
-.av-back-top.visible { opacity: 0.85; pointer-events: auto; }
-.av-back-top:hover { opacity: 1; background: #c45a3c; }
 
 .av-suggest-old {
   max-height: 160px; overflow-y: auto; font-size: 13px;
@@ -727,14 +536,8 @@ watch(tocItems, (items) => {
 
 @media (max-width: 1024px) { .av-toc { display: none; } }
 @media (max-width: 768px) {
-  .av-page { padding: 0 16px 80px; }
-  .av-header { padding: 24px 0 20px; }
-  .av-header-inner { flex-direction: column; gap: 16px; padding: 0 20px; }
-  .av-header-actions { flex-direction: row; align-items: center; }
-  .av-name { font-size: 26px; }
   .av-body { flex-direction: column; gap: 32px; }
   .av-relations-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .av-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-  .av-back-top { right: 16px; bottom: 24px; }
 }
 </style>

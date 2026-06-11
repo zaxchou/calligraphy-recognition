@@ -1,16 +1,5 @@
 <template>
-  <div class="av-page">
-    <header class="av-header">
-      <div class="av-header-inner">
-        <h1 class="av-name">
-          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
-          <span class="av-name-suffix">· 印章</span>
-        </h1>
-      </div>
-    </header>
-
-      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistSeals'" />
-
+  <div class="as-page">
     <div class="as-toolbar">
       <div class="as-search">
         <el-icon class="as-search-icon"><Search /></el-icon>
@@ -47,7 +36,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import SealLightbox from '@/components/seal/SealLightbox.vue'
-import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 
 const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -98,15 +86,7 @@ onMounted(() => fetchSeals())
 </script>
 
 <style scoped>
-.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
 .av-loading, .av-empty { text-align: center; padding: 80px 0; color: #8a8578; font-size: 15px; }
-
-.av-header { padding: 32px 0 12px; }
-.av-header-inner { display: flex; align-items: baseline; }
-.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
-.av-name-link { color: #2c2416; text-decoration: none; }
-.av-name-link:hover { color: #c45a3c; }
-.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
 
 .as-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
 .as-search { position: relative; flex: 1; max-width: 320px; }
@@ -131,7 +111,6 @@ onMounted(() => fetchSeals())
 .as-source { font-size: 10px; color: #b0a88e; margin-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 768px) {
-  .av-page { padding: 0 16px 80px; }
   .as-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
 }
 </style>

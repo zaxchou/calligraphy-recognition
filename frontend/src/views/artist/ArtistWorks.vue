@@ -1,16 +1,5 @@
 <template>
-  <div class="av-page">
-    <header class="av-header">
-      <div class="av-header-inner">
-        <h1 class="av-name">
-          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
-          <span class="av-name-suffix">· 作品</span>
-        </h1>
-      </div>
-    </header>
-
-      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistWorks'" />
-
+  <div class="aw-page">
     <!-- 分类 + 工具栏 -->
     <div class="aw-toolbar">
       <div class="aw-toolbar-left">
@@ -168,7 +157,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
-import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -264,17 +252,9 @@ onMounted(() => { loadWorks() })
 </script>
 
 <style scoped>
-.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
 .av-loading, .av-empty { text-align: center; padding: 80px 0; color: #8a8578; font-size: 15px; }
 
-.av-header { padding: 32px 0 12px; }
-.av-header-inner { display: flex; align-items: baseline; }
-.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
-.av-name-link { color: #2c2416; text-decoration: none; }
-.av-name-link:hover { color: #c45a3c; }
-.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
-
-	/* ─── 分类 Tab ─── */
+/* ─── 分类 Tab ─── */
 .aw-type-tabs { display: flex; gap: 4px; }
 .aw-type-tab { padding: 5px 14px; font-size: 13px; color: #8c7a5c; cursor: pointer; border-radius: 6px; transition: all 0.15s; user-select: none; }
 .aw-type-tab:hover { background: #f5f0e8; color: #3a3222; }

@@ -1,16 +1,5 @@
 <template>
-  <div class="av-page">
-    <header class="av-header">
-      <div class="av-header-inner">
-        <h1 class="av-name">
-          <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="av-name-link">{{ artistName }}</router-link>
-          <span class="av-name-suffix">· 文献</span>
-        </h1>
-      </div>
-    </header>
-
-      <ArtistSubNav :artist-name="artistName" :current-route="'ArtistLiterature'" />
-
+  <div class="al-page">
     <!-- 工具栏 -->
     <div class="al-toolbar">
       <div class="al-toolbar-left">
@@ -106,7 +95,6 @@ import { useRoute } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/authStore'
-import ArtistSubNav from '../../components/artist/ArtistSubNav.vue'
 import LiteratureUpload from '../../components/LiteratureUpload.vue'
 import LiteratureReader from '../../components/LiteratureReader.vue'
 import ChatFloat from '../../components/ChatFloat.vue'
@@ -216,15 +204,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.av-page { max-width: var(--container-wide); margin: 0 auto; padding: 0 24px 120px; min-height: 100vh; background: #faf8f5; }
 .av-loading, .av-empty { text-align: center; padding: 80px 0; color: #8a8578; font-size: 15px; }
-
-.av-header { padding: 32px 0 12px; }
-.av-header-inner { display: flex; align-items: baseline; }
-.av-name { font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700; color: #2c2416; margin: 0; }
-.av-name-link { color: #2c2416; text-decoration: none; }
-.av-name-link:hover { color: #c45a3c; }
-.av-name-suffix { font-weight: 400; color: #8a8578; font-size: 20px; }
 
 /* ─── 工具栏 ─── */
 .al-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
@@ -288,7 +268,6 @@ onMounted(async () => {
 .al-page-dots { min-width: 24px; text-align: center; color: #b0a890; font-size: 13px; user-select: none; }
 
 @media (max-width: 768px) {
-  .av-page { padding: 0 16px 80px; }
   .al-toolbar { flex-direction: column; align-items: stretch; }
   .al-card-meta-item { max-width: 80px; }
 }
