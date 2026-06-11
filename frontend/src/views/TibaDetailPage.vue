@@ -203,11 +203,16 @@ onMounted(async () => {
     console.log('从本地缓存加载:', imageId)
     // 从缓存加载也需要调用 selectImage 来初始化所有状态
     await selectImage(cached)
+    // 等待 fullItemList 加载完成，避免 Gallery 为空
+    await loadFullItemList()
     initialLoading.value = false
+    return
   }
 
   try {
-    // 无论是否有缓存，都重新获取最新数据
+    // 无缓存时，先加载 fullItemList，再加载作品详情（确保 Gallery 有数据）
+    await loadFullItemList()
+
     const response = await tibaApi.getAnalysisResult(imageId)
     if (!response.success) throw new Error(response.detail || '请求失败')
 
@@ -237,25 +242,15 @@ onMounted(async () => {
     // 缓存到本地
     detailCache.set(imageId, historyImage)
 
-    // 平滑更新到 currentImage（如果有缓存，这是增量更新）
-    if (cached) {
-      Object.assign(currentImage.value, historyImage)
-    } else {
-      currentImage.value = historyImage
-    }
+    // 渲染详情
+    await selectImage(historyImage)
+    initialLoading.value = false
 
-    // 非阻塞加载全量列表
-    loadFullItemList().catch(() => {})
-
-    if (!cached) {
-      ElMessage.success('已加载指定作品')
-    }
+    ElMessage.success('已加载指定作品')
   } catch (error) {
     console.error('加载指定作品失败:', error)
-    if (!cached) {
-      ElMessage.error('加载指定作品失败')
-      router.replace({ name: 'TibaAnalysis' })
-    }
+    ElMessage.error('加载指定作品失败')
+    router.replace({ name: 'TibaAnalysis' })
   } finally {
     initialLoading.value = false
   }
