@@ -5,10 +5,11 @@ import api from '@/api'
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: () => import('../views/Home.vue'),
-    meta: { title: '首页' }
+    name: 'KnowledgeSearch',
+    component: () => import('../views/KnowledgeSearch.vue'),
+    meta: { title: '墨林百科' }
   },
+  { path: '/knowledge', redirect: '/' },
   {
     path: '/login',
     name: 'Login',
@@ -91,12 +92,6 @@ const routes = [
     name: 'CompositionAnalyze',
     component: () => import('../modules/pantianshou-composition/pages/CompositionAnalyze.vue'),
     meta: { title: '构图分析' }
-  },
-  {
-    path: '/knowledge',
-    name: 'KnowledgeSearch',
-    component: () => import('../views/KnowledgeSearch.vue'),
-    meta: { title: '知识库搜索' }
   },
   {
     path: '/composition/print/:taskId',
@@ -237,13 +232,7 @@ const router = createRouter({
 const nameCache = new Map()
 
 router.beforeEach((to, _from, next) => {
-  if (to.path === '/' && siteConfig.readonly === 'true') {
-    const token = localStorage.getItem('auth_token')
-    if (token) { next(); return }
-    next('/tiba')
-  } else {
-    next()
-  }
+  next()
 })
 
 router.beforeResolve(async (to, _from) => {
@@ -302,7 +291,7 @@ router.beforeEach((to, _from, next) => {
     const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
     const role = userInfo?.role
     if (role !== 'editor' && role !== 'admin' && role !== 'super_admin') {
-      next({ name: 'Home' })
+      next({ name: 'KnowledgeSearch' })
       return
     }
   }
@@ -311,7 +300,7 @@ router.beforeEach((to, _from, next) => {
     const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
     const role = userInfo?.role
     if (role !== 'admin' && role !== 'super_admin') {
-      next({ name: 'Home' })
+      next({ name: 'KnowledgeSearch' })
       return
     }
   }
@@ -319,7 +308,7 @@ router.beforeEach((to, _from, next) => {
   if (to.meta?.requiresSuperAdmin) {
     const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
     if (userInfo?.role !== 'super_admin') {
-      next({ name: 'Home' })
+      next({ name: 'KnowledgeSearch' })
       return
     }
   }

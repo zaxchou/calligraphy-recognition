@@ -1,7 +1,7 @@
 <template>
   <div class="app">
     <!-- 顶部导航（annotate 和全屏页面隐藏：分析/行旅 tab） -->
-    <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap' || $route.name === 'ArtistLiteratureReader'))" class="main-header" :class="{ 'home-header': $route.path === '/' }">
+    <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap' || $route.name === 'ArtistLiteratureReader'))" class="main-header">
       <div class="header-content">
         <router-link to="/" class="logo">
           <img src="/logo.png" alt="墨" class="logo-img">
@@ -12,7 +12,6 @@
         </router-link>
         <nav class="main-nav">
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
-          <router-link to="/knowledge" class="nav-item" active-class="active"><span class="nav-text">写意知识库</span></router-link>
           <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
           <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="handleTibaNav"><span class="nav-text">题跋分析</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
@@ -73,9 +72,6 @@
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/')">
             <span class="nav-text">首页</span>
           </a>
-          <a class="drawer-nav-item" @click.prevent="drawerNavigate('/knowledge')">
-            <span class="nav-text">写意知识库</span>
-          </a>
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/artists')">
             <span class="nav-text">艺术家百科</span>
           </a>
@@ -122,7 +118,7 @@
     </main>
 
     <!-- 全局浮动聊天窗（所有画家页面隐藏，已在子页面各自挂载 ChatFloat） -->
-    <ChatFloat v-if="siteConfig.readonly !== 'true' && !$route.path.startsWith('/knowledge') && !$route.path.startsWith('/artist/')" />
+    <ChatFloat v-if="siteConfig.readonly !== 'true' && !$route.path.startsWith('/knowledge') && $route.path !== '/' && !$route.path.startsWith('/artist/')" />
 
     <!-- 底部（annotate 页面隐藏） -->
     <footer v-if="!$route.path.startsWith('/annotate')" class="main-footer">
@@ -578,16 +574,6 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--pure-white);
 }
 
-/* 首页暗色主题下的管理后台链接 */
-.home-header .admin-nav-link {
-  color: var(--gold);
-  border-color: var(--gold);
-}
-
-.home-header .admin-nav-link:hover {
-  background: var(--gold);
-  color: var(--near-black);
-}
 
 .user-nickname {
   font-family: var(--font-sans);
@@ -918,56 +904,6 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--cinnabar);
 }
 
-/* 首页深色主题适配 */
-.home-header .mobile-menu-toggle {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.home-header .mobile-drawer {
-  background: rgba(20, 20, 19, 0.98);
-}
-
-.home-header .drawer-header {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
-.home-header .drawer-logo-main {
-  color: var(--pure-white);
-}
-
-.home-header .drawer-close {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.home-header .drawer-nav-item .nav-text {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.home-header .drawer-nav-item:hover .nav-text,
-.home-header .drawer-nav-item.active .nav-text {
-  color: var(--pure-white);
-}
-
-.home-header .drawer-nav-item::after {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.home-header .drawer-nav-item.active::before {
-  background: var(--gold);
-}
-
-.home-header .admin-drawer-link .nav-text {
-  color: var(--gold) !important;
-}
-
-.home-header .admin-drawer-link.active .nav-text {
-  color: var(--pure-white) !important;
-}
-
-.home-header .admin-drawer-link.active::before {
-  background: var(--gold);
-}
-
 /* === 过渡动画 === */
 .drawer-fade-enter-active,
 .drawer-fade-leave-active {
@@ -989,52 +925,4 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateX(100%);
 }
 
-/* === 首页专属 — 黑底白字 Header === */
-.home-header {
-  background: rgba(20, 20, 19, 0.92) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.home-header .logo-main {
-  color: var(--pure-white);
-}
-
-.home-header .logo-sub {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.home-header .nav-text {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.home-header .nav-item:hover .nav-text,
-.home-header .nav-item.active .nav-text {
-  color: var(--pure-white);
-}
-
-.home-header .nav-item::after {
-  background: var(--gold);
-}
-
-.home-header .user-nickname {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.home-header .user-logout-btn {
-  color: rgba(255, 255, 255, 0.55);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.home-header .user-logout-btn:hover {
-  color: var(--gold);
-  border-color: var(--gold);
-}
-
-.home-header .user-login-link .nav-text {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.home-header .user-login-link:hover .nav-text {
-  color: var(--pure-white);
-}
-</style>
+	</style>

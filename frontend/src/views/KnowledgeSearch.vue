@@ -4,7 +4,7 @@
   <transition name="view-switch" mode="out-in">
   <div v-if="centered" key="center" class="ks-center-wrap">
     <div class="ks-center-body">
-      <h1 class="ks-center-title">写意知识库</h1>
+      <h1 class="ks-center-title">墨林百科</h1>
       <p class="ks-center-sub">潘天寿构图法则 · 写意花鸟画技法</p>
       <div class="ks-center-search">
         <Search class="ks-search-icon" />
@@ -21,7 +21,7 @@
   </div>
 
   <div v-else-if="activeMode==='search'" key="search" class="ks-search-view" :class="{'with-panel':rightPanelOpen}">
-    <header class="ks-bar"><h1 class="ks-bar-title">写意知识库</h1>
+    <header class="ks-bar"><h1 class="ks-bar-title">墨林百科</h1>
       <div class="ks-bar-search"><Search class="ks-search-icon" /><input v-model="searchInput" type="text" class="ks-bar-input" placeholder="搜索专业知识..." @keyup.enter="performSearch" :disabled="store.searchLoading" />
         <button v-if="searchInput" class="ks-bar-clear" @click="clearSearch"><X class="icon-sm" /></button>
         <button class="ks-search-btn" @click="performSearch" :disabled="store.searchLoading"><Loader2 v-if="store.searchLoading" class="icon spin" /><span v-else>搜索</span></button>
