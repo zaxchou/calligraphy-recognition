@@ -72,7 +72,7 @@ const routes = [
   {
     path: '/tiba/:id',
     name: 'TibaDetail',
-    component: () => import('../views/TibaAnalysis.vue'),
+    component: () => import('../views/TibaDetailPage.vue'),
     meta: { title: '题跋分析' }
   },
   {

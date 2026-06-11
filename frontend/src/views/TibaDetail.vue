@@ -3,7 +3,7 @@
     <!-- 左侧：原作图 + 作品信息（sticky） -->
     <div class="left-panel">
       <!-- 原作卡片 -->
-      <el-card shadow="always" class="original-image-card" v-if="(analyzeStatus === 'analyzed' || currentImage?.page_role) && currentImage?.url">
+      <el-card shadow="always" class="original-image-card" v-if="currentImage?.url">
         <template #header>
           <div class="card-header navigation-header">
             <el-button
