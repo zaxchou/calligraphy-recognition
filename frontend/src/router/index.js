@@ -38,6 +38,7 @@ const routes = [
       { path: 'works', name: 'ArtistWorks', component: () => import('../views/artist/ArtistWorks.vue'), meta: { title: '作品' } },
       { path: 'seals', name: 'ArtistSeals', component: () => import('../views/artist/ArtistSeals.vue'), meta: { title: '印章' } },
       { path: 'literature', name: 'ArtistLiterature', component: () => import('../views/artist/ArtistLiterature.vue'), meta: { title: '文献' } },
+      { path: 'literature/:bookId', name: 'ArtistLiteratureReader', component: () => import('../views/artist/ArtistLiteratureReader.vue'), meta: { title: '文献阅读' } },
       { path: 'analysis', name: 'ArtistAnalysis', component: () => import('../views/artist/ArtistAnalysisSlides.vue'), meta: { title: '数据分析' } },
       { path: 'analysis-legacy', name: 'ArtistAnalysisLegacy', component: () => import('../views/artist/ArtistAnalysis.vue'), meta: { title: '数据分析（旧版）' } },
       { path: 'map', name: 'ArtistMap', component: () => import('../views/MapMode.vue'), meta: { title: '行旅' } },
@@ -246,7 +247,7 @@ router.beforeEach((to, _from, next) => {
 })
 
 router.beforeResolve(async (to, _from) => {
-  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistAnalysisLegacy', 'ArtistMap']
+  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistLiteratureReader', 'ArtistAnalysis', 'ArtistAnalysisLegacy', 'ArtistMap']
   if (artistRoutes.includes(to.name) && to.params.name) {
     const raw = to.params.name
     // 已缓存的 canonical 名 → 直接返回，不发起网络请求
@@ -279,7 +280,7 @@ router.afterEach((to) => {
   const pageTitle = to.meta?.title
   const name = to.params?.name
   // 画家相关路由 → 动态标题："李鱓 - 作品 - 墨林百科"
-  if (name && ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistAnalysis', 'ArtistMap'].includes(to.name)) {
+  if (name && ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistLiteratureReader', 'ArtistAnalysis', 'ArtistMap'].includes(to.name)) {
     const section = pageTitle?.replace('画家', '') || ''
     document.title = section ? `${name} - ${section} - ${siteConfig.fullTitle}` : `${name} - ${siteConfig.fullTitle}`
     return

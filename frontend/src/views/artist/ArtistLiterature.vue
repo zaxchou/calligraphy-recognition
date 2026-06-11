@@ -84,22 +84,21 @@
     </template>
 
     <LiteratureUpload v-if="showUpload && artistId" :artist-id="artistId" @uploaded="onUploaded" @close="showUpload = false" />
-    <LiteratureReader v-if="readerBook" :book="readerBook" :artist-name="artistName" @close="readerBook = null" />
     <ChatFloat v-if="artistId" :artist-id="artistId" :artist-name="artistName" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/authStore'
 import LiteratureUpload from '../../components/LiteratureUpload.vue'
-import LiteratureReader from '../../components/LiteratureReader.vue'
 import ChatFloat from '../../components/ChatFloat.vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
@@ -114,7 +113,6 @@ const searchQuery = ref('')
 const activeSort = ref('created_at')
 const sortDir = ref('desc')
 const showUpload = ref(false)
-const readerBook = ref(null)
 
 const sortOptions = [
   { key: 'created_at', label: '上传时间' },
@@ -143,7 +141,9 @@ function onSort(key) {
 
 function onSearch() { currentPage.value = 1; loadLiterature() }
 function clearSearch() { searchQuery.value = ''; currentPage.value = 1; loadLiterature() }
-function openReader(doc) { readerBook.value = { ...doc, artist_id: artistId.value } }
+function openReader(doc) {
+  router.push({ name: 'ArtistLiteratureReader', params: { name: artistName.value, bookId: doc.id } })
+}
 function onUploaded() { showUpload.value = false; loadLiterature() }
 function parseKeywords(kw) {
   if (!kw) return []

@@ -5,11 +5,11 @@
       :key="tab.name"
       :to="tab.to"
       class="asn-tab"
-      :class="{ active: currentRoute === tab.name }"
+      :class="{ active: isTabActive(tab) }"
     >
       <span class="asn-icon" v-html="tab.icon"></span>
       <span class="asn-label">{{ tab.label }}</span>
-      <span v-if="currentRoute === tab.name" class="asn-indicator"></span>
+      <span v-if="isTabActive(tab)" class="asn-indicator"></span>
     </router-link>
   </nav>
 </template>
@@ -68,6 +68,14 @@ function parseJsonField(field) {
   } catch {
     return []
   }
+}
+
+function isTabActive(tab) {
+  const route = props.currentRoute
+  if (tab.name === 'ArtistLiterature') {
+    return route === 'ArtistLiterature' || route === 'ArtistLiteratureReader'
+  }
+  return route === tab.name
 }
 
 function checkChronology(data) {

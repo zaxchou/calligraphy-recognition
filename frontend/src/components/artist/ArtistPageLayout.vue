@@ -82,7 +82,7 @@ const route = useRoute()
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const isOverview = computed(() => route.name === 'ArtistOverview')
-const isFullscreen = computed(() => route.name === 'ArtistAnalysis' || route.name === 'ArtistAnalysisLegacy' || route.name === 'ArtistMap')
+const isFullscreen = computed(() => route.name === 'ArtistAnalysis' || route.name === 'ArtistAnalysisLegacy' || route.name === 'ArtistMap' || route.name === 'ArtistLiteratureReader')
 
 const artistData = ref(null)
 const showBackTop = ref(false)

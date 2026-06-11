@@ -1,7 +1,7 @@
 <template>
   <div class="app">
     <!-- 顶部导航（annotate 和全屏页面隐藏：分析/行旅 tab） -->
-    <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap'))" class="main-header" :class="{ 'home-header': $route.path === '/' }">
+    <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap' || $route.name === 'ArtistLiteratureReader'))" class="main-header" :class="{ 'home-header': $route.path === '/' }">
       <div class="header-content">
         <router-link to="/" class="logo">
           <img src="/logo.png" alt="墨" class="logo-img">
