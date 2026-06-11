@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from .database import get_db
 from .models import PdfBook, TextChunk, ExtractedImage, CompositionRule, CompositionFigure
+from .task_manager import TaskManager
 
 from app.core.auth import require_admin_role, get_current_user
 from app.core.quota import check_ai_quota
