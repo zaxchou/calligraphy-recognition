@@ -12,7 +12,7 @@
         </router-link>
         <nav class="main-nav">
           <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
-          <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家百科</span></router-link>
+          <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家</span></router-link>
           <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="handleTibaNav"><span class="nav-text">题跋分析</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
@@ -73,7 +73,7 @@
             <span class="nav-text">首页</span>
           </a>
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/artists')">
-            <span class="nav-text">艺术家百科</span>
+            <span class="nav-text">艺术家</span>
           </a>
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/tiba')">
             <span class="nav-text">题跋分析</span>

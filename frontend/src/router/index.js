@@ -27,7 +27,7 @@ const routes = [
     path: '/artists',
     name: 'ArtistList',
     component: () => import('../views/ArtistList.vue'),
-    meta: { title: '艺术家百科' }
+    meta: { title: '艺术家' }
   },
   // 画家百科 — 嵌套路由
   {

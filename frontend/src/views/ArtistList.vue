@@ -1,7 +1,7 @@
 <template>
   <div class="artist-list-page">
     <div class="al-hero">
-      <h1 class="al-title">艺术家百科</h1>
+      <h1 class="al-title">艺术家</h1>
       <p class="al-subtitle">探索历代书画家的艺术世界</p>
     </div>
 
