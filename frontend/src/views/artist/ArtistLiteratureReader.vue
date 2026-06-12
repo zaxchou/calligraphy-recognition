@@ -7,7 +7,12 @@
           <el-icon><ArrowLeft /></el-icon> 返回
         </el-button>
         <span class="alr-topbar-title">{{ book?.title }}</span>
-        <span class="alr-topbar-author" v-if="artistName">{{ artistName }}</span>
+        <span class="alr-topbar-meta" v-if="book">
+          <template v-if="book.author">{{ book.author }}</template>
+          <template v-if="book.source_type"> · {{ book.source_type }}</template>
+          <template v-if="book.journal"> · {{ book.journal }}</template>
+          <template v-if="book.publish_year"> · {{ book.publish_year }}</template>
+        </span>
       </div>
       <div class="alr-topbar-right">
         <el-button-group size="small">
@@ -36,16 +41,23 @@
 
     <div class="alr-body">
       <!-- 左侧目录 -->
-      <aside class="alr-sidebar" v-if="mode === 'text' && outline.length > 0">
-        <div class="alr-outline-title">目录</div>
-        <div
-          v-for="(item, idx) in outline"
-          :key="idx"
-          class="alr-outline-item"
-          :class="{ active: activeChunkIdx === idx }"
-          @click="scrollToChunk(item.chunkIdx ?? idx)"
-        >
-          {{ item.title || item.chapter_title || `第 ${idx + 1} 节` }}
+      <aside class="alr-sidebar" :class="{ collapsed: sidebarCollapsed }" v-if="mode === 'text' && outline.length > 0" :style="{ width: sidebarWidth }">
+        <div class="alr-outline-header">
+          <span v-show="!sidebarCollapsed" class="alr-outline-title">目录</span>
+          <el-button text size="small" @click="sidebarCollapsed = !sidebarCollapsed" class="alr-fold-btn">
+            <el-icon><Fold /></el-icon>
+          </el-button>
+        </div>
+        <div v-show="!sidebarCollapsed">
+          <div
+            v-for="(item, idx) in outline"
+            :key="idx"
+            class="alr-outline-item"
+            :class="{ active: activeChunkIdx === idx }"
+            @click="scrollToChunk(item.chunkIdx ?? idx)"
+          >
+            {{ item.title || item.chapter_title || `第 ${idx + 1} 节` }}
+          </div>
         </div>
       </aside>
 
@@ -92,7 +104,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Search } from '@element-plus/icons-vue'
+import { ArrowLeft, Search, Fold } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,6 +124,10 @@ const pdfUrl = ref('')
 const activeChunkIdx = ref(0)
 const chunkRefs = reactive({})
 const loadingDetail = ref(true)
+
+// 侧边目录折叠
+const sidebarCollapsed = ref(false)
+const sidebarWidth = computed(() => sidebarCollapsed.value ? '0px' : '220px')
 
 // 内文搜索
 const searchQuery = ref('')
@@ -334,17 +350,32 @@ onBeforeUnmount(() => {
 }
 .alr-topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .alr-topbar-title { font-size: 15px; font-weight: 600; color: #2c2416; font-family: 'Noto Serif SC', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.alr-topbar-author { font-size: 13px; color: #8a8578; white-space: nowrap; }
+.alr-topbar-meta { font-size: 12px; color: #8a8578; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .alr-topbar-right { flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
 
 .alr-body { display: flex; flex: 1; min-height: 0; }
 
 /* 侧边目录 */
 .alr-sidebar {
-  width: 220px; flex-shrink: 0; overflow-y: auto;
+  width: 220px; flex-shrink: 0;
   border-right: 1px solid #e8e3da; background: #f6f4ef; padding: 16px 0;
+  transition: width 0.2s ease;
+  overflow: hidden;
 }
-.alr-outline-title { font-size: 13px; font-weight: 600; color: #8a8578; padding: 0 16px 12px; }
+.alr-sidebar.collapsed {
+  width: 0 !important;
+  padding: 0;
+  border-right: none;
+}
+.alr-outline-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px 12px;
+  white-space: nowrap;
+}
+.alr-outline-title { font-size: 13px; font-weight: 600; color: #8a8578; }
+.alr-fold-btn { color: #8a8578; transition: transform 0.2s; }
+.alr-sidebar.collapsed .alr-fold-btn { transform: rotate(180deg); }
+.alr-fold-btn:hover { color: #c45a3c; }
 .alr-outline-item {
   padding: 8px 16px; font-size: 13px; color: #8c7a5c;
   cursor: pointer; transition: all 0.12s; border-left: 3px solid transparent;
