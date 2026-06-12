@@ -1,8 +1,0 @@
-ID=482 | 荷花荷叶图 | text_raw=0.0
-题跋: 荷叶荷花十里香。乾隆十六年写懊道人李鱓
-
-Signals:
-    multi_word 隆十六年 score=+0 neg=False
-    multi_word 道人李鱓 score=+0 neg=False
-    multi_word 叶荷花 score=+0 neg=False
-   single_char 写 score=+0 neg=False

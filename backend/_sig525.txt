@@ -1,7 +1,0 @@
-ID=525 | 花卉册十二开之二 | raw=8.0
-富贵一品国色朝，酣酒天香夜染衣。懊道人
-    multi_word 天香夜染 score=+2
-    multi_word 懊道人 score=+0
-    multi_word 国色朝 score=+2
-    multi_word 富贵 score=+2
-   single_char 酣 score=+2
