@@ -1,0 +1,6 @@
+feat: batch reanalyze shows result dialog for debugging
+
+- Backend: /batch-reanalyze now returns updated_records (up to 50)
+- useBatchOperations.ts: add batchResultData/showBatchResultDialog refs
+- ContentVerify.vue: add batch result dialog after reanalyze
+- ContentAnalysis.vue: add batch result dialog after reanalyze
