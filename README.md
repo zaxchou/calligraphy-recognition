@@ -10,16 +10,7 @@
 
 ## Screenshots / 截图
 
-> **To add:** Take screenshots of each page on [molin.wiki](https://molin.wiki), save them as e.g. `home.jpg`, `artist.jpg`, `recognition.jpg`, `composition.jpg`, then host them somewhere (or upload to the repo's `docs/` folder) and update the `<img src>` URLs below.
-
-<p align="center">
-  <img src="docs/screenshots/home.jpg" width="45%" alt="墨林百科首页 / Home Page" />
-  <img src="docs/screenshots/artist.jpg" width="45%" alt="画家百科页 / Artist Page" />
-</p>
-<p align="center">
-  <img src="docs/screenshots/recognition.jpg" width="45%" alt="书法识别 / Calligraphy Recognition" />
-  <img src="docs/screenshots/composition.jpg" width="45%" alt="构图分析 / Composition Analysis" />
-</p>
+> 👉 访问 [molin.wiki](https://molin.wiki) 查看在线演示
 
 ---
 
