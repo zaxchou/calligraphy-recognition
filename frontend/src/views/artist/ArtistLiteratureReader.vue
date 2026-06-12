@@ -65,8 +65,8 @@
               第 {{ chunk.page_start }}-{{ chunk.page_end || chunk.page_start }} 页
             </div>
             <div class="alr-chapter-body" v-html="renderMarkdown(chunk.content)"></div>
-            <div v-if="chunk.page_start && imagesForPage(chunk.page_start).length" class="alr-images">
-              <div v-for="img in imagesForPage(chunk.page_start)" :key="img.id" class="alr-image-item">
+            <div v-if="imagesByChunkId[chunk.id] && imagesByChunkId[chunk.id].length" class="alr-images">
+              <div v-for="img in imagesByChunkId[chunk.id]" :key="img.id" class="alr-image-item">
                 <img :src="img.stored_url" :alt="img.caption || `第${img.page}页插图`" class="alr-image" loading="lazy" />
                 <div v-if="img.caption" class="alr-image-caption">{{ img.caption }}</div>
               </div>
@@ -226,6 +226,27 @@ async function loadImages() {
 function imagesForPage(page) {
   return images.value.filter(img => img.page === page)
 }
+
+// 全局去重：每张图只分配给第一个覆盖其页码的 chunk
+const imagesByChunkId = computed(() => {
+  const map = {}
+  if (!chunks.value.length || !images.value.length) return map
+  const assigned = new Set()
+  for (const chunk of chunks.value) {
+    if (!chunk.page_start) continue
+    const pageEnd = chunk.page_end || chunk.page_start
+    const matched = []
+    for (const img of images.value) {
+      if (assigned.has(img.id)) continue
+      if (img.page >= chunk.page_start && img.page <= pageEnd) {
+        matched.push(img)
+        assigned.add(img.id)
+      }
+    }
+    if (matched.length) map[chunk.id] = matched
+  }
+  return map
+})
 
 function onScroll() {
   if (!mainRef.value || mode.value !== 'text') return

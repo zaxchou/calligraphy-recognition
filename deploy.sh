@@ -97,10 +97,14 @@ health_check() {
 # ============================================================
 
 do_git_push() {
-  section "1. 推送到 GitHub（仅程序文件）"
-  # 仅添加程序源码变更，不包含数据文件
+  section "1. 推送到 GitHub（仅纯源码）"
+  # 仅添加纯源码变更，绝不包含 data/、scripts/、配置等非源码
+  # 见 [E:\mynote\Project\decisions\git-only-pure-code.md]
   git add --update
-  git add backend/app/ backend/scripts/ backend/requirements.txt frontend/src/ deploy.sh
+  git add 'backend/app/api/' 'backend/app/core/' 'backend/app/models/' \
+          'backend/app/modules/' 'backend/app/services/' 'backend/app/main.py' \
+          'backend/migrations/' 'backend/requirements.txt' \
+          'frontend/src/' 'deploy.sh' 'README.md' '.gitignore'
   if git diff --cached --quiet; then
     echo "  无变更，跳过提交"
   else
