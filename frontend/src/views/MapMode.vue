@@ -1129,6 +1129,7 @@ onUnmounted(() => {
 .chart-container {
   position: absolute;
   inset: 0;
+  z-index: 1;
   animation: map-fade-in 0.8s ease-out;
 }
 @keyframes map-fade-in {

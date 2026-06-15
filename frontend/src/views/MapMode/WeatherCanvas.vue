@@ -172,7 +172,7 @@ function resizeCanvas() {
   const rect = canvasRef.value.getBoundingClientRect()
   canvasRef.value.width = rect.width * dpr
   canvasRef.value.height = rect.height * dpr
-  if (ctx) ctx.scale(dpr, dpr)
+  ctx?.setTransform(dpr, 0, 0, dpr, 0, 0)
   // Use logical px for animation; reset particles after resize
   rebuildParticles()
 }
@@ -258,7 +258,7 @@ watch(() => props.enabled, (val) => { val ? start() : stop() })
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 2;
+  z-index: 4;
 }
 @media (max-width: 768px) {
   .weather-canvas { display: none; }

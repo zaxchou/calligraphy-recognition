@@ -1198,11 +1198,14 @@ async def get_emotion_timeline(name: str):
     """
     conn = get_db_connection()
     try:
+        from app.services.keyword_extractor import get_artist_aliases
+        aliases = get_artist_aliases(name)
+        placeholders = ','.join(['?' for _ in aliases])
         rows = conn.execute(
-            """SELECT year, content_analysis FROM tubi_analyses
-               WHERE artist = ? AND year IS NOT NULL AND content_analysis IS NOT NULL
+            f"""SELECT year, content_analysis FROM tubi_analyses
+               WHERE artist IN ({placeholders}) AND year IS NOT NULL AND content_analysis IS NOT NULL
                ORDER BY year""",
-            (name,)
+            aliases
         ).fetchall()
 
         paintings = []
