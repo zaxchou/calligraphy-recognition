@@ -34,6 +34,13 @@
             :emotion="currentWeatherEmotion"
             :enabled="true"
           />
+          <WeatherCard
+            v-if="emotionTimeline.hasEmotionData"
+            :emotion="currentWeatherEmotion"
+            :context-label="currentWeatherContext"
+            :painting-count="currentWeatherCount"
+            :temp="currentWeatherTemp"
+          />
           <div ref="chartContainer" class="chart-container"></div>
 
           <!-- Smart Hint: hides after first interaction -->
@@ -159,6 +166,7 @@ import type { Painting } from './MapMode/useMapData'
 import PeriodPanel from './MapMode/PeriodPanel.vue'
 import CityPanel from './MapMode/CityPanel.vue'
 import WeatherCanvas from './MapMode/WeatherCanvas.vue'
+import WeatherCard from './MapMode/WeatherCard.vue'
 import chinaGeoJSON from '@/assets/china-geojson.json'
 
 const router = useRouter()
@@ -221,30 +229,48 @@ function emotionPathColor(periodId: string): string | null {
 // - 选中某城市 → 该城市所属时期的情绪
 // - 选中某时期 → 该时期的情绪
 // - 全程 → 全部画作的整体情绪（取数量最多的）
-const currentWeatherEmotion = computed<'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'>(() => {
-  if (!emotionTimeline.value.hasEmotionData) return 'sunny'
+const currentEmotionPeriod = computed(() => {
+  if (!emotionTimeline.value.hasEmotionData) return null
   const eps = emotionTimeline.value.periods.filter((p) => p.paintingCount > 0)
-  if (eps.length === 0) return 'sunny'
+  if (eps.length === 0) return null
 
   // 优先：选中的时期
   if (selectedPeriod.value) {
     const ep = eps.find((p) => p.id === selectedPeriod.value)
-    if (ep) return ep.emotion
+    if (ep) return ep
   }
   // 选中的城市 → 取城市的第一个 period 的情绪
   if (selectedLocation.value && selectedLocation.value.periods?.length) {
     const ep = eps.find((p) => p.id === selectedLocation.value!.periods![0])
-    if (ep) return ep.emotion
+    if (ep) return ep
   }
   // Tour 模式：跟随当前 entry
   if (tourState.value !== 'idle' && tourEntries.value[tourIndex.value]) {
     const entry = tourEntries.value[tourIndex.value]
     const ep = eps.find((p) => p.id === entry.periodId)
-    if (ep) return ep.emotion
+    if (ep) return ep
   }
   // 全程：取画作数最多的时期作为整体气候
-  return eps.reduce((max, p) => (p.paintingCount > max.paintingCount ? p : max)).emotion
+  return eps.reduce((max, p) => (p.paintingCount > max.paintingCount ? p : max))
 })
+
+const currentWeatherEmotion = computed<'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'>(() => {
+  return currentEmotionPeriod.value?.emotion || 'sunny'
+})
+
+const currentWeatherContext = computed(() => {
+  const ep = currentEmotionPeriod.value
+  if (!ep) return '全程'
+  if (selectedLocation.value) return selectedLocation.value.name
+  if (selectedPeriod.value) return ep.label
+  if (tourState.value !== 'idle' && tourEntries.value[tourIndex.value]) {
+    return tourEntries.value[tourIndex.value].name
+  }
+  return ep.label
+})
+
+const currentWeatherCount = computed(() => currentEmotionPeriod.value?.paintingCount || 0)
+const currentWeatherTemp = computed(() => currentEmotionPeriod.value?.temp || 0)
 
 const totalYearRange = computed(() => {
   const start = artistBirthYear.value || ''
