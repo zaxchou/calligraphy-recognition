@@ -30,10 +30,10 @@
                 {{ authStore.nickname }} <span class="user-arrow" :class="{ open: userMenuOpen }">▾</span>
               </span>
               <div class="user-dropdown" v-show="userMenuOpen" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
-                <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')">📂 管理后台</div>
-                <div class="user-dropdown-item" @click="go('/user/center')">👤 用户中心</div>
-                <div class="user-dropdown-item" @click="go('/my/knowledge')">📁 我的知识库</div>
-                <div class="user-dropdown-item" @click="go('/content-analysis?my=1')">🎨 我的分析历史</div>
+                <div class="user-dropdown-item" @click="go('/user/center')"><el-icon><User /></el-icon> 用户中心</div>
+                <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')"><el-icon><Setting /></el-icon> 管理后台</div>
+                <div class="user-dropdown-item" @click="go('/my/knowledge')"><el-icon><FolderOpened /></el-icon> 我的知识库</div>
+                <div class="user-dropdown-item" @click="go('/content-analysis?my=1')"><el-icon><DataAnalysis /></el-icon> 我的分析历史</div>
                 <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
               </div>
             </div>
@@ -86,17 +86,17 @@
           </a>
           <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
             <div class="drawer-section-label">个人中心</div>
-            <a v-if="authStore.isEditor" class="drawer-nav-item" @click.prevent="drawerNavigate('/admin')">
-              <span class="nav-text">📂 管理后台</span>
-            </a>
             <a class="drawer-nav-item" @click.prevent="drawerNavigate('/user/center')">
-              <span class="nav-text">👤 用户中心</span>
+              <span class="nav-text"><el-icon><User /></el-icon> 用户中心</span>
+            </a>
+            <a v-if="authStore.isEditor" class="drawer-nav-item" @click.prevent="drawerNavigate('/admin')">
+              <span class="nav-text"><el-icon><Setting /></el-icon> 管理后台</span>
             </a>
             <a class="drawer-nav-item" @click.prevent="drawerNavigate('/my/knowledge')">
-              <span class="nav-text">📁 我的知识库</span>
+              <span class="nav-text"><el-icon><FolderOpened /></el-icon> 我的知识库</span>
             </a>
             <a class="drawer-nav-item" @click.prevent="drawerNavigate('/content-analysis')">
-              <span class="nav-text">🎨 我的分析历史</span>
+              <span class="nav-text"><el-icon><DataAnalysis /></el-icon> 我的分析历史</span>
             </a>
             <div class="drawer-nav-item drawer-logout-item" @click="handleLogout(); closeMobileMenu()">
               <span class="nav-text">退出登录</span>
@@ -122,16 +122,12 @@
 
     <!-- 底部（annotate 页面隐藏） -->
     <footer v-if="!$route.path.startsWith('/annotate')" class="main-footer">
-      <div class="footer-content">
-        <div class="footer-divider">
-          <span class="divider-line"></span>
-          <img src="/logo.png" alt="墨" class="divider-seal-img">
-          <span class="divider-line"></span>
-        </div>
-        <p class="footer-text">{{ siteConfig.footer }}</p>
-        <p class="footer-sub" v-if="siteConfig.author">作者 {{ siteConfig.author }}</p>
-        <p class="footer-sub"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">沪ICP备2026019654号-2</a></p>
+      <div class="fa-row">
+        <a href="https://github.com/zaxchou/molin-wiki" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://molin.wiki" target="_blank" rel="noopener">molin.wiki</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026019654号-2</a>
       </div>
+      <div class="fa-text">墨林百科 · 周豪</div>
     </footer>
   </div>
 </template>
@@ -139,7 +135,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Menu, Close, ArrowDown } from '@element-plus/icons-vue'
+import { Menu, Close, ArrowDown, User, Setting, FolderOpened, DataAnalysis } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
 import { useI18n } from 'vue-i18n'
 import NotificationBell from './components/NotificationBell.vue'
@@ -485,52 +481,26 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* === 底部 — Claude 暗色区 === */
+/* === Footer 方案 A：简约链接行 === */
 .main-footer {
-  background: var(--deep-dark);
-  padding: var(--space-4xl) var(--space-2xl);
+  background: transparent;
+  padding: 16px 24px 12px;
   text-align: center;
 }
-
-.footer-content {
-  max-width: 700px;
-  margin: 0 auto;
+.main-footer .fa-row {
+  display: flex; justify-content: center; gap: 20px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
 }
-
-.footer-divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-2xl);
+.main-footer .fa-row a {
+  color: #6a6050; text-decoration: none; font-size: 13px;
+  transition: color 0.15s;
 }
-
-.divider-line {
-  width: 80px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-}
-
-.divider-seal-img {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  border-radius: 4px;
-  opacity: 0.9;
-}
-
-.footer-text {
-  font-family: 'Noto Serif SC', 'KaiTi', serif;
-  font-size: var(--text-caption);
-  color: var(--warm-silver);
-  letter-spacing: 0.15em;
-  margin-bottom: var(--space-sm);
-}
-
-.footer-sub {
-  font-family: var(--font-sans);
-  font-size: var(--text-label);
-  color: var(--gold);
-  letter-spacing: 0.08em;
+.main-footer .fa-row a:hover { color: #c45a3c; }
+.main-footer .fa-text {
+  font-size: 12px; color: #8a8578;
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.1em;
 }
 
 /* === 用户区域 === */
@@ -667,10 +637,20 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-dropdown-item .el-icon {
+  color: #a09888;
+  transition: color 0.15s;
 }
 
 .user-dropdown-item:hover {
   background: #f8f5f0;
+  color: #c8a45c;
+}
+.user-dropdown-item:hover .el-icon {
   color: #c8a45c;
 }
 
