@@ -28,6 +28,12 @@
       <div class="map-main" :class="{ 'panel-open': activePanel }">
         <!-- ECharts Map -->
         <div class="map-wrapper">
+          <!-- 天气粒子层（仅有情绪数据时显示） -->
+          <WeatherCanvas
+            v-if="emotionTimeline.hasEmotionData"
+            :emotion="currentWeatherEmotion"
+            :enabled="true"
+          />
           <div ref="chartContainer" class="chart-container"></div>
 
           <!-- Smart Hint: hides after first interaction -->
@@ -152,6 +158,7 @@ import { lookupCity, coordKey } from './MapMode/locations'
 import type { Painting } from './MapMode/useMapData'
 import PeriodPanel from './MapMode/PeriodPanel.vue'
 import CityPanel from './MapMode/CityPanel.vue'
+import WeatherCanvas from './MapMode/WeatherCanvas.vue'
 import chinaGeoJSON from '@/assets/china-geojson.json'
 
 const router = useRouter()
@@ -209,6 +216,35 @@ function emotionPathColor(periodId: string): string | null {
   if (!ep || ep.paintingCount === 0) return null
   return EMOTION_PATH_COLOR[ep.emotion] || null
 }
+
+// 当前展示的天气状态：
+// - 选中某城市 → 该城市所属时期的情绪
+// - 选中某时期 → 该时期的情绪
+// - 全程 → 全部画作的整体情绪（取数量最多的）
+const currentWeatherEmotion = computed<'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'>(() => {
+  if (!emotionTimeline.value.hasEmotionData) return 'sunny'
+  const eps = emotionTimeline.value.periods.filter((p) => p.paintingCount > 0)
+  if (eps.length === 0) return 'sunny'
+
+  // 优先：选中的时期
+  if (selectedPeriod.value) {
+    const ep = eps.find((p) => p.id === selectedPeriod.value)
+    if (ep) return ep.emotion
+  }
+  // 选中的城市 → 取城市的第一个 period 的情绪
+  if (selectedLocation.value && selectedLocation.value.periods?.length) {
+    const ep = eps.find((p) => p.id === selectedLocation.value!.periods![0])
+    if (ep) return ep.emotion
+  }
+  // Tour 模式：跟随当前 entry
+  if (tourState.value !== 'idle' && tourEntries.value[tourIndex.value]) {
+    const entry = tourEntries.value[tourIndex.value]
+    const ep = eps.find((p) => p.id === entry.periodId)
+    if (ep) return ep.emotion
+  }
+  // 全程：取画作数最多的时期作为整体气候
+  return eps.reduce((max, p) => (p.paintingCount > max.paintingCount ? p : max)).emotion
+})
 
 const totalYearRange = computed(() => {
   const start = artistBirthYear.value || ''
