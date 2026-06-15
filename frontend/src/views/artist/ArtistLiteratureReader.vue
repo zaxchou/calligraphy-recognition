@@ -1,54 +1,53 @@
 <template>
   <div class="alr-page">
-    <!-- 顶部栏 -->
+    <!-- 合并顶部栏：标题 + 搜索，fixed -->
     <div class="alr-topbar">
-      <div class="alr-topbar-left">
-        <el-button text size="small" @click="goBack">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </el-button>
-        <span class="alr-topbar-title">{{ book?.title }}</span>
-        <span class="alr-topbar-meta" v-if="book">
-          <template v-if="book.author">{{ book.author }}</template>
-          <template v-if="book.source_type"> · {{ book.source_type }}</template>
-          <template v-if="book.journal"> · {{ book.journal }}</template>
-          <template v-if="book.publish_year"> · {{ book.publish_year }}</template>
-        </span>
+      <div class="alr-toprow">
+        <div class="alr-toprow-left">
+          <el-button text size="small" @click="goBack">
+            <el-icon><ArrowLeft /></el-icon> 返回
+          </el-button>
+          <span class="alr-topbar-title">{{ book?.title }}</span>
+          <span class="alr-topbar-meta" v-if="book">
+            <template v-if="book.author">{{ book.author }}</template>
+            <template v-if="book.source_type"> · {{ book.source_type }}</template>
+            <template v-if="book.journal"> · {{ book.journal }}</template>
+            <template v-if="book.publish_year"> · {{ book.publish_year }}</template>
+          </span>
+        </div>
+        <div class="alr-toprow-right">
+          <el-button text size="small" @click="toggleSearch" :title="showSearch ? '关闭搜索' : '搜索'">
+            <el-icon><Search /></el-icon>
+          </el-button>
+          <el-button text size="small" @click="sidebarCollapsed = !sidebarCollapsed" :title="sidebarCollapsed ? '展开目录' : '折叠目录'">
+            <el-icon><Fold /></el-icon>
+          </el-button>
+          <el-button text size="small" @click="downloadPdf">
+            <el-icon><Download /></el-icon> PDF
+          </el-button>
+        </div>
       </div>
-      <div class="alr-topbar-right">
-        <el-button-group size="small">
-          <el-button :type="mode === 'text' ? 'primary' : 'default'" @click="mode = 'text'">正文</el-button>
-          <el-button :type="mode === 'pdf' ? 'primary' : 'default'" @click="loadPdf">原 PDF</el-button>
-        </el-button-group>
-        <el-button text size="small" @click="goBack">关闭</el-button>
-      </div>
-    </div>
-
-    <!-- 内文搜索条 -->
-    <div class="alr-searchbar" v-if="mode === 'text'">
-      <el-input v-model="searchQuery" size="small" placeholder="搜索内文..." clearable
-        @keyup.enter="doSearch" @clear="clearSearch" class="alr-search-input">
-        <template #prefix>
-          <el-icon><Search /></el-icon>
+      <div class="alr-searchrow" v-if="showSearch">
+        <el-input v-model="searchQuery" size="small" placeholder="搜索内文..." clearable
+          @keyup.enter="doSearch" @clear="clearSearch" class="alr-search-input">
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <template v-if="searchResults.length">
+          <span class="alr-search-count">{{ searchIdx + 1 }} / {{ searchResults.length }} 条匹配</span>
+          <el-button text size="small" @click="prevMatch">‹ 上一个</el-button>
+          <el-button text size="small" @click="nextMatch">下一个 ›</el-button>
         </template>
-      </el-input>
-      <template v-if="searchResults.length">
-        <span class="alr-search-count">{{ searchIdx + 1 }} / {{ searchResults.length }} 条匹配</span>
-        <el-button text size="small" @click="prevMatch">‹ 上一个</el-button>
-        <el-button text size="small" @click="nextMatch">下一个 ›</el-button>
-      </template>
-      <span v-else-if="searchQuery && searchResults.length === 0" class="alr-search-count">无匹配</span>
+        <span v-else-if="searchQuery && searchResults.length === 0" class="alr-search-count">无匹配</span>
+      </div>
     </div>
 
     <div class="alr-body">
       <!-- 左侧目录 -->
-      <aside class="alr-sidebar" :class="{ collapsed: sidebarCollapsed }" v-if="mode === 'text' && outline.length > 0" :style="{ width: sidebarWidth }">
-        <div class="alr-outline-header">
-          <span v-show="!sidebarCollapsed" class="alr-outline-title">目录</span>
-          <el-button text size="small" @click="sidebarCollapsed = !sidebarCollapsed" class="alr-fold-btn">
-            <el-icon><Fold /></el-icon>
-          </el-button>
-        </div>
-        <div v-show="!sidebarCollapsed">
+      <aside class="alr-sidebar" :class="{ collapsed: sidebarCollapsed }" v-if="outline.length > 0">
+        <div class="alr-sidebar-content" v-show="!sidebarCollapsed">
+          <div class="alr-outline-title">目录</div>
           <div
             v-for="(item, idx) in outline"
             :key="idx"
@@ -62,7 +61,7 @@
       </aside>
 
       <!-- 正文区 -->
-      <main class="alr-main" ref="mainRef" v-show="mode === 'text'">
+      <main class="alr-main" ref="mainRef">
         <div v-if="loadingChunks" class="alr-loading">加载中...</div>
         <div v-else-if="chunks.length === 0" class="alr-empty">暂无章节内容</div>
         <div v-else class="alr-content">
@@ -86,17 +85,6 @@
           </div>
         </div>
       </main>
-
-      <!-- PDF iframe -->
-      <main class="alr-main alr-pdf-main" v-show="mode === 'pdf'">
-        <div v-if="pdfLoading" class="alr-loading">加载 PDF 中...</div>
-        <iframe
-          v-if="pdfUrl"
-          :src="pdfUrl"
-          class="alr-pdf-frame"
-          referrerpolicy="no-referrer"
-        ></iframe>
-      </main>
     </div>
   </div>
 </template>
@@ -104,7 +92,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Search, Fold } from '@element-plus/icons-vue'
+import { ArrowLeft, Search, Fold, Download } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -115,19 +103,21 @@ const bookId = computed(() => route.params.bookId)
 
 const book = ref(null)
 const mainRef = ref(null)
-const mode = ref('text')
 const chunks = ref([])
 const images = ref([])
 const loadingChunks = ref(true)
-const pdfLoading = ref(false)
-const pdfUrl = ref('')
 const activeChunkIdx = ref(0)
 const chunkRefs = reactive({})
 const loadingDetail = ref(true)
 
 // 侧边目录折叠
 const sidebarCollapsed = ref(false)
-const sidebarWidth = computed(() => sidebarCollapsed.value ? '0px' : '220px')
+const showSearch = ref(false)
+
+function toggleSearch() {
+  showSearch.value = !showSearch.value
+  if (!showSearch.value) clearSearch()
+}
 
 // 内文搜索
 const searchQuery = ref('')
@@ -197,12 +187,8 @@ function goBack() {
   router.push({ name: 'ArtistLiterature', params: { name: artistName.value } })
 }
 
-function loadPdf() {
-  mode.value = 'pdf'
-  if (!pdfUrl.value) {
-    pdfLoading.value = true
-    pdfUrl.value = `${API_BASE}/knowledge/artists/${book.value.artist_id}/literature/${bookId.value}/pdf`
-  }
+function downloadPdf() {
+  window.open(`${API_BASE}/knowledge/artists/${book.value.artist_id}/literature/${bookId.value}/pdf`, '_blank')
 }
 
 async function loadChunks() {
@@ -265,7 +251,7 @@ const imagesByChunkId = computed(() => {
 })
 
 function onScroll() {
-  if (!mainRef.value || mode.value !== 'text') return
+  if (!mainRef.value) return
   const scrollTop = mainRef.value.scrollTop
   let closest = 0
   for (let i = 0; i < chunks.value.length; i++) {
@@ -300,8 +286,6 @@ function loadAll() {
   chunks.value = []
   images.value = []
   outline.value = []
-  pdfUrl.value = ''
-  mode.value = 'text'
   searchQuery.value = ''
   searchResults.value = []
   searchIdx.value = -1
@@ -333,49 +317,43 @@ onBeforeUnmount(() => {
   display: flex; flex-direction: column;
 }
 
-/* 内文搜索条 */
-.alr-searchbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 20px; background: #fff; border-bottom: 1px solid #e8e3da;
+/* 合并顶部栏：fixed */
+.alr-topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid #e8e3da;
   flex-shrink: 0;
+}
+.alr-toprow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px;
+}
+.alr-toprow-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.alr-topbar-title { font-size: 15px; font-weight: 600; color: #2c2416; font-family: 'Noto Serif SC', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alr-topbar-meta { font-size: 12px; color: #8a8578; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.alr-toprow-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+/* 搜索行：居右 */
+.alr-searchrow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px 8px;
+  justify-content: flex-end;
 }
 .alr-search-input { width: 260px; }
 .alr-search-count { font-size: 13px; color: #8a8578; white-space: nowrap; }
 :deep(.alr-highlight) { background: #fff3cd; color: #2c2416; padding: 1px 2px; border-radius: 2px; }
 
-.alr-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: #fff; border-bottom: 1px solid #e8e3da;
-  flex-shrink: 0; z-index: 1;
-}
-.alr-topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.alr-topbar-title { font-size: 15px; font-weight: 600; color: #2c2416; font-family: 'Noto Serif SC', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.alr-topbar-meta { font-size: 12px; color: #8a8578; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.alr-topbar-right { flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
-
 .alr-body { display: flex; flex: 1; min-height: 0; }
 
-/* 侧边目录 */
+/* 侧边目录 - 折叠时右侧留32px给toggle按钮 */
 .alr-sidebar {
-  width: 220px; flex-shrink: 0;
-  border-right: 1px solid #e8e3da; background: #f6f4ef; padding: 16px 0;
+  width: 220px; flex-shrink: 0; overflow-y: auto;
+  border-right: 1px solid #e8e3da; background: #f6f4ef;
   transition: width 0.2s ease;
-  overflow: hidden;
 }
-.alr-sidebar.collapsed {
-  width: 0 !important;
-  padding: 0;
-  border-right: none;
-}
-.alr-outline-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px 12px;
-  white-space: nowrap;
-}
-.alr-outline-title { font-size: 13px; font-weight: 600; color: #8a8578; }
-.alr-fold-btn { color: #8a8578; transition: transform 0.2s; }
-.alr-sidebar.collapsed .alr-fold-btn { transform: rotate(180deg); }
-.alr-fold-btn:hover { color: #c45a3c; }
+.alr-sidebar.collapsed { width: 0; overflow: hidden; border-right: none; }
+.alr-sidebar-content { padding: 16px 0; min-width: 220px; }
+.alr-outline-title { font-size: 13px; font-weight: 600; color: #8a8578; padding: 0 16px 12px; }
 .alr-outline-item {
   padding: 8px 16px; font-size: 13px; color: #8c7a5c;
   cursor: pointer; transition: all 0.12s; border-left: 3px solid transparent;
@@ -396,10 +374,6 @@ onBeforeUnmount(() => {
 .alr-image { max-width: 100%; max-height: 300px; border-radius: 6px; border: 1px solid #e8e3da; cursor: pointer; transition: transform 0.2s; }
 .alr-image:hover { transform: scale(1.02); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
 .alr-image-caption { font-size: 12px; color: #8a8578; margin-top: 4px; text-align: center; }
-
-/* PDF 模式 */
-.alr-pdf-main { display: flex; flex-direction: column; }
-.alr-pdf-frame { flex: 1; width: 100%; border: none; min-height: 0; }
 
 @media (max-width: 768px) {
   .alr-sidebar { display: none; }

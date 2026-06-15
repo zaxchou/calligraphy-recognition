@@ -263,7 +263,7 @@ onUnmounted(() => {
 
 /* ── Back to Top ── */
 .av-back-top {
-  position: fixed; right: 32px; bottom: 40px; z-index: 100;
+  position: fixed; right: 26px; bottom: 88px; z-index: 100;
   width: 40px; height: 40px; border-radius: 50%;
   background: #3a3222; color: #fff; border: none;
   display: flex; align-items: center; justify-content: center;
@@ -296,6 +296,6 @@ onUnmounted(() => {
   .av-header-inner { flex-direction: column; gap: 16px; padding: 0 20px; }
   .av-header-compact .av-header-inner { flex-direction: row; gap: 12px; padding: 0 16px; }
   .av-header-actions { flex-direction: row; align-items: center; }
-  .av-back-top { right: 16px; bottom: 24px; }
+  .av-back-top { right: 16px; bottom: 88px; }
 }
 </style>

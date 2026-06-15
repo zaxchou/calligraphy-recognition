@@ -23,7 +23,7 @@ export interface Painting {
 
 // ── 情绪气象 ──
 
-export type EmotionState = 'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'
+export type EmotionState = 'sunny' | 'clear' | 'cloudy' | 'overcast' | 'rain' | 'storm' | 'snow'
 
 export interface EmotionPeriod {
   id: string
@@ -156,14 +156,28 @@ function computeEmotionTimeline(
     const neuPct = total ? (b.neu / total) * 100 : 0
     const temp = total ? ((b.pos - b.neg) / total) * 5 : 0
 
-    let emotion: EmotionState = 'sunny'
-    if (total === 0) emotion = 'sunny'
-    else if (posPct >= 60) emotion = 'sunny'
-    else if (posPct >= 40 && posPct > negPct) emotion = 'cloudy'
-    else if (negPct >= 60) emotion = 'storm'
-    else if (negPct >= 40) emotion = 'overcast'
-    else if (neuPct >= 60) emotion = 'snow'
-    else emotion = 'cloudy'
+    // ── 7 级情绪气象映射 ──
+    // posPct / negPct 按阈值分档，覆盖更多中间状态
+    let emotion: EmotionState = 'clear'
+    if (total === 0) {
+      emotion = 'clear'                    // 无数据 → 平和中立（默认）
+    } else if (posPct >= 70) {
+      emotion = 'sunny'                    // ≥70% 正面 → 晴 · 愉悦
+    } else if (posPct >= 50) {
+      emotion = 'clear'                    // 50-70% 正面 → 晴间多云 · 平和
+    } else if (negPct >= 70) {
+      emotion = 'storm'                    // ≥70% 负面 → 暴雨 · 悲愤
+    } else if (negPct >= 55) {
+      emotion = 'rain'                     // 55-70% 负面 → 雨 · 忧郁
+    } else if (negPct >= 40) {
+      emotion = 'overcast'                 // 40-55% 负面 → 阴 · 失落
+    } else if (negPct >= 25) {
+      emotion = 'cloudy'                   // 25-40% 负面 → 多云 · 微沉
+    } else if (neuPct >= 60) {
+      emotion = 'snow'                     // ≥60% 中性 → 雪 · 宁静
+    } else {
+      emotion = 'clear'                    // 默认晴间多云
+    }
 
     return {
       id: p.id,

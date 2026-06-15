@@ -408,9 +408,9 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 </script>
 
 <style scoped>
-.ks-root{min-height:100vh;background:#fafaf8}
-.ks-center-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px}
-.ks-center-body{text-align:center;max-width:640px;width:100%;margin-top:-80px}
+.ks-root{height:calc(100vh - 96px - 60px);background:#fafaf8;display:flex;flex-direction:column}
+.ks-center-wrap{display:flex;justify-content:center;align-items:center;flex:1;padding:24px}
+.ks-center-body{text-align:center;max-width:640px;width:100%}
 .ks-center-title{font-family:'Noto Serif SC',serif;font-size:36px;font-weight:700;color:#141413;margin:0 0 6px}
 .ks-center-sub{font-size:15px;color:#b0aca2;margin:0 0 32px}
 .ks-center-search{display:flex;align-items:center;background:#fff;border:1.5px solid #e0ddd3;border-radius:12px;overflow:hidden;width:100%;margin-bottom:16px;transition:all 0.3s ease;position:relative}

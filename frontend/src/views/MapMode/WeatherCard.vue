@@ -6,7 +6,7 @@
       <span class="wc-label">{{ contextLabel }}</span>
       <span v-if="paintingCount > 0" class="wc-count">{{ paintingCount }} 幅</span>
     </div>
-    <div v-if="paintingCount > 0" class="wc-temp" :class="tempClass">
+    <div class="wc-temp" :class="tempClass">
       {{ tempStr }}
     </div>
   </div>
@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-type EmotionState = 'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'
+type EmotionState = 'sunny' | 'clear' | 'cloudy' | 'overcast' | 'rain' | 'storm' | 'snow'
 
 const props = defineProps<{
   emotion: EmotionState
@@ -29,16 +29,20 @@ const props = defineProps<{
 
 const ICONS: Record<EmotionState, string> = {
   sunny: '☀️',
+  clear: '🌤️',
   cloudy: '⛅',
   overcast: '☁️',
+  rain: '🌧️',
   storm: '⛈️',
   snow: '❄️',
 }
 
 const STATE_NAMES: Record<EmotionState, string> = {
   sunny: '晴 · 愉悦',
-  cloudy: '多云 · 平和',
+  clear: '晴间多云 · 平和',
+  cloudy: '多云 · 微沉',
   overcast: '阴 · 失落',
+  rain: '雨 · 忧郁',
   storm: '暴雨 · 悲愤',
   snow: '雪 · 宁静',
 }
@@ -77,6 +81,7 @@ const tempClass = computed(() => {
   transition: border-color 0.4s, box-shadow 0.4s;
 }
 .wc-storm { border-color: #6a6080; box-shadow: 0 2px 18px rgba(74, 48, 64, 0.18); }
+.wc-rain { border-color: #706898; }
 .wc-snow { border-color: #b8c4d4; }
 .wc-sunny { border-color: #d4b878; }
 

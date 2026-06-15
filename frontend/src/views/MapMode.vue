@@ -122,7 +122,7 @@
       <div class="period-bar">
         <button
           class="period-btn reset-btn"
-          :class="{ active: selectedPeriod === null }"
+          :class="{ active: selectedPeriod === null && tourState === 'idle' }"
           @click="onFilterAll"
         >
           <span class="period-btn-label">全 程</span>
@@ -132,7 +132,8 @@
           v-for="period in periods"
           :key="period.id"
           class="period-btn"
-          :class="{ active: selectedPeriod === period.id }"
+          :class="{ active: selectedPeriod === period.id, 'period-btn-tour': tourHighlightedPeriodId === period.id }"
+          :data-pid="period.id"
           :title="periodTooltips[period.id]"
           @click="selectPeriod(period.id)"
         >
@@ -198,22 +199,26 @@ const pageTitle = computed(() =>
 
 const EMOTION_EMOJI: Record<string, string> = {
   sunny: '☀️',
+  clear: '🌤️',
   cloudy: '⛅',
   overcast: '☁️',
+  rain: '🌧️',
   storm: '⛈️',
   snow: '❄️',
 }
 
 function periodEmoji(periodId: string): string {
   const ep = emotionTimeline.value.periods.find((p) => p.id === periodId)
-  if (!ep || ep.paintingCount === 0) return ''
-  return EMOTION_EMOJI[ep.emotion] || ''
+  if (!ep || ep.paintingCount === 0) return '🌤️'
+  return EMOTION_EMOJI[ep.emotion] || '🌤️'
 }
 
 const EMOTION_PATH_COLOR: Record<string, string> = {
   sunny: '#c45a3c',
+  clear: '#b8a070',
   cloudy: '#a09080',
   overcast: '#6a6070',
+  rain: '#5a5078',
   storm: '#4a3040',
   snow: '#8a9ab0',
 }
@@ -228,7 +233,8 @@ function emotionPathColor(periodId: string): string | null {
 // 当前展示的天气状态：
 // - 选中某城市 → 该城市所属时期的情绪
 // - 选中某时期 → 该时期的情绪
-// - 全程 → 全部画作的整体情绪（取数量最多的）
+// - Tour 模式 → 跟随当前 entry
+// - 全程无选择 → 默认中性平和（不取最大时期，否则开头就是"雨"缺少对比基线）
 const currentEmotionPeriod = computed(() => {
   if (!emotionTimeline.value.hasEmotionData) return null
   const eps = emotionTimeline.value.periods.filter((p) => p.paintingCount > 0)
@@ -250,12 +256,12 @@ const currentEmotionPeriod = computed(() => {
     const ep = eps.find((p) => p.id === entry.periodId)
     if (ep) return ep
   }
-  // 全程：取画作数最多的时期作为整体气候
-  return eps.reduce((max, p) => (p.paintingCount > max.paintingCount ? p : max))
+  // 全程无选择 → null（前端降级到 clear）
+  return null
 })
 
-const currentWeatherEmotion = computed<'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'>(() => {
-  return currentEmotionPeriod.value?.emotion || 'sunny'
+const currentWeatherEmotion = computed<'sunny' | 'clear' | 'cloudy' | 'overcast' | 'rain' | 'storm' | 'snow'>(() => {
+  return currentEmotionPeriod.value?.emotion || 'clear'
 })
 
 const currentWeatherContext = computed(() => {
@@ -284,6 +290,8 @@ let tourTimer: ReturnType<typeof setTimeout> | null = null
 const tourState = ref<'idle' | 'playing' | 'paused'>('idle')
 const tourIndex = ref(0)
 const tourVisitedLocIds = ref<Set<string> | null>(null)
+const tourHighlightedPeriodId = ref<string | null>(null)
+const tourStep = ref(0)
 const isTourActive = computed(() => tourState.value !== 'idle')
 
 // ── Memoized timeline ──
@@ -301,32 +309,42 @@ interface TimelineEntry {
 }
 
 const cachedTimeline = computed<TimelineEntry[]>(() => {
-  // 优先按 period yearRange 排序（AI数据更可靠）
-  const locsWithYears = locationsWithPaintings.value.map(loc => {
-    let startYear = 0; let endYear = 0
-    // 尝试从 chronologyLines 提取年份
+  // 收集所有 (year, location) 对，按年份排序
+  const allEvents: { year: number; locId: string; name: string; lat: number; lng: number }[] = []
+  for (const loc of locationsWithPaintings.value) {
     for (const line of (loc.chronologyLines || [])) {
       const m = line.match(/^(\d+)年/)
-      if (m) {
-        const y = parseInt(m[1])
-        if (startYear === 0 || y < startYear) startYear = y
-        if (y > endYear) endYear = y
-      }
+      if (!m) continue
+      const y = parseInt(m[1])
+      allEvents.push({ year: y, locId: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng })
     }
-    return { loc, startYear, endYear }
-  })
-  locsWithYears.sort((a, b) => a.endYear - b.endYear)
+  }
+  allEvents.sort((a, b) => a.year - b.year)
 
-  return locsWithYears.map(({ loc, startYear, endYear }) => {
-    const period = periods.value.find(p => endYear >= p.yearRange[0] && endYear <= p.yearRange[1])
-    return {
-      locId: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng,
-      startYear, endYear,
-      periodId: period?.id || 'p0',
-      periodLabel: period?.label || '',
-      periodColor: period?.color || '#8b7d6b',
+  // 按地点分组连续事件：同城市连续事件合并为一个节点
+  const entries: TimelineEntry[] = []
+  for (const ev of allEvents) {
+    const last = entries[entries.length - 1]
+    if (last && last.locId === ev.locId) {
+      // 同一地点连续 → 更新 endYear
+      last.endYear = ev.year
+    } else {
+      // 新地点（或重返旧地）→ 新节点
+      const period = periods.value.find(p => ev.year >= p.yearRange[0] && ev.year <= p.yearRange[1])
+      entries.push({
+        locId: ev.locId,
+        name: ev.name,
+        lat: ev.lat,
+        lng: ev.lng,
+        startYear: ev.year,
+        endYear: ev.year,
+        periodId: period?.id || 'p0',
+        periodLabel: period?.label || '',
+        periodColor: period?.color || '#8b7d6b',
+      })
     }
-  })
+  }
+  return entries
 })
 
 interface MarkerMeta {
@@ -584,6 +602,10 @@ function advanceTour() {
     return
   }
 
+  // 高亮当前 stage
+  tourHighlightedPeriodId.value = entry.periodId
+  scrollToTourPeriod()
+
   const prevEntry = tourIndex.value > 0 ? tourEntries.value[tourIndex.value - 1] : null
 
   tourVisitedLocIds.value!.add(entry.locId)
@@ -610,18 +632,29 @@ function advanceTour() {
     }
   }
   tourIndex.value++
-  tourTimer = setTimeout(advanceTour, 2800)
+  // 自适应速度：entry 多时快一点，少时慢一点
+  const total = tourEntries.value.length
+  const delay = total > 20 ? 2200 : total > 10 ? 3200 : 4200
+  tourTimer = setTimeout(() => advanceTour(), delay)
+}
+
+function scrollToTourPeriod() {
+  nextTick(() => {
+    const activeBtn = document.querySelector('.period-btn.period-btn-tour')
+    if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  })
 }
 
 function animateTravel(from: [number, number], to: [number, number]) {
-  const arc = computeArc(from[0], from[1], to[0], to[1], 40)
+  const arc = computeArc(from[0], from[1], to[0], to[1], 60)
   let startTime: number | null = null
-  const duration = 900
+  const duration = 1400
 
   function frame(now: number) {
     if (!startTime) startTime = now
     const raw = Math.min((now - startTime) / duration, 1)
-    const t = raw < 0.5 ? 4 * raw ** 3 : 1 - (-2 * raw + 2) ** 3 / 2 // easeInOutCubic
+    // 更平滑的 ease-out：cubic
+    const t = 1 - (1 - raw) ** 3
     const idx = Math.min(Math.floor(t * (arc.length - 1)), arc.length - 1)
     updateChartEffectScatter(arc[idx])
     if (raw < 1) {
@@ -647,7 +680,9 @@ function resumeTour() {
 function stopTour() {
   tourState.value = 'idle'
   tourIndex.value = 0
+  tourStep.value = 0
   tourVisitedLocIds.value = null
+  tourHighlightedPeriodId.value = null
   if (tourTimer) {
     clearTimeout(tourTimer)
     tourTimer = null
@@ -1313,33 +1348,43 @@ onUnmounted(() => {
 
 /* ── Period Bar (merged legend + filter + tour) ── */
 .period-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0; z-index: 10;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 24px;
+  justify-content: center; align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
   background: #f8f5f0;
   border-top: 1px solid #e8e4d8;
   flex-wrap: wrap;
+  overflow-y: visible;
 }
 .period-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 8px 18px;
+  gap: 1px;
+  padding: 5px 14px;
   border: 1px solid #d8d0c0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
-  min-width: 80px;
+  min-width: 70px;
+  flex-shrink: 0;
 }
 .period-btn:hover { border-color: #c9a96e; }
-.period-btn.active {
-  background: #f6f0e2;
-  border-color: #c9a96e;
+.period-btn.active,
+.period-btn-tour {
+  border-color: #c45a3c !important;
+  box-shadow: 0 0 0 2px rgba(196,90,60,0.25), 0 2px 8px rgba(0,0,0,0.1);
+  animation: tour-pulse 2s ease-in-out infinite;
+  background: #fef6f2;
+}
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(196,90,60,0.25), 0 2px 8px rgba(0,0,0,0.1); }
+  50% { box-shadow: 0 0 0 4px rgba(196,90,60,0.15), 0 4px 14px rgba(0,0,0,0.15); }
 }
 .period-btn-dot {
   width: 8px;
@@ -1362,7 +1407,11 @@ onUnmounted(() => {
   font-size: 0.68rem;
   color: #b8a990;
 }
-.period-btn.active .period-btn-year { color: #8b7d6b; }
+.period-btn.active .period-btn-year,
+.period-btn.period-btn-tour .period-btn-year { color: #8b7d6b; }
+
+.period-btn.active .period-btn-label,
+.period-btn.period-btn-tour .period-btn-label { color: #2c2416; }
 
 .reset-btn .period-btn-label {
   font-weight: 600;
@@ -1420,8 +1469,8 @@ onUnmounted(() => {
     border-top: 1px solid #e8e4d8;
     box-shadow: 0 -2px 16px rgba(44, 36, 22, 0.06);
   }
-  .period-bar { gap: 6px; padding: 10px 12px; }
-  .period-btn { padding: 6px 10px; min-width: 50px; border-radius: 8px; }
+  .period-bar { gap: 6px; padding: 6px 12px; flex-wrap: wrap; }
+  .period-btn { padding: 5px 10px; min-width: 50px; border-radius: 8px; }
   .period-btn-label { font-size: 0.7rem; }
   .period-btn-year { font-size: 0.62rem; }
 }

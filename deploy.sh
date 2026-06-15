@@ -1,335 +1,212 @@
 #!/bin/bash
-# 墨林百科 一键部署脚本
-# 从本地 Windows 执行，自动检测变更并做最快的部署
+# ============================================================
+#  molin-wiki + zi2anki 一键部署脚本
+#  原则：全部走本地 SCP，GitHub 不参与部署（纯版本管理）
+# ============================================================
 #
 # 用法:
-#   bash deploy.sh             — 完整部署（自动检测代码/数据库/文件变更）
-#   bash deploy.sh code        — 仅部署程序文件（git push + 构建 + 重启）
-#   bash deploy.sh full        — 强制全量部署（含数据库+全部文件同步）
+#   bash deploy.sh                  — 部署两个项目（代码 + 文件）
+#   bash deploy.sh wiki             — 仅部署 molin-wiki
+#   bash deploy.sh anki             — 仅部署 zi2anki
+#   bash deploy.sh wiki --full      — molin-wiki 全量（含数据库 + 全部文件）
+#   bash deploy.sh anki --full      — zi2anki 全量（含 node_modules + uploads）
 #
 # 先决条件:
-#   - Git、npm、python3、scp 可用
-#   - SSH 别名 xcx 已配置（~/.ssh/config）
-#   - 当前工作目录 = 项目根目录
+#   - npm、python3、scp 可用
+#   - SSH 别名 xcx 已配置
 
 set -o pipefail
-cd "$(dirname "$0")" || exit 1
 
-PROJECT="molin-wiki"
 SSH_HOST="xcx"
-REMOTE_DIR="/opt/$PROJECT"
-LOCAL_DATA="backend/data"
-REMOTE_DATA="$REMOTE_DIR/backend/data"
+
+# molin-wiki 路径
+WIKI_LOCAL="$(cd "$(dirname "$0")" && pwd)"
+WIKI_REMOTE="/opt/molin-wiki"
+WIKI_DATA="$WIKI_LOCAL/backend/data"
+
+# zi2anki 路径
+ANKI_LOCAL="E:/下载/春江花明月/calligraphy-memory"
+ANKI_REMOTE="/opt/zi2anki"
+
+TARGET="${1:-all}"
+MODE="${2}"
 
 # ============================================================
 # 工具函数
 # ============================================================
 
-section() {
-  echo ""
-  echo "================================================"
-  echo "  $1"
-  echo "================================================"
+section() { echo ""; echo "====  $1  ===="; }
+
+# tar 管道：本地目录 → 远程目录（排除 node_modules/.git）
+tar_sync() {
+  local src="$1" dst="$2" label="$3"
+  echo "  → $label ..."
+  ssh "$SSH_HOST" "mkdir -p $dst"
+  tar czf - -C "$src" --exclude='node_modules' --exclude='.git' --exclude='__pycache__' . \
+    | ssh "$SSH_HOST" "tar xzf - -C $dst" 2>/dev/null
+  echo "    done"
 }
 
-check_dep() {
-  if ! command -v "$1" &>/dev/null; then
-    echo "❌ 缺少依赖: $1，请先安装"
-    exit 1
-  fi
+# 远端执行
+remote() { ssh "$SSH_HOST" "$@"; }
+
+# ============================================================
+# molin-wiki
+# ============================================================
+
+deploy_wiki_code() {
+  section "molin-wiki: 代码"
+
+  # 1. 前端构建（本地）
+  echo "  → npm run build ..."
+  cd "$WIKI_LOCAL/frontend" && npm run build 2>&1 | tail -2
+
+  # 2. SCP 后端代码（排除 data/，数据走 --full 单独同步）
+  tar czf - -C "$WIKI_LOCAL/backend" \
+    --exclude='data' --exclude='__pycache__' --exclude='*.pyc' \
+    --exclude='.git' --exclude='node_modules' . \
+    | ssh "$SSH_HOST" "mkdir -p $WIKI_REMOTE/backend && tar xzf - -C $WIKI_REMOTE/backend" 2>/dev/null
+  echo "    done"
+
+  # 3. SCP 前端 dist
+  tar_sync "$WIKI_LOCAL/frontend/dist" "$WIKI_REMOTE/frontend/dist" "frontend/dist/"
+
+  # 4. 重启
+  echo "  → docker restart ..."
+  remote "cd $WIKI_REMOTE/deploy && sudo docker compose restart backend 2>&1 | tail -1"
 }
 
-# SQLite WAL checkpoint：确保 -wal 中的修改已写入主文件
-checkpoint_db() {
-  local db_path="$1"
-  local label="$2"
-  if [ -f "$db_path" ]; then
-    python3 -c "
+deploy_wiki_data() {
+  section "molin-wiki: 数据文件"
+
+  local dirs=(uploads dzi annotated thumbnails seals knowledge/books static)
+
+  for d in "${dirs[@]}"; do
+    if [ -d "$WIKI_DATA/$d" ]; then
+      local count=$(find "$WIKI_DATA/$d" -type f 2>/dev/null | wc -l)
+      echo "  → $d/ ($count 文件)"
+      ssh "$SSH_HOST" "mkdir -p $WIKI_REMOTE/backend/data/$d"
+      tar czf - -C "$WIKI_DATA/$d" . 2>/dev/null \
+        | ssh "$SSH_HOST" "tar xzf - -C $WIKI_REMOTE/backend/data/$d" 2>/dev/null
+    fi
+  done
+  echo "  done"
+}
+
+deploy_wiki_db() {
+  section "molin-wiki: 数据库"
+
+  for db in calligraphy.db knowledge.db; do
+    if [ -f "$WIKI_DATA/$db" ]; then
+      echo "  → $db ..."
+      python3 -c "
 import sqlite3
-c = sqlite3.connect('$db_path')
+c=sqlite3.connect('$WIKI_DATA/$db')
 c.execute('PRAGMA wal_checkpoint(TRUNCATE)')
 c.close()
-print('  ✔ $label 已 checkpoint')
-"
-  fi
-}
-
-# 验证推荐艺术家（判断数据库是否完整）
-verify_featured_artists() {
-  local db_path="$1"
-  python3 -c "
-import sqlite3
-c = sqlite3.connect('$db_path')
-r = c.execute('SELECT name FROM artists WHERE featured=1').fetchall()
-c.close()
-print(f'  推荐艺术家: {len(r)} 位: ' + ', '.join(x[0] for x in r))
-if len(r) < 5:
-  print('  ⚠️  只有 ' + str(len(r)) + ' 位，可能缺 WAL 修改')
-  exit(1)
-" 2>&1 || {
-    echo "  ⚠️  推荐艺术家少于 5 位，是否漏了 checkpoint？继续部署但请注意"
-  }
-}
-
-# SSH 远程执行
-remote() {
-  ssh "$SSH_HOST" "$@"
-}
-
-# 健康检查
-health_check() {
-  local port="${1:-8001}"
-  local label="${2:-后端}"
-  sleep 3
-  local code
-  code=$(remote "curl -s -o /dev/null -w '%{http_code}' http://localhost:$port/api/v1/site-settings" 2>/dev/null || echo "000")
-  if [ "$code" = "200" ]; then
-    echo "  ✅ $label 健康检查通过 (HTTP $code)"
-    return 0
-  else
-    echo "  ⚠️  $label 健康检查返回 $code"
-    return 1
-  fi
-}
-
-# ============================================================
-# 子流程
-# ============================================================
-
-do_git_push() {
-  section "1. 推送到 GitHub（仅纯源码）"
-  # 仅添加纯源码变更，绝不包含 data/、scripts/、配置等非源码
-  # 见 [E:\mynote\Project\decisions\git-only-pure-code.md]
-  git add --update
-  git add 'backend/app/api/' 'backend/app/core/' 'backend/app/models/' \
-          'backend/app/modules/' 'backend/app/services/' 'backend/app/main.py' \
-          'backend/migrations/' 'backend/requirements.txt' \
-          'frontend/src/' 'deploy.sh' 'README.md' '.gitignore'
-  if git diff --cached --quiet; then
-    echo "  无变更，跳过提交"
-  else
-    # 提示输入 commit message
-    echo -n "  请输入 commit 信息（直接回车用自动信息）: "
-    read -r msg
-    if [ -z "$msg" ]; then
-      msg="deploy: $(date +%Y-%m-%d\ %H:%M)"
-    fi
-    git commit -m "$msg"
-    git push origin master || echo "  ⚠️  推送失败，请检查网络"
-  fi
-}
-
-do_remote_code_sync() {
-  section "2. 服务器拉取代码 + 构建前端"
-  remote "
-    cd $REMOTE_DIR
-    git reset --hard origin/master 2>/dev/null
-    git pull origin master
-    cd frontend && npm run build 2>&1 | tail -3
-  " || {
-    echo "  ❌ 远程同步/构建失败"
-    exit 1
-  }
-  echo "  ✔ 代码同步 + 前端构建完成"
-}
-
-do_stop_backend() {
-  section "3. 停服"
-  remote "sudo kill -9 \$(pgrep -f uvicorn) 2>/dev/null; echo '  ✔ 后端已停止'"
-}
-
-do_sync_databases() {
-  section "4. 同步数据库"
-
-  # 先强制 checkpoint 确保 WAL 合并
-  echo "  → 检查本地 SQLite WAL..."
-  checkpoint_db "$LOCAL_DATA/calligraphy.db" "calligraphy.db"
-  checkpoint_db "$LOCAL_DATA/knowledge.db" "knowledge.db"
-
-  # 验证数据库完整性
-  echo "  → 验证本地数据库..."
-  verify_featured_artists "$LOCAL_DATA/calligraphy.db"
-
-  # 删除远程旧库（含残留 -wal/-shm）
-  echo "  → 清理远程旧数据库..."
-  remote "rm -f $REMOTE_DATA/calligraphy.db $REMOTE_DATA/calligraphy.db-shm $REMOTE_DATA/calligraphy.db-wal $REMOTE_DATA/knowledge.db $REMOTE_DATA/knowledge.db-shm $REMOTE_DATA/knowledge.db-wal"
-
-  # 传输新库
-  echo "  → 传输 calligraphy.db..."
-  scp "$LOCAL_DATA/calligraphy.db" "$SSH_HOST:$REMOTE_DATA/calligraphy.db"
-
-  echo "  → 传输 knowledge.db..."
-  scp "$LOCAL_DATA/knowledge.db" "$SSH_HOST:$REMOTE_DATA/knowledge.db"
-
-  # 验证 MD5
-  echo "  → 验证传输一致性..."
-  local md5_local md5_remote
-  md5_local=$(python3 -c "import hashlib; print(hashlib.md5(open('$LOCAL_DATA/calligraphy.db','rb').read()).hexdigest())")
-  md5_remote=$(remote "md5sum $REMOTE_DATA/calligraphy.db" | awk '{print $1}')
-  if [ "$md5_local" = "$md5_remote" ]; then
-    echo "  ✔ calligraphy.db MD5 一致"
-  else
-    echo "  ❌ calligraphy.db MD5 不一致！($md5_local vs $md5_remote)"
-    exit 1
-  fi
-}
-
-do_sync_files() {
-  section "5. 同步静态文件目录"
-
-  local dirs=(
-    "seals/*.jpeg:seals/"
-    "seals/thumbs/*.jpg:seals/thumbs/"
-    "uploads/avatar_*:uploads/"
-    "uploads/photo_*:uploads/"
-  )
-
-  for entry in "${dirs[@]}"; do
-    local pattern="${entry%%:*}"
-    local target="${entry##*:}"
-    local src="$LOCAL_DATA/$pattern"
-
-    # 检查是否有文件匹配
-    local count
-    count=$(ls -1 $src 2>/dev/null | wc -l)
-    if [ "$count" -gt 0 ]; then
-      echo "  → 同步 $target ($count 文件)..."
-      remote "mkdir -p $REMOTE_DATA/$target"
-      # 用 find + glob 传文件，用 -q 静默
-      scp -q $src "$SSH_HOST:$REMOTE_DATA/$target" 2>/dev/null
+" 2>/dev/null
+      scp -q "$WIKI_DATA/$db" "$SSH_HOST:$WIKI_REMOTE/backend/data/$db"
     fi
   done
-
-  # 同步后核对数量
-  echo ""
-  echo "  ── 文件数量核对 ──"
-  echo "  本地 印章:    $(ls -1 $LOCAL_DATA/seals/*.jpeg 2>/dev/null | wc -l) jpeg"
-  echo "  远程 印章:    $(remote \"ls $REMOTE_DATA/seals/*.jpeg 2>/dev/null | wc -l\") jpeg"
-  echo "  本地 头像:    $(ls -1 $LOCAL_DATA/uploads/avatar_* 2>/dev/null | wc -l)"
-  echo "  远程 头像:    $(remote \"ls $REMOTE_DATA/uploads/avatar_* 2>/dev/null | wc -l\")"
+  echo "  done"
 }
 
-do_start_backend() {
-  section "6. 重启后端"
-  remote "
-    cd $REMOTE_DIR/backend
-    PYTHONPATH=$REMOTE_DIR/backend nohup /usr/local/bin/python3.12 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 > $REMOTE_DIR/backend/server.log 2>&1 &
-    disown
-  " && echo "  ✔ 后端已启动（等待就绪...）"
-}
-
-do_verify() {
-  section "7. 健康检查"
-
-  # 等待后端启动（最多等 30 秒）
-  local wait=0
+deploy_wiki() {
+  deploy_wiki_code
+  if [ "$MODE" = "--full" ]; then
+    deploy_wiki_db
+    deploy_wiki_data
+  fi
+  section "molin-wiki: 健康检查"
+  local wait=0 code=0
   while [ "$wait" -lt 30 ]; do
-    health_check 8001 && break
-    sleep 3
-    wait=$((wait + 3))
+    code=$(remote "curl -s -o /dev/null -w '%{http_code}' http://localhost:8001/api/v1/site-settings" 2>/dev/null || echo "000")
+    [ "$code" = "200" ] && break
+    sleep 2
+    wait=$((wait + 2))
   done
-
-  if [ "$wait" -ge 30 ]; then
-    echo "  ❌ 后端启动超时，请检查远程日志:"
-    echo "     ssh xcx \"tail -30 $REMOTE_DIR/backend/server.log\""
-    exit 1
-  fi
-
-  echo ""
-  echo "  ── API 验证 ──"
-  remote "curl -s http://localhost:8001/api/v1/artists?featured=1" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-artists = d.get('artists', [])
-print(f'  推荐艺术家: {len(artists)} 位')
-for a in artists:
-    print(f'    - {a[\"name\"]}')
-" 2>/dev/null || echo "  ⚠️  推荐艺术家 API 异常"
-
-  local seal_count
-  seal_count=$(remote "curl -s http://localhost:8001/api/v1/seals" | python3 -c "import sys,json; print(json.load(sys.stdin).get('total', '?'))" 2>/dev/null || echo "?")
-  echo "  印章总数: $seal_count"
+  echo "  HTTP $code"
 }
 
 # ============================================================
-# 主流程
+# zi2anki
 # ============================================================
 
-# 依赖检查
-check_dep git
-check_dep npm
-check_dep python3
-check_dep scp
+deploy_anki_code() {
+  section "zi2anki: 代码"
 
-MODE="${1:-auto}"
+  cd "$ANKI_LOCAL" || { echo "  ❌ $ANKI_LOCAL 不存在"; return 1; }
 
-case "$MODE" in
-  code)
-    # 仅代码部署
-    do_git_push
-    do_remote_code_sync
-    do_stop_backend
-    do_start_backend
-    do_verify
-    ;;
-  full)
-    # 强制全量部署
-    do_git_push
-    do_remote_code_sync
-    do_stop_backend
-    do_sync_databases
-    do_sync_files
-    do_start_backend
-    do_verify
-    ;;
-  auto|*)
-    # 自动模式：检测变更范围
-    section "🔍 自动检测部署范围"
+  # 1. 构建前端
+  echo "  → npm run build ..."
+  npm run build 2>&1 | tail -2
 
-    # 检查本地是否有未提交的 db 或文件变更
-    local db_changed=0
-    local file_changed=0
-    local code_changed=0
+  # 2. SCP dist + server + package.json
+  tar_sync "$ANKI_LOCAL/dist" "$ANKI_REMOTE/dist" "dist/"
+  tar_sync "$ANKI_LOCAL/server" "$ANKI_REMOTE/server" "server/"
+  scp -q "$ANKI_LOCAL/package.json" "$ANKI_LOCAL/package-lock.json" "$SSH_HOST:$ANKI_REMOTE/"
 
-    if git status --porcelain "$LOCAL_DATA/" 2>/dev/null | grep -q .; then
-      db_changed=1
-    fi
-    # 检查最近一次 commit 是否含 data/ 变更
-    if git diff --name-only HEAD~1..HEAD 2>/dev/null | grep -q "^backend/data/"; then
-      db_changed=1
-    fi
-    # 检查文件数量是否变化
-    local local_jpeg remote_jpeg
-    local_jpeg=$(ls -1 "$LOCAL_DATA/seals/"*.jpeg 2>/dev/null | wc -l)
-    remote_jpeg=$(remote "ls $REMOTE_DATA/seals/*.jpeg 2>/dev/null | wc -l" 2>/dev/null || echo "0")
-    if [ "$local_jpeg" -ne "$remote_jpeg" ] 2>/dev/null; then
-      file_changed=1
-    fi
-    local local_avatars remote_avatars
-    local_avatars=$(ls -1 "$LOCAL_DATA/uploads/avatar_"* 2>/dev/null | wc -l)
-    remote_avatars=$(remote "ls $REMOTE_DATA/uploads/avatar_* 2>/dev/null | wc -l" 2>/dev/null || echo "0")
-    if [ "$local_avatars" -ne "$remote_avatars" ] 2>/dev/null; then
-      file_changed=1
-    fi
+  # 3. 服务器侧 npm install（如果有新依赖）
+  remote "cd $ANKI_REMOTE && npm install --omit=dev 2>&1 | tail -1"
 
-    echo "  检测结果:"
-    echo "    代码变更: 是（默认含 git push）"
-    echo "    数据库变更: $([ "$db_changed" = 1 ] && echo '是' || echo '否')"
-    echo "    静态文件变更: $([ "$file_changed" = 1 ] && echo '是' || echo '否')"
+  # 4. 重启
+  echo "  → pm2 restart ..."
+  remote "pm2 restart zi2anki 2>&1 | tail -2"
+}
 
-    # 执行流程
-    do_git_push
-    do_remote_code_sync
-    do_stop_backend
-    [ "$db_changed" = 1 ] && do_sync_databases
-    [ "$file_changed" = 1 ] && do_sync_files
-    do_start_backend
-    do_verify
+deploy_anki_data() {
+  section "zi2anki: 数据文件"
+  cd "$ANKI_LOCAL" || return 1
 
-    echo ""
-    echo "================================================"
-    echo "  ✅ 部署完成"
-    echo "  https://124.223.17.29"
-    echo "================================================"
-    ;;
+  if [ -d "uploads" ]; then
+    local count=$(find uploads -type f 2>/dev/null | wc -l)
+    echo "  → uploads/ ($count 文件)"
+    tar_sync "$ANKI_LOCAL/uploads" "$ANKI_REMOTE/uploads" "uploads/"
+  fi
+}
+
+deploy_anki_full() {
+  section "zi2anki: 完整部署（含 node_modules）"
+  cd "$ANKI_LOCAL" || { echo "  ❌ $ANKI_LOCAL 不存在"; return 1; }
+
+  echo "  → npm install ..."
+  npm install 2>&1 | tail -2
+  echo "  → npm run build ..."
+  npm run build 2>&1 | tail -2
+
+  tar_sync "$ANKI_LOCAL" "$ANKI_REMOTE" "全部文件"
+  remote "cd $ANKI_REMOTE && pm2 restart zi2anki 2>&1 | tail -2"
+}
+
+deploy_anki() {
+  if [ "$MODE" = "--full" ]; then
+    deploy_anki_full
+  else
+    deploy_anki_code
+    deploy_anki_data
+  fi
+  section "zi2anki: 验证"
+  remote "curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/" \
+    | xargs -I{} echo "  HTTP {}"
+}
+
+# ============================================================
+# 主入口
+# ============================================================
+
+echo "========================================"
+echo "  deploy.sh — SCP only, no GitHub"
+echo "========================================"
+
+case "$TARGET" in
+  wiki)  deploy_wiki ;;
+  anki)  deploy_anki ;;
+  all|*) deploy_wiki; deploy_anki ;;
 esac
+
+echo ""
+echo "========================================"
+echo "  ✅ 部署完成"
+echo "  https://molin.wiki"
+echo "  https://zi2anki.molin.wiki"
+echo "========================================"

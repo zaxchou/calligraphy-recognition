@@ -5,13 +5,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
-type EmotionState = 'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'
+type EmotionState = 'sunny' | 'clear' | 'cloudy' | 'overcast' | 'rain' | 'storm' | 'snow'
 
 const props = withDefaults(defineProps<{
   emotion?: EmotionState
   enabled?: boolean
 }>(), {
-  emotion: 'sunny',
+  emotion: 'clear',
   enabled: true,
 })
 
@@ -41,29 +41,29 @@ class Particle {
     this.y = this.type === 'snow' ? -10 : Math.random() * (initial ? h : -h)
     switch (this.type) {
       case 'rain':
-        this.speed = 8 + Math.random() * 12
-        this.size = 1 + Math.random() * 1.5
-        this.opacity = 0.3 + Math.random() * 0.4
+        this.speed = 10 + Math.random() * 16
+        this.size = 1.5 + Math.random() * 2.5
+        this.opacity = 0.35 + Math.random() * 0.45
         if (initial) this.y = Math.random() * h
         break
       case 'snow':
         this.speed = 0.4 + Math.random() * 0.8
         this.size = 2 + Math.random() * 4
-        this.opacity = 0.3 + Math.random() * 0.5
+        this.opacity = 0.35 + Math.random() * 0.5
         this.wobble = Math.random() * Math.PI * 2
         break
       case 'sun':
         this.speed = 0.3 + Math.random() * 0.6
-        this.size = 1 + Math.random() * 3
-        this.opacity = 0.15 + Math.random() * 0.25
+        this.size = 1.5 + Math.random() * 4
+        this.opacity = 0.2 + Math.random() * 0.3
         this.y = h + 10
         if (initial) this.y = Math.random() * h
         this.wobble = Math.random() * Math.PI * 2
         break
       case 'storm':
-        this.speed = 12 + Math.random() * 18
-        this.size = 1.5 + Math.random() * 2.5
-        this.opacity = 0.5 + Math.random() * 0.4
+        this.speed = 16 + Math.random() * 24
+        this.size = 2 + Math.random() * 3.5
+        this.opacity = 0.55 + Math.random() * 0.4
         if (initial) this.y = Math.random() * h
         break
     }
@@ -131,8 +131,10 @@ class Particle {
 function emotionToParticleType(e: EmotionState): string {
   switch (e) {
     case 'sunny': return 'sun'
+    case 'clear': return 'sun'              // 晴间多云也用光点（少一点）
     case 'cloudy': return 'rain'
     case 'overcast': return 'rain'
+    case 'rain': return 'storm'             // 复用 storm 粒子（暴烈程度低一些）
     case 'storm': return 'storm'
     case 'snow': return 'snow'
     default: return 'sun'
@@ -140,16 +142,18 @@ function emotionToParticleType(e: EmotionState): string {
 }
 
 function emotionToCount(e: EmotionState): number {
-  return { sunny: 50, cloudy: 60, overcast: 70, storm: 120, snow: 55 }[e] || 50
+  return { sunny: 80, clear: 50, cloudy: 100, overcast: 130, rain: 180, storm: 240, snow: 80 }[e] || 60
 }
 
 function getSkyGradient(e: EmotionState) {
   switch (e) {
-    case 'sunny': return { top: 'rgba(255,245,220,0.18)', bot: 'rgba(250,240,220,0.0)' }
-    case 'cloudy': return { top: 'rgba(180,185,195,0.18)', bot: 'rgba(200,200,210,0.04)' }
-    case 'overcast': return { top: 'rgba(140,145,155,0.22)', bot: 'rgba(160,165,175,0.06)' }
-    case 'storm': return { top: 'rgba(60,65,75,0.32)', bot: 'rgba(80,85,95,0.12)' }
-    case 'snow': return { top: 'rgba(200,210,225,0.18)', bot: 'rgba(220,225,235,0.04)' }
+    case 'sunny': return { top: 'rgba(255,240,200,0.25)', bot: 'rgba(250,240,210,0.0)' }
+    case 'clear': return { top: 'transparent', bot: 'transparent' }  // 平和不叠加颜色
+    case 'cloudy': return { top: 'rgba(170,175,185,0.22)', bot: 'rgba(190,195,205,0.06)' }
+    case 'overcast': return { top: 'rgba(130,135,148,0.32)', bot: 'rgba(150,155,168,0.10)' }
+    case 'rain': return { top: 'rgba(90,95,110,0.40)', bot: 'rgba(110,115,128,0.18)' }
+    case 'storm': return { top: 'rgba(50,55,68,0.55)', bot: 'rgba(70,78,90,0.25)' }
+    case 'snow': return { top: 'rgba(180,195,215,0.32)', bot: 'rgba(200,210,225,0.08)' }
     default: return { top: 'transparent', bot: 'transparent' }
   }
 }
@@ -199,12 +203,13 @@ function animate() {
     p.draw(ctx)
   }
 
-  // 闪电（仅 storm）
+  // 闪电（仅 storm，频率提高 + 两次闪光）
   if (props.emotion === 'storm') {
     flashTimer--
-    if (flashTimer <= 0 && Math.random() < 0.02) flashTimer = 4
+    if (flashTimer <= 0 && Math.random() < 0.04) flashTimer = 6
     if (flashTimer > 0) {
-      ctx.fillStyle = `rgba(255,255,240,${flashTimer * 0.04})`
+      const alpha = flashTimer === 5 ? 0.12 : flashTimer === 4 ? 0.06 : flashTimer === 2 ? 0.04 : 0.02
+      ctx.fillStyle = `rgba(255,255,245,${alpha})`
       ctx.fillRect(0, 0, w, h)
     }
   }

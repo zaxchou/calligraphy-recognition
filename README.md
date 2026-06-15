@@ -122,14 +122,14 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 # Frontend (in another terminal)
 cd frontend
 npm install
-npm run dev -- --host 0.0.0.0 --port 3000
+npm run dev -- --host 0.0.0.0 --port 8080
 ```
 
 | Service | URL |
 |---------|-----|
 | FastAPI Backend | `http://localhost:8001` |
 | API Docs (Swagger) | `http://localhost:8001/docs` |
-| Frontend | `http://localhost:3000` |
+| Frontend | `http://localhost:8080` |
 | Redis | `localhost:6379` |
 
 ### Environment Variables / 环境变量
