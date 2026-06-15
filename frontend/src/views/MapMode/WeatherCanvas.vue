@@ -226,6 +226,10 @@ function stop() {
 
 onMounted(() => {
   if (!canvasRef.value) return
+  // 移动端跳过粒子系统（性能考虑）
+  if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+    return
+  }
   ctx = canvasRef.value.getContext('2d')
   resizeCanvas()
   if (props.enabled) start()
@@ -255,5 +259,8 @@ watch(() => props.enabled, (val) => { val ? start() : stop() })
   height: 100%;
   pointer-events: none;
   z-index: 2;
+}
+@media (max-width: 768px) {
+  .weather-canvas { display: none; }
 }
 </style>
