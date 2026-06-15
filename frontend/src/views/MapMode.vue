@@ -22,7 +22,7 @@
         <router-link :to="`/artist/${encodeURIComponent(artistName)}`" class="topbar-back">
           &larr;&nbsp;{{ artistName }}
         </router-link>
-        <span class="topbar-title">翰墨行旅</span>
+        <span class="topbar-title">{{ pageTitle }}</span>
       </div>
 
       <div class="map-main" :class="{ 'panel-open': activePanel }">
@@ -125,6 +125,7 @@
         >
           <span class="period-btn-dot" :style="{ background: period.color }"></span>
           <span class="period-btn-label">{{ period.label }}</span>
+          <span v-if="emotionTimeline.hasEmotionData" class="period-btn-emoji">{{ periodEmoji(period.id) }}</span>
           <span class="period-btn-year">{{ formatYearRange(period.yearRange) }}</span>
         </button>
         <button
@@ -173,7 +174,41 @@ const {
   fetchData,
   selectedPeriod,
   selectPeriod: _selectPeriod,
+  emotionTimeline,
 } = useMapData()
+
+const pageTitle = computed(() =>
+  emotionTimeline.value.hasEmotionData ? '行旅气象地图' : '翰墨行旅'
+)
+
+const EMOTION_EMOJI: Record<string, string> = {
+  sunny: '☀️',
+  cloudy: '⛅',
+  overcast: '☁️',
+  storm: '⛈️',
+  snow: '❄️',
+}
+
+function periodEmoji(periodId: string): string {
+  const ep = emotionTimeline.value.periods.find((p) => p.id === periodId)
+  if (!ep || ep.paintingCount === 0) return ''
+  return EMOTION_EMOJI[ep.emotion] || ''
+}
+
+const EMOTION_PATH_COLOR: Record<string, string> = {
+  sunny: '#c45a3c',
+  cloudy: '#a09080',
+  overcast: '#6a6070',
+  storm: '#4a3040',
+  snow: '#8a9ab0',
+}
+
+function emotionPathColor(periodId: string): string | null {
+  if (!emotionTimeline.value.hasEmotionData) return null
+  const ep = emotionTimeline.value.periods.find((p) => p.id === periodId)
+  if (!ep || ep.paintingCount === 0) return null
+  return EMOTION_PATH_COLOR[ep.emotion] || null
+}
 
 const totalYearRange = computed(() => {
   const start = artistBirthYear.value || ''
@@ -682,11 +717,12 @@ function buildSegments(
     if (tourEntryCount > 0 && i + 1 >= tourEntryCount) continue
 
     const opacity = tourEntryCount > 0 ? segmentOpacity(i, tourEntryCount) : 0.7
+    const lineColor = emotionPathColor(a.periodId) || a.periodColor
 
     const arc = computeArc(a.lng, a.lat, b.lng, b.lat, 48)
     segments.push({
       coords: arc,
-      lineStyle: { color: a.periodColor, width: 3, opacity },
+      lineStyle: { color: lineColor, width: 3, opacity },
       periodId: a.periodId,
       fromName: a.name,
       toName: b.name,
@@ -1254,6 +1290,11 @@ onUnmounted(() => {
   font-weight: 500;
 }
 .period-btn.active .period-btn-label { color: #2c2416; }
+.period-btn-emoji {
+  font-size: 0.85rem;
+  line-height: 1;
+  margin-left: 2px;
+}
 .period-btn-year {
   font-size: 0.68rem;
   color: #b8a990;
