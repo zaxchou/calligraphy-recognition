@@ -28,4 +28,7 @@ export const artistsApi = {
   getWorks(artistId, params) {
     return api.get(`/artists/${artistId}/works`, { params })
   },
+  getEmotionTimeline(name) {
+    return api.get(`/artists/${encodeURIComponent(name)}/emotion-timeline`)
+  },
 }

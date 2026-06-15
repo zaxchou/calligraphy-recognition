@@ -21,6 +21,28 @@ export interface Painting {
   thumbnail_url?: string
 }
 
+// ── 情绪气象 ──
+
+export type EmotionState = 'sunny' | 'cloudy' | 'overcast' | 'storm' | 'snow'
+
+export interface EmotionPeriod {
+  id: string
+  label: string
+  yearRange: [number, number]
+  color: string
+  emotion: EmotionState
+  temp: number
+  paintingCount: number
+  positivePct: number
+  negativePct: number
+  neutralPct: number
+}
+
+export interface EmotionTimeline {
+  periods: EmotionPeriod[]
+  hasEmotionData: boolean
+}
+
 const MIN_RADIUS = 0.08
 const MAX_RADIUS = 0.25
 
@@ -97,6 +119,69 @@ function mapTravelNotesToPeriods(travelNotes: any): PeriodConfig[] {
   }))
 }
 
+// ── 情绪聚合 → EmotionTimeline ──
+
+interface EmotionPoint {
+  year: number
+  polarity: string
+}
+
+function computeEmotionTimeline(
+  periods: PeriodConfig[],
+  emotionData: EmotionPoint[],
+): EmotionTimeline {
+  // 按 period 聚合情绪数据
+  const buckets: Record<string, { pos: number; neg: number; neu: number }> = {}
+  for (const p of periods) {
+    buckets[p.id] = { pos: 0, neg: 0, neu: 0 }
+  }
+
+  for (const pt of emotionData) {
+    if (!pt.year || !pt.polarity) continue
+    const period = periods.find(pp => pt.year >= pp.yearRange[0] && pt.year <= pp.yearRange[1])
+    if (!period) continue
+    const b = buckets[period.id]
+    if (pt.polarity === 'positive') b.pos++
+    else if (pt.polarity === 'negative') b.neg++
+    else b.neu++
+  }
+
+  const hasEmotionData = Object.values(buckets).some(b => b.pos + b.neg + b.neu > 0)
+
+  const emotionPeriods: EmotionPeriod[] = periods.map(p => {
+    const b = buckets[p.id]
+    const total = b.pos + b.neg + b.neu
+    const posPct = total ? (b.pos / total) * 100 : 0
+    const negPct = total ? (b.neg / total) * 100 : 0
+    const neuPct = total ? (b.neu / total) * 100 : 0
+    const temp = total ? ((b.pos - b.neg) / total) * 5 : 0
+
+    let emotion: EmotionState = 'sunny'
+    if (total === 0) emotion = 'sunny'
+    else if (posPct >= 60) emotion = 'sunny'
+    else if (posPct >= 40 && posPct > negPct) emotion = 'cloudy'
+    else if (negPct >= 60) emotion = 'storm'
+    else if (negPct >= 40) emotion = 'overcast'
+    else if (neuPct >= 60) emotion = 'snow'
+    else emotion = 'cloudy'
+
+    return {
+      id: p.id,
+      label: p.label,
+      yearRange: p.yearRange,
+      color: p.color,
+      emotion,
+      temp: Math.round(temp * 10) / 10,
+      paintingCount: total,
+      positivePct: Math.round(posPct),
+      negativePct: Math.round(negPct),
+      neutralPct: Math.round(neuPct),
+    }
+  })
+
+  return { periods: emotionPeriods, hasEmotionData }
+}
+
 export function useMapData() {
   const loading: Ref<boolean> = ref(true)
   const error: Ref<string | null> = ref(null)
@@ -108,6 +193,7 @@ export function useMapData() {
   const locationsWithPaintings: Ref<MapLocation[]> = ref([])
   const periods: Ref<PeriodConfig[]> = ref([])
   const selectedPeriod: Ref<string | null> = ref(null)
+  const emotionTimeline: Ref<EmotionTimeline> = ref({ periods: [], hasEmotionData: false })
 
   const maxCount = computed(() =>
     Math.max(...locationsWithPaintings.value.map((l) => l.paintingCount), 1)
@@ -199,6 +285,17 @@ export function useMapData() {
         loc.markerRadius = computeRadius(loc.paintingCount, max)
       }
       locationsWithPaintings.value = locs
+
+      // 获取情绪数据（异步，不影响主流程）
+      try {
+        const emoRes = await artistsApi.getEmotionTimeline(name)
+        if (emoRes?.paintings && emoRes.paintings.length > 0) {
+          emotionTimeline.value = computeEmotionTimeline(periods.value, emoRes.paintings)
+        }
+      } catch (_) {
+        // 情绪数据获取失败 → 降级为普通行旅地图
+        emotionTimeline.value = { periods: [], hasEmotionData: false }
+      }
     } catch (e: any) {
       error.value = e?.message || '数据加载失败'
       console.error('MapMode fetch error:', e)
@@ -232,5 +329,6 @@ export function useMapData() {
     selectPeriod,
     getPaintingsForLocation,
     fetchData,
+    emotionTimeline,
   }
 }

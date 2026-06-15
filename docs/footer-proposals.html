@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Footer 改版方案</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: #f6f3ef;
+    color: #2c2416;
+    padding: 40px 24px;
+  }
+  h1 { font-size: 20px; margin-bottom: 8px; font-weight: 600; }
+  .subtitle { color: #8a8578; font-size: 14px; margin-bottom: 32px; }
+  .proposal { margin-bottom: 60px; }
+  .proposal-header {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .proposal-label {
+    display: inline-block; padding: 2px 10px;
+    border-radius: 4px; font-size: 12px; font-weight: 600;
+  }
+  .label-a { background: #c45a3c; color: #fff; }
+  .label-b { background: #5a7a6a; color: #fff; }
+  .label-c { background: #7a6a5a; color: #fff; }
+  .proposal-desc { color: #6a6050; font-size: 13px; margin-bottom: 16px; }
+  .demo-frame {
+    border: 1px solid #e0dad0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .demo-content {
+    min-height: 120px;
+    padding: 40px 24px;
+    display: flex; align-items: center; justify-content: center;
+    color: #8a8578; font-size: 14px;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 28px, #f0ece6 28px, #f0ece6 30px
+    );
+  }
+
+  /* ========== 方案 A ========== */
+  .footer-a {
+    background: #f0ece6;
+    border-top: 1px solid #e0dad0;
+    padding: 24px 32px 20px;
+    text-align: center;
+  }
+  .footer-a .fa-row {
+    display: flex; justify-content: center; gap: 24px;
+    margin-bottom: 10px;
+  }
+  .footer-a .fa-row a {
+    color: #6a6050; text-decoration: none; font-size: 13px;
+    transition: color 0.15s;
+  }
+  .footer-a .fa-row a:hover { color: #c45a3c; }
+  .footer-a .fa-text {
+    font-size: 12px; color: #8a8578;
+    font-family: 'Noto Serif SC', serif;
+    letter-spacing: 0.1em;
+  }
+
+  /* ========== 方案 B ========== */
+  .footer-b {
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+    border-top: 1px solid #e0dad0;
+    background: #fff;
+  }
+  .footer-b .fb-left { display: flex; align-items: center; gap: 12px; }
+  .footer-b .fb-logo {
+    width: 20px; height: 20px; border-radius: 3px; opacity: 0.6;
+    background: #c45a3c;
+  }
+  .footer-b .fb-text { font-size: 12px; color: #8a8578; }
+  .footer-b .fb-right { display: flex; gap: 16px; }
+  .footer-b .fb-right a {
+    font-size: 12px; color: #8a8578; text-decoration: none;
+  }
+  .footer-b .fb-right a:hover { color: #c45a3c; }
+
+  /* ========== 方案 C ========== */
+  .footer-c {
+    padding: 16px 32px;
+    text-align: center;
+    background: #f6f3ef;
+    border-top: none;
+  }
+  .footer-c .fc-sep {
+    width: 40px; height: 1px;
+    background: #d0c8b8; margin: 0 auto 12px;
+  }
+  .footer-c .fc-text {
+    font-size: 11px; color: #a09888;
+    letter-spacing: 0.12em;
+    font-family: 'Noto Serif SC', serif;
+  }
+  .footer-c .fc-sub {
+    font-size: 11px; color: #b0a890; margin-top: 4px;
+  }
+  .footer-c .fc-sub a {
+    color: inherit; text-decoration: none;
+  }
+  .footer-c .fc-sub a:hover { color: #c45a3c; }
+</style>
+</head>
+<body>
+
+<h1>Footer 改版方案</h1>
+<p class="subtitle">当前问题：黑色背景突兀 + 占用面积大。以下方案均保持与现有设计语言（暖色调/衬线体/朱砂色点缀）一致。</p>
+
+<!-- 方案 A -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-label label-a">方案 A · 简约链接行</span>
+    <span style="font-size:13px;color:#8a8578;">推荐</span>
+  </div>
+  <p class="proposal-desc">去掉深色背景，改为浅暖色 + 上边框。内容精简为一行链接 + 一行备案信息。高度从当前 ~140px 减到 ~70px。</p>
+  <div class="demo-frame">
+    <div class="demo-content">…… 页面内容 ……</div>
+    <footer class="footer-a">
+      <div class="fa-row">
+        <a href="#">关于墨林</a>
+        <a href="#">GitHub</a>
+        <a href="#">API</a>
+        <a href="#">隐私</a>
+      </div>
+      <div class="fa-text">墨林百科 · 周豪 · 沪ICP备2026019654号-2</div>
+    </footer>
+  </div>
+</div>
+
+<!-- 方案 B -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-label label-b">方案 B · 底栏式（左文右链）</span>
+  </div>
+  <p class="proposal-desc">极简底栏：左侧 logo + 版权信息，右侧快捷链接。类似 Stripe/Linear 风格，高度仅 ~55px。</p>
+  <div class="demo-frame">
+    <div class="demo-content">…… 页面内容 ……</div>
+    <footer class="footer-b">
+      <div class="fb-left">
+        <div class="fb-logo"></div>
+        <span class="fb-text">墨林百科 © 2026</span>
+      </div>
+      <div class="fb-right">
+        <a href="#">GitHub</a>
+        <a href="#">沪ICP备2026019654号-2</a>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- 方案 C -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-label label-c">方案 C · 留白印章式</span>
+  </div>
+  <p class="proposal-desc">极简主义：无背景色、无边框（或极淡分隔线）。只有一行小字 + 印章 logo（保留现有 logo.png 但缩小）。融入页面底色，几乎不占视觉空间。</p>
+  <div class="demo-frame">
+    <div class="demo-content">…… 页面内容 ……</div>
+    <footer class="footer-c">
+      <div class="fc-sep"></div>
+      <div class="fc-text">墨林百科</div>
+      <div class="fc-sub"><a href="#">molin.wiki</a> · <a href="#">沪ICP备2026019654号-2</a></div>
+    </footer>
+  </div>
+</div>
+
+</body>
+</html>

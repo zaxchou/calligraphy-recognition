@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情绪气象站 · 李鱓创作生涯</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Serif SC', 'KaiTi', serif;
+    background: #f6f3ef;
+    color: #2c2416;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .stage {
+    width: 100vw; height: 100vh;
+    position: relative;
+    background: #faf8f5;
+    overflow: hidden;
+  }
+
+  /* ====== 仿古地图底纹 ====== */
+  .map-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 15% 25%, rgba(180,160,130,0.08) 1px, transparent 1px),
+      radial-gradient(circle at 55% 20%, rgba(180,160,130,0.06) 1px, transparent 1px),
+      radial-gradient(circle at 35% 55%, rgba(180,160,130,0.07) 1px, transparent 1px),
+      radial-gradient(circle at 72% 45%, rgba(180,160,130,0.05) 1px, transparent 1px),
+      radial-gradient(circle at 25% 68%, rgba(180,160,130,0.06) 1px, transparent 1px),
+      radial-gradient(circle at 80% 30%, rgba(180,160,130,0.04) 1px, transparent 1px),
+      linear-gradient(0deg, transparent 49px, rgba(180,160,130,0.15) 49px, rgba(180,160,130,0.15) 50px, transparent 50px),
+      linear-gradient(90deg, transparent 49px, rgba(180,160,130,0.15) 49px, rgba(180,160,130,0.15) 50px, transparent 50px);
+    background-size: 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 50px 50px, 50px 50px;
+  }
+
+  /* 地图淡色水渍纹理 */
+  .map-stain {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(180,160,120,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ====== 天气 Canvas ====== */
+  #weatherCanvas {
+    position: absolute; inset: 0;
+    z-index: 6; pointer-events: none;
+  }
+
+  /* ====== SVG 路径 ====== */
+  .route-svg { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+
+  /* ====== 地点标记 ====== */
+  .location-node {
+    position: absolute; z-index: 8;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+  }
+  .location-node .dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #c45a3c; border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #c45a3c, 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.4s;
+    margin: 0 auto;
+  }
+  .location-node .label {
+    text-align: center; font-size: 12px; color: #5a4e3e;
+    margin-top: 6px; white-space: nowrap;
+    font-weight: 600; letter-spacing: 0.05em;
+  }
+  .location-node .year-label {
+    text-align: center; font-size: 10px; color: #a09080;
+    margin-top: 2px; white-space: nowrap;
+  }
+
+  /* ====== 天气状态指示环 ====== */
+  .weather-ring {
+    position: absolute; z-index: 7;
+    border-radius: 50%; pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: all 0.8s ease;
+  }
+
+  /* ====== 当前天气信息卡片 ====== */
+  .weather-card {
+    position: absolute; top: 24px; right: 24px;
+    z-index: 20;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid #e0dad0;
+    border-radius: 14px;
+    padding: 18px 22px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    min-width: 200px;
+    transition: all 0.5s;
+  }
+  .weather-card .wc-icon {
+    font-size: 40px; line-height: 1;
+  }
+  .weather-card .wc-state {
+    font-size: 16px; font-weight: 700; color: #2c2416;
+    margin-top: 4px;
+  }
+  .weather-card .wc-year {
+    font-size: 13px; color: #a09080; margin-top: 2px;
+  }
+  .weather-card .wc-desc {
+    font-size: 12px; color: #8a7a5e; margin-top: 6px;
+    line-height: 1.5; max-width: 180px;
+  }
+  .weather-card .wc-temp {
+    font-size: 28px; font-weight: 700;
+    margin-top: 6px;
+  }
+  .wc-temp.hot { color: #c45a3c; }
+  .wc-temp.warm { color: #c48a3c; }
+  .wc-temp.cool { color: #5a7a8a; }
+  .wc-temp.cold { color: #6a7a8a; }
+
+  /* ====== 标题区 ====== */
+  .title-area {
+    position: absolute; top: 28px; left: 32px;
+    z-index: 20; pointer-events: none;
+  }
+  .title-area .main-title {
+    font-size: 26px; font-weight: 700;
+    color: #2c2416; letter-spacing: 0.12em;
+  }
+  .title-area .sub-title {
+    font-size: 13px; color: #a09080;
+    margin-top: 2px; letter-spacing: 0.08em;
+  }
+
+  /* ====== 底部时间线 ====== */
+  .timeline-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 130px;
+    background: linear-gradient(0deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
+    border-top: 1px solid #e8e3da;
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center;
+    padding: 0 40px;
+    gap: 0;
+    z-index: 20;
+    overflow-x: auto;
+  }
+  .tl-track {
+    display: flex; align-items: flex-end;
+    gap: 0; position: relative;
+    height: 100%; padding-top: 20px;
+  }
+  .tl-node {
+    flex-shrink: 0; width: 110px;
+    display: flex; flex-direction: column;
+    align-items: center; cursor: pointer;
+    position: relative; padding-bottom: 16px;
+    transition: all 0.3s;
+  }
+  .tl-node .tl-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #d0c8b8; border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+    z-index: 2;
+  }
+  .tl-node.active .tl-dot {
+    background: #c45a3c; border-color: #c45a3c;
+    box-shadow: 0 0 0 6px rgba(196,90,60,0.12);
+    transform: scale(1.3);
+  }
+  .tl-node .tl-connector {
+    position: absolute; top: 20px; left: 55px;
+    width: 112px; height: 2px; background: #e0dad0;
+    z-index: 1;
+  }
+  .tl-node:last-child .tl-connector { display: none; }
+  .tl-node .tl-year {
+    font-size: 13px; font-weight: 700; color: #a09080;
+    margin-top: 10px; transition: color 0.3s;
+  }
+  .tl-node.active .tl-year { color: #c45a3c; }
+  .tl-node .tl-event {
+    font-size: 11px; color: #b0a090; margin-top: 2px;
+    transition: color 0.3s; white-space: nowrap;
+  }
+  .tl-node.active .tl-event { color: #5a4e3e; }
+  .tl-node .tl-emoji {
+    font-size: 16px; margin-top: 4px;
+  }
+
+  /* ====== 控制按钮 ====== */
+  .controls {
+    position: absolute; bottom: 150px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 20; display: flex; gap: 12px;
+  }
+  .ctrl-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: 1px solid #d0c8b8;
+    background: rgba(255,255,255,0.85);
+    color: #5a4e3e; font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  .ctrl-btn:hover {
+    border-color: #c45a3c; color: #c45a3c;
+    box-shadow: 0 2px 12px rgba(196,90,60,0.12);
+  }
+  .ctrl-btn.play { width: 50px; height: 50px; font-size: 20px; }
+
+  /* ====== 图例 ====== */
+  .legend {
+    position: absolute; bottom: 150px; left: 32px;
+    z-index: 20; display: flex; gap: 14px;
+    font-size: 11px; color: #a09080;
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* ====== 响应式 ====== */
+  @media (max-width: 768px) {
+    .weather-card { top: 12px; right: 12px; padding: 12px 16px; }
+    .title-area { top: 16px; left: 16px; }
+    .title-area .main-title { font-size: 20px; }
+    .timeline-bar { padding: 0 16px; height: 110px; }
+    .tl-node { width: 80px; }
+    .tl-node .tl-connector { width: 82px; left: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <!-- 底图 -->
+  <div class="map-bg"></div>
+  <div class="map-stain" style="width:300px;height:200px;top:10%;left:50%"></div>
+  <div class="map-stain" style="width:250px;height:180px;top:45%;left:15%"></div>
+
+  <!-- 天气 Canvas -->
+  <canvas id="weatherCanvas"></canvas>
+
+  <!-- 路径 SVG -->
+  <svg class="route-svg" id="routeSvg"></svg>
+
+  <!-- 地点标记 -->
+  <div id="markersLayer"></div>
+  <!-- 天气环 -->
+  <div id="ringsLayer"></div>
+
+  <!-- 标题 -->
+  <div class="title-area">
+    <div class="main-title">情绪气象站</div>
+    <div class="sub-title">李鱓创作生涯的情感气候</div>
+  </div>
+
+  <!-- 天气卡片 -->
+  <div class="weather-card" id="weatherCard">
+    <div class="wc-icon" id="wcIcon">☀️</div>
+    <div class="wc-state" id="wcState">晴 · 新生</div>
+    <div class="wc-year" id="wcYear">1686 年</div>
+    <div class="wc-desc" id="wcDesc">出生于江苏兴化书香门第</div>
+    <div class="wc-temp warm" id="wcTemp">+2°</div>
+  </div>
+
+  <!-- 图例 -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#f0c040"></div> 晴 · 愉悦</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a0a8b0"></div> 多云 · 压抑</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6a7080"></div> 阴 · 失落</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4a5060"></div> 暴雨 · 悲愤</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c8d8e8"></div> 雪 · 宁静</div>
+  </div>
+
+  <!-- 控制 -->
+  <div class="controls">
+    <button class="ctrl-btn" onclick="resetJourney()" title="重播">↺</button>
+    <button class="ctrl-btn play" id="playBtn" onclick="togglePlay()" title="播放">▶</button>
+    <button class="ctrl-btn" onclick="skipTo(events.length-1)" title="快进">⏭</button>
+  </div>
+
+  <!-- 底部时间线 -->
+  <div class="timeline-bar">
+    <div class="tl-track" id="tlTrack"></div>
+  </div>
+</div>
+
+<script>
+// ====== 李鱓生平 · 情绪数据 ======
+// emotion: sunny / cloudy / overcast / storm / snow
+// temp: 情绪温度 -5(极寒) ~ +5(极热)
+const events = [
+  { year:1686, title:'出生',   detail:'江苏兴化',    x:64, y:50, emotion:'sunny',  temp:2,  desc:'出生于江苏兴化书香门第，\n家境殷实，幼承庭训' },
+  { year:1711, title:'中举',   detail:'康熙五十年',  x:66, y:46, emotion:'sunny',  temp:3,  desc:'中举人，人生进入上升期，\n对未来充满希望' },
+  { year:1713, title:'入宫',   detail:'内廷供奉',    x:52, y:28, emotion:'cloudy', temp:-1, desc:'以画技入宫供奉，\n宫廷规矩森严，创作受限' },
+  { year:1718, title:'离宫',   detail:'返归故里',    x:64, y:50, emotion:'overcast',temp:-2, desc:'离开宫廷，失意而归，\n画风开始转向写意' },
+  { year:1739, title:'外放',   detail:'滕县知县',    x:58, y:38, emotion:'sunny',  temp:2,  desc:'出任山东滕县知县，\n重新燃起济世之志' },
+  { year:1742, title:'罢官',   detail:'辞官返扬',    x:63, y:52, emotion:'storm',  temp:-4, desc:'因得罪上司被罢官，\n满腔悲愤，画风剧变' },
+  { year:1743, title:'扬州',   detail:'扬州八怪',    x:63, y:52, emotion:'cloudy', temp:0,  desc:'定居扬州卖画为生，\n渐趋平和但仍有不平' },
+  { year:1755, title:'逝世',   detail:'年六十九',    x:63, y:52, emotion:'snow',   temp:-3, desc:'卒于扬州，年六十九，\n一生沉浮归于宁静' },
+];
+
+const totalDuration = 14000;
+let currentIdx = 0;
+let isPlaying = false;
+let animTimer = null;
+let progressTimer = null;
+let startTime = 0;
+
+// ====== Canvas 天气引擎 ======
+const canvas = document.getElementById('weatherCanvas');
+const ctx = canvas.getContext('2d');
+let weatherState = 'sunny';
+let particles = [];
+let animFrame;
+
+function resizeCanvas() {
+  const stage = document.getElementById('stage');
+  canvas.width = stage.clientWidth;
+  canvas.height = stage.clientHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', () => { resizeCanvas(); drawRoute(); });
+
+// 粒子类
+class Particle {
+  constructor(type) { this.reset(type); }
+  reset(type) {
+    this.type = type;
+    this.x = Math.random() * canvas.width;
+    this.y = type === 'snow' ? -10 : Math.random() * -canvas.height;
+    this.speed = 0; this.wobble = 0; this.opacity = 0; this.size = 0;
+    switch (type) {
+      case 'rain':
+        this.speed = 8 + Math.random() * 12;
+        this.size = 1 + Math.random() * 1.5;
+        this.opacity = 0.3 + Math.random() * 0.4;
+        this.y = Math.random() * canvas.height;
+        break;
+      case 'snow':
+        this.speed = 0.4 + Math.random() * 0.8;
+        this.size = 2 + Math.random() * 4;
+        this.opacity = 0.3 + Math.random() * 0.5;
+        this.wobble = Math.random() * Math.PI * 2;
+        break;
+      case 'sun':
+        this.speed = 0.3 + Math.random() * 0.6;
+        this.size = 1 + Math.random() * 3;
+        this.opacity = 0.15 + Math.random() * 0.25;
+        this.y = canvas.height + 10;
+        break;
+      case 'storm':
+        this.speed = 12 + Math.random() * 18;
+        this.size = 1.5 + Math.random() * 2.5;
+        this.opacity = 0.5 + Math.random() * 0.4;
+        this.y = Math.random() * canvas.height;
+        break;
+    }
+  }
+  update() {
+    switch (this.type) {
+      case 'rain': case 'storm':
+        this.y += this.speed;
+        this.x -= this.speed * 0.2;
+        if (this.y > canvas.height) this.reset(this.type);
+        break;
+      case 'snow':
+        this.y += this.speed;
+        this.wobble += 0.02;
+        this.x += Math.sin(this.wobble) * 0.5;
+        if (this.y > canvas.height + 10) this.reset(this.type);
+        break;
+      case 'sun':
+        this.y -= this.speed;
+        this.x += Math.sin(this.wobble) * 0.3;
+        this.wobble += 0.03;
+        if (this.y < -10) this.reset(this.type);
+        break;
+    }
+  }
+  draw(ctx) {
+    ctx.save();
+    switch (this.type) {
+      case 'rain':
+        ctx.strokeStyle = `rgba(120,150,180,${this.opacity})`;
+        ctx.lineWidth = this.size * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + 2, this.y + this.size * 5);
+        ctx.stroke();
+        break;
+      case 'snow':
+        ctx.fillStyle = `rgba(200,215,230,${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'sun':
+        ctx.fillStyle = `rgba(240,200,80,${this.opacity})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'storm':
+        ctx.strokeStyle = `rgba(180,190,200,${this.opacity})`;
+        ctx.lineWidth = this.size * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x + 6, this.y + this.size * 6);
+        ctx.stroke();
+        break;
+    }
+    ctx.restore();
+  }
+}
+
+function setWeather(emotion) {
+  weatherState = emotion;
+  const counts = { sunny: 50, cloudy: 60, overcast: 70, storm: 120, snow: 55 };
+  particles = [];
+  for (let i = 0; i < (counts[emotion] || 50); i++) {
+    const p = new Particle(emotion === 'storm' ? 'storm' : emotion === 'snow' ? 'snow' : emotion === 'sunny' ? 'sun' : 'rain');
+    if (emotion === 'cloudy' || emotion === 'overcast') p.type = 'rain';
+    particles.push(p);
+  }
+}
+
+// 情绪 → 天空渐变
+function getSkyGradient(emotion) {
+  switch (emotion) {
+    case 'sunny':  return { top:'rgba(255,245,220,0.3)', bot:'rgba(250,240,220,0.0)' };
+    case 'cloudy': return { top:'rgba(180,185,195,0.25)', bot:'rgba(200,200,210,0.05)' };
+    case 'overcast':return { top:'rgba(140,145,155,0.35)', bot:'rgba(160,165,175,0.1)' };
+    case 'storm':  return { top:'rgba(60,65,75,0.55)', bot:'rgba(80,85,95,0.2)' };
+    case 'snow':   return { top:'rgba(200,210,225,0.25)', bot:'rgba(220,225,235,0.05)' };
+    default: return { top:'transparent', bot:'transparent' };
+  }
+}
+
+function drawSky() {
+  const g = getSkyGradient(weatherState);
+  if (g.top === 'transparent') return;
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
+  grad.addColorStop(0, g.top);
+  grad.addColorStop(1, g.bot);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// 闪电
+let flashTimer = 0;
+function drawLightning() {
+  if (weatherState !== 'storm') return;
+  flashTimer--;
+  if (flashTimer <= 0 && Math.random() < 0.02) flashTimer = 4;
+  if (flashTimer > 0) {
+    ctx.fillStyle = `rgba(255,255,240,${flashTimer * 0.06})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawSky();
+  particles.forEach(p => { p.update(); p.draw(ctx); });
+  drawLightning();
+  animFrame = requestAnimationFrame(animate);
+}
+
+// ====== 初始化 ======
+function init() {
+  renderMarkers();
+  renderTimeline();
+  drawRoute();
+  setWeather('sunny');
+  if (!animFrame) animate();
+}
+
+// ====== 地图标记 ======
+function renderMarkers() {
+  const layer = document.getElementById('markersLayer');
+  layer.innerHTML = events.map((e, i) => `
+    <div class="location-node" id="node-${i}"
+      style="left:${e.x}%;top:${e.y}%"
+      onclick="skipTo(${i})">
+      <div class="dot"></div>
+      <div class="label">${e.title}</div>
+      <div class="year-label">${e.year}</div>
+    </div>
+  `).join('');
+}
+
+// ====== 路径 ======
+function drawRoute() {
+  const svg = document.getElementById('routeSvg');
+  const stage = document.getElementById('stage');
+  const w = stage.clientWidth, h = stage.clientHeight;
+  let d = '';
+  events.forEach((e, i) => {
+    const px = (e.x/100)*w, py = (e.y/100)*h;
+    if (i===0) d += `M${px},${py}`; else d += ` L${px},${py}`;
+  });
+  svg.innerHTML = `<path d="${d}" fill="none" stroke="#d0c8b0" stroke-width="2" stroke-dasharray="8 5" opacity="0.6" />`;
+}
+
+// ====== 天气环 ======
+function updateRings(idx) {
+  const layer = document.getElementById('ringsLayer');
+  const stage = document.getElementById('stage');
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const e = events[idx];
+  const cx = (e.x/100)*w, cy = (e.y/100)*h;
+
+  const colors = {
+    sunny:  'rgba(240,192,64,0.25)',
+    cloudy: 'rgba(160,170,180,0.3)',
+    overcast:'rgba(120,130,145,0.35)',
+    storm:  'rgba(80,85,100,0.5)',
+    snow:   'rgba(200,215,235,0.3)',
+  };
+  const size = e.emotion === 'storm' ? 200 : e.emotion === 'overcast' ? 160 : 140;
+
+  layer.innerHTML = `
+    <div class="weather-ring" style="
+      left:${cx}px;top:${cy}px;
+      width:${size}px;height:${size}px;
+      background:radial-gradient(circle, ${colors[e.emotion]} 0%, transparent 70%);
+      animation: ring-pulse 3s ease-in-out infinite;
+    "></div>
+  `;
+
+  // 给当前节点高亮
+  document.querySelectorAll('.location-node .dot').forEach((d, i) => {
+    if (i === idx) {
+      d.style.background = e.emotion === 'storm' ? '#4a3040' :
+                           e.emotion === 'snow' ? '#8a9ab0' :
+                           e.emotion === 'overcast' ? '#6a6070' :
+                           e.emotion === 'cloudy' ? '#8a8070' : '#c45a3c';
+      d.style.borderColor = e.emotion === 'storm' ? '#806070' :
+                            e.emotion === 'snow' ? '#b0c0d8' : '#fff';
+      d.style.boxShadow = `0 0 0 2px ${d.style.background}, 0 2px 12px rgba(0,0,0,0.2)`;
+      d.style.transform = 'scale(1.4)';
+    } else {
+      d.style.background = '#c45a3c';
+      d.style.borderColor = '#fff';
+      d.style.boxShadow = '0 0 0 2px #c45a3c, 0 2px 8px rgba(0,0,0,0.15)';
+      d.style.transform = 'scale(1)';
+    }
+  });
+}
+
+// ====== 天气卡片 ======
+function updateCard(idx) {
+  const e = events[idx];
+  const icons  = { sunny:'☀️', cloudy:'⛅', overcast:'☁️', storm:'⛈️', snow:'❄️' };
+  const states = { sunny:'晴 · 愉悦', cloudy:'多云 · 压抑', overcast:'阴 · 失落', storm:'暴雨 · 悲愤', snow:'雪 · 宁静' };
+  const tempClass = e.temp >= 2 ? 'hot' : e.temp >= 0 ? 'warm' : e.temp >= -2 ? 'cool' : 'cold';
+
+  document.getElementById('wcIcon').textContent = icons[e.emotion];
+  document.getElementById('wcState').textContent = states[e.emotion];
+  document.getElementById('wcYear').textContent = e.year + ' 年';
+  document.getElementById('wcDesc').textContent = e.desc;
+  const tempEl = document.getElementById('wcTemp');
+  tempEl.textContent = (e.temp >= 0 ? '+' : '') + e.temp + '°';
+  tempEl.className = 'wc-temp ' + tempClass;
+}
+
+// ====== 更新全部状态 ======
+function updateState(idx) {
+  currentIdx = idx;
+  const e = events[idx];
+  setWeather(e.emotion);
+  updateRings(idx);
+  updateCard(idx);
+
+  // 时间线
+  document.querySelectorAll('.tl-node').forEach((n, i) => n.classList.toggle('active', i === idx));
+  const activeCard = document.getElementById('tl-' + idx);
+  if (activeCard) activeCard.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+}
+
+// ====== 时间线 ======
+function renderTimeline() {
+  const track = document.getElementById('tlTrack');
+  const icons = { sunny:'☀️', cloudy:'⛅', overcast:'☁️', storm:'⛈️', snow:'❄️' };
+  track.innerHTML = events.map((e, i) => `
+    <div class="tl-node" id="tl-${i}" onclick="skipTo(${i})">
+      <div class="tl-dot"></div>
+      <div class="tl-connector"></div>
+      <div class="tl-year">${e.year}</div>
+      <div class="tl-event">${e.title}${e.detail ? ' · '+e.detail : ''}</div>
+      <div class="tl-emoji">${icons[e.emotion]}</div>
+    </div>
+  `).join('');
+  document.getElementById('tl-0').classList.add('active');
+}
+
+// ====== 播放 ======
+function togglePlay() {
+  isPlaying ? pausePlay() : startPlay();
+}
+
+function startPlay() {
+  isPlaying = true;
+  document.getElementById('playBtn').textContent = '⏸';
+  currentIdx = 0;
+  updateState(0);
+  startTime = Date.now();
+  scheduleNext(0);
+}
+
+function pausePlay() {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+  if (animTimer) clearTimeout(animTimer);
+}
+
+function scheduleNext(idx) {
+  if (idx >= events.length) { pausePlay(); document.getElementById('playBtn').textContent = '▶'; return; }
+  updateState(idx);
+  const perEvent = totalDuration / events.length;
+  animTimer = setTimeout(() => scheduleNext(idx + 1), perEvent);
+}
+
+function skipTo(idx) {
+  pausePlay();
+  updateState(idx);
+}
+
+function resetJourney() {
+  pausePlay();
+  currentIdx = 0;
+  updateState(0);
+}
+
+// ====== CSS 动画注入 ======
+const ringPulseStyle = document.createElement('style');
+ringPulseStyle.textContent = `
+  @keyframes ring-pulse {
+    0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 0.7; }
+    50% { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
+  }
+`;
+document.head.appendChild(ringPulseStyle);
+
+init();
+</script>
+</body>
+</html>

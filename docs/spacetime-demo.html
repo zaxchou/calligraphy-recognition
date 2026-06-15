@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时空画卷 · 李鱓一生</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Serif SC', 'KaiTi', serif;
+    background: #1a1612;
+    color: #d4c8b0;
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+
+  /* ====== 主容器 ====== */
+  .stage {
+    width: 100vw; height: 100vh;
+    position: relative;
+    background: radial-gradient(ellipse at 50% 50%, #2a2418 0%, #141210 100%);
+  }
+
+  /* ====== 仿古地图底 ====== */
+  .map-bg {
+    position: absolute; inset: 0;
+    opacity: 0.15;
+    background-image:
+      radial-gradient(circle at 20% 30%, #8a7a5e 1px, transparent 1px),
+      radial-gradient(circle at 60% 20%, #8a7a5e 1px, transparent 1px),
+      radial-gradient(circle at 40% 60%, #8a7a5e 1px, transparent 1px),
+      radial-gradient(circle at 70% 50%, #8a7a5e 1px, transparent 1px),
+      radial-gradient(circle at 30% 70%, #8a7a5e 1px, transparent 1px),
+      radial-gradient(circle at 80% 35%, #8a7a5e 1px, transparent 1px),
+      linear-gradient(0deg, transparent 49px, #5a4e3a 49px, #5a4e3a 50px, transparent 50px),
+      linear-gradient(90deg, transparent 49px, #5a4e3a 49px, #5a4e3a 50px, transparent 50px);
+    background-size: 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 200px 200px, 50px 50px, 50px 50px;
+  }
+
+  /* ====== 地点标记 ====== */
+  .location-marker {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #c4a45a;
+    border: 2px solid #f0d890;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    z-index: 5;
+  }
+  .location-marker:hover { transform: translate(-50%, -50%) scale(1.5); }
+  .location-marker.past {
+    background: #8a6a3a;
+    border-color: #c4a45a;
+    box-shadow: 0 0 8px rgba(196,164,90,0.4);
+  }
+  .location-marker.active {
+    background: #f0d890;
+    border-color: #fff;
+    box-shadow: 0 0 20px rgba(240,216,144,0.8);
+    animation: pulse-marker 2s ease-in-out infinite;
+  }
+  @keyframes pulse-marker {
+    0%, 100% { box-shadow: 0 0 12px rgba(240,216,144,0.6); }
+    50% { box-shadow: 0 0 28px rgba(240,216,144,1); }
+  }
+
+  .location-label {
+    position: absolute;
+    font-size: 11px;
+    color: #c4a45a;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .location-marker.past + .location-label,
+  .location-marker.active + .location-label { opacity: 1; }
+
+  /* ====== 路径线 ====== */
+  .route-svg { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .route-line {
+    fill: none;
+    stroke: #c4a45a;
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+    opacity: 0.3;
+  }
+  .route-line.animated {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: draw-line 4s ease-out forwards;
+  }
+  @keyframes draw-line {
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* ====== 涟漪容器 ====== */
+  .ripple-container {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .ripple-ring {
+    position: absolute;
+    border: 2px solid rgba(240,216,144,0.8);
+    border-radius: 50%;
+    animation: ripple-expand 2.5s ease-out forwards;
+  }
+  @keyframes ripple-expand {
+    0%   { width: 0; height: 0; opacity: 1; transform: translate(-50%, -50%); }
+    100% { width: 160px; height: 160px; opacity: 0; transform: translate(-50%, -50%); }
+  }
+
+  /* ====== 画作浮窗 ====== */
+  .painting-float {
+    position: absolute;
+    z-index: 15;
+    background: #2a2418;
+    border: 2px solid #c4a45a;
+    border-radius: 10px;
+    padding: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    animation: float-up 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .painting-float:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(196,164,90,0.3);
+  }
+  @keyframes float-up {
+    0%   { opacity: 0; transform: translateY(60px) scale(0.6); }
+    60%  { opacity: 1; transform: translateY(-8px) scale(1.02); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .painting-float img {
+    width: 140px; height: 100px;
+    object-fit: cover; border-radius: 6px;
+    display: block;
+  }
+  .painting-float .pf-title {
+    font-size: 11px; color: #d4c8b0;
+    margin-top: 6px; text-align: center;
+    max-width: 140px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* ====== 底部事件卡片 ====== */
+  .timeline-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 140px;
+    background: linear-gradient(0deg, rgba(20,18,16,0.95) 0%, rgba(20,18,16,0.7) 100%);
+    border-top: 1px solid #3a3222;
+    display: flex; align-items: center;
+    padding: 0 40px;
+    gap: 16px;
+    overflow-x: auto;
+    z-index: 20;
+  }
+  .event-card {
+    flex-shrink: 0;
+    width: 180px; height: 100px;
+    background: #1e1a14;
+    border: 1px solid #3a3222;
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .event-card:hover {
+    border-color: #c4a45a;
+    background: #262016;
+    transform: translateY(-4px);
+  }
+  .event-card.active {
+    border-color: #f0d890;
+    background: #2a2418;
+    box-shadow: 0 0 20px rgba(240,216,144,0.15);
+  }
+  .event-card .ec-year {
+    font-size: 22px; font-weight: 700;
+    color: #c4a45a; font-family: 'Noto Serif SC', serif;
+  }
+  .event-card.active .ec-year { color: #f0d890; }
+  .event-card .ec-title {
+    font-size: 13px; color: #8a7a5e;
+    margin-top: 4px;
+  }
+  .event-card .ec-detail {
+    font-size: 11px; color: #6a5a3e;
+    margin-top: 2px;
+  }
+
+  /* ====== 标题区 ====== */
+  .title-area {
+    position: absolute; top: 30px; left: 50px;
+    z-index: 20; pointer-events: none;
+  }
+  .title-area .main-title {
+    font-size: 28px; font-weight: 700;
+    color: #f0d890; letter-spacing: 0.15em;
+  }
+  .title-area .sub-title {
+    font-size: 13px; color: #8a7a5e;
+    margin-top: 4px; letter-spacing: 0.1em;
+  }
+
+  /* ====== 控制按钮 ====== */
+  .controls {
+    position: absolute; top: 30px; right: 40px;
+    z-index: 20; display: flex; gap: 10px;
+  }
+  .ctrl-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid #5a4e3a;
+    background: rgba(20,18,16,0.7);
+    color: #c4a45a; font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-family: 'Noto Serif SC', serif;
+  }
+  .ctrl-btn:hover {
+    border-color: #f0d890;
+    color: #f0d890;
+    background: rgba(40,36,24,0.9);
+  }
+  .ctrl-btn.play { width: 54px; height: 54px; font-size: 22px; }
+
+  /* ====== 进度条 ====== */
+  .progress-bar {
+    position: absolute; top: 0; left: 0; height: 3px;
+    background: linear-gradient(90deg, #c4a45a, #f0d890);
+    z-index: 25;
+    transition: width 0.1s linear;
+  }
+
+  /* ====== 年份大字 ====== */
+  .year-overlay {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px; font-weight: 700;
+    color: rgba(240,216,144,0.04);
+    z-index: 2; pointer-events: none;
+    font-family: 'Noto Serif SC', serif;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="map-bg"></div>
+
+  <!-- 年份水印 -->
+  <div class="year-overlay" id="yearOverlay">1711</div>
+
+  <!-- 标题 -->
+  <div class="title-area">
+    <div class="main-title">时空画卷</div>
+    <div class="sub-title">李鱓 · 从兴化到扬州的一生</div>
+  </div>
+
+  <!-- 控制 -->
+  <div class="controls">
+    <button class="ctrl-btn" onclick="resetJourney()" title="重播">↺</button>
+    <button class="ctrl-btn play" id="playBtn" onclick="togglePlay()" title="播放">▶</button>
+    <button class="ctrl-btn" onclick="skipTo(4)" title="快进">⏭</button>
+  </div>
+
+  <!-- 进度条 -->
+  <div class="progress-bar" id="progressBar" style="width:0%"></div>
+
+  <!-- SVG 路径 -->
+  <svg class="route-svg" id="routeSvg"></svg>
+
+  <!-- 地点标记动态生成 -->
+  <div id="markersLayer"></div>
+  <!-- 涟漪动态生成 -->
+  <div id="rippleLayer"></div>
+  <!-- 画作浮窗动态生成 -->
+  <div id="paintingsLayer"></div>
+
+  <!-- 底部时间线 -->
+  <div class="timeline-bar" id="timelineBar"></div>
+</div>
+
+<script>
+// ====== 李鱓生平数据 ======
+const events = [
+  { year: 1686, title: '出生', detail: '江苏兴化',     x: 68, y: 42, type: 'birth',  artworks: [] },
+  { year: 1711, title: '中举', detail: '康熙五十年',   x: 72, y: 45, type: 'event', artworks: [
+    { title: '花卉图册（局部）', color: '#c4a45a' }
+  ]},
+  { year: 1713, title: '入宫供奉', detail: '内廷画师', x: 55, y: 30, type: 'move', artworks: [
+    { title: '松石牡丹图', color: '#c47a4a' }
+  ]},
+  { year: 1718, title: '离开宫廷', detail: '返归故里', x: 68, y: 42, type: 'move', artworks: [] },
+  { year: 1739, title: '外放山东', detail: '滕县知县', x: 62, y: 35, type: 'move', artworks: [
+    { title: '墨竹图', color: '#6a8a4a' }
+  ]},
+  { year: 1742, title: '罢官南归', detail: '辞官返扬', x: 66, y: 48, type: 'move', artworks: [
+    { title: '芭蕉竹石图', color: '#8a6a4a' },
+    { title: '松鹰图', color: '#9a7a5a' }
+  ]},
+  { year: 1743, title: '扬州卖画', detail: '扬州八怪', x: 65, y: 50, type: 'settle', artworks: [
+    { title: '荷塘清趣图', color: '#5a8a6a' },
+    { title: '岁朝图', color: '#c44a4a' },
+    { title: '风雨归舟图', color: '#4a6a8a' }
+  ]},
+  { year: 1755, title: '卒于扬州', detail: '年六十九',  x: 65, y: 50, type: 'death', artworks: [] },
+];
+
+const totalDuration = 12000; // 总动画时长 ms
+let currentIdx = 0;
+let isPlaying = false;
+let animTimer = null;
+let progressTimer = null;
+let startTime = 0;
+let paintedPaths = 0;
+
+// ====== 初始化 ======
+function init() {
+  renderMarkers();
+  renderTimeline();
+  drawRoutePaths();
+}
+
+function renderMarkers() {
+  const layer = document.getElementById('markersLayer');
+  layer.innerHTML = events.map((e, i) => {
+    const cls = i === 0 ? 'active' : '';
+    return `<div class="location-marker ${cls}" id="marker-${i}"
+      style="left:${e.x}%;top:${e.y}%"></div>
+      <div class="location-label" style="left:${e.x}%;top:${e.y + 3}%">${e.title}</div>`;
+  }).join('');
+}
+
+function renderTimeline() {
+  const bar = document.getElementById('timelineBar');
+  bar.innerHTML = events.map((e, i) => `
+    <div class="event-card" id="card-${i}" onclick="skipTo(${i})">
+      <div class="ec-year">${e.year}</div>
+      <div class="ec-title">${e.title}</div>
+      <div class="ec-detail">${e.detail}</div>
+    </div>
+  `).join('');
+}
+
+// ====== 绘制路径 ======
+function drawRoutePaths() {
+  const svg = document.getElementById('routeSvg');
+  const stage = document.getElementById('stage');
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+
+  let d = '';
+  events.forEach((e, i) => {
+    const px = (e.x / 100) * w;
+    const py = (e.y / 100) * h;
+    if (i === 0) d += `M${px},${py}`;
+    else d += ` L${px},${py}`;
+  });
+
+  svg.innerHTML = `<path class="route-line" id="routePath" d="${d}" />`;
+}
+
+// ====== 触发涟漪 + 画作 ======
+function triggerRipple(idx) {
+  const e = events[idx];
+  const stage = document.getElementById('stage');
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  const cx = (e.x / 100) * w;
+  const cy = (e.y / 100) * h;
+
+  // 涟漪
+  const ripple = document.createElement('div');
+  ripple.className = 'ripple-container';
+  ripple.style.left = cx + 'px';
+  ripple.style.top = cy + 'px';
+  ripple.innerHTML = '<div class="ripple-ring"></div><div class="ripple-ring" style="animation-delay:0.3s"></div><div class="ripple-ring" style="animation-delay:0.6s"></div>';
+  document.getElementById('rippleLayer').appendChild(ripple);
+  setTimeout(() => ripple.remove(), 3000);
+
+  // 画作浮窗
+  if (e.artworks.length > 0) {
+    const pLayer = document.getElementById('paintingsLayer');
+    e.artworks.forEach((aw, ai) => {
+      const float = document.createElement('div');
+      float.className = 'painting-float';
+      float.style.left = (cx + 40 + ai * 160) + 'px';
+      float.style.top = (cy - 160) + 'px';
+      float.style.animationDelay = (0.3 + ai * 0.2) + 's';
+      float.innerHTML = `
+        <div style="width:140px;height:100px;background:${aw.color};border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.6);font-size:11px">${aw.title}</div>
+        <div class="pf-title">${aw.title}</div>
+      `;
+      pLayer.appendChild(float);
+    });
+  }
+}
+
+// ====== 更新状态 ======
+function updateState(idx) {
+  // 更新标记
+  document.querySelectorAll('.location-marker').forEach((m, i) => {
+    m.className = 'location-marker';
+    if (i < idx) m.classList.add('past');
+    if (i === idx) m.classList.add('active');
+  });
+
+  // 更新卡片
+  document.querySelectorAll('.event-card').forEach((c, i) => {
+    c.classList.toggle('active', i === idx);
+  });
+
+  // 更新年份水印
+  document.getElementById('yearOverlay').textContent = events[idx].year;
+
+  // 更新路径动画
+  if (idx > paintedPaths) {
+    paintedPaths = idx;
+    const path = document.getElementById('routePath');
+    if (path) {
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+      path.classList.add('animated');
+      path.style.strokeDashoffset = '0';
+      path.style.transition = 'stroke-dashoffset 1.5s ease-out';
+    }
+  }
+
+  // 滚动卡片到可见
+  const card = document.getElementById('card-' + idx);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+  // 涟漪
+  triggerRipple(idx);
+
+  currentIdx = idx;
+}
+
+// ====== 播放控制 ======
+function togglePlay() {
+  if (isPlaying) {
+    pausePlay();
+  } else {
+    startPlay();
+  }
+}
+
+function startPlay() {
+  isPlaying = true;
+  document.getElementById('playBtn').textContent = '⏸';
+  currentIdx = 0;
+  paintedPaths = 0;
+  document.getElementById('rippleLayer').innerHTML = '';
+  document.getElementById('paintingsLayer').innerHTML = '';
+  document.querySelectorAll('.location-marker').forEach(m => m.className = 'location-marker');
+  document.getElementById('markersLayer').querySelector('#marker-0').classList.add('active');
+  document.getElementById('yearOverlay').textContent = events[0].year;
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('routePath')?.classList.remove('animated');
+  document.getElementById('routePath')?.removeAttribute('style');
+
+  startTime = Date.now();
+  scheduleNext(0);
+  progressTimer = setInterval(updateProgress, 50);
+}
+
+function pausePlay() {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+  if (animTimer) clearTimeout(animTimer);
+  if (progressTimer) clearInterval(progressTimer);
+}
+
+function updateProgress() {
+  const elapsed = Date.now() - startTime;
+  const pct = Math.min(100, (elapsed / totalDuration) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function scheduleNext(idx) {
+  if (idx >= events.length) {
+    // 播完
+    isPlaying = false;
+    document.getElementById('playBtn').textContent = '▶';
+    clearInterval(progressTimer);
+    document.getElementById('progressBar').style.width = '100%';
+    return;
+  }
+
+  updateState(idx);
+
+  const perEvent = totalDuration / events.length;
+  animTimer = setTimeout(() => scheduleNext(idx + 1), perEvent);
+}
+
+function skipTo(idx) {
+  pausePlay();
+  currentIdx = idx;
+  paintedPaths = Math.min(paintedPaths, idx);
+  document.getElementById('rippleLayer').innerHTML = '';
+  document.getElementById('paintingsLayer').innerHTML = '';
+
+  // 重置标记
+  document.querySelectorAll('.location-marker').forEach((m, i) => {
+    m.className = 'location-marker';
+    if (i < idx) m.classList.add('past');
+    if (i === idx) m.classList.add('active');
+  });
+
+  updateState(idx);
+}
+
+function resetJourney() {
+  pausePlay();
+  document.getElementById('rippleLayer').innerHTML = '';
+  document.getElementById('paintingsLayer').innerHTML = '';
+  document.getElementById('progressBar').style.width = '0%';
+  currentIdx = 0;
+  paintedPaths = 0;
+  document.querySelectorAll('.location-marker').forEach(m => m.className = 'location-marker');
+  document.getElementById('marker-layer')?.querySelector('#marker-0')?.classList.add('active');
+  document.getElementById('yearOverlay').textContent = events[0].year;
+  document.getElementById('routePath')?.classList.remove('animated');
+  document.getElementById('routePath')?.removeAttribute('style');
+  updateState(0);
+}
+
+// 窗口大小变化重绘路径
+window.addEventListener('resize', () => {
+  drawRoutePaths();
+  if (paintedPaths > 0) {
+    const path = document.getElementById('routePath');
+    if (path) {
+      path.classList.add('animated');
+      path.style.strokeDashoffset = '0';
+    }
+  }
+});
+
+init();
+</script>
+
+</body>
+</html>

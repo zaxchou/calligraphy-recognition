@@ -1186,3 +1186,40 @@ def invalidate_stats_cache(artist_name: str):
             conn.close()
     except Exception:
         pass
+
+
+# ── 情绪时间线（行旅气象地图用）──
+
+@router.get("/{name}/emotion-timeline")
+async def get_emotion_timeline(name: str):
+    """
+    返回画家的画作情绪数据（按年聚合），供行旅气象地图使用。
+    每幅画返回 {year, polarity}，前端按 travel_notes 的时期范围自行聚合。
+    """
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(
+            """SELECT year, content_analysis FROM tubi_analyses
+               WHERE artist = ? AND year IS NOT NULL AND content_analysis IS NOT NULL
+               ORDER BY year""",
+            (name,)
+        ).fetchall()
+
+        paintings = []
+        for row in rows:
+            year = row["year"]
+            raw = row["content_analysis"]
+            if not raw:
+                continue
+            try:
+                ca = json.loads(raw)
+                polarity = ca.get("sentiment", {}).get("polarity")
+                if polarity:
+                    paintings.append({"year": int(year) if year else None, "polarity": polarity})
+            except Exception:
+                pass
+
+        has_data = len(paintings) > 0
+        return {"success": True, "artist_name": name, "paintings": paintings, "has_emotion_data": has_data}
+    finally:
+        conn.close()
