@@ -19,6 +19,9 @@
       <button class="dzi-btn" @click="toggleRotate" title="旋转">
         <el-icon><RefreshRight /></el-icon>
       </button>
+      <button class="dzi-btn" @click="download" title="下载原图">
+        <el-icon><Download /></el-icon>
+      </button>
     </div>
     <div ref="viewerRef" class="dzi-viewer" />
     <div v-if="!viewerReady" class="dzi-loading">加载中...</div>
@@ -28,7 +31,7 @@
 
 <script setup>
 import { ref, onBeforeUnmount, onMounted } from 'vue'
-import { ZoomIn, ZoomOut, Refresh, FullScreen, RefreshRight, Close } from '@element-plus/icons-vue'
+import { ZoomIn, ZoomOut, Refresh, FullScreen, RefreshRight, Close, Download } from '@element-plus/icons-vue'
 import { ensureOpenSeadragon } from '../../utils/openseadragon'
 
 const props = defineProps({
@@ -116,6 +119,28 @@ function toggleFullscreen() {
 function toggleRotate() {
   rotation = (rotation + 90) % 360
   viewer?.viewport?.setRotation(rotation)
+}
+
+async function download() {
+  const url = props.imageUrl || props.dziUrl
+  if (!url) return
+  try {
+    const resp = await fetch(url)
+    const blob = await resp.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    // Extract filename from URL
+    const parts = url.split('/')
+    const filename = parts[parts.length - 1] || 'image.jpg'
+    a.download = filename.includes('.') ? filename : filename + '.jpg'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } catch (e) {
+    console.error('[OSD] download failed:', e)
+  }
 }
 </script>
 

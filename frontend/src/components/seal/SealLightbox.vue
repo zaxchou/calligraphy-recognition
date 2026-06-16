@@ -7,6 +7,7 @@
         <button class="sl-btn" @click="zoomOut" title="缩小"><el-icon><ZoomOut /></el-icon></button>
         <button class="sl-btn" @click="resetZoom" title="重置"><el-icon><Refresh /></el-icon></button>
         <button class="sl-btn" @click="toggleRotate" title="旋转"><el-icon><RefreshRight /></el-icon></button>
+        <button class="sl-btn" @click="download" title="下载原图"><el-icon><Download /></el-icon></button>
       </div>
 
       <button v-if="images.length > 1" class="sl-arrow sl-left" @click.stop="prev" :disabled="index === 0">
@@ -39,7 +40,7 @@
 
 <script setup>
 import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from 'vue'
-import { ZoomIn, ZoomOut, Refresh, RefreshRight, Close } from '@element-plus/icons-vue'
+import { ZoomIn, ZoomOut, Refresh, RefreshRight, Close, Download } from '@element-plus/icons-vue'
 import { ensureOpenSeadragon } from '../../utils/openseadragon'
 
 const props = defineProps({
@@ -159,6 +160,27 @@ function resetZoom() {
 function toggleRotate() {
   rotation = (rotation + 90) % 360
   viewer?.viewport?.setRotation(rotation)
+}
+
+async function download() {
+  const url = currentImageUrl.value
+  if (!url) return
+  try {
+    const resp = await fetch(url)
+    const blob = await resp.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    const parts = url.split('/')
+    const filename = parts[parts.length - 1] || 'seal.jpg'
+    a.download = filename.includes('.') ? filename : filename + '.jpg'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } catch (e) {
+    console.error('[SealLightbox] download failed:', e)
+  }
 }
 
 function onKeydown(e) {
