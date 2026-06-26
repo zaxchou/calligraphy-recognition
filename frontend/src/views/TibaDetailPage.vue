@@ -172,6 +172,8 @@ function onEditSaved({ id, updates }) {
       inscriptionPercent: updates.inscriptionPercent,
       paintingPercent: updates.paintingPercent, blankPercent: updates.blankPercent,
     })
+    // 同步更新本地缓存，否则刷新后旧缓存会覆盖修改
+    detailCache.set(id, currentImage.value)
   }
 }
 
