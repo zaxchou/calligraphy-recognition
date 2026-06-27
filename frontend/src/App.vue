@@ -23,18 +23,20 @@
           </button>
           <template v-if="authStore.isLoggedIn">
             <NotificationBell />
-            <div class="user-menu-wrap" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
-              <span class="user-nickname user-dropdown-trigger">
-                <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" class="user-avatar-mini" />
-                <span v-else class="user-avatar-mini-placeholder">{{ authStore.nickname?.charAt(0) || '用' }}</span>
-                {{ authStore.nickname }} <span class="user-arrow" :class="{ open: userMenuOpen }">▾</span>
-              </span>
-              <div class="user-dropdown" v-show="userMenuOpen" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
-                <div class="user-dropdown-item" @click="go('/user/center')"><el-icon><User /></el-icon> 用户中心</div>
-                <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')"><el-icon><Setting /></el-icon> 管理后台</div>
-                <div class="user-dropdown-item" @click="go('/my/knowledge')"><el-icon><FolderOpened /></el-icon> 我的知识库</div>
-                <div class="user-dropdown-item" @click="go('/content-analysis?my=1')"><el-icon><DataAnalysis /></el-icon> 我的分析历史</div>
-                <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
+            <div class="user-morph-wrap">
+              <div class="t-morph user-morph" :data-open="morphOpen" @mouseenter="showUserMenu" @mouseleave="hideUserMenu">
+                <button class="t-morph-plus user-morph-trigger" :aria-expanded="morphOpen">
+                  <img v-if="authStore.avatarUrl" :src="authStore.avatarUrl" class="user-avatar-mini" />
+                  <span v-else class="user-avatar-mini-placeholder">{{ authStore.nickname?.charAt(0) || '用' }}</span>
+                  {{ authStore.nickname }} <span class="user-arrow">▾</span>
+                </button>
+                <div class="t-morph-menu">
+                  <div class="user-dropdown-item" @click="go('/user/center')"><el-icon><User /></el-icon> 用户中心</div>
+                  <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')"><el-icon><Setting /></el-icon> 管理后台</div>
+                  <div class="user-dropdown-item" @click="go('/my/knowledge')"><el-icon><FolderOpened /></el-icon> 我的知识库</div>
+                  <div class="user-dropdown-item" @click="go('/content-analysis?my=1')"><el-icon><DataAnalysis /></el-icon> 我的分析历史</div>
+                  <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
+                </div>
               </div>
             </div>
           </template>
@@ -50,13 +52,10 @@
     </header>
 
     <!-- 移动端菜单遮罩层 -->
-    <transition name="drawer-fade">
-      <div v-if="mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu"></div>
-    </transition>
+    <div v-show="mobileMenuOpen" class="mobile-overlay" :data-open="mobileMenuOpen ? 'true' : 'false'" @click="closeMobileMenu"></div>
 
     <!-- 移动端菜单抽屉 -->
-    <transition name="drawer-slide">
-      <div v-if="mobileMenuOpen" class="mobile-drawer">
+    <div v-show="mobileMenuOpen" class="mobile-drawer" :data-open="mobileMenuOpen ? 'true' : 'false'">
         <div class="drawer-header">
           <div class="drawer-logo">
             <img src="/logo.png" alt="墨" class="drawer-logo-img">
@@ -107,7 +106,6 @@
           </a>
         </nav>
       </div>
-    </transition>
 
     <!-- 宣纸背景纹理 -->
     <div class="grain-overlay"></div>
@@ -147,7 +145,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const { locale } = useI18n()
 const mobileMenuOpen = ref(false)
-const userMenuOpen = ref(false)
+const morphOpen = ref('false')
 
 const displayTitle = computed(() => locale.value === 'en' ? 'Molin' : siteConfig.title)
 const displaySubtitle = computed(() => locale.value === 'en' ? 'Chinese Painting & Calligraphy Intelligence' : siteConfig.subtitle)
@@ -156,9 +154,16 @@ function drawerNavigate(path) {
   mobileMenuOpen.value = false
   router.push(path)
 }
-let closeTimer = null
-function showUserMenu() { clearTimeout(closeTimer); userMenuOpen.value = true }
-function hideUserMenu() { closeTimer = setTimeout(() => { userMenuOpen.value = false }, 200) }
+let morphCloseTimer = null
+function showUserMenu() {
+  clearTimeout(morphCloseTimer)
+  morphOpen.value = 'true'
+}
+function hideUserMenu() {
+  morphCloseTimer = setTimeout(() => {
+    morphOpen.value = 'false'
+  }, 200)
+}
 
 // 启动时刷新用户信息，确保 role 与数据库同步
 onMounted(() => {
@@ -170,7 +175,7 @@ function closeMobileMenu() { mobileMenuOpen.value = false }
 function navigateAndClose() {
   mobileMenuOpen.value = false
 }
-function handleLogout() { authStore.logout(); router.push('/'); userMenuOpen.value = false }
+function handleLogout() { authStore.logout(); router.push('/'); morphOpen.value = 'false' }
 function handleTibaNav(e) {
   // 如果已经在题跋详情页，强制返回首页（Vue Router 不会自动触发）
   if (route.path.startsWith('/tiba/') && route.params.id) {
@@ -182,7 +187,7 @@ function toggleLang() {
   locale.value = locale.value === 'zh' ? 'en' : 'zh'
   localStorage.setItem('lang', locale.value)
 }
-function go(path) { router.push(path); userMenuOpen.value = false }
+function go(path) { router.push(path); morphOpen.value = 'false' }
 </script>
 
 <style>
@@ -359,8 +364,10 @@ h1, h2, h3, h4, h5, h6 {
 .main-header {
   background: var(--ivory);
   border-bottom: 1px solid var(--border-cream);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   backdrop-filter: blur(18px);
   background: rgba(250, 249, 245, 0.85);
@@ -479,6 +486,10 @@ h1, h2, h3, h4, h5, h6 {
 .main-content {
   flex: 1;
 }
+/* 当 fixed header 显示时补偿顶部空间 */
+.app:has(.main-header) .main-content {
+  padding-top: var(--header-height);
+}
 
 /* === 底部 — Claude 暗色区 === */
 /* === Footer 方案 A：简约链接行 === */
@@ -545,24 +556,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 
-.user-nickname {
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
-  color: var(--olive-gray);
-  font-weight: 500;
-}
-
-.user-dropdown-trigger {
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  user-select: none;
-}
-
 .user-avatar-mini {
   width: 24px;
   height: 24px;
@@ -586,49 +579,80 @@ h1, h2, h3, h4, h5, h6 {
   flex-shrink: 0;
 }
 
-.user-dropdown-trigger:hover {
-  color: var(--gold);
-  background: rgba(200, 164, 92, 0.06);
-}
-
-.user-arrow {
-  font-size: 10px;
-  transition: transform 0.2s;
-  display: inline-block;
-}
-.user-arrow.open {
-  transform: rotate(180deg);
-}
-
-/* 原生下拉菜单 */
-.user-menu-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.user-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0;
-  padding-top: 8px;
-  background: #fff;
-  border: 1px solid #e8e4d8;
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-  min-width: 180px;
-  z-index: 10001;
-  overflow: hidden;
-}
-/* 透明桥接区防止鼠标移动时菜单消失 */
-.user-dropdown::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 0;
-  right: 0;
-  height: 8px;
-}
+	.user-morph-wrap {
+	  position: relative;
+	  display: inline-flex;
+	}
+	.user-morph-trigger {
+	  position: static !important;
+	  display: inline-flex !important;
+	  align-items: center;
+	  gap: 6px;
+	  padding: 4px 8px;
+	  font-family: var(--font-sans);
+	  font-size: var(--text-caption);
+	  color: var(--olive-gray);
+	  font-weight: 500;
+	  user-select: none;
+	  width: auto !important;
+	  height: 40px !important;
+	  background: transparent !important;
+	  border-radius: var(--radius-md);
+	  transform: none !important;
+	  filter: none !important;
+	  inset: auto !important;
+	  transition: color 0.15s, background 0.15s;
+	}
+	.user-morph-trigger:hover {
+	  color: var(--gold);
+	  background: rgba(200, 164, 92, 0.06) !important;
+	}
+	.user-morph.t-morph,
+	.user-morph.t-morph[data-open="true"],
+	.user-morph.t-morph[data-open="false"] {
+	  width: auto;
+	  height: auto;
+	  border-radius: var(--radius-md);
+	  overflow: visible;
+	  transition: none;
+	}
+	.user-morph[data-open="true"] .user-morph-trigger,
+	.user-morph[data-open="true"] .t-morph-plus {
+	  opacity: 0.4;
+	  transform: none !important;
+	  filter: none !important;
+	  pointer-events: none;
+	}
+	.user-morph .t-morph-menu,
+	.user-morph[data-open="true"] .t-morph-menu,
+	.user-morph[data-open="false"] .t-morph-menu {
+	  position: absolute;
+	  top: 100%;
+	  right: 0;
+	  left: auto;
+	  bottom: auto;
+	  z-index: 300;
+	  min-width: 180px;
+	  padding: 4px 0;
+	  margin-top: 4px;
+	  background: #fff;
+	  border: 1px solid #e8e4d8;
+	  border-radius: var(--radius-md);
+	  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+	  transform-origin: top right;
+	  transition: opacity var(--duration-fast) var(--ease-smooth-out), transform var(--duration-fast) var(--ease-smooth-out);
+	}
+	.user-morph[data-open="false"] .t-morph-menu {
+	  opacity: 0;
+	  transform: translateY(-6px) scale(0.96);
+	  pointer-events: none;
+	}
+	.user-morph[data-open="true"] .t-morph-menu {
+	  opacity: 1;
+	  transform: none;
+	  filter: none;
+	  pointer-events: auto;
+	}
 
 .user-dropdown-item {
   padding: 10px 16px;
@@ -747,6 +771,13 @@ h1, h2, h3, h4, h5, h6 {
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
   z-index: 200;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-smooth-out);
+  pointer-events: none;
+}
+.mobile-overlay[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* === 移动端菜单抽屉 === */
@@ -763,6 +794,16 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform var(--duration-fast) var(--ease-smooth-out);
+}
+.mobile-drawer[data-open="true"] {
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-overlay,
+  .mobile-drawer { transition: none !important; }
 }
 
 .drawer-header {
@@ -884,25 +925,5 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--cinnabar);
 }
 
-/* === 过渡动画 === */
-.drawer-fade-enter-active,
-.drawer-fade-leave-active {
-  transition: opacity 0.25s ease;
-}
-
-.drawer-fade-enter-from,
-.drawer-fade-leave-to {
-  opacity: 0;
-}
-
-.drawer-slide-enter-active,
-.drawer-slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.drawer-slide-enter-from,
-.drawer-slide-leave-to {
-  transform: translateX(100%);
-}
 
 	</style>
