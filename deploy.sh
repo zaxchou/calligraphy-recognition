@@ -106,6 +106,8 @@ c.execute('PRAGMA wal_checkpoint(TRUNCATE)')
 c.close()
 " 2>/dev/null
       scp -q "$WIKI_DATA/$db" "$SSH_HOST:$WIKI_REMOTE/backend/data/$db"
+      # 清理服务器上的 WAL/SHM 残留（旧文件会导致 SQLite 误判或数据不一致）
+      ssh "$SSH_HOST" "rm -f $WIKI_REMOTE/backend/data/$db-wal $WIKI_REMOTE/backend/data/$db-shm" 2>/dev/null
     fi
   done
   echo "  done"
@@ -142,8 +144,15 @@ deploy_anki_code() {
   npm run build 2>&1 | tail -2
 
   # 2. SCP dist + server + package.json
+  #    注意：server/data/ 包含 SQLite 数据库文件，必须排除！
+  #    否则本地开发数据库会覆盖线上数据库，导致所有用户数据丢失
   tar_sync "$ANKI_LOCAL/dist" "$ANKI_REMOTE/dist" "dist/"
-  tar_sync "$ANKI_LOCAL/server" "$ANKI_REMOTE/server" "server/"
+  echo "  → server/（排除 data/）..."
+  ssh "$SSH_HOST" "mkdir -p $ANKI_REMOTE/server"
+  tar czf - -C "$ANKI_LOCAL/server" \
+    --exclude='node_modules' --exclude='.git' --exclude='__pycache__' --exclude='data' . \
+    | ssh "$SSH_HOST" "tar xzf - -C $ANKI_REMOTE/server" 2>/dev/null
+  echo "    done"
   scp -q "$ANKI_LOCAL/package.json" "$ANKI_LOCAL/package-lock.json" "$SSH_HOST:$ANKI_REMOTE/"
 
   # 3. 服务器侧 npm install（如果有新依赖）
@@ -165,6 +174,63 @@ deploy_anki_data() {
   fi
 }
 
+deploy_anki_db() {
+  section "zi2anki: 数据库（本地 → 线上）"
+
+  local dump="/tmp/zi2anki-pg-dump.sql"
+  local remote_dump="/tmp/zi2anki-pg-dump.sql"
+
+  # 1. 本地 PG dump（Windows 用 PGPASSWORD）
+  echo "  → pg_dump from local ..."
+  PGPASSWORD=zi2anki_pg_2026 \
+  "C:/Program Files/PostgreSQL/16/bin/pg_dump" \
+    -h localhost -U zi2anki --no-owner --no-acl \
+    --column-inserts --data-only \
+    zi2anki > "$dump" 2>&1
+  echo "    done ($(wc -c < "$dump") bytes)"
+
+  # 2. SCP 到服务器
+  echo "  → scp to server ..."
+  scp -q "$dump" "$SSH_HOST:$remote_dump"
+
+  # 3. 恢复
+  #    先清空线上数据（保留表结构），再导入
+  echo "  → restoring on production PG ..."
+  ssh "$SSH_HOST" \
+    "PGPASSWORD=zi2anki_pg_2026 psql -h localhost -U zi2anki -d zi2anki <<'SQL'
+$(cat <<'SQLEOF'
+-- 清空旧数据（保留表结构）
+TRUNCATE cards, daily_stats, decks, marketplace_decks, study_sessions,
+          user_card_progress, user_subscriptions, users RESTART IDENTITY CASCADE;
+SQLEOF
+)
+"
+  ssh "$SSH_HOST" "PGPASSWORD=zi2anki_pg_2026 psql -h localhost -U zi2anki -d zi2anki -f $remote_dump" 2>&1 | tail -3
+
+  # 4. 重新 align admin UUID（加载后 admin 的 UUID 与本地一致，不影响）
+  echo "  → fixing subscriptions ..."
+  ssh "$SSH_HOST" \
+    "PGPASSWORD=zi2anki_pg_2026 psql -h localhost -U zi2anki -d zi2anki <<'SQL'
+$(cat <<'SQLEOF'
+INSERT INTO user_subscriptions (user_id, deck_id, subscribed_at)
+SELECT u.id, d.id, NOW()
+FROM users u, decks d
+WHERE u.username='admin' AND d.user_id = u.id
+ON CONFLICT DO NOTHING;
+SQLEOF
+)
+"
+
+  # 5. 重启应用
+  echo "  → pm2 restart ..."
+  remote "pm2 restart zi2anki 2>&1 | tail -2"
+
+  # 6. 清理
+  rm -f "$dump"
+  ssh "$SSH_HOST" "rm -f $remote_dump"
+  echo "  ✅ 数据库同步完成"
+}
+
 deploy_anki_full() {
   section "zi2anki: 完整部署（含 node_modules）"
   cd "$ANKI_LOCAL" || { echo "  ❌ $ANKI_LOCAL 不存在"; return 1; }
@@ -181,6 +247,10 @@ deploy_anki_full() {
 deploy_anki() {
   if [ "$MODE" = "--full" ]; then
     deploy_anki_full
+  elif [ "$MODE" = "--sync" ]; then
+    deploy_anki_code
+    deploy_anki_data
+    deploy_anki_db
   else
     deploy_anki_code
     deploy_anki_data
