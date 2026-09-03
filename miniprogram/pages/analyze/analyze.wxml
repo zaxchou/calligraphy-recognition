@@ -1,0 +1,110 @@
+<view class="page">
+
+  <view class="hero" wx:if="{{state === 'idle'}}">
+    <view class="hero-icon">◌</view>
+    <text class="hero-title">潘天寿教你构图</text>
+    <text class="hero-desc">上传一幅中国画，AI 为您解析构图之中的起承转合与空间美学</text>
+    <view class="hero-actions">
+      <button class="btn-primary" bindtap="chooseImage">选择图片 / 拍照</button>
+      <view class="demo-link" wx:if="{{showDemoBtn}}" bindtap="loadDemo">
+        <text class="demo-link-text">→ 查看示例分析</text>
+      </view>
+      <view class="demo-link" wx:if="{{showDemoBtn}}" bindtap="loadHistoryItem">
+        <text class="demo-link-text">→ 从最近记录加载</text>
+      </view>
+    </view>
+  </view>
+
+  <block wx:if="{{state === 'preview'}}">
+    <view class="preview-header"><text class="preview-label">确认图片</text></view>
+    <image class="preview-img" src="{{imagePath}}" mode="widthFix" />
+    <view class="dual-btn">
+      <button class="btn-outline" bindtap="resetPage">重新选择</button>
+      <button class="btn-primary flex-1" bindtap="startAnalyze" loading="{{loading}}">{{loading ? '上传中...' : '开始分析'}}</button>
+    </view>
+  </block>
+
+  <block wx:if="{{state === 'analyzing'}}">
+    <image class="preview-img dim" src="{{imagePath}}" mode="widthFix" />
+    <view class="progress-section">
+      <text class="progress-label">分析中</text>
+      <view class="progress-track"><view class="progress-fill" style="width: {{progress}}%"></view></view>
+      <text class="progress-num">{{progress}}%</text>
+      <text class="progress-stage">{{stageText || '正在上传...'}}</text>
+      <text class="progress-eta" wx:if="{{etaSeconds}}">预计还需 {{etaSeconds}} 秒</text>
+    </view>
+  </block>
+
+  <block wx:if="{{state === 'done'}}">
+
+    <view class="score-card" wx:if="{{totalScore != null}}">
+      <view class="score-ring"><view class="score-ring-inner"><text class="score-num">{{totalScore}}</text><text class="score-unit">分</text></view></view>
+      <view class="score-meta"><text class="score-label">综合构图评分</text><text class="score-note">基于空间布局、疏密节奏、气韵生动等维度</text></view>
+    </view>
+
+    <view class="media-card" wx:if="{{hasRadar}}">
+      <view class="media-label">七维雷达图</view>
+      <canvas type="2d" id="radarCanvas" class="radar-canvas"></canvas>
+      <text class="media-note">各维度得分雷达分布</text>
+    </view>
+
+    <!-- qczh 加载中占位 -->
+    <view class="media-card qczh-loading-card" wx:if="{{qczhLoading}}">
+      <view class="media-label">起承转合 · 曲线分析</view>
+      <view class="qczh-loading-body">
+        <text class="qczh-loading-icon">⟳</text>
+        <text class="qczh-loading-text">正在分析中，请稍候...</text>
+        <text class="qczh-loading-hint">您可先阅读下方专家分析</text>
+      </view>
+    </view>
+
+    <!-- qczh 真实曲线图 -->
+    <view class="media-card" wx:if="{{hasQczh}}">
+      <view class="media-label">起承转合 · 曲线分析{{pathType ? '（' + pathType + '）' : ''}}</view>
+      <image class="qczh-result-img" src="{{qczhImage}}" mode="widthFix" />
+      <text class="media-note">AI 自动识别起承转合走势并绘制曲线</text>
+    </view>
+
+    <view class="media-card" wx:if="{{hasOverlay && imagePath && !hasQczh}}">
+      <view class="media-label">起承转合 · 覆层分析</view>
+      <view class="mock-overlay">
+        <image class="ov-bg-img" src="{{imagePath}}" mode="aspectFill" />
+        <view class="ov-dim-mask"></view>
+        <view class="ov-markers">
+          <view class="mock-ov-stage ov-qi"><view class="ov-tag ov-tag-qi">起</view><text class="ov-desc">左下方 · 浓墨起势</text></view>
+          <view class="ov-line ov-line-qc"><text class="ov-arrow">→</text></view>
+          <view class="mock-ov-stage ov-cheng"><view class="ov-tag ov-tag-cheng">承</view><text class="ov-desc">中部 · 顺势延展</text></view>
+          <view class="ov-line ov-line-cz"><text class="ov-arrow">↗</text></view>
+          <view class="mock-ov-stage ov-zhuan"><view class="ov-tag ov-tag-zhuan">转</view><text class="ov-desc">上部 · 虚笔转换</text></view>
+          <view class="ov-line ov-line-zh"><text class="ov-arrow">↘</text></view>
+          <view class="mock-ov-stage ov-he"><view class="ov-tag ov-tag-he">合</view><text class="ov-desc">左上 · 题字收束</text></view>
+        </view>
+      </view>
+      <text class="media-note">Mock 占位 — 后续接入后端 arrow_overlay PNG</text>
+    </view>
+
+    <view class="content-card">
+      <view class="content-header"><text class="content-title">专家分析</text><view class="content-ai-badge">AI</view></view>
+      <rich-text nodes="{{llmHtml}}" wx:if="{{llmHtml}}"></rich-text>
+      <view class="md-empty-state" wx:else><text>暂无分析文本</text></view>
+    </view>
+
+    <view class="footer-actions">
+      <button class="btn-outline flex-1" bindtap="resetPage">分析另一张</button>
+      <button class="btn-share flex-1" open-type="share">分享给朋友</button>
+    </view>
+    <view class="footer-actions">
+      <button class="btn-img-share" bindtap="generateShareImage">生成分享图片</button>
+    </view>
+    <view class="footer-meta"><text>分析由 AI 生成，仅供学习参考</text></view>
+  </block>
+
+  <view class="error-block" wx:if="{{state === 'error'}}">
+    <text class="error-icon">!</text>
+    <text class="error-msg">{{errorMsg || '分析失败，请重试'}}</text>
+    <button class="btn-outline" bindtap="resetPage">重试</button>
+  </view>
+
+  <canvas type="2d" id="shareCanvas" class="share-canvas" style="height: {{shareCanvasH}}rpx;"></canvas>
+
+</view>

@@ -1,0 +1,432 @@
+/* ================================================
+   Tubi Detail Page — 新中式轻奢 · 文人书卷气
+   ================================================ */
+
+/* --- List grid (unchanged) --- */
+.tubi-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 0 24rpx;
+}
+.tubi-card {
+  width: 48%;
+  background: #faf8f5;
+  border: 1rpx solid #d4c8b0;
+  border-radius: 16rpx;
+  overflow: hidden;
+  margin-bottom: 20rpx;
+}
+.tubi-card:active { opacity: 0.85; }
+.tubi-card-img {
+  width: 100%;
+  height: 340rpx;
+  background: #f0ebe0;
+}
+.tubi-card-info {
+  padding: 16rpx 20rpx;
+}
+.tubi-card-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #2c2416;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tubi-card-artist {
+  font-size: 24rpx;
+  color: #8b7d6b;
+  margin-top: 6rpx;
+}
+.tubi-card-meta {
+  font-size: 22rpx;
+  color: #a1967e;
+  margin-top: 4rpx;
+}
+
+/* --- Hero --- */
+.d-hero {
+  width: 100%;
+  background: #f0ebe0;
+}
+.d-hero-img {
+  width: 100%;
+  display: block;
+}
+
+/* --- Title Block --- */
+.d-title-block {
+  padding: 40rpx 32rpx 24rpx;
+  text-align: center;
+}
+.d-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1c1917;
+  letter-spacing: 3rpx;
+  line-height: 1.3;
+}
+.d-subtitle {
+  font-size: 28rpx;
+  color: #5b7a8c;
+  margin-top: 12rpx;
+}
+.d-sub-sep {
+  margin: 0 12rpx;
+  color: #d4c8b0;
+}
+.d-period-tag {
+  display: inline-block;
+  margin-top: 14rpx;
+  padding: 6rpx 20rpx;
+  font-size: 22rpx;
+  color: #8b7d6b;
+  background: #f5f0e8;
+  border-radius: 20rpx;
+  letter-spacing: 2rpx;
+}
+
+/* --- Regions Canvas --- */
+.d-regions-canvas {
+  width: 600rpx;
+  margin: 0 auto;
+  display: block;
+  border-radius: 10rpx;
+  overflow: hidden;
+}
+
+/* ===== Overview ===== */
+.t-overview {
+  margin: 16rpx 24rpx 8rpx;
+  padding: 32rpx 28rpx 24rpx;
+  background: #fdfaf3;
+  border: 1rpx solid #e0d8c8;
+  border-radius: 20rpx;
+}
+.t-ov-header {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #c9a96e;
+  letter-spacing: 4rpx;
+  text-align: center;
+  margin-bottom: 28rpx;
+}
+
+/* Stat numbers */
+.t-ov-stats {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+}
+.t-ov-stat {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx;
+  background: linear-gradient(180deg, #faf8f5, #f5f0e8);
+  border-radius: 12rpx;
+}
+.t-ov-num {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: #c9a96e;
+  line-height: 1.1;
+}
+.t-ov-lbl {
+  font-size: 22rpx;
+  color: #8b7d6b;
+  margin-top: 4rpx;
+}
+
+/* Sentiment bar */
+.t-ov-senti {
+  margin-bottom: 24rpx;
+}
+.t-ov-senti-bar {
+  display: flex;
+  height: 32rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+  background: #f0ebe0;
+}
+.t-ov-senti-seg { height: 100%; }
+.t-ov-senti-neg { background: #c04030; }
+.t-ov-senti-pos { background: #67c23a; }
+.t-ov-senti-neu { background: #8b7d6b; }
+.t-ov-senti-legend {
+  display: flex;
+  justify-content: center;
+  gap: 28rpx;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #8b7d6b;
+}
+.t-ov-leg-dot {
+  display: inline-block;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 4rpx;
+  margin-right: 6rpx;
+  vertical-align: middle;
+}
+
+/* Theme bars */
+.t-ov-themes {
+  margin-bottom: 24rpx;
+}
+.t-ov-theme {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 0;
+}
+.t-ov-theme-name {
+  width: 120rpx;
+  font-size: 24rpx;
+  color: #2c2416;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.t-ov-theme-bar-bg {
+  flex: 1;
+  height: 16rpx;
+  background: #f0ebe0;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+.t-ov-theme-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c9a96e, #c9a96ebb);
+  border-radius: 8rpx;
+}
+.t-ov-theme-pct {
+  width: 64rpx;
+  font-size: 22rpx;
+  color: #8b7d6b;
+  text-align: right;
+}
+
+/* Charts inside overview */
+.t-ov-chart-subtitle {
+  font-size: 22rpx;
+  color: #8b7d6b;
+  margin-bottom: 16rpx;
+  text-align: center;
+}
+.t-ov-chart {
+  width: 100%;
+  display: block;
+}
+
+/* Remove old inline theme bars (replaced by Canvas chart) */
+.t-ov-themes { display: none; }
+.t-ov-theme-label-s { display: none; }
+
+/* Period tags */
+.t-ov-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+.t-ov-period {
+  padding: 6rpx 16rpx;
+  font-size: 22rpx;
+  color: #5b7a8c;
+  background: rgba(91, 122, 140, 0.08);
+  border-radius: 16rpx;
+}
+
+/* --- Section --- */
+.d-section {
+  padding: 32rpx 32rpx 0;
+}
+.d-section-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #c9a96e;
+  letter-spacing: 3rpx;
+  margin-bottom: 16rpx;
+  text-transform: uppercase;
+}
+
+/* --- Ratio Bar --- */
+.d-ratio-bar {
+  display: flex;
+  height: 48rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #ede4d8;
+}
+.d-ratio-seg {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #fff;
+  min-width: 0;
+  transition: width 0.6s ease;
+}
+.d-ratio-insc { background: #c9a96e; }
+.d-ratio-paint { background: #5b7a8c; }
+.d-ratio-blank { background: #c4b99a; }
+
+.d-ratio-legend {
+  display: flex;
+  justify-content: center;
+  gap: 28rpx;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #8b7d6b;
+}
+.d-legend-dot {
+  display: inline-block;
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 4rpx;
+  margin-right: 6rpx;
+  vertical-align: middle;
+}
+.d-dot-insc { background: #c9a96e; }
+.d-dot-paint { background: #5b7a8c; }
+.d-dot-blank { background: #c4b99a; }
+
+/* --- Meta Cards --- */
+.d-meta-row {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 32rpx;
+  margin-top: 32rpx;
+}
+.d-meta-item {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 12rpx;
+  background: linear-gradient(180deg, #faf8f5 0%, #f5f0e8 100%);
+  border: 1rpx solid #e8e0d5;
+  border-radius: 14rpx;
+}
+.d-meta-val {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #c9a96e;
+  line-height: 1.2;
+}
+.d-meta-lbl {
+  font-size: 22rpx;
+  color: #8b7d6b;
+  margin-top: 6rpx;
+  letter-spacing: 1rpx;
+}
+
+/* --- Tags --- */
+.d-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 0 32rpx;
+  margin-top: 24rpx;
+}
+.d-tag-pill {
+  display: inline-block;
+  padding: 8rpx 20rpx;
+  font-size: 22rpx;
+  border-radius: 20rpx;
+  background: rgba(201, 169, 110, 0.1);
+  color: #8b7440;
+}
+.d-tag-theme {
+  background: rgba(91, 122, 140, 0.1);
+  color: #4a6470;
+}
+.d-tag-material {
+  background: rgba(139, 125, 107, 0.08);
+  color: #6b5f52;
+}
+
+/* --- Plain / Content Text --- */
+.d-plain-text {
+  font-size: 28rpx;
+  color: #555;
+  line-height: 1.9;
+}
+
+/* --- Inscription Block --- */
+.d-inscription-block {
+  font-size: 30rpx;
+  color: #2c2416;
+  line-height: 2.2;
+  padding: 28rpx 28rpx 28rpx 32rpx;
+  background: #fdfaf3;
+  border-left: 6rpx solid #c9a96e;
+  border-radius: 0 12rpx 12rpx 0;
+  white-space: pre-wrap;
+  font-family: serif;
+}
+
+/* --- Seal Text --- */
+.d-seal-text {
+  font-size: 28rpx;
+  color: #c04030;
+  line-height: 1.8;
+}
+
+/* --- AI Analysis Card --- */
+.d-ai-card {
+  margin: 40rpx 32rpx 0;
+  padding: 32rpx 28rpx;
+  background: #fdfaf3;
+  border: 1rpx solid #e0d8c8;
+  border-radius: 16rpx;
+}
+.d-ai-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+.d-ai-badge {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #fff;
+  background: #c9a96e;
+  padding: 6rpx 18rpx;
+  border-radius: 8rpx;
+  letter-spacing: 2rpx;
+}
+
+/* --- Rich-text inside AI card --- */
+.d-ai-card rich-text {
+  font-size: 28rpx;
+  line-height: 1.9;
+  color: #444;
+}
+
+/* --- Filter bar --- */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 32rpx;
+}
+.picker-text {
+  padding: 12rpx 24rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #2c2416;
+  background: #faf8f5;
+  border: 1rpx solid #e8e0d5;
+  border-radius: 10rpx;
+}
+.filter-count {
+  font-size: 24rpx;
+  color: #8b7d6b;
+}
+.filter-lib-link {
+  font-size: 24rpx;
+  color: #c9a96e;
+  padding: 8rpx 16rpx;
+  border: 1rpx solid #d4c8b0;
+  border-radius: 8rpx;
+}

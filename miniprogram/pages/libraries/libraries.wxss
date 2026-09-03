@@ -1,0 +1,132 @@
+.container {
+  padding: 20rpx 30rpx;
+  min-height: 100vh;
+  background: #f8f5f0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0 30rpx;
+}
+
+.page-title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #2c2416;
+}
+
+.header-link {
+  font-size: 26rpx;
+  color: #c9a96e;
+}
+
+.loading-wrap, .empty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+
+.loading-text, .empty-text {
+  font-size: 28rpx;
+  color: #8b7d6b;
+}
+
+.empty-sub {
+  font-size: 24rpx;
+  color: #b0a594;
+  margin-top: 12rpx;
+}
+
+.login-btn {
+  margin-top: 30rpx;
+  background: #c9a96e;
+  color: #fff;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.library-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+}
+
+.card-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #f5efe0, #ebe3d3);
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.card-icon-text {
+  font-size: 36rpx;
+  color: #c9a96e;
+}
+
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.card-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #2c2416;
+}
+
+.card-artist {
+  font-size: 24rpx;
+  color: #8b7d6b;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.meta-tag {
+  font-size: 22rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.tag-public {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.tag-private {
+  background: #f5f5f5;
+  color: #8b7d6b;
+}
+
+.meta-count {
+  font-size: 22rpx;
+  color: #b0a594;
+}
+
+.card-arrow {
+  font-size: 28rpx;
+  color: #ccc;
+  margin-left: 12rpx;
+}
