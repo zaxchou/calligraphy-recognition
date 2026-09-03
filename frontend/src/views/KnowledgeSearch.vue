@@ -454,12 +454,12 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 .ks-main{flex:1;min-width:0;transition:margin-right 0.3s}
 .ks-body-wrap.with-panel .ks-main{margin-right:60vw}
 .ks-search-panel{margin-bottom:16px}
-.ks-progress{height:3px;background:#f0ede4;border-radius:2px;margin-bottom:16px;overflow:hidden;animation:ks-card-in 0.3s both}
-.ks-progress-fill{height:100%;background:linear-gradient(90deg,#c96442,#e8a060,#c96442);background-size:200% 100%;border-radius:2px;transition:width 0.3s;animation:ks-shimmer 1.5s ease-in-out infinite}
+.ks-progress{height:3px;background:#f0ede4;border-radius:2px;margin-bottom:16px;overflow:hidden}
+.ks-progress-fill{height:100%;background:linear-gradient(90deg,#c96442,#e8a060,#c96442);background-size:200% 100%;border-radius:2px;transition:width 0.3s;animation:ks-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite}
 @keyframes ks-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-.ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px;animation:ks-banner-in 0.5s 0.05s cubic-bezier(0.25,0.1,0.25,1) both}
-@keyframes ks-banner-in{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.ks-card{background:#fff;border:1px solid #e8e4da;border-radius:14px;padding:16px 20px;margin-bottom:16px;animation:ks-banner-in var(--duration-very-slow) var(--ease-smooth-out) both}
+@keyframes ks-banner-in{from{opacity:0;transform:translateY(calc(-1 * var(--distance-medium)))}to{opacity:1;transform:translateY(0)}}
 .ks-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;font-weight:600;color:#141413}
 .ks-summary-spark{color:#c96442;width:18px;height:18px}
 .ks-summary-conf{font-size:11px;padding:2px 8px;border-radius:10px;margin-left:auto}
@@ -482,9 +482,9 @@ onBeforeUnmount(()=>{document.removeEventListener('keydown',onPreviewKey);docume
 .ks-empty{text-align:center;padding:40px 0;color:#c0bdb3}
 .ks-empty-icon{width:36px;height:36px;margin-bottom:10px}
 .ks-rlist{display:flex;flex-direction:column;gap:8px}
-.ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.2s ease;display:flex;opacity:0;animation:ks-result-in 0.45s cubic-bezier(0.25,0.1,0.25,1) forwards}
-@keyframes ks-result-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-@keyframes ks-card-in{from{opacity:0;transform:translateY(16px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ks-rcard{background:#fff;border:1px solid #e8e6dc;border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.2s ease;display:flex;opacity:0;animation:ks-result-in var(--duration-very-slow) var(--ease-smooth-out) forwards}
+@keyframes ks-result-in{from{opacity:0;transform:translateY(calc(var(--distance-medium)))}to{opacity:1;transform:translateY(0)}}
+@keyframes ks-card-in{from{opacity:0;transform:translateY(calc(var(--distance-medium))) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .ks-rcard:hover{border-color:#c96442;box-shadow:0 2px 8px rgba(201,100,66,0.08)}
 .ks-rcard.active{border-color:#c96442;background:#fdf8f5}
 .ks-rimg{width:120px;flex-shrink:0;min-height:120px;display:flex;align-items:center;justify-content:center;background:#f5f2eb;border-radius:8px 0 0 8px}

@@ -162,10 +162,10 @@
 
         <!-- 下拉菜单（Teleport 到 body，绕过表格裁剪） -->
         <Teleport to="body">
-          <div class="tl-action-menu-backdrop" v-show="menuVisible" @click="closeMenu" />
+          <div class="tl-action-menu-backdrop" v-show="actionMenuState !== 'closed'" @click="closeMenu" />
           <div
-            class="tl-action-menu"
-            v-show="menuVisible"
+            class="tl-action-menu t-dropdown"
+            :class="{ 'is-open': actionMenuState === 'open', 'is-closing': actionMenuState === 'closing' }"
             :style="menuStyle"
             @click.stop
           >
@@ -297,23 +297,32 @@ const isSearchMode = ref(false)
 const activeActionItem = ref(null)
 const menuVisible = ref(false)
 const menuStyle = ref({})
+const actionMenuState = ref('closed') // 'closed' | 'open' | 'closing'
 
 function toggleActionMenu(e, item) {
   e.stopPropagation()
   if (menuVisible.value && activeActionItem.value === item) {
-    menuVisible.value = false
-    activeActionItem.value = null
+    closeMenu()
     return
   }
   activeActionItem.value = item
   menuVisible.value = true
+  actionMenuState.value = 'open'
   const btn = e.currentTarget.querySelector('.action-btn')
   if (btn) {
     const rect = btn.getBoundingClientRect()
     menuStyle.value = { top: (rect.bottom + 3) + 'px', left: rect.left + 'px' }
   }
 }
-function closeMenu() { menuVisible.value = false; activeActionItem.value = null }
+function closeMenu() {
+  if (actionMenuState.value === 'closed') return
+  actionMenuState.value = 'closing'
+  setTimeout(() => {
+    menuVisible.value = false
+    actionMenuState.value = 'closed'
+    activeActionItem.value = null
+  }, 150)
+}
 
 function doDetail() {
   if (activeActionItem.value) openDetailInNewWindow(activeActionItem.value)
@@ -1338,11 +1347,11 @@ onMounted(() => {
   gap: 10px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border-cream);
-  animation: skeletonPulse 1.2s ease-in-out infinite;
+  animation: skeletonPulse var(--pulse-dur) var(--reveal-ease) infinite;
 }
 @keyframes skeletonPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: var(--pulse-min); }
 }
 .skeleton-cell {
   background: var(--border-cream);

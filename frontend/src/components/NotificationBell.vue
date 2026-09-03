@@ -4,11 +4,16 @@
     placement="bottom-end"
     @visible-change="onDropdownVisibleChange"
   >
-    <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
-      <el-icon :size="20" class="bell-icon">
-        <Bell />
-      </el-icon>
-    </el-badge>
+    <div class="notification-trigger-wrap">
+      <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
+        <el-icon :size="20" class="bell-icon">
+          <Bell />
+        </el-icon>
+      </el-badge>
+      <span class="t-badge" :data-open="unreadCount > 0 ? 'true' : 'false'">
+        <span class="t-badge-dot"></span>
+      </span>
+    </div>
     <template #dropdown>
       <div class="notification-dropdown" @click.stop>
         <div class="notification-header">
@@ -159,6 +164,24 @@ onUnmounted(stopPolling)
 </script>
 
 <style scoped>
+.notification-trigger-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.notification-trigger-wrap .t-badge {
+  top: -2px;
+  right: -4px;
+}
+.notification-trigger-wrap .t-badge-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cinnabar);
+}
+
 .notification-badge {
   cursor: pointer;
   display: flex;

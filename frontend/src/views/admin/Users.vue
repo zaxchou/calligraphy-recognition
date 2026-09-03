@@ -111,12 +111,12 @@
       <Teleport to="body">
         <div
           class="action-menu-backdrop"
-          v-show="menuVisible"
+          v-show="actionMenuState !== 'closed'"
           @click="closeMenu"
         />
         <div
-          class="action-menu"
-          v-show="menuVisible"
+          class="action-menu t-dropdown"
+          :class="{ 'is-open': actionMenuState === 'open', 'is-closing': actionMenuState === 'closing' }"
           :style="menuStyle"
           @mouseenter="clearCloseTimer"
           @mouseleave="hideMenu"
@@ -210,6 +210,7 @@ const editForm = ref({})
 // ── 下拉菜单（Teleport 到 body） ──
 const menuVisible = ref(false)
 const activeRow = ref(null)
+const actionMenuState = ref('closed') // 'closed' | 'open' | 'closing'
 const menuStyle = reactive({ top: '0px', left: '0px' })
 let closeTimer = null
 
@@ -217,6 +218,7 @@ function showMenu(e, row) {
   clearTimeout(closeTimer)
   activeRow.value = row
   menuVisible.value = true
+  actionMenuState.value = 'open'
   nextTick(() => {
     const btn = e.currentTarget.querySelector('.action-btn')
     if (!btn) return
@@ -226,13 +228,18 @@ function showMenu(e, row) {
   })
 }
 function hideMenu() {
-  closeTimer = setTimeout(() => { menuVisible.value = false }, 200)
+  closeTimer = setTimeout(() => { closeMenu() }, 200)
 }
 function clearCloseTimer() {
   clearTimeout(closeTimer)
 }
 function closeMenu() {
-  menuVisible.value = false
+  if (actionMenuState.value === 'closed') return
+  actionMenuState.value = 'closing'
+  setTimeout(() => {
+    menuVisible.value = false
+    actionMenuState.value = 'closed'
+  }, 150)
 }
 function doEdit() { if (activeRow.value) openEditDialog(activeRow.value); closeMenu() }
 function doBan() { if (activeRow.value) handleBan(activeRow.value); closeMenu() }

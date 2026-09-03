@@ -394,7 +394,7 @@ onMounted(async () => {
 
 /* 加载完成后的过渡 */
 .skeleton-container {
-  animation: skeleton-fade-out 0.3s ease-out;
+  animation: skeleton-fade-out var(--reveal-dur) var(--reveal-ease);
 }
 
 @keyframes skeleton-fade-out {

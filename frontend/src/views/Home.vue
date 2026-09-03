@@ -39,10 +39,10 @@
         <div class="hero-overlay"></div>
         <div class="hero-vignette"></div>
 
-        <div class="hero-content">
-          <h1 class="hero-title">{{ siteConfig.title }}<br/><span class="hero-title-accent">{{ siteConfig.subtitle }}</span></h1>
-          <p class="hero-subtitle">题跋识别 · 字体溯源 · 构图分析 · 知识检索</p>
-          <div class="hero-actions">
+        <div class="hero-content t-stagger is-shown">
+          <h1 class="hero-title t-stagger-line">{{ siteConfig.title }}<br/><span class="hero-title-accent">{{ siteConfig.subtitle }}</span></h1>
+          <p class="hero-subtitle t-stagger-line t-stagger-line--2">题跋识别 · 字体溯源 · 构图分析 · 知识检索</p>
+          <div class="hero-actions t-stagger-line t-stagger-line--3">
             <button class="btn-primary" @click="$router.push('/tiba')">
               <span>开始分析</span>
               <el-icon><ArrowRight /></el-icon>
@@ -51,7 +51,7 @@
               <span>了解功能</span>
             </button>
           </div>
-          <div v-if="!loading && stats.total > 0" class="hero-trust">
+          <div v-if="!loading && stats.total > 0" class="hero-trust t-stagger-line t-stagger-line--4">
             已收录 <strong>{{ stats.total }}</strong> 幅画作 · <strong>{{ artists.length }}</strong> 位艺术家
           </div>
         </div>
@@ -334,20 +334,15 @@ onMounted(() => {
   font-family: 'Noto Serif SC','KaiTi','STKaiti',serif;
   font-size: 3.25rem; font-weight: 500; color: #fff;
   letter-spacing: 0.08em; line-height: 1.15; margin-bottom: 20px;
-  opacity: 0; transform: translateY(20px);
-  animation: fadeInUp 1s ease-out 0.3s forwards;
 }
 .hero-title-accent { font-size: 2.5rem; opacity: 0.9; }
 .hero-subtitle {
   font-family: var(--font-sans); font-size: 1.05rem;
   color: rgba(255,255,255,0.65); letter-spacing: 0.3em; margin-bottom: 36px;
-  opacity: 0; transform: translateY(16px);
-  animation: fadeInUp 1s ease-out 0.55s forwards;
 }
 .hero-actions {
   display: flex; align-items: center; justify-content: center;
   gap: 16px; margin-bottom: 28px;
-  opacity: 0; animation: fadeInUp 1s ease-out 0.75s forwards;
 }
 .btn-primary {
   display: inline-flex; align-items: center; gap: 8px;
@@ -366,7 +361,6 @@ onMounted(() => {
 .btn-secondary:hover { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.06); }
 .hero-trust {
   font-size: 13px; color: rgba(255,255,255,0.45); letter-spacing: 0.08em;
-  opacity: 0; animation: fadeInUp 1s ease-out 0.95s forwards;
 }
 .hero-trust strong { color: #b8a47e; font-weight: 600; }
 

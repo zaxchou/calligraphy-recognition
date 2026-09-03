@@ -268,11 +268,11 @@ function handleMore() {
 
 @keyframes skeletonPulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: var(--pulse-min); }
 }
 
 .skeleton-pulse {
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  animation: skeletonPulse var(--pulse-dur) var(--reveal-ease) infinite;
   background: var(--border-cream);
 }
 
