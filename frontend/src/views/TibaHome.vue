@@ -67,7 +67,7 @@ import TibaRankingCard from '../components/tiba/TibaRankingCard.vue'
 import TibaGallery from '../components/tiba/TibaGallery.vue'
 import TibaComparison from '../components/tiba/TibaComparison.vue'
 
-import { tibaApi } from '../api'
+import api, { tibaApi } from '../api'
 import { getSharedAnalyticsData, setSharedAnalyticsData, clearSharedAnalyticsData } from '../tiba/sharedCache'
 
 const props = defineProps({
@@ -202,11 +202,9 @@ watch(() => props.artistFilter, (newVal) => {
 }, { immediate: true })
 
 const artistList = ref([])
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 async function fetchArtistList() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
     // 默认选中李鱓，不存在时回退到第一个
     if (!artistList.value.includes(trendArtistFilter.value)) {

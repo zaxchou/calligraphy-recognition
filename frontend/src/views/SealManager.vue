@@ -152,7 +152,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Download, Picture, Stamp, Check } from '@element-plus/icons-vue'
-import { sealsApi } from '../api'
+import api, { sealsApi } from '../api'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
@@ -213,8 +213,7 @@ async function loadSeals() {
 
 async function loadArtists() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
   } catch (e) {
     console.error('获取作者列表失败', e)

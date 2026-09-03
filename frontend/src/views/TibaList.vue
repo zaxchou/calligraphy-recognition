@@ -346,8 +346,7 @@ const selectedArtist = ref('all')
 const artistOptions = ref([])
 async function fetchArtistList() {
   try {
-    const res = await fetch(`${import.meta.env.VITE_API_BASE || '/api/v1'}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistOptions.value = data.artists || []
   } catch (e) {
     console.error('获取画家列表失败', e)

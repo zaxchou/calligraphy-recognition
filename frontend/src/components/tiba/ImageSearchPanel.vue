@@ -102,9 +102,9 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Upload, WarningFilled, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import api from '../../api'
 
 const emit = defineEmits(['item-click'])
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const uploadRef = ref(null)
 const uploadFile = ref(null)
@@ -139,8 +139,7 @@ async function doSearch() {
   try {
     const fd = new FormData()
     fd.append('image', uploadFile.value)
-    const res = await fetch(`${API_BASE}/image-search/search?top_k=10`, { method: 'POST', body: fd })
-    const data = await res.json()
+    const data = await api.post('/image-search/search?top_k=10', fd)
     hits.value = data.hits || []
     totalIndexed.value = data.total_indexed || 0
     if (hits.value.length === 0) ElMessage.info('未找到相似作品')
@@ -153,16 +152,14 @@ async function doSearch() {
 
 async function fetchStats() {
   try {
-    const res = await fetch(`${API_BASE}/image-search/stats`)
-    const data = await res.json()
+    const data = await api.get('/image-search/stats')
     totalIndexed.value = data.total_indexed || 0
   } catch { /* silent */ }
 }
 
 async function fetchDuplicates() {
   try {
-    const res = await fetch(`${API_BASE}/image-search/duplicates?threshold=0.995`)
-    duplicates.value = await res.json() || []
+    duplicates.value = await api.get('/image-search/duplicates?threshold=0.995') || []
   } catch { /* silent */ }
 }
 
@@ -178,8 +175,7 @@ async function rebuildIndex() {
   }
   rebuilding.value = true
   try {
-    const res = await fetch(`${API_BASE}/image-search/rebuild-index`, { method: 'POST' })
-    const data = await res.json()
+    const data = await api.post('/image-search/rebuild-index')
     totalIndexed.value = data.total || 0
     ElMessage.success(`索引重建完成: ${data.total} 幅`)
   } catch (e) {
