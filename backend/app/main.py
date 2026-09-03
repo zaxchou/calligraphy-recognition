@@ -15,7 +15,7 @@ logging.basicConfig(
     ],
 )
 
-from app.core.config import get_settings
+from app.core.config import DATA_DIR, get_settings
 settings = get_settings()
 
 # 启动时检查：生产环境禁止默认 JWT Secret
@@ -129,7 +129,7 @@ app.add_middleware(
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 os.makedirs(settings.STATIC_DIR, exist_ok=True)
 os.makedirs(settings.DZI_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=settings.DATA_DIR), name="static")  # v2.0: 配置驱动，支持测试隔离
+app.mount("/static", StaticFiles(directory=DATA_DIR), name="static")  # v2.0: 配置驱动，支持测试隔离
 app.mount("/dzi", StaticFiles(directory=settings.DZI_DIR), name="dzi")
 
 # 启动时清除旧的全量作品列表缓存，确保新数据被包含
