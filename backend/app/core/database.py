@@ -431,6 +431,21 @@ def run_migrations():
             conn.execute("ALTER TABLE seal_images ADD COLUMN thumbnail_path TEXT DEFAULT ''")
             logger.info("Migration: added seal_images.thumbnail_path column")
 
+        # v2.0 修复：全新库上 seals 表缺失（历史库才有），补幂等建表
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS seals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                artist_id INTEGER,
+                artist_name TEXT,
+                seal_type TEXT DEFAULT '名章',
+                images TEXT DEFAULT '[]',
+                description TEXT,
+                created_at TEXT,
+                updated_at TEXT,
+                source TEXT DEFAULT ''
+            )
+        """)
         seal_tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='seals'").fetchall()}
         if 'seals' in seal_tables:
             seal_cols = {row[1] for row in conn.execute("PRAGMA table_info(seals)").fetchall()}

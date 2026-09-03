@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 # 获取项目根目录
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 确保DATA_DIR是绝对路径
-DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "data"))
+# v2.0: 支持环境变量覆盖（测试隔离/多实例），未设置时保持原行为
+DATA_DIR = os.path.abspath(os.getenv("DATA_DIR", os.path.join(BASE_DIR, "data")))
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # 加载 .env 文件
