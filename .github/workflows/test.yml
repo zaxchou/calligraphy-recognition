@@ -20,7 +20,7 @@ jobs:
             pydantic-settings==2.1.0 python-multipart pillow PyMuPDF \
             opencv-python-headless numpy python-jose[cryptography] \
             "passlib[bcrypt]" pytest httpx==0.25.2 requests dashscope jieba \
-            scipy redis celery==5.3.6 alembic
+            scipy redis celery==5.3.6 alembic python-dotenv
       - name: Run contract tests
         working-directory: backend
         run: pytest -q
