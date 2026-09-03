@@ -206,9 +206,9 @@ async def send_code(req: SendCodeRequest):
         code = "123456"
         logger.info(f"[Mock] 验证码已发送到 {phone}，验证码: {code}")
     else:
-        # 生产模式：生成随机6位验证码 + 调用短信服务
+        # 生产模式：生成随机6位验证码 + 调用短信服务（验证码不得写入日志）
         code = "".join(str(secrets.randbelow(10)) for _ in range(6))
-        logger.info(f"[PROD] 验证码: {phone} -> {code}")
+        logger.info(f"[PROD] 验证码已发送至 {phone}")
         # TODO: 接入真实短信服务（阿里云/腾讯云）
 
     # 存储验证码（10分钟有效期）
