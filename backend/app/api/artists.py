@@ -13,11 +13,16 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
+from sqlalchemy import func as sa_func, or_
+from sqlalchemy.orm import Session
 
-from app.core.database import get_db_connection
+from app.core.database import get_db_connection, get_db
 from app.core.auth import require_admin_role, require_editor, require_permission, get_current_user
 from app.core.path_utils import get_static_url
 from app.core.config import get_settings
+from app.models.artist import Artist
+from app.models.tiba_analysis import TibaAnalysis
+from app.models.artwork_library import ArtworkLibrary
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 settings = get_settings()
@@ -106,98 +111,96 @@ async def list_artists(
     page: int = 1,
     page_size: int = 40,
     sort: str = "created_at",
+    db: Session = Depends(get_db),
 ):
     """列出所有画家，支持筛选、分页、排序（默认仅显示已认证画家）"""
-    conn = get_db_connection()
-    try:
-        conditions = []
-        params = []
+    conditions = []
 
-        if verified_only:
-            conditions.append("verified = 1")
+    if verified_only:
+        conditions.append(Artist.verified == 1)
 
-        if dynasty:
-            dynasties = [d.strip() for d in dynasty.split(",") if d.strip()]
-            if dynasties:
-                placeholders = ",".join(["?"] * len(dynasties))
-                conditions.append(f"dynasty IN ({placeholders})")
-                params.extend(dynasties)
+    if dynasty:
+        dynasties = [d.strip() for d in dynasty.split(",") if d.strip()]
+        if dynasties:
+            conditions.append(Artist.dynasty.in_(dynasties))
 
-        if school:
-            schools = [s.strip() for s in school.split(",") if s.strip()]
-            if schools:
-                school_clauses = " OR ".join(["art_school LIKE ?"] * len(schools))
-                conditions.append(f"({school_clauses})")
-                params.extend([f"%{s}%" for s in schools])
+    if school:
+        schools = [s.strip() for s in school.split(",") if s.strip()]
+        if schools:
+            school_clauses = or_(*[Artist.art_school.like(f"%{s}%") for s in schools])
+            conditions.append(school_clauses)
 
-        if keyword:
-            conditions.append("(name LIKE ? OR alias LIKE ? OR biography LIKE ?)")
-            kw = f"%{keyword}%"
-            params.extend([kw, kw, kw])
-        if names:
-            name_list = [n.strip() for n in names.split(",") if n.strip()]
-            if name_list and len(name_list) < 500:
-                placeholders = ",".join(["?"] * len(name_list))
-                conditions.append(f"name IN ({placeholders})")
-                params.extend(name_list)
-        if featured is not None:
-            conditions.append("featured = ?")
-            params.append(1 if featured else 0)
+    if keyword:
+        kw = f"%{keyword}%"
+        conditions.append(or_(Artist.name.like(kw), Artist.alias.like(kw), Artist.biography.like(kw)))
+    if names:
+        name_list = [n.strip() for n in names.split(",") if n.strip()]
+        if name_list and len(name_list) < 500:
+            conditions.append(Artist.name.in_(name_list))
+    if featured is not None:
+        conditions.append(Artist.featured == (1 if featured else 0))
 
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
+    allowed_sorts = {"created_at", "updated_at", "birth_year", "name", "id"}
+    if sort == "name":
+        order_by = [Artist.name.collate("NOCASE")]
+    elif sort == "birth_year":
+        order_by = [Artist.birth_year.is_(None), Artist.birth_year]
+    elif sort in allowed_sorts:
+        order_by = [getattr(Artist, sort)]
+    else:
+        order_by = [Artist.created_at]
 
-        allowed_sorts = {"created_at", "updated_at", "birth_year", "name", "id"}
-        sort_map = {"name": "name COLLATE NOCASE", "birth_year": "birth_year IS NULL, birth_year"}
-        if sort in sort_map:
-            sort_sql = sort_map[sort]
-        elif sort not in allowed_sorts:
-            sort_sql = "created_at"
-        else:
-            sort_sql = sort
+    cnt_sq = (
+        db.query(TibaAnalysis.artist.label("artist"), sa_func.count().label("cnt"))
+        .group_by(TibaAnalysis.artist)
+        .subquery()
+    )
 
-        total = conn.execute(
-            f"SELECT COUNT(*) FROM artists WHERE {where_clause}", params
-        ).fetchone()[0]
+    total = db.query(sa_func.count()).select_from(Artist).filter(*conditions).scalar()
 
-        offset = (page - 1) * page_size
-        rows = conn.execute(
-            f"""SELECT a.id, a.name, a.alias, a.dynasty, a.art_school,
-                       a.birth_year, a.death_year, a.hometown,
-                       a.avatar_url, a.summary, a.featured, a.verified,
-                       a.created_at, a.updated_at,
-                       COALESCE(t.cnt, 0) AS artwork_count
-                FROM artists a
-                LEFT JOIN (SELECT artist, COUNT(*) AS cnt FROM tubi_analyses GROUP BY artist) t
-                  ON a.name = t.artist
-                WHERE {where_clause}
-                ORDER BY {sort_sql}
-                LIMIT ? OFFSET ?""",
-            (*params, page_size, offset)
-        ).fetchall()
+    offset = (page - 1) * page_size
+    rows = (
+        db.query(Artist, sa_func.coalesce(cnt_sq.c.cnt, 0).label("artwork_count"))
+        .outerjoin(cnt_sq, Artist.name == cnt_sq.c.artist)
+        .filter(*conditions)
+        .order_by(*order_by)
+        .limit(page_size)
+        .offset(offset)
+        .all()
+    )
 
-        artists = [dict(row) for row in rows]
-        return {"success": True, "artists": artists, "total": total, "page": page, "page_size": page_size}
-    finally:
-        conn.close()
+    artists = []
+    for a, artwork_count in rows:
+        artists.append({
+            "id": a.id, "name": a.name, "alias": a.alias, "dynasty": a.dynasty,
+            "art_school": a.art_school, "birth_year": a.birth_year,
+            "death_year": a.death_year, "hometown": a.hometown,
+            "avatar_url": a.avatar_url, "summary": a.summary,
+            "featured": a.featured, "verified": a.verified,
+            "created_at": a.created_at, "updated_at": a.updated_at,
+            "artwork_count": artwork_count,
+        })
+    return {"success": True, "artists": artists, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/periods")
-async def list_artist_periods():
+async def list_artist_periods(db: Session = Depends(get_db)):
     """获取所有画家的朝代列表（用于分类筛选）"""
-    conn = get_db_connection()
-    try:
-        rows = conn.execute(
-            "SELECT DISTINCT dynasty FROM artists WHERE dynasty IS NOT NULL AND dynasty != '' ORDER BY dynasty"
-        ).fetchall()
-        periods = [r["dynasty"] for r in rows]
-        return {"success": True, "periods": periods}
-    finally:
-        conn.close()
+    rows = (
+        db.query(Artist.dynasty)
+        .filter(Artist.dynasty.isnot(None), Artist.dynasty != "")
+        .order_by(Artist.dynasty)
+        .distinct()
+        .all()
+    )
+    periods = [r[0] for r in rows]
+    return {"success": True, "periods": periods}
 
 
 @router.get("/schools")
 async def list_artist_schools():
     """获取所有画派列表"""
+    # TODO(v2.0-orm): art_schools 表暂无 Model，保持裸 SQL
     conn = get_db_connection()
     try:
         rows = conn.execute("SELECT * FROM art_schools ORDER BY name").fetchall()
@@ -209,39 +212,36 @@ async def list_artist_schools():
 
 
 @router.get("/letter-index")
-async def get_letter_index():
+async def get_letter_index(db: Session = Depends(get_db)):
     """返回艺术家姓名列表（前端用pinyin-pro库分组）"""
-    conn = get_db_connection()
-    try:
-        rows = conn.execute(
-            "SELECT DISTINCT name FROM artists WHERE verified = 1 AND name IS NOT NULL ORDER BY name"
-        ).fetchall()
-        names = [r["name"] for r in rows]
-        return {"success": True, "names": names}
-    finally:
-        conn.close()
+    rows = (
+        db.query(Artist.name)
+        .filter(Artist.verified == 1, Artist.name.isnot(None))
+        .order_by(Artist.name)
+        .distinct()
+        .all()
+    )
+    names = [r[0] for r in rows]
+    return {"success": True, "names": names}
 
 
 @router.get("/stats-summary")
-async def get_stats_summary():
+async def get_stats_summary(db: Session = Depends(get_db)):
     """返回各朝代/画派计数（用于侧边栏统计标签）"""
-    conn = get_db_connection()
-    try:
-        dynasty_counts = {}
-        rows = conn.execute(
-            "SELECT dynasty, COUNT(*) as cnt FROM artists WHERE verified=1 AND dynasty IS NOT NULL AND dynasty!='' "
-            "GROUP BY dynasty ORDER BY cnt DESC"
-        ).fetchall()
-        for r in rows:
-            dynasty_counts[r["dynasty"]] = r["cnt"]
+    dynasty_counts = {}
+    rows = (
+        db.query(Artist.dynasty, sa_func.count().label("cnt"))
+        .filter(Artist.verified == 1, Artist.dynasty.isnot(None), Artist.dynasty != "")
+        .group_by(Artist.dynasty)
+        .order_by(sa_func.count().desc())
+        .all()
+    )
+    for dynasty, cnt in rows:
+        dynasty_counts[dynasty] = cnt
 
-        total_verified = conn.execute(
-            "SELECT COUNT(*) FROM artists WHERE verified=1"
-        ).fetchone()[0]
+    total_verified = db.query(sa_func.count()).select_from(Artist).filter(Artist.verified == 1).scalar()
 
-        return {"success": True, "dynasty_counts": dynasty_counts, "total_verified": total_verified}
-    finally:
-        conn.close()
+    return {"success": True, "dynasty_counts": dynasty_counts, "total_verified": total_verified}
 
 
 @router.post("/upload-image")
@@ -317,67 +317,57 @@ async def upload_artist_photo(
 
 
 @router.get("/{artist_id}")
-async def get_artist(artist_id: int):
+async def get_artist(artist_id: int, db: Session = Depends(get_db)):
     """获取单个画家"""
-    conn = get_db_connection()
-    try:
-        row = conn.execute("SELECT * FROM artists WHERE id = ?", (artist_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="画家不存在")
+    row = db.query(Artist).filter(Artist.id == artist_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="画家不存在")
 
-        artist = dict(row)
-        name = artist["name"]
+    artist = {c: getattr(row, c) for c in row.__table__.columns.keys()}
+    name = artist["name"]
 
-        artwork_count = conn.execute(
-            "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (name,)
-        ).fetchone()[0]
-        artist["artwork_count"] = artwork_count
+    artist["artwork_count"] = (
+        db.query(sa_func.count()).select_from(TibaAnalysis).filter(TibaAnalysis.artist == name).scalar()
+    )
 
-        lib_rows = conn.execute(
-            "SELECT id FROM artwork_libraries WHERE artist_name = ?", (name,)
-        ).fetchall()
-        artist["related_libraries"] = [r["id"] for r in lib_rows]
+    artist["related_libraries"] = [
+        r[0] for r in db.query(ArtworkLibrary.id).filter(ArtworkLibrary.artist_name == name).all()
+    ]
 
-        return {"success": True, "artist": artist}
-    finally:
-        conn.close()
+    return {"success": True, "artist": artist}
 
 
 @router.get("/by-name/{name}")
-async def get_artist_by_name(name: str):
+async def get_artist_by_name(name: str, db: Session = Depends(get_db)):
     """按名称获取画家（支持别名归一化：郑板桥→郑燮）"""
-    conn = get_db_connection()
-    try:
-        row = conn.execute("SELECT * FROM artists WHERE name = ?", (name,)).fetchone()
+    row = db.query(Artist).filter(Artist.name == name).first()
+    if not row:
+        row = (
+            db.query(Artist)
+            .filter(or_(Artist.alias.like(f"%{name}%"), Artist.alias == name))
+            .first()
+        )
         if not row:
-            row = conn.execute(
-                "SELECT * FROM artists WHERE alias LIKE ? OR alias = ? LIMIT 1",
-                (f"%{name}%", name),
-            ).fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="画家不存在")
+            raise HTTPException(status_code=404, detail="画家不存在")
 
-        artist = dict(row)
-        canonical_name = artist["name"]
+    artist = {c: getattr(row, c) for c in row.__table__.columns.keys()}
+    canonical_name = artist["name"]
 
-        artwork_count = conn.execute(
-            "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (canonical_name,)
-        ).fetchone()[0]
-        artist["artwork_count"] = artwork_count
+    artist["artwork_count"] = (
+        db.query(sa_func.count()).select_from(TibaAnalysis).filter(TibaAnalysis.artist == canonical_name).scalar()
+    )
 
-        lib_rows = conn.execute(
-            "SELECT id FROM artwork_libraries WHERE artist_name = ?", (canonical_name,)
-        ).fetchall()
-        artist["related_libraries"] = [r["id"] for r in lib_rows]
+    artist["related_libraries"] = [
+        r[0] for r in db.query(ArtworkLibrary.id).filter(ArtworkLibrary.artist_name == canonical_name).all()
+    ]
 
-        result = {"success": True, "artist": artist}
-        if canonical_name != name:
-            result["canonical_name"] = canonical_name
-        return result
-    finally:
-        conn.close()
+    result = {"success": True, "artist": artist}
+    if canonical_name != name:
+        result["canonical_name"] = canonical_name
+    return result
 
 
+# TODO(v2.0-orm): 待转换（含 INSERT）
 @router.post("")
 async def create_artist(artist: ArtistCreate, user=Depends(get_current_user)):
     """创建画家（所有人可创建，编辑以上自动认证）"""
@@ -420,6 +410,7 @@ async def create_artist(artist: ArtistCreate, user=Depends(get_current_user)):
         conn.close()
 
 
+# TODO(v2.0-orm): 待转换（含 UPDATE）
 @router.put("/{artist_id}")
 async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(require_editor)):
     """更新画家"""
@@ -462,6 +453,7 @@ async def update_artist(artist_id: int, artist: ArtistUpdate, editor=Depends(req
         conn.close()
 
 
+# TODO(v2.0-orm): 待转换（含 DELETE）
 @router.delete("/{artist_id}")
 async def delete_artist(artist_id: int, admin=Depends(require_admin_role)):
     """删除画家"""
@@ -483,6 +475,7 @@ async def delete_artist(artist_id: int, admin=Depends(require_admin_role)):
         conn.close()
 
 
+# TODO(v2.0-orm): 待转换（含 INSERT 缓存写入）
 @router.get("/{artist_id}/stats")
 async def get_artist_stats(artist_id: int):
     """获取画家统计数据（含缓存）"""
@@ -531,41 +524,42 @@ async def get_artist_works(
     artist_id: int,
     page: int = 1,
     page_size: int = 20,
+    db: Session = Depends(get_db),
 ):
     """获取画家的作品列表"""
-    conn = get_db_connection()
-    try:
-        artist = conn.execute("SELECT * FROM artists WHERE id = ?", (artist_id,)).fetchone()
-        if not artist:
-            raise HTTPException(status_code=404, detail="画家不存在")
+    artist = db.query(Artist).filter(Artist.id == artist_id).first()
+    if not artist:
+        raise HTTPException(status_code=404, detail="画家不存在")
 
-        name = artist["name"]
-        offset = (page - 1) * page_size
+    name = artist.name
+    offset = (page - 1) * page_size
 
-        total = conn.execute(
-            "SELECT COUNT(*) FROM tubi_analyses WHERE artist = ?", (name,)
-        ).fetchone()[0]
+    total = db.query(sa_func.count()).select_from(TibaAnalysis).filter(TibaAnalysis.artist == name).scalar()
 
-        rows = conn.execute(
-            "SELECT id, image_id, title, year, period, thumbnail_path, inscription_percent, "
-            "inscription_verified, status, created_at FROM tubi_analyses "
-            "WHERE artist = ? ORDER BY year, id LIMIT ? OFFSET ?",
-            (name, page_size, offset)
-        ).fetchall()
+    rows = (
+        db.query(
+            TibaAnalysis.id, TibaAnalysis.image_id, TibaAnalysis.title,
+            TibaAnalysis.year, TibaAnalysis.period, TibaAnalysis.thumbnail_path,
+            TibaAnalysis.inscription_verified, TibaAnalysis.status,
+        )
+        .filter(TibaAnalysis.artist == name)
+        .order_by(TibaAnalysis.year, TibaAnalysis.id)
+        .limit(page_size)
+        .offset(offset)
+        .all()
+    )
 
-        works = []
-        for r in rows:
-            fn = os.path.basename(r["thumbnail_path"].replace("\\", "/")) if r["thumbnail_path"] else ""
-            works.append({
-                "id": r["id"], "image_id": r["image_id"], "title": r["title"],
-                "year": r["year"], "period": r["period"],
-                "thumbnail_url": f"/static/thumbnails/{fn}" if fn else "",
-                "inscription_verified": r["inscription_verified"], "status": r["status"],
-            })
+    works = []
+    for r in rows:
+        fn = os.path.basename(r.thumbnail_path.replace("\\", "/")) if r.thumbnail_path else ""
+        works.append({
+            "id": r.id, "image_id": r.image_id, "title": r.title,
+            "year": r.year, "period": r.period,
+            "thumbnail_url": f"/static/thumbnails/{fn}" if fn else "",
+            "inscription_verified": r.inscription_verified, "status": r.status,
+        })
 
-        return {"success": True, "works": works, "total": total, "page": page, "page_size": page_size}
-    finally:
-        conn.close()
+    return {"success": True, "works": works, "total": total, "page": page, "page_size": page_size}
 
 
 class SyncNameRequest(BaseModel):
@@ -577,6 +571,7 @@ class TravelNotesUpdate(BaseModel):
     travel_notes: Optional[str] = None  # JSON string
 
 
+# TODO(v2.0-orm): 待转换（含 UPDATE）
 @router.post("/{artist_id}/sync-name")
 async def sync_artist_name(artist_id: int, req: SyncNameRequest, editor=Depends(require_editor)):
     """同步画家姓名到所有相关作品"""
@@ -612,6 +607,7 @@ async def sync_artist_name(artist_id: int, req: SyncNameRequest, editor=Depends(
         conn.close()
 
 
+# TODO(v2.0-orm): 待转换（含 UPDATE）
 @router.put("/by-name/{name}/travel-notes")
 async def save_travel_notes(name: str, req: TravelNotesUpdate, editor=Depends(require_editor)):
     """保存行旅数据（手动编辑或AI生成后保存）"""
@@ -636,6 +632,7 @@ async def save_travel_notes(name: str, req: TravelNotesUpdate, editor=Depends(re
         conn.close()
 
 
+# TODO(v2.0-orm): 待转换（含写入）
 @router.post("/by-name/{name}/travel-notes/generate")
 async def generate_travel_notes(name: str, editor=Depends(require_editor)):
     """AI 根据年谱+作品列表生成结构化行旅数据"""
@@ -839,6 +836,7 @@ def _parse_travel_json(content: str) -> dict:
     return {}
 
 
+# TODO(v2.0-orm): 待转换（含写入）
 @router.post("/{artist_id}/ai-fill")
 async def ai_fill_artist(artist_id: int, editor=Depends(require_editor)):
     conn = get_db_connection()
@@ -1173,6 +1171,7 @@ def _parse_json_response(content: str) -> dict:
     return {}
 
 
+# TODO(v2.0-orm): 待转换（含 DELETE）
 def invalidate_stats_cache(artist_name: str):
     try:
         conn = get_db_connection()
@@ -1191,38 +1190,37 @@ def invalidate_stats_cache(artist_name: str):
 # ── 情绪时间线（行旅气象地图用）──
 
 @router.get("/{name}/emotion-timeline")
-async def get_emotion_timeline(name: str):
+async def get_emotion_timeline(name: str, db: Session = Depends(get_db)):
     """
     返回画家的画作情绪数据（按年聚合），供行旅气象地图使用。
     每幅画返回 {year, polarity}，前端按 travel_notes 的时期范围自行聚合。
     """
-    conn = get_db_connection()
-    try:
-        from app.services.keyword_extractor import get_artist_aliases
-        aliases = get_artist_aliases(name)
-        placeholders = ','.join(['?' for _ in aliases])
-        rows = conn.execute(
-            f"""SELECT year, content_analysis FROM tubi_analyses
-               WHERE artist IN ({placeholders}) AND year IS NOT NULL AND content_analysis IS NOT NULL
-               ORDER BY year""",
-            aliases
-        ).fetchall()
+    from app.services.keyword_extractor import get_artist_aliases
+    aliases = get_artist_aliases(name)
+    rows = (
+        db.query(TibaAnalysis.year, TibaAnalysis.content_analysis)
+        .filter(
+            TibaAnalysis.artist.in_(aliases),
+            TibaAnalysis.year.isnot(None),
+            TibaAnalysis.content_analysis.isnot(None),
+        )
+        .order_by(TibaAnalysis.year)
+        .all()
+    )
 
-        paintings = []
-        for row in rows:
-            year = row["year"]
-            raw = row["content_analysis"]
-            if not raw:
-                continue
-            try:
-                ca = json.loads(raw)
-                polarity = ca.get("sentiment", {}).get("polarity")
-                if polarity:
-                    paintings.append({"year": int(year) if year else None, "polarity": polarity})
-            except Exception:
-                pass
+    paintings = []
+    for row in rows:
+        year = row.year
+        raw = row.content_analysis
+        if not raw:
+            continue
+        try:
+            ca = json.loads(raw)
+            polarity = ca.get("sentiment", {}).get("polarity")
+            if polarity:
+                paintings.append({"year": int(year) if year else None, "polarity": polarity})
+        except Exception:
+            pass
 
-        has_data = len(paintings) > 0
-        return {"success": True, "artist_name": name, "paintings": paintings, "has_emotion_data": has_data}
-    finally:
-        conn.close()
+    has_data = len(paintings) > 0
+    return {"success": True, "artist_name": name, "paintings": paintings, "has_emotion_data": has_data}
