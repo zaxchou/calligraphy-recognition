@@ -93,12 +93,56 @@ const buildPalette = (colors) => {
 
 let renderer, program, glassProgram, renderTarget, animId
 let onResize
+let lastV = null
 
 onMounted(() => {
   const container = containerRef.value
   if (!container) return
 
-  renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true })
+  try {
+    initRenderer(container)
+  } catch (err) {
+    // WebGL 不可用（低端机/被禁用）时静默降级：留空容器，不阻塞页面
+    console.warn('[EmotionOrb] WebGL init failed:', err)
+    container.style.visibility = 'hidden'
+    return
+  }
+
+  const frame = (time) => {
+    animId = requestAnimationFrame(frame)
+    const v = clamp(props.value, -1, 1)
+    const e = emotionEnergy(v)
+    program.uniforms.uTime.value = time * 0.001
+    if (v !== lastV) {
+      // 调色板/描边色只在意value变化时重建，避免每帧分配对象
+      program.uniforms.uColors.value = buildPalette(emotionColors(v))
+      glassProgram.uniforms.uTint.value = hexToRgb01(emotionColors(v)[1])
+      lastV = v
+    }
+    program.uniforms.uSpeed.value = 0.4 + 0.6 * e
+    program.uniforms.uAmplitude.value = 0.7 + 0.7 * e
+    program.uniforms.uGlow.value = 1.9 + 1.2 * e
+    program.uniforms.uIntensity.value = 0.5 + 0.35 * e
+    renderer.render({ scene: meshRef, target: renderTarget })
+    glassProgram.uniforms.uScene.value = renderTarget.texture
+    // 微脉动：平静 ±1%，极端 ±2.5%（呼吸感）
+    const pulse = 1 + (0.01 + 0.015 * e) * Math.sin(time * 0.001 * (1.5 + 2.5 * e))
+    glassProgram.uniforms.uRadius.value = 0.375 * emotionGlassSize(v) * pulse
+    renderer.render({ scene: glassMeshRef })
+  }
+  animId = requestAnimationFrame(frame)
+})
+
+let meshRef, glassMeshRef
+
+function initRenderer(container) {
+  renderer = new Renderer({
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: true,
+    // 高分屏清晰度：按设备像素比渲染（上限 2），与旧 three 组件一致
+    dpr: Math.min(window.devicePixelRatio, 2)
+  })
   const gl = renderer.gl
   gl.clearColor(0, 0, 0, 0)
   gl.enable(gl.BLEND)
@@ -131,7 +175,7 @@ onMounted(() => {
       uSaturation: { value: 1.5 }
     }
   })
-  const mesh = new Mesh(gl, { geometry, program })
+  meshRef = new Mesh(gl, { geometry, program })
 
   renderTarget = new RenderTarget(gl, { width: container.offsetWidth, height: container.offsetHeight })
   glassProgram = new Program(gl, {
@@ -147,41 +191,23 @@ onMounted(() => {
       uTint: { value: hexToRgb01(emotionColors(0)[1]) }
     }
   })
-  const glassMesh = new Mesh(gl, { geometry, program: glassProgram })
+  glassMeshRef = new Mesh(gl, { geometry, program: glassProgram })
   container.appendChild(gl.canvas)
 
+  // 着色器用 gl_FragCoord 定位，uResolution 必须是缓冲区像素尺寸（CSS 尺寸 × dpr）
   const resize = () => {
     const w = container.offsetWidth, h = container.offsetHeight
     if (!w || !h) return
     renderer.setSize(w, h)
-    program.uniforms.uResolution.value = [w, h]
-    glassProgram.uniforms.uResolution.value = [w, h]
-    renderTarget.setSize(w, h)
+    const bw = gl.canvas.width, bh = gl.canvas.height
+    renderTarget.setSize(bw, bh)
+    program.uniforms.uResolution.value = [bw, bh]
+    glassProgram.uniforms.uResolution.value = [bw, bh]
   }
   onResize = resize
   window.addEventListener('resize', onResize)
   resize()
-
-  const frame = (time) => {
-    animId = requestAnimationFrame(frame)
-    const v = clamp(props.value, -1, 1)
-    const e = emotionEnergy(v)
-    program.uniforms.uTime.value = time * 0.001
-    program.uniforms.uColors.value = buildPalette(emotionColors(v))
-    program.uniforms.uSpeed.value = 0.4 + 0.6 * e
-    program.uniforms.uAmplitude.value = 0.7 + 0.7 * e
-    program.uniforms.uGlow.value = 1.9 + 1.2 * e
-    program.uniforms.uIntensity.value = 0.5 + 0.35 * e
-    renderer.render({ scene: mesh, target: renderTarget })
-    glassProgram.uniforms.uScene.value = renderTarget.texture
-    // 微脉动：平静 ±1%，极端 ±2.5%（呼吸感）
-    const pulse = 1 + (0.01 + 0.015 * e) * Math.sin(time * 0.001 * (1.5 + 2.5 * e))
-    glassProgram.uniforms.uRadius.value = 0.375 * emotionGlassSize(v) * pulse
-    glassProgram.uniforms.uTint.value = hexToRgb01(emotionColors(v)[1])
-    renderer.render({ scene: glassMesh })
-  }
-  animId = requestAnimationFrame(frame)
-})
+}
 
 onBeforeUnmount(() => {
   if (animId) cancelAnimationFrame(animId)
