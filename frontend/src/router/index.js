@@ -35,7 +35,6 @@ const routes = [
       { path: 'literature', name: 'ArtistLiterature', component: () => import('../views/artist/ArtistLiterature.vue'), meta: { title: '文献' } },
       { path: 'literature/:bookId', name: 'ArtistLiteratureReader', component: () => import('../views/artist/ArtistLiteratureReader.vue'), meta: { title: '文献阅读' } },
       { path: 'analysis', name: 'ArtistAnalysis', component: () => import('../views/artist/ArtistAnalysisSlides.vue'), meta: { title: '数据分析' } },
-      { path: 'analysis-legacy', name: 'ArtistAnalysisLegacy', component: () => import('../views/artist/ArtistAnalysis.vue'), meta: { title: '数据分析（旧版）' } },
       { path: 'map', name: 'ArtistMap', component: () => import('../views/MapMode.vue'), meta: { title: '行旅' } },
     ],
   },
@@ -226,7 +225,7 @@ const router = createRouter({
 const nameCache = new Map()
 
 router.beforeResolve(async (to, _from) => {
-  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistLiteratureReader', 'ArtistAnalysis', 'ArtistAnalysisLegacy', 'ArtistMap']
+  const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistLiteratureReader', 'ArtistAnalysis', 'ArtistMap']
   if (artistRoutes.includes(to.name) && to.params.name) {
     const raw = to.params.name
     // 已缓存的 canonical 名 → 直接返回，不发起网络请求
