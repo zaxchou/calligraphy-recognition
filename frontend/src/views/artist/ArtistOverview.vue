@@ -154,11 +154,11 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { ElMessage } from 'element-plus'
+import api from '../../api'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const artistName = computed(() => route.params.name)
 const loading = ref(true)
@@ -335,24 +335,15 @@ async function handleSubmitChange() {
       new_value: suggestForm.new_value,
       change_summary: suggestForm.change_summary,
     })
-    const res = await fetch(`${API_BASE}/artists/${artist.value.id}/change-requests?${params}`, {
-      method: 'POST',
-      headers: authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {},
-    })
-    if (res.ok) {
-      const data = await res.json()
-      if (data.direct_update) {
-        ElMessage.success('已直接更新（编辑权限）')
-      } else {
-        ElMessage.success('修改建议已提交，等待审核')
-      }
-      showSuggestDialog.value = false
+    const data = await api.post(`/artists/${artist.value.id}/change-requests?${params}`)
+    if (data.direct_update) {
+      ElMessage.success('已直接更新（编辑权限）')
     } else {
-      const err = await res.json().catch(() => ({}))
-      ElMessage.error(err.detail || '提交失败')
+      ElMessage.success('修改建议已提交，等待审核')
     }
+    showSuggestDialog.value = false
   } catch (e) {
-    ElMessage.error('提交失败')
+    ElMessage.error(e.response?.data?.detail || '提交失败')
   } finally {
     submitting.value = false
   }
@@ -366,17 +357,16 @@ async function fetchArtist() {
     return
   }
   try {
-    const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(name)}`)
-    if (!res.ok) {
-      if (res.status === 404) notFound.value = true
-      return
-    }
-    const data = await res.json()
+    const data = await api.get(`/artists/by-name/${encodeURIComponent(name)}`)
     artist.value = data.artist || null
     if (!artist.value) notFound.value = true
   } catch (e) {
-    console.error('获取画家信息失败:', e)
-    notFound.value = true
+    if (e.response?.status === 404) {
+      notFound.value = true
+    } else if (!e.response) {
+      console.error('获取画家信息失败:', e)
+      notFound.value = true
+    }
   }
 }
 

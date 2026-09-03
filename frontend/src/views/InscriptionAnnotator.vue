@@ -324,6 +324,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Delete, Search, ZoomIn, ZoomOut, FullScreen, EditPen, View } from '@element-plus/icons-vue'
+import api from '../api'
 
 const router = useRouter()
 const route = useRoute()
@@ -939,13 +940,7 @@ async function saveRegions() {
   // 管理员/非suggest模式 → 直接写入数据库
   saving.value = true
   try {
-    const res = await fetch(`/api/v1/tiba/${route.params.id}/regions`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
-      body: JSON.stringify({ regions })
-    })
-
-    if (!res.ok) throw new Error(await res.text())
+    await api.patch(`/tiba/${route.params.id}/regions`, { regions })
 
     // 清除本地草稿
     localStorage.removeItem(DRAFT_KEY.value)
@@ -957,7 +952,7 @@ async function saveRegions() {
       router.push(`/tiba/${targetId}`)
     }
   } catch (err) {
-    ElMessage.error('保存失败：' + err.message)
+    ElMessage.error('保存失败：' + (err.response?.data?.detail || err.message))
   } finally {
     saving.value = false
   }
@@ -1010,23 +1005,14 @@ async function submitForReview() {
       return
     }
 
-    const res = await fetch(`/api/v1/libraries/${libId}/requests`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` },
-      body: JSON.stringify({
-        artwork_id: artworkId,
-        request_type: 'adjust_region',
-        field_name: 'annotation_regions',
-        old_value: oldValue,
-        new_value: newValue,
-        change_summary: '标注区域意见'
-      })
+    await api.post(`/libraries/${libId}/requests`, {
+      artwork_id: artworkId,
+      request_type: 'adjust_region',
+      field_name: 'annotation_regions',
+      old_value: oldValue,
+      new_value: newValue,
+      change_summary: '标注区域意见'
     })
-
-    if (!res.ok) {
-      const errData = await res.json()
-      throw new Error(errData.detail || '提交失败')
-    }
 
     // 设置标志，供 TibaDetail 检测
     const imageId = route.params.id
@@ -1038,7 +1024,7 @@ async function submitForReview() {
     // 提示后关闭窗口
     setTimeout(() => window.close(), 2000)
   } catch (err) {
-    ElMessage.error('提交失败：' + err.message)
+    ElMessage.error('提交失败：' + (err.response?.data?.detail || err.message))
   } finally {
     submittingReview.value = false
   }
@@ -1052,9 +1038,7 @@ function goBack() {
 // 加载数据
 async function loadRecord() {
   try {
-    const res = await fetch(`/api/v1/tiba/${route.params.id}`)
-    if (!res.ok) throw new Error('记录不存在')
-    const data = await res.json()
+    const data = await api.get(`/tiba/${route.params.id}`)
 
     recordData.value = data.data
 
@@ -1184,7 +1168,7 @@ async function loadRecord() {
       }
     }
   } catch (err) {
-    ElMessage.error('加载记录失败：' + err.message)
+    ElMessage.error('加载记录失败：' + (err.response?.status === 404 ? '记录不存在' : err.message))
   }
 }
 
