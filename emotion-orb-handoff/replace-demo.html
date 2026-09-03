@@ -118,6 +118,19 @@
       body.dark .compare-name { color: #d8cdb4; }
       .compare-sub { font-size: 11px; opacity: 0.55; margin-top: 2px; line-height: 1.5; }
 
+      /* 情绪谱系 */
+      .spectrum-grid { display: flex; justify-content: space-between; gap: 6px; }
+      .spec-cell { width: 94px; text-align: center; }
+      .spec-cell .orb-box {
+        width: 94px; height: 94px; margin: 0 auto; display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at 50% 50%, rgba(250,240,220,0.5) 0%, transparent 100%);
+        border-radius: 10px;
+      }
+      body.dark .spec-cell .orb-box { background: radial-gradient(ellipse at 50% 50%, rgba(60,52,38,0.6) 0%, transparent 100%); }
+      .spec-cell canvas { display: block; width: 94px; height: 94px; }
+      .spec-val { font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 6px; }
+      .spec-label { font-size: 10.5px; opacity: 0.55; margin-top: 1px; }
+
       /* ───────────── 控制区 ───────────── */
       .controls {
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
@@ -154,7 +167,8 @@
     <h1>情绪光球替换 Demo</h1>
     <p class="page-desc">
       上：1:1 复刻题跋详情页「情绪解读」卡片（TibaDetail.vue score-card），旧 3D 水晶核心已替换为新玻璃光球。<br/>
-      下：新旧光球同框对比（同一情绪值驱动）。拖动底部滑块或点击预设值查看不同情绪下的表现。
+      中：新旧光球同框对比（同一情绪值驱动）。下：情绪谱系——五个固定值展示 -1→+1 的大小与颜色变化过程。<br/>
+      拖动底部滑块或点击预设值查看不同情绪下的表现；尺寸映射 v2 已把 0 值球缩小（43%→92%，约 2.2× 反差）。
     </p>
 
     <div class="stage">
@@ -202,9 +216,15 @@
           <div class="compare-cell">
             <div class="orb-box" id="orbNew"><div class="orb-dropshadow" style="width:180px;height:180px;"></div></div>
             <div class="compare-name">新 · EmotionOrb（OGL 玻璃光球）</div>
-            <div class="compare-sub">负=红 / 0=蓝 / 正=金<br>大小·速度·辉光随 |v| 变化</div>
+            <div class="compare-sub">负=红 / 0=蓝 / 正=金<br>0 值最小最静，±1 最大最躁（约 2.2×）</div>
           </div>
         </div>
+      </div>
+
+      <!-- ③ 情绪谱系 -->
+      <div class="compare-card">
+        <h4 class="section-title"><i class="icon">🌡️</i> 情绪谱系 — 同一时刻五个情绪值的大小与颜色对比<span class="section-title-spacer"></span></h4>
+        <div class="spectrum-grid" id="spectrum"></div>
       </div>
     </div>
 
@@ -282,7 +302,10 @@
           hslToHex((h + 18) % 360, s, Math.max(0, l * 0.82)),
         ];
       }
-      const emotionGlassSize = (v) => lerp(0.82, 1.22, Math.abs(clamp(v, -1, 1)));
+      // 尺寸映射 v2（应用户反馈调整）：0 值从 0.82 缩到 0.58 ——
+      // 半径 = 0.375×系数：v=0 → 球径约 43% 容器（原 75% 偏大），
+      // |v|=1 → 约 92%，大小反差约 2.2×，情绪过程一目了然（上限仍 ≤0.46 防裁切）
+      const emotionGlassSize = (v) => lerp(0.58, 1.20, Math.abs(clamp(v, -1, 1)));
       const emotionEnergy = (v) => Math.abs(clamp(v, -1, 1));
 
       // ─────────── 玻璃光球（移植自 standalone-themes.html / Strands.jsx，原样） ───────────
@@ -417,7 +440,9 @@
           program.uniforms.uIntensity.value = 0.5 + 0.35 * e;
           renderer.render({ scene: mesh, target: renderTarget });
           glassProgram.uniforms.uScene.value = renderTarget.texture;
-          glassProgram.uniforms.uRadius.value = 0.375 * emotionGlassSize(v);
+          // 微脉动：静默时几乎不可见（±1%），极端情绪时 ±2.5%——让"躁动"多一层呼吸感
+          const pulse = 1 + (0.01 + 0.015 * e) * Math.sin(time * 0.001 * (1.5 + 2.5 * e));
+          glassProgram.uniforms.uRadius.value = 0.375 * emotionGlassSize(v) * pulse;
           glassProgram.uniforms.uLight.value = light;
           glassProgram.uniforms.uTint.value = hexToRgb01(emotionColors(v)[1]);
           renderer.render({ scene: glassMesh });
@@ -541,6 +566,20 @@
       const orbCard = createGlassOrb(document.getElementById("orbCard"), { light: 1 });
       const orbNewCompare = createGlassOrb(document.getElementById("orbNew").firstElementChild, { light: 1 });
       const orbOld = createCrystal(document.getElementById("orbOld"));
+
+      // 情绪谱系：固定五个值，展示 -1→+1 的大小/颜色变化过程
+      const SPEC_VALUES = [-0.87, -0.40, 0.00, 0.40, 0.87];
+      const spectrumEl = document.getElementById("spectrum");
+      SPEC_VALUES.forEach((sv) => {
+        const cell = document.createElement("div");
+        cell.className = "spec-cell";
+        cell.innerHTML =
+          `<div class="orb-box"></div>` +
+          `<div class="spec-val" style="color:${sv < -0.2 ? "var(--neg)" : sv > 0.2 ? "var(--pos)" : "var(--neutral)"}">${sv > 0 ? "+" : ""}${sv.toFixed(2)}</div>` +
+          `<div class="spec-label">${emotionLabel(sv)}</div>`;
+        spectrumEl.appendChild(cell);
+        createGlassOrb(cell.firstElementChild, { light: 1 }).setValue(sv);
+      });
 
       const REASONING = {
         neg: "题跋自述身世漂泊，语调沉郁，多处用典寄托孤愤之情。",
