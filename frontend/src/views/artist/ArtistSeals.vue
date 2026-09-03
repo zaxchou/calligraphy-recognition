@@ -36,9 +36,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import SealLightbox from '@/components/seal/SealLightbox.vue'
+import api from '../../api'
 
 const route = useRoute()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const STATIC_ORIGIN = window.location.origin
 
 const artistName = route.params.name
@@ -70,11 +70,8 @@ function openLightbox(seal) {
 
 async function fetchSeals() {
   try {
-    const res = await fetch(`${API_BASE}/seals?artist=${encodeURIComponent(artistName)}`)
-    if (res.ok) {
-      const data = await res.json()
-      seals.value = data.seals || data.items || []
-    }
+    const data = await api.get(`/seals?artist=${encodeURIComponent(artistName)}`)
+    seals.value = data.seals || data.items || []
   } catch (e) {
     console.error('获取印章失败:', e)
   } finally {

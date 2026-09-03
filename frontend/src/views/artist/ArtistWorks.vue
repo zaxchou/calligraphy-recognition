@@ -157,10 +157,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
+import api from '../../api'
 
 const route = useRoute()
 const router = useRouter()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const artistName = computed(() => route.params.name)
 
@@ -241,8 +241,8 @@ async function loadWorks() {
     if (workTypeFilter.value) params.set('work_type', workTypeFilter.value)
     const sf = SORT_FIELD_MAP[activeSort.value]
     if (sf) { params.set('sort_by', sf); params.set('sort_dir', sortDir.value) }
-    const res = await fetch(`${API_BASE}/tiba/results?${params}`)
-    if (res.ok) { const d = await res.json(); works.value = d.data || []; totalCount.value = d.total || 0 }
+    const d = await api.get(`/tiba/results?${params}`)
+    works.value = d.data || []; totalCount.value = d.total || 0
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }

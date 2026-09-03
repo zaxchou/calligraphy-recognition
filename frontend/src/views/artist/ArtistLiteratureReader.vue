@@ -93,6 +93,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Search, Fold, Download } from '@element-plus/icons-vue'
+import api from '../../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -194,22 +195,19 @@ function downloadPdf() {
 async function loadChunks() {
   loadingChunks.value = true
   try {
-    const res = await fetch(`${API_BASE}/knowledge/artists/${book.value.artist_id}/literature/${bookId.value}/chunks`)
-    if (res.ok) {
-      const data = await res.json()
-      chunks.value = data.chunks || []
-      if (outline.value.length === 0 && chunks.value.length > 0) {
-        const seen = new Set()
-        const deduped = []
-        chunks.value.forEach(c => {
-          const title = c.chapter_title || `第 ${c.chunk_index + 1} 节`
-          if (!seen.has(title)) {
-            seen.add(title)
-            deduped.push({ title, chunkIdx: c.chunk_index })
-          }
-        })
-        outline.value = deduped
-      }
+    const data = await api.get(`/knowledge/artists/${book.value.artist_id}/literature/${bookId.value}/chunks`)
+    chunks.value = data.chunks || []
+    if (outline.value.length === 0 && chunks.value.length > 0) {
+      const seen = new Set()
+      const deduped = []
+      chunks.value.forEach(c => {
+        const title = c.chapter_title || `第 ${c.chunk_index + 1} 节`
+        if (!seen.has(title)) {
+          seen.add(title)
+          deduped.push({ title, chunkIdx: c.chunk_index })
+        }
+      })
+      outline.value = deduped
     }
   } catch (e) { console.error(e) }
   finally { loadingChunks.value = false }
@@ -217,11 +215,8 @@ async function loadChunks() {
 
 async function loadImages() {
   try {
-    const res = await fetch(`${API_BASE}/knowledge/artists/${book.value.artist_id}/literature/${bookId.value}/images`)
-    if (res.ok) {
-      const data = await res.json()
-      images.value = data.images || []
-    }
+    const data = await api.get(`/knowledge/artists/${book.value.artist_id}/literature/${bookId.value}/images`)
+    images.value = data.images || []
   } catch {}
 }
 
@@ -264,19 +259,14 @@ function onScroll() {
 async function fetchBook() {
   loadingDetail.value = true
   try {
-    const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(artistName.value)}`)
-    if (!res.ok) return
-    const data = await res.json()
+    const data = await api.get(`/artists/by-name/${encodeURIComponent(artistName.value)}`)
     const aid = data.artist?.id
     if (!aid) return
 
-    const detRes = await fetch(`${API_BASE}/knowledge/artists/${aid}/literature/${bookId.value}`)
-    if (detRes.ok) {
-      const det = await detRes.json()
-      book.value = { ...det, artist_id: aid }
-      if (det.outline && det.outline.length > 0) {
-        outline.value = typeof det.outline === 'string' ? JSON.parse(det.outline) : det.outline
-      }
+    const det = await api.get(`/knowledge/artists/${aid}/literature/${bookId.value}`)
+    book.value = { ...det, artist_id: aid }
+    if (det.outline && det.outline.length > 0) {
+      outline.value = typeof det.outline === 'string' ? JSON.parse(det.outline) : det.outline
     }
   } catch (e) { console.error(e) }
   finally { loadingDetail.value = false }
