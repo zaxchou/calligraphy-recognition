@@ -1,4 +1,6 @@
 services:
+  # ⚠️ 运维备注：backend 容器重建后 IP 会变化，而 nginx 在启动时缓存 upstream IP，
+  # 因此 recreate backend 后必须执行 docker restart deploy-nginx-1（2026-09-04 502 事故教训）
   backend:
     build:
       context: ..
