@@ -9,6 +9,9 @@ export interface BatchProgress {
   percent: number
 }
 
+interface AnalyzeEvent extends Record<string, unknown> { type: string; total?: number; current?: number; updated?: number; errors?: number; message?: string; report?: Record<string, unknown> & { updated_at?: string; llm_corrected?: number } }
+interface TranslateEvent extends Record<string, unknown> { type: string; total?: number; current?: number; translated?: number; failed?: number }
+
 export interface UseBatchOperationsOptions {
   apiBase: string
   fetchRecords: () => Promise<void>
@@ -40,10 +43,17 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
     const libId = getLibraryId ? getLibraryId() : null
     return libId ? `batch-reanalyze-result_lib${libId}` : `batch-reanalyze-result_${getArtist()}`
   }
-  const _loadCached = () => { try { const v = localStorage.getItem(getCacheKey()); return v ? JSON.parse(v) : null } catch { return null } }
-  const batchResultData = ref<any>(_loadCached())
+  interface BatchResultData {
+    total: number
+    updated: number
+    errors: number
+    message: string
+    report: Record<string, unknown> & { updated_at: string; llm_corrected?: number }
+  }
+  const _loadCached = (): BatchResultData | null => { try { const v = localStorage.getItem(getCacheKey()); return v ? JSON.parse(v) as BatchResultData : null } catch { return null } }
+  const batchResultData = ref<BatchResultData | null>(_loadCached())
 
-  function _saveToStorage(data: any) {
+  function _saveToStorage(data: BatchResultData) {
     try { localStorage.setItem(getCacheKey(), JSON.stringify(data)) } catch { /* quota exceeded, ignore */ }
   }
 
@@ -86,26 +96,29 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
         { method: 'POST' }
       )
 
-      await streamAnalyzeSSE(response, {
+      await streamAnalyzeSSE<AnalyzeEvent>(response, {
         onEvent: (event) => {
           if (event.type === 'total') {
-            analyzeProgress.value = { current: 0, total: event.total, status: 'analyzing', percent: 0 }
+            analyzeProgress.value = { current: 0, total: event.total ?? 0, status: 'analyzing', percent: 0 }
           } else if (event.type === 'progress') {
-            const pct = Math.round((event.current / event.total) * 100)
-            analyzeProgress.value = { current: event.current, total: event.total, status: 'analyzing', percent: pct }
+            const cur = event.current ?? 0
+            const tot = event.total ?? 0
+            const pct = tot > 0 ? Math.round((cur / tot) * 100) : 0
+            analyzeProgress.value = { current: cur, total: tot, status: 'analyzing', percent: pct }
           } else if (event.type === 'complete') {
             batchResultData.value = {
-              total: event.total,
-              updated: event.updated,
-              errors: event.errors,
-              message: event.message,
+              total: event.total ?? 0,
+              updated: event.updated ?? 0,
+              errors: event.errors ?? 0,
+              message: event.message ?? '',
               report: { ...event.report, updated_at: new Date().toLocaleString() },
             }
             _saveToStorage(batchResultData.value)
-            analyzeProgress.value = { current: event.total, total: event.total, status: 'done', percent: 100 }
+            analyzeProgress.value = { current: event.total ?? 0, total: event.total ?? 0, status: 'done', percent: 100 }
             showBatchResultDialog.value = true
-            if (event.report?.llm_corrected > 0) {
-              ElMessage.success(`完成！DeepSeek 自动修正了 ${event.report.llm_corrected} 幅`)
+            const llmCorrected = event.report?.llm_corrected ?? 0
+            if (llmCorrected > 0) {
+              ElMessage.success(`完成！DeepSeek 自动修正了 ${llmCorrected} 幅`)
             }
             fetchRecords()
           }
@@ -114,8 +127,8 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
           ElMessage.error('批量重跑失败: ' + err.message)
         },
       })
-    } catch (err: any) {
-      ElMessage.error('批量重跑失败: ' + (err.message || err))
+    } catch (err) {
+      ElMessage.error('批量重跑失败: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       analyzing.value = false
     }
@@ -149,18 +162,20 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
         { method: 'POST' }
       )
 
-      await streamTranslateSSE(response, {
+      await streamTranslateSSE<TranslateEvent>(response, {
         onEvent: (event) => {
           if (event.type === 'start') {
-            translateProgress.value.total = event.total
+            translateProgress.value.total = event.total ?? 0
             translateProgress.value.status = 'translating'
           } else if (event.type === 'progress' || event.type === 'record_done') {
-            translateProgress.value.current = event.current
-            translateProgress.value.total = event.total
+            translateProgress.value.current = event.current ?? 0
+            translateProgress.value.total = event.total ?? 0
             translateProgress.value.status = 'translating'
-            translateProgress.value.percent = Math.round((event.current / event.total) * 100)
+            const tCur = event.current ?? 0
+            const tTot = event.total ?? 0
+            translateProgress.value.percent = tTot > 0 ? Math.round((tCur / tTot) * 100) : 0
           } else if (event.type === 'done') {
-            translateProgress.value.current = event.total
+            translateProgress.value.current = event.total ?? 0
             translateProgress.value.percent = 100
             translateProgress.value.status = 'done'
             ElMessage.success(`批量翻译完成：成功 ${event.translated} 条，失败 ${event.failed} 条`)

@@ -5,11 +5,11 @@
 
 export interface SSEEvent {
   type: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
-export interface SSEOptions {
-  onEvent: (event: SSEEvent) => void | Promise<void>
+export interface SSEOptions<T extends SSEEvent = SSEEvent> {
+  onEvent: (event: T) => void | Promise<void>
   onError?: (error: Error) => void
   onComplete?: () => void
 }
@@ -17,7 +17,7 @@ export interface SSEOptions {
 export function useSSEStream() {
   let abortController: AbortController | null = null
 
-  async function streamSSE(response: Response, options: SSEOptions): Promise<void> {
+  async function streamSSE<T extends SSEEvent = SSEEvent>(response: Response, options: SSEOptions<T>): Promise<void> {
     abortController = new AbortController()
 
     try {
@@ -41,7 +41,7 @@ export function useSSEStream() {
           if (!line.startsWith('data: ')) continue
           try {
             const event: SSEEvent = JSON.parse(line.slice(6))
-            await options.onEvent(event)
+            await options.onEvent(event as T)
           } catch {
             // ignore parse errors
           }

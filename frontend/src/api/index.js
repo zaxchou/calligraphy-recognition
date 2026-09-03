@@ -172,6 +172,14 @@ export const tibaApi = {
       notes: yearData.notes
     })
   },
+  /**
+   * @param {number} [skip=0]
+   * @param {number} [limit=500]
+   * @param {string|null} [artist=null]
+   * @param {number|null} [libraryId=null]
+   * @param {string|null} [sortBy=null]
+   * @param {string} [sortDir='desc']
+   */
   getAllResults(skip = 0, limit = 500, artist = null, libraryId = null, sortBy = null, sortDir = 'desc') {
     const params = { skip, limit }
     if (artist && artist !== 'all') params.artist = artist
