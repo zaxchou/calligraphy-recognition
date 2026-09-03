@@ -309,12 +309,12 @@
           <div class="diff-container">
             <div class="diff-panel">
               <h4 class="diff-panel-title diff-panel-old">原值</h4>
-              <div class="diff-panel-content" v-html="renderDiffSegments(diffOldSegments)"></div>
+              <div class="diff-panel-content" v-html="$sanitize(renderDiffSegments(diffOldSegments))"></div>
             </div>
             <div class="diff-arrow"><el-icon size="20"><Right /></el-icon></div>
             <div class="diff-panel">
               <h4 class="diff-panel-title diff-panel-new">新值</h4>
-              <div class="diff-panel-content" v-html="renderDiffSegments(diffNewSegments)"></div>
+              <div class="diff-panel-content" v-html="$sanitize(renderDiffSegments(diffNewSegments))"></div>
             </div>
           </div>
         </template>

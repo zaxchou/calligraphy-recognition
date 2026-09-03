@@ -87,7 +87,7 @@
           <div class="insight-compact" v-if="areaThemeData.insights.length">
             <div class="insight-headline" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
               <span class="headline-marker">{{ ['壹', '贰'][idx] }}</span>
-              <span v-html="boldNumbers(insight)"></span>
+              <span v-html="$sanitize(boldNumbers(insight))"></span>
             </div>
           </div>
         </div>

@@ -34,7 +34,7 @@
 
           <section v-if="artist.art_style" id="bio-style" class="av-section">
             <h2 class="av-section-title">艺术特色</h2>
-            <p class="av-text" v-html="renderMarkdown(artist.art_style)" />
+            <p class="av-text" v-html="$sanitize(renderMarkdown(artist.art_style))" />
           </section>
 
           <section v-if="artist.main_achievements" id="bio-achieve" class="av-section">

@@ -185,7 +185,7 @@
             <div class="panel-header">
               <div class="panel-title">智能专家分析</div>
             </div>
-            <div class="md" v-html="llmHtml"></div>
+            <div class="md" v-html="$sanitize(llmHtml)"></div>
             <div v-if="report?.llm?.prompt" class="prompt-toggle" @click="showPrompt = !showPrompt">
               <span class="prompt-toggle-icon">{{ showPrompt ? '▾' : '▸' }}</span>
               <span>查看分析提示词</span>

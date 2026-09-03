@@ -29,7 +29,7 @@
             </div>
             <div v-for="(m,i) in messages" :key="m.id||i" :class="['cf-msg',m.role]">
               <div v-if="m.thinking" class="cf-thinking"><Sparkles class="icon-xs" />思考中 {{ thinkSeconds }}s...</div>
-              <div v-else class="cf-text" v-html="renderMd(m.content)" @click="onContentClick"></div>
+              <div v-else class="cf-text" v-html="$sanitize(renderMd(m.content))" @click="onContentClick"></div>
               <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="cf-sources">
                 <div v-for="s in m.sources" :key="s.index" class="cf-src" @click="citationSource=s">
                   <span class="cf-src-idx">[{{ s.index }}]</span>
@@ -105,7 +105,7 @@
                 </div>
                 <div v-for="(m,i) in messages" :key="'full-'+(m.id||i)" :class="['cf-msg',m.role]">
                   <div v-if="m.thinking" class="cf-thinking"><Sparkles class="icon-xs" />思考中 {{ thinkSeconds }}s...</div>
-                  <div v-else class="cf-text cf-text-full" v-html="renderMd(m.content)" @click="onContentClick"></div>
+                  <div v-else class="cf-text cf-text-full" v-html="$sanitize(renderMd(m.content))" @click="onContentClick"></div>
                   <div v-if="m.role==='assistant'&&m.sources&&m.sources.length" class="cf-sources">
                     <div v-for="s in m.sources" :key="s.index" class="cf-src" @click="citationSource=s">
                       <span class="cf-src-idx">[{{ s.index }}]</span>

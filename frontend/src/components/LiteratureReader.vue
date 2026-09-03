@@ -63,7 +63,7 @@
             <div class="alr-chapter-pages" v-if="chunk.page_start">
               第 {{ chunk.page_start }}-{{ chunk.page_end || chunk.page_start }} 页
             </div>
-            <div class="alr-chapter-body" v-html="renderMarkdown(chunk.content)"></div>
+            <div class="alr-chapter-body" v-html="$sanitize(renderMarkdown(chunk.content))"></div>
             <!-- 该 chunk 分配到的插图（全局去重，避免多 chunk 同 page 重复显示） -->
             <div v-if="imagesByChunkId[chunk.id] && imagesByChunkId[chunk.id].length" class="alr-images">
               <div v-for="img in imagesByChunkId[chunk.id]" :key="img.id" class="alr-image-item">

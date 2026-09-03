@@ -132,7 +132,7 @@
 
                     <!-- 当前内容（高亮） -->
                     <div class="current-content">
-                      <p class="content-text" v-html="highlightedContent"></p>
+                      <p class="content-text" v-html="$sanitize(highlightedContent)"></p>
                     </div>
 
                     <!-- 关联图片 - 内联显示在文本下方 -->

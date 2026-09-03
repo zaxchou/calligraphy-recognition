@@ -26,7 +26,7 @@
       <div v-else-if="reportData" class="report-content">
         <el-tabs v-model="activeReportTab" class="report-tabs" type="border-card" :scrollable="true">
           <el-tab-pane v-for="section in reportData.sections" :key="section.id" :label="section.title" :name="section.id">
-            <div v-if="section.type === 'markdown'" class="report-section-markdown" v-html="renderMarkdown(section.content)"></div>
+            <div v-if="section.type === 'markdown'" class="report-section-markdown" v-html="$sanitize(renderMarkdown(section.content))"></div>
             <el-table v-else-if="section.type === 'table'" :data="section.content.rows" size="small" class="report-table">
               <el-table-column v-for="(header, idx) in section.content.headers" :key="idx" :prop="String(idx)" :label="header" min-width="80" />
             </el-table>

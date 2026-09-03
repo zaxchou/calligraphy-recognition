@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import DOMPurify from 'dompurify'
 import { ElMessage, ElLoadingDirective } from 'element-plus'
 // Element Plus 按需导入（vite unplugin），仅手动补充"命令式调用"组件的样式
 import 'element-plus/es/components/message/style/css'
@@ -76,6 +77,9 @@ async function init() {
   }
 
   app.directive('loading', ElLoadingDirective)
+  // XSS 防护（v2.0）：所有 v-html 内容经 $sanitize 消毒（模板层统一包裹）
+  app.config.globalProperties.$sanitize = (html) =>
+    DOMPurify.sanitize(html ?? '', { ADD_ATTR: ['target'] })
   app.use(createPinia())
   app.use(i18n)
   app.use(router)

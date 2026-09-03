@@ -27,7 +27,7 @@
             <span class="slide-num">{{ String(currentSlide + 1).padStart(2, '0') }}</span>
             <h1 class="slide-title">{{ slides[currentSlide]?.title }}</h1>
             <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
-            <div class="split-insight" v-html="slides[currentSlide]?.insight || ''"></div>
+            <div class="split-insight" v-html="$sanitize(slides[currentSlide]?.insight || '')"></div>
             <div class="insight-tip" v-if="slides[currentSlide]?.tip">
               💡 {{ slides[currentSlide]?.tip }}
             </div>
@@ -49,7 +49,7 @@
               <p class="slide-lead">{{ slides[currentSlide]?.subtitle }}</p>
             </div>
             <div class="wide-insight">
-              <div class="insight-body" v-html="slides[currentSlide]?.insight || ''"></div>
+              <div class="insight-body" v-html="$sanitize(slides[currentSlide]?.insight || '')"></div>
               <div class="insight-tip" v-if="slides[currentSlide]?.tip">
                 💡 {{ slides[currentSlide]?.tip }}
               </div>

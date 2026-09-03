@@ -62,7 +62,7 @@
             :name="section.id"
           >
             <!-- markdown 类型 -->
-            <div v-if="section.type === 'markdown'" class="report-section-markdown" v-html="renderMarkdown(section.content)"></div>
+            <div v-if="section.type === 'markdown'" class="report-section-markdown" v-html="$sanitize(renderMarkdown(section.content))"></div>
             <!-- table 类型 -->
             <el-table v-else-if="section.type === 'table'" :data="section.content.rows" size="small" class="report-table">
               <el-table-column

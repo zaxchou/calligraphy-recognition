@@ -16,7 +16,7 @@
       </div>
       
       <!-- 表格内容预览 -->
-      <div class="table-preview" v-html="tablePreviewHtml"></div>
+      <div class="table-preview" v-html="$sanitize(tablePreviewHtml)"></div>
       
       <div class="card-meta">
         <span v-if="result.book_title" class="meta-item">

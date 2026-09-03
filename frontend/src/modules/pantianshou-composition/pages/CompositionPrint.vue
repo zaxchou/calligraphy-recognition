@@ -117,7 +117,7 @@
       <!-- LLM 分析正文 -->
       <section v-if="report.llm && report.llm.text" class="llm-section">
         <h2>智能专家分析</h2>
-        <div class="md" v-html="renderedMarkdown"></div>
+        <div class="md" v-html="$sanitize(renderedMarkdown)"></div>
       </section>
 
       <!-- 页脚 -->

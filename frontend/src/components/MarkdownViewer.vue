@@ -18,7 +18,7 @@
       <span>暂无 Markdown 内容</span>
     </div>
     
-    <div v-else class="md-content" v-html="renderedHtml"></div>
+    <div v-else class="md-content" v-html="$sanitize(renderedHtml)"></div>
   </div>
 </template>
 
