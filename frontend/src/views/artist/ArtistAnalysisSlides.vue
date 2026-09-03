@@ -93,13 +93,13 @@ import { GridComponent, TooltipComponent, LegendComponent, RadarComponent } from
 import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { artistRulesApi } from '@/api'
+import api from '@/api'
 
 echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
 const route = useRoute()
 const router = useRouter()
 const artistName = route.params.name
-const API = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const deckRef = ref(null)
 const currentSlide = ref(0)
@@ -241,8 +241,7 @@ function baseGrid() { return { left: '8%', right: '8%', bottom: '12%', top: '8%'
 // ── 数据加载 ──
 async function fetchStats() {
   if (statsData.value) return statsData.value
-  const res = await fetch(`${API}/content-analysis/stats?artist=${encodeURIComponent(artistName)}`)
-  statsData.value = await res.json()
+  statsData.value = await api.get(`/content-analysis/stats?artist=${encodeURIComponent(artistName)}`)
   return statsData.value
 }
 async function fetchRules() {
@@ -254,27 +253,27 @@ async function loadOverview() { await Promise.all([fetchStats(), fetchRules()]) 
 async function loadSentiment() {
   await fetchStats()
   if (!emotionTimeline.value) {
-    try { const res = await fetch(`${API}/content-analysis/emotion-timeline?artist=${encodeURIComponent(artistName)}`); const d = await res.json(); if (d.success) emotionTimeline.value = d } catch {}
+    try { const d = await api.get(`/content-analysis/emotion-timeline?artist=${encodeURIComponent(artistName)}`); if (d.success) emotionTimeline.value = d } catch {}
   }
 }
 async function loadTheme() { await fetchStats() }
 async function loadStyle() { await fetchStats() }
 async function loadDimension() {
   if (!dimensionStats.value) {
-    try { const res = await fetch(`${API}/content-analysis/dimension-stats?artist=${encodeURIComponent(artistName)}`); const d = await res.json(); if (d.success) dimensionStats.value = d.dimensions } catch {}
+    try { const d = await api.get(`/content-analysis/dimension-stats?artist=${encodeURIComponent(artistName)}`); if (d.success) dimensionStats.value = d.dimensions } catch {}
   }
   await fetchRules()
 }
 async function loadRanking() {
   if (!emotionRanking.value) {
-    try { const res = await fetch(`${API}/content-analysis/emotion-ranking?artist=${encodeURIComponent(artistName)}&limit=10`); const d = await res.json(); if (d.success) emotionRanking.value = d } catch {}
+    try { const d = await api.get(`/content-analysis/emotion-ranking?artist=${encodeURIComponent(artistName)}&limit=10`); if (d.success) emotionRanking.value = d } catch {}
   }
 }
 async function loadSpatial() { await fetchStats() }
 async function loadMaterial() {
   await fetchStats()
   if (!sizeStatsData.value) {
-    try { const res = await fetch(`${API}/content-analysis/size-stats?artist=${encodeURIComponent(artistName)}`); sizeStatsData.value = await res.json() } catch {}
+    try { sizeStatsData.value = await api.get(`/content-analysis/size-stats?artist=${encodeURIComponent(artistName)}`) } catch {}
   }
 }
 

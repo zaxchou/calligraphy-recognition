@@ -680,10 +680,7 @@ function goVerifyPage() {
 // ── Library switcher ──
 async function fetchAccessibleLibs() {
   try {
-    const res = await fetch(`${API_BASE}/libraries/accessible-libraries`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}` }
-    })
-    const data = await res.json()
+    const data = await api.get('/libraries/accessible-libraries')
     accessibleLibs.value = data.libraries || []
     if (!switchingLibraryId.value && libraryId.value) {
       switchingLibraryId.value = libraryId.value
