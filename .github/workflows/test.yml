@@ -16,9 +16,9 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: |
-          pip install fastapi==0.104.1 sqlalchemy==2.0.23 pydantic==2.5.2 \
+          pip install fastapi==0.115.6 sqlalchemy==2.0.23 pydantic==2.10.4 \
             pydantic-settings==2.1.0 python-multipart pillow PyMuPDF \
-            opencv-python-headless numpy python-jose[cryptography] \
+            opencv-python-headless numpy PyJWT \
             "passlib[bcrypt]" pytest httpx==0.25.2 requests dashscope jieba \
             scipy redis celery==5.3.6 alembic python-dotenv
       - name: Run contract tests
