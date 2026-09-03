@@ -151,6 +151,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { siteConfig } from '../config'
+import api from '../api'
 import {
   DataAnalysis, Camera, ArrowRight, Collection, PictureFilled,
   TrendCharts, VideoPlay, Histogram, UserFilled
@@ -160,7 +161,6 @@ const router = useRouter()
 const featuresRef = ref(null)
 
 // ── 常量 ──────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const VIDEO_SRC = '/videos/hero_museum_li_shan.mp4'
 
 const heroImages = [
@@ -254,8 +254,8 @@ async function fetchDashboardData() {
   loading.value = true
   try {
     const [extRes, artistsRes] = await Promise.all([
-      fetch(`${API_BASE}/tiba/stats/extended`).then(r => r.json()),
-      fetch(`${API_BASE}/content-analysis/artists`).then(r => r.json()),
+      api.get('/tiba/stats/extended'),
+      api.get('/content-analysis/artists'),
     ])
 
     if (extRes.success) stats.value = extRes.data

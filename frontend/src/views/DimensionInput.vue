@@ -217,13 +217,12 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
+import api from '../api'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
   libraryId: { type: Number, default: null }
 })
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const loading = ref(false)
 const allItems = ref([])
@@ -239,8 +238,7 @@ function onArtistChange() {
 }
 async function fetchArtistList() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
     if (artistList.value.length > 0 && !artistList.value.includes(selectedArtist.value)) {
       selectedArtist.value = artistList.value[0]
@@ -313,8 +311,7 @@ async function loadData() {
     if (artistParam) params.set('artist', artistParam)
     if (props.libraryId) params.set('library_id', String(props.libraryId))
     const queryStr = params.toString() ? `?${params.toString()}` : ''
-    const res = await fetch(`${API_BASE}/tiba/dimensions${queryStr}`)
-    const data = await res.json()
+    const data = await api.get(`/tiba/dimensions${queryStr}`)
     if (data.success) {
       allItems.value = data.data.items
       years.value = data.data.years
@@ -441,15 +438,10 @@ async function saveSingle(id) {
   if (!widthChanged && !heightChanged) return
 
   try {
-    const res = await fetch(`${API_BASE}/tiba/dimensions/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        artwork_height_cm: height,
-        artwork_width_cm: width,
-      })
+    const data = await api.put(`/tiba/dimensions/${id}`, {
+      artwork_height_cm: height,
+      artwork_width_cm: width,
     })
-    const data = await res.json()
     if (data.success) {
       // 后端返回的已swap过（height↔width），本地变量名是反的所以直接用
       item.artwork_width_cm = data.data.artwork_width_cm
@@ -485,16 +477,11 @@ async function saveAlbumDimension(albumName) {
 
   try {
     console.log('[saveAlbum] sending...', { album_name: albumName, height, width })
-    const res = await fetch(`${API_BASE}/tiba/dimensions/album/batch`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        album_name: albumName,
-        artwork_height_cm: height,
-        artwork_width_cm: width,
-      })
+    const data = await api.put('/tiba/dimensions/album/batch', {
+      album_name: albumName,
+      artwork_height_cm: height,
+      artwork_width_cm: width,
     })
-    const data = await res.json()
     if (data.success) {
       // 更新本地所有该册页记录
       const records = getAlbumRecords(albumName)
@@ -538,16 +525,11 @@ async function syncOneToAlbum(item) {
   const width = item.artwork_width_cm
 
   try {
-    const res = await fetch(`${API_BASE}/tiba/dimensions/album/batch`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        album_name: item.album_name,
-        artwork_height_cm: height,
-        artwork_width_cm: width,
-      })
+    const data = await api.put('/tiba/dimensions/album/batch', {
+      album_name: item.album_name,
+      artwork_height_cm: height,
+      artwork_width_cm: width,
     })
-    const data = await res.json()
     if (data.success) {
       const records = getAlbumRecords(item.album_name)
       let newFilled = 0
