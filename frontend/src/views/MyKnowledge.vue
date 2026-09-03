@@ -27,7 +27,7 @@
           @click="handleUpload"
           style="margin-top: 12px; width: 100%"
         >
-          {{ uploading ? '上传并解析中...' : '上传文档' }}
+          {{ uploading ? $t('myknowledge.t9') : $t('myknowledge.t10')}}
         </el-button>
       </div>
 
@@ -111,7 +111,7 @@ async function handleUpload() {
     pendingFile.value = null
     await loadDocuments()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '上传失败')
+    ElMessage.error(e?.response?.data?.detail || t('myknowledge.s4'))
   } finally {
     uploading.value = false
   }

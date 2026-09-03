@@ -60,7 +60,7 @@
               class="recognize-btn"
             >
               <el-icon v-if="!isRecognizing"><Search /></el-icon>
-              {{ isRecognizing ? 'AI分析中...' : '开始识别' }}
+              {{ isRecognizing ? $t('recognize.t15') : $t('recognize.t16')}}
             </el-button>
           </div>
         </el-card>
@@ -73,7 +73,7 @@
             <div class="card-header">
               <span>{{ $t('recognize.t8') }}</span>
               <el-tag v-if="result" :type="result.is_confident ? 'success' : 'warning'">
-                {{ result.is_confident ? '高置信度' : '低置信度' }}
+                {{ result.is_confident ? $t('recognize.t17') : $t('recognize.t18')}}
               </el-tag>
             </div>
           </template>
@@ -529,7 +529,7 @@ const startRecognize = async () => {
     } else {
       progressStatus.value = 'exception'
       analyzingStep.value = '识别失败'
-      ElMessage.error(response.message || '识别失败')
+      ElMessage.error(response.message || t('recognize.s10'))
     }
   } catch (error) {
     console.error('识别错误:', error)
@@ -618,7 +618,7 @@ const deleteHistoryItem = async (row) => {
       // 刷新历史记录列表
       loadHistory()
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(response.message || t('engine.delete_error'))
     }
   } catch (error) {
     console.error('删除失败详细错误:', error)

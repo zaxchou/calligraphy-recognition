@@ -62,7 +62,7 @@
       </div>
     </div>
 
-    <el-dialog v-model="showEditDialog" :title="editingSeal ? '编辑印章' : '新增印章'" width="560px" class="claude-dialog">
+    <el-dialog v-model="showEditDialog" :title="editingSeal ? $t('sealmanager.a14') : $t('sealmanager.t1')" width="560px" class="claude-dialog">
       <el-form :model="editForm" label-position="top" class="modern-form">
         <el-form-item :label="$t('sealmanager.a2')" required>
           <el-input v-model="editForm.name" :placeholder="$t('sealmanager.s1')" />
@@ -262,7 +262,7 @@ async function handleSave() {
         showEditDialog.value = false
         await loadSeals()
       } else {
-        ElMessage.error(res.message || '更新失败')
+        ElMessage.error(res.message || t('sealmanager.s7'))
       }
     } else {
       const res = await sealsApi.create(payload)
@@ -280,7 +280,7 @@ async function handleSave() {
         }
         await loadSeals()
       } else {
-        ElMessage.error(res.message || '创建失败')
+        ElMessage.error(res.message || t('libraries.s4'))
       }
     }
   } catch (error) {
@@ -320,7 +320,7 @@ async function handleDelete(seal) {
     )
     const res = await sealsApi.delete(seal.id)
     if (res.success) {
-      ElMessage.success(res.message || '删除成功')
+      ElMessage.success(res.message || t('engine.delete_success'))
       await loadSeals()
     }
   } catch (e) {

@@ -34,7 +34,7 @@
             class="summary-btn"
           >
             <el-icon><RefreshRight /></el-icon>
-            {{ reportData ? '重新生成' : '生成报告' }}
+            {{ reportData ? $t('contentanalysis.t30') : $t('contentanalysis.t31')}}
           </el-button>
           <el-button
             v-if="reportData"
@@ -85,7 +85,7 @@
                 </div>
                 <div v-if="item.theme" class="report-item-meta">
                   <span class="report-meta-label">{{ $t('contentanalysis.t7') }}</span><span class="report-meta-value">{{ item.theme }}</span>
-                  <span class="report-meta-label">{{ $t('contentanalysis.t8') }}</span><span class="report-meta-value">{{ item.polarity }}（{{ item.emotion_score > 0 ? '+' : '' }}{{ item.emotion_score?.toFixed(2) }}）</span>
+                  <span class="report-meta-label">{{ $t('contentanalysis.t8') }}</span><span class="report-meta-value">{{ item.polarity }}（{{ item.emotion_score > 0 ? '+' : ''}}{{ item.emotion_score?.toFixed(2) }}）</span>
                 </div>
                 <div v-if="item.text" class="report-item-text">「{{ item.text }}」</div>
                 <div v-if="item.question" class="report-item-qa">
@@ -576,7 +576,7 @@ async function generateSummary() {
       }
       ElMessage.success(t('contentanalysis.s1'))
     } else {
-      ElMessage.error('生成报告失败: ' + (data.error || '未知错误'))
+      ElMessage.error('生成报告失败: ' + (data.error || t('contentanalysis.s6')))
     }
   } catch (e) {
     if (e.response?.status === 401) {

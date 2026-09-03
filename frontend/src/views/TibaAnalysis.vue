@@ -1267,12 +1267,12 @@ async function handleSearch(keyword) {
         ElMessage.info(t('tibaanalysis.s7'))
       }
     } else {
-      ElMessage.error(response.message || '搜索失败')
+      ElMessage.error(response.message || t('tibaanalysis.s16'))
       searchResults.value = []
     }
   } catch (error) {
     console.error('搜索失败:', error)
-    ElMessage.error('搜索失败: ' + (error.message || '网络错误'))
+    ElMessage.error('搜索失败: ' + (error.message || t('tibaanalysis.s17')))
     searchResults.value = []
   } finally {
     searchLoading.value = false
@@ -1361,11 +1361,11 @@ async function loadHistory(page = 1) {
       updateTrendChart()
     } else {
       console.error('历史记录API返回失败:', response)
-      ElMessage.error(response.message || '加载历史记录失败')
+      ElMessage.error(response.message || t('recognize.s6'))
     }
   } catch (error) {
     console.error('加载历史记录失败:', error)
-    ElMessage.error('加载历史记录失败: ' + (error.message || '网络错误'))
+    ElMessage.error('加载历史记录失败: ' + (error.message || t('tibaanalysis.s17')))
   } finally {
     historyLoading.value = false
   }
@@ -1473,7 +1473,7 @@ async function loadHistoryItem(row) {
         
         ElMessage({ message: t('recognize.s9'), type: 'success', customClass: 'toast-transparent', center: true })
       } else {
-        ElMessage.error(response.message || '加载失败')
+        ElMessage.error(response.message || t('engine.load_error'))
       }
     }
   } catch (error) {
@@ -1546,7 +1546,7 @@ async function loadAndSelectImage(imageId) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       ElMessage.success(`已切换到: ${image.title || '未命名'}`)
     } else {
-      ElMessage.error(response.message || '加载画作失败')
+      ElMessage.error(response.message || t('tibaanalysis.s10'))
     }
   } catch (error) {
     console.error('加载画作失败:', error)
@@ -1585,7 +1585,7 @@ async function deleteHistoryItem(row) {
         }
       }
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(response.message || t('engine.delete_error'))
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -1639,7 +1639,7 @@ async function deleteImage(item) {
         }
       }
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(response.message || t('engine.delete_error'))
     }
   } catch (error) {
     if (error !== 'cancel') {

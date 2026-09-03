@@ -229,7 +229,7 @@
               <span v-if="item.period_phase" class="period-badge">{{ item.period_phase }}</span>
             </div>
             <div v-if="item.inscription_content" class="result-inscription">
-              {{ item.inscription_content.substring(0, 40) }}{{ item.inscription_content.length > 40 ? '...' : '' }}
+              {{ item.inscription_content.substring(0, 40) }}{{ item.inscription_content.length > 40 ? '...' : ''}}
             </div>
           </div>
           <el-button plain size="small" class="btn-edit btn-jump" @click.stop="onSelectSearchResult(item)">

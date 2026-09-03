@@ -82,7 +82,7 @@
               <input class="uc-input" v-model="editForm.phone" :placeholder="$t('login.s1')" maxlength="11" />
             </div>
             <button class="uc-btn primary" :disabled="profileSaving" @click="handleUpdateProfile">
-              {{ profileSaving ? '保存中...' : '保存资料' }}
+              {{ profileSaving ? $t('usercenter.t19') : $t('usercenter.t20')}}
             </button>
           </div>
         </div>
@@ -104,7 +104,7 @@
               <input class="uc-input" v-model="pwdForm.confirm" type="password" :placeholder="$t('usercenter.a4')" />
             </div>
             <button class="uc-btn primary" :disabled="pwdSaving" @click="handleChangePassword">
-              {{ pwdSaving ? '修改中...' : '修改密码' }}
+              {{ pwdSaving ? $t('usercenter.t21') : $t('usercenter.t13')}}
             </button>
           </div>
         </div>
@@ -231,7 +231,7 @@ async function onAvatarCropped(blob) {
       ElMessage.success(t('usercenter.s4'))
     }
   } catch (err) {
-    ElMessage.error(err?.response?.data?.detail || '头像上传失败')
+    ElMessage.error(err?.response?.data?.detail || t('usercenter.s11'))
     avatarPreview.value = authStore.avatarUrl || ''
   } finally {
     avatarUploading.value = false
@@ -250,7 +250,7 @@ async function handleUpdateProfile() {
     await authStore.refreshProfile()
     ElMessage.success(t('usercenter.s6'))
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '保存失败')
+    ElMessage.error(e?.response?.data?.detail || t('engine.save_error'))
   } finally { profileSaving.value = false }
 }
 
@@ -283,7 +283,7 @@ async function handleChangePassword() {
     pwdForm.confirm = ''
     await loadProfile()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '修改失败')
+    ElMessage.error(e?.response?.data?.detail || t('usercenter.s12'))
   } finally { pwdSaving.value = false }
 }
 </script>

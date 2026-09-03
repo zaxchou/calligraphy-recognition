@@ -172,7 +172,7 @@
             @click="startUpload"
           >
             <Loader2 v-if="store.uploadStatus === 'uploading'" class="icon spin" />
-            <span v-else>{{ uploadSuccess ? '已上传' : '开始上传' }}</span>
+            <span v-else>{{ uploadSuccess ? $t('c-uploadmodal.t19') : $t('c-uploadmodal.t20')}}</span>
           </button>
         </div>
       </div>

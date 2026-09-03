@@ -16,10 +16,10 @@
           </span>
         </div>
         <div class="alr-toprow-right">
-          <el-button text size="small" @click="toggleSearch" :title="showSearch ? '关闭搜索' : '搜索'">
+          <el-button text size="small" @click="toggleSearch" :title="showSearch ? $t('artist.artistliteraturereader.a1') : $t('common.search')">
             <el-icon><Search /></el-icon>
           </el-button>
-          <el-button text size="small" @click="sidebarCollapsed = !sidebarCollapsed" :title="sidebarCollapsed ? '展开目录' : '折叠目录'">
+          <el-button text size="small" @click="sidebarCollapsed = !sidebarCollapsed" :title="sidebarCollapsed ? $t('artist.artistliteraturereader.a2') : $t('artist.artistliteraturereader.a3')">
             <el-icon><Fold /></el-icon>
           </el-button>
           <el-button text size="small" @click="downloadPdf">

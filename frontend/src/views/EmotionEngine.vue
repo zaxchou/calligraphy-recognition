@@ -65,7 +65,7 @@
         <el-table-column prop="score" :label="$t('engine.score')" width="100">
           <template #default="{ row }">
             <span :class="{ 'score-positive': row.score > 0, 'score-negative': row.score < 0 }">
-              {{ row.score > 0 ? '+' : '' }}{{ row.score }}
+              {{ row.score > 0 ? '+' : ''}}{{ row.score }}
             </span>
           </template>
         </el-table-column>

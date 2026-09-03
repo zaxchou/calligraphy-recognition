@@ -344,7 +344,7 @@ async function handleSubmitChange() {
     }
     showSuggestDialog.value = false
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '提交失败')
+    ElMessage.error(e.response?.data?.detail || t('suggest.submit_fail'))
   } finally {
     submitting.value = false
   }

@@ -479,6 +479,22 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateX(-50%) scaleX(1);
 }
 
+/* === 英文模式排版微调（拉丁字符与中文的呼吸感不同） === */
+:global(html[lang='en']) .main-nav {
+  gap: var(--space-lg);
+}
+:global(html[lang='en']) .nav-text {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+:global(html[lang='en']) .logo-sub {
+  letter-spacing: 0.01em;
+}
+:global(html[lang='en']) .lang-switch {
+  font-size: 12px;
+  padding: 2px 10px;
+}
+
 /* === 移动端汉堡按钮（PC 隐藏） === */
 .mobile-menu-toggle {
   display: none;

@@ -23,6 +23,7 @@ const _origFetch = window.fetch
 window.fetch = function (input, init) {
   init = init || {}
   init.headers = init.headers || {}
+  init.headers['Accept-Language'] = localStorage.getItem('lang') || 'zh'
   const token = localStorage.getItem('auth_token')
   if (token) {
     if (init.headers instanceof Headers) {

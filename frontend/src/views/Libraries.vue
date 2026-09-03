@@ -210,7 +210,7 @@ async function handleCreate() {
     createForm.visibility = 'private'
     await loadLibraries()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '创建失败')
+    ElMessage.error(e?.response?.data?.detail || t('libraries.s4'))
   } finally {
     creating.value = false
   }

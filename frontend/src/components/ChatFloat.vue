@@ -170,7 +170,7 @@ import { MessageCircle, X, Sparkles, Send, Loader2, Maximize2, Minimize2, Plus }
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { ElMessage } from 'element-plus'
-import { translate as t } from '@/locales'
+import { translate as tI18n, locale } from '@/locales'
 
 const props = defineProps({
   artistId: { type: Number, default: null },
@@ -348,7 +348,7 @@ async function send(msg) {
   nextTick(scrollToBottom)
 
   try {
-    const body = { prompt: t }
+    const body = { prompt: t, lang: locale.value }
     if (isExpertMode.value) {
       body.artist_id = props.artistId
       body.artist_name = props.artistName
@@ -412,7 +412,7 @@ async function send(msg) {
       last.thinking = false; last.loading = false; last.content = '查询失败，请重试'
     }
     if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
-    try { ElMessage.error(t('c-chatfloat.s1')) } catch {}
+    try { ElMessage.error(tI18n('c-chatfloat.s1')) } catch {}
   } finally {
     loading.value = false
     nextTick(scrollToBottom)

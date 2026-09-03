@@ -127,7 +127,7 @@
                           {{ $t(polarityKey(combinedSentiment.polarity)) }}
                         </span>
                         <span class="vader-score-big" :style="{ color: displayScore < 0 ? '#e07a5f' : displayScore > 0 ? '#3cb88b' : '#999' }">
-                          {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(4) }}
+                          {{ displayScore > 0 ? '+' : ''}}{{ displayScore.toFixed(4) }}
                         </span>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
                       </div>
@@ -161,7 +161,7 @@
                           {{ combinedSentiment.polarity === 'positive' ? $t('polarity.positive') : combinedSentiment.polarity === 'negative' ? $t('polarity.negative') : combinedSentiment.polarity === 'ambiguous' ? $t('polarity.ambiguous') : $t('polarity.neutral') }}
                         </span>
                         <span class="summary-score" :style="{ color: displayScore < 0 ? '#f56c6c' : displayScore > 0 ? '#3cb88b' : '#999' }">
-                          {{ displayScore > 0 ? '+' : '' }}{{ displayScore.toFixed(2) }}
+                          {{ displayScore > 0 ? '+' : ''}}{{ displayScore.toFixed(2) }}
                         </span>
                         <el-tag v-if="currentImage.contentAnalysis?.period_phase" size="small" type="info">{{ $t(currentImage.contentAnalysis.period_phase) }}</el-tag>
                       </div>
@@ -196,7 +196,7 @@
                       <span class="sentiment-score-text">{{ $t('sentiment.intensity') }} {{ Math.round(getSentimentIntensity(currentImage.contentAnalysis.sentiment) * 100) }}%</span>
                       <template v-if="currentImage.contentAnalysis.sentiment.emotion_score != null">
                         <span class="sentiment-sep">·</span>
-                        <span class="sentiment-score-text">{{ $t('sentiment.score') }} {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : '' }}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
+                        <span class="sentiment-score-text">{{ $t('sentiment.score') }} {{ currentImage.contentAnalysis.sentiment.emotion_score > 0 ? '+' : ''}}{{ currentImage.contentAnalysis.sentiment.emotion_score }}</span>
                       </template>
                     </div>
                     <div class="sentiment-bar-track">
@@ -259,19 +259,19 @@
                           @click="(dim.hasData || dim.placeholder) && toggleDimDetail(dim.nameKey)"
                           :style="{ cursor: (dim.hasData || dim.placeholder) ? 'pointer' : 'default' }">
                           <td class="dim-name">
-                            <span v-if="dim.hasData || dim.placeholder" class="dim-expand">{{ expandedDims.has(dim.nameKey) ? '▼' : '▶' }}</span>
+                            <span v-if="dim.hasData || dim.placeholder" class="dim-expand">{{ expandedDims.has(dim.nameKey) ? '▼' : '▶'}}</span>
                             <span class="dim-pol-dot" :class="'pol-' + dim.polarity" :title="dim.polarity"></span>
                             {{ $t(dim.nameKey) }}
                           </td>
                           <td class="dim-score" :class="{ 'score-pos': dim.normalized > 0, 'score-neg': dim.normalized < 0 }">
-                            {{ dim.normalized > 0 ? '+' : '' }}{{ dim.normalized.toFixed(2) }}
+                            {{ dim.normalized > 0 ? '+' : ''}}{{ dim.normalized.toFixed(2) }}
                           </td>
                           <td class="dim-weight">{{ (dim.weight * 100).toFixed(0) }}%</td>
                           <td class="dim-conf" :class="{ 'conf-high': dim.confidence >= 0.7, 'conf-mid': dim.confidence >= 0.4 && dim.confidence < 0.7, 'conf-low': dim.confidence < 0.4 }">
                           {{ (dim.confidence * 100).toFixed(0) }}%
                         </td>
                           <td class="dim-contrib" :class="{ 'score-pos': dim.contribution > 0, 'score-neg': dim.contribution < 0 }">
-                            {{ dim.contribution > 0 ? '+' : '' }}{{ dim.contribution.toFixed(3) }}
+                            {{ dim.contribution > 0 ? '+' : ''}}{{ dim.contribution.toFixed(3) }}
                           </td>
                         </tr>
                         <!-- 展开详情 -->
@@ -285,7 +285,7 @@
                                 <div class="detail-item">
                                   <span class="detail-label">{{ item.label }}</span>
                                   <span class="detail-value" :class="{ 'score-pos': item.score > 0, 'score-neg': item.score < 0 }">
-                                    {{ item.score > 0 ? '+' : '' }}{{ item.score }}
+                                    {{ item.score > 0 ? '+' : ''}}{{ item.score }}
                                   </span>
                                   <span class="detail-desc" v-if="item.desc">{{ item.desc }}</span>
                                 </div>
@@ -306,7 +306,7 @@
                   <div class="formula-result">
                     <span class="result-label">{{ $t('derivation.normalized') }}</span>
                     <span class="result-score" :class="{ 'score-pos': combinedSentiment.vader_normalized > 0, 'score-neg': combinedSentiment.vader_normalized < 0 }">
-                      {{ combinedSentiment.vader_normalized > 0 ? '+' : '' }}{{ combinedSentiment.vader_normalized }}
+                      {{ combinedSentiment.vader_normalized > 0 ? '+' : ''}}{{ combinedSentiment.vader_normalized }}
                     </span>
                     <span class="result-polarity" :style="{ color: polarityColor(combinedSentiment.polarity) }">
                       → {{ $t(polarityKey(combinedSentiment.polarity)) }}
@@ -578,7 +578,7 @@
                   <div class="seal-interp-header">{{ $t("seal.emotion") }}</div>
                   <div class="seal-interp-signals">
                     <template v-for="sig in sealEmotion.signals.filter(s => s.raw_score !== 0)" :key="sig.seal">
-                      <span class="seal-interp-tag">{{ sig.seal }}：{{ translateContent(sig.desc) }}（{{ sig.raw_score > 0 ? '+' : '' }}{{ sig.raw_score }}）</span>
+                      <span class="seal-interp-tag">{{ sig.seal }}：{{ translateContent(sig.desc) }}（{{ sig.raw_score > 0 ? '+' : ''}}{{ sig.raw_score }}）</span>
                     </template>
                     <span v-if="!sealEmotion.signals.filter(s => s.raw_score !== 0).length" class="seal-interp-neutral">
                       {{ $t("seal.neutral") }}

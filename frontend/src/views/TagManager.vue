@@ -366,7 +366,7 @@ async function handleResetAllTags() {
       { confirmButtonText: '确定清空', cancelButtonText: '取消', type: 'warning', confirmButtonClass: 'el-button--danger' }
     )
     const res = await tibaApi.resetAllTags()
-    ElMessage.success(res.data?.message || '已清空所有标签')
+    ElMessage.success(res.data?.message || t('tagmanager.s10'))
     selectedTag.value = null
     selectedTagItems.value = []
     await loadData()

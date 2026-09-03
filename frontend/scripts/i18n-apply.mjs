@@ -46,11 +46,26 @@ function nsFor(file) {
   return rel.replace(/^views\//, '').replace(/^components\//, 'c-').replace(/\//g, '.').toLowerCase()
 }
 const counter = {}
+{
+  // 每个 ns.kind 从 zh.js 已有键的最大编号之后起算，避免跨批次撞名
+  const re = /^([a-z0-9.-]+)\.(t|a|s)(\d+)$/gm
+  for (const m of parseZhKeys().matchAll(re)) {
+    const [, ns2, kind, n] = m
+    counter[ns2] ??= { t: 0, a: 0, s: 0 }
+    counter[ns2][kind] = Math.max(counter[ns2][kind], Number(n))
+  }
+}
+function parseZhKeys() {
+  try { return fs.readFileSync(path.join(srcRoot, 'locales/zh.js'), 'utf8') } catch { return '' }
+}
 function keyFor(zh, ns, kind) {
   if (dict[zh]) return dict[zh]
   if (zhValueToKey[zh]) { dict[zh] = zhValueToKey[zh]; return dict[zh] }
   counter[ns] ??= { t: 0, a: 0, s: 0 }
-  const k = `${ns}.${kind}${++counter[ns][kind]}`
+  let k
+  do {
+    k = `${ns}.${kind}${++counter[ns][kind]}`
+  } while (Object.values(dict).includes(k) || zhValueToKey[zh] === k)
   dict[zh] = k
   newEntries[k] = zh
   return k
@@ -137,13 +152,42 @@ for (const file of targets) {
       replaced++
       return `>${pre}{{ $t('${key}') }}${post}<`
     })
+    // 1b) mustache 三元：{{ expr ? 'A' : 'B' }} —— 含中文的分支转 $t
+    tpl = tpl.replace(/\{\{([^{}]*?)\?\s*'([^']*)'\s*:\s*'([^']*)'\s*\}\}/g, (m, expr, a, b) => {
+      if (/['"`]/.test(expr)) { skipped++; return m }
+      const conv = (v, kind) => /[\u{4e00}-\u{9fff}]/u.test(v) ? `$t('${keyFor(v, ns, kind)}')` : `'${v}'`
+      replaced++
+      return `{{${expr}? ${conv(a, 't')} : ${conv(b, 't')}}}`
+    })
     // 2) 白名单静态属性
     tpl = tpl.replace(ATTR_RE, (m, attr, val) => {
       const key = keyFor(val.trim(), ns, 'a')
       replaced++
       return `:${attr}="$t('${key}')"`
     })
+    // 2b) 动态属性三元：:attr="expr ? 'A' : 'B'"（:value/:type 是表单数据，跳过）
+    tpl = tpl.replace(/(:([\w-]+)=")([^"{}]*?)\?\s*'([^']*)'\s*:\s*'([^']*)'\s*(")/g, (m, head, attr, expr, a, b, tail) => {
+      if (attr === 'value' || attr === 'type') { skipped++; return m }
+      if (/['"`]/.test(expr)) { skipped++; return m }
+      const conv = (v) => /[\u{4e00}-\u{9fff}]/u.test(v) ? `$t('${keyFor(v, ns, 'a')}')` : `'${v}'`
+      replaced++
+      return `${head}${expr}? ${conv(a)} : ${conv(b)}${tail}`
+    })
     newCode = newCode.slice(0, tplMatch.index) + tpl + newCode.slice(tplMatch.index + tplMatch[0].length)
+  }
+
+  // ── v2: ElMessage 行内的 || '兜底' 与三元 ──
+  {
+    const lines = newCode.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      if (!/ElMessage|ElNotification/.test(lines[i])) continue
+      if (newCode !== code && !code.includes(lines[i])) continue  // 已被前序替换改写的行跳过
+      lines[i] = lines[i].replace(/(\|\|\s*)'((?:[^'\\]|\\.)*[\u{4e00}-\u{9fff}](?:[^'\\]|\\.)*)'(\s*\))/gu, (m, pre, val, post) => {
+        replaced++
+        return `${pre}t('${keyFor(val, ns, 's')}')${post}`
+      })
+    }
+    newCode = lines.join('\n')
   }
 
   if (newCode !== code) {

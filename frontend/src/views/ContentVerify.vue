@@ -780,7 +780,7 @@ async function onTranslate(payload) {
         translatedCount.value++
       }
     } else {
-      ElMessage.error(data.message || '翻译失败')
+      ElMessage.error(data.message || t('contentverify.s13'))
     }
   } catch (e) {
     ElMessage.error('翻译失败: ' + e.message)
@@ -800,7 +800,7 @@ async function onAnalyze(payload) {
       // 刷新记录数据
       await fetchRecords()
     } else {
-      ElMessage.error(data.message || '分析失败')
+      ElMessage.error(data.message || t('contentverify.s14'))
     }
   } catch (e) {
     ElMessage.error('分析失败: ' + e.message)
@@ -827,7 +827,7 @@ async function onReanalyze(recordId) {
       }
       fetchRecords()
     } else {
-      ElMessage.error(data.detail || '分析失败')
+      ElMessage.error(data.detail || t('contentverify.s14'))
     }
   } catch (err) {
     ElMessage.error('分析失败: ' + (err.message || err))

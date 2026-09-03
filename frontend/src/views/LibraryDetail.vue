@@ -68,7 +68,7 @@
           </div>
           <div class="toolbar-right">
             <el-button size="small" @click="handleUploadClick" :disabled="!canEdit" :class="{ 'is-active': showUploadArea }">
-              <el-icon><Upload /></el-icon>{{ showUploadArea ? '收起上传' : '上传作品' }}
+              <el-icon><Upload /></el-icon>{{ showUploadArea ? $t('librarydetail.t55') : $t('librarydetail.t8')}}
             </el-button>
             <span class="flow-arrow">→</span>
             <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" :title="$t('librarydetail.a4')">
@@ -111,16 +111,16 @@
                 <el-icon class="is-loading"><Loading /></el-icon>
               </div>
               <div class="artwork-status-dots">
-                <el-tooltip :content="artwork.inscription_modern ? '翻译已完成' : '待翻译'" placement="top">
+                <el-tooltip :content="artwork.inscription_modern ? $t('librarydetail.a36') : $t('librarydetail.a37')" placement="top">
                   <span class="status-dot" :class="artwork.inscription_modern ? 'done' : 'pending'">{{ $t('librarydetail.t9') }}</span>
                 </el-tooltip>
-                <el-tooltip :content="artwork.content_analysis ? '文字分析已完成' : '待文字分析'" placement="top">
+                <el-tooltip :content="artwork.content_analysis ? $t('librarydetail.a38') : $t('librarydetail.a39')" placement="top">
                   <span class="status-dot" :class="artwork.content_analysis ? 'done' : 'pending'">{{ $t('librarydetail.t10') }}</span>
                 </el-tooltip>
-                <el-tooltip :content="artwork.inscription_verified ? '题跋已校对' : '题跋待校对'" placement="top">
+                <el-tooltip :content="artwork.inscription_verified ? $t('librarydetail.a40') : $t('librarydetail.a41')" placement="top">
                   <span class="status-dot" :class="artwork.inscription_verified ? 'done' : 'pending'">{{ $t('librarydetail.t11') }}</span>
                 </el-tooltip>
-                <el-tooltip :content="artwork.is_manual_annotated ? '标注已完成' : '标注待定'" placement="top">
+                <el-tooltip :content="artwork.is_manual_annotated ? $t('librarydetail.a42') : $t('librarydetail.a43')" placement="top">
                   <span class="status-dot" :class="artwork.is_manual_annotated ? 'done' : 'pending'">{{ $t('librarydetail.t12') }}</span>
                 </el-tooltip>
                 <el-tooltip :content="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis || artwork.analysis_note)) ? 'AI识图已完成' : 'AI识图待定'" placement="top">
@@ -811,7 +811,7 @@ async function startBatchAiAnalyze(mode) {
     aiAnalyzeProgress.value.total = imageIds.length
     const r = await tibaApi.batchAutoAnalyze(imageIds, mode)
     if (!r.success) {
-      ElMessage.error(r.detail || '触发分析失败')
+      ElMessage.error(r.detail || t('librarydetail.s4'))
       aiAnalyzing.value = false
       showAiAnalyzeProgress.value = false
       return
@@ -865,7 +865,7 @@ async function handleUpdateLibrary() {
     ElMessage.success(t('librarydetail.s5'))
     await loadLibrary()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '保存失败')
+    ElMessage.error(e?.response?.data?.detail || t('engine.save_error'))
   } finally {
     saving.value = false
   }
@@ -903,7 +903,7 @@ async function handleAddCollaborator() {
     newCollabOpenid.value = ''
     await loadCollaborators()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '添加失败')
+    ElMessage.error(e?.response?.data?.detail || t('librarydetail.s14'))
   }
 }
 
@@ -932,7 +932,7 @@ async function handleReview(requestId, action) {
     await loadPendingRequests()
     await loadArtworks()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '审核失败')
+    ElMessage.error(e?.response?.data?.detail || t('librarydetail.s15'))
   }
 }
 
@@ -997,7 +997,7 @@ async function handleSubmitChange() {
     ElMessage.success(t('librarydetail.s10'))
     showSuggestDialog.value = false
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '提交失败')
+    ElMessage.error(e?.response?.data?.detail || t('suggest.submit_fail'))
   } finally {
     submitting.value = false
   }
@@ -1010,7 +1010,7 @@ async function handleTriggerAnalyze(artwork) {
     ElMessage.success(t('librarydetail.s11'))
     await loadArtworks()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '触发分析失败')
+    ElMessage.error(e?.response?.data?.detail || t('librarydetail.s4'))
   }
 }
 

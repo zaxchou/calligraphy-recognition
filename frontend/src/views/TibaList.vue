@@ -442,11 +442,11 @@ async function loadSearchResults() {
       rankings.value = works
       totalCount.value = response.total || works.length
     } else {
-      ElMessage.error(response.message || '搜索失败')
+      ElMessage.error(response.message || t('tibaanalysis.s16'))
     }
   } catch (error) {
     console.error('搜索失败:', error)
-    ElMessage.error('搜索失败: ' + (error.message || '网络错误'))
+    ElMessage.error('搜索失败: ' + (error.message || t('tibaanalysis.s17')))
   }
 }
 
@@ -520,7 +520,7 @@ async function handleSubmitChange() {
     ElMessage.success(t('tibalist.s1'))
     showSuggestDialog.value = false
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '提交失败')
+    ElMessage.error(e.response?.data?.detail || t('suggest.submit_fail'))
   } finally {
     submitting.value = false
   }
@@ -623,7 +623,7 @@ async function deleteItem(item) {
       // 刷新排行榜数据
       await loadRankings()
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(response.message || t('engine.delete_error'))
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -739,7 +739,7 @@ async function loadRankings() {
       rankings.value = works
       totalCount.value = response.total || works.length
     } else {
-      ElMessage.error(response.message || '加载列表失败')
+      ElMessage.error(response.message || t('tibalist.s3'))
     }
   } catch (error) {
     console.error('加载列表失败:', error)

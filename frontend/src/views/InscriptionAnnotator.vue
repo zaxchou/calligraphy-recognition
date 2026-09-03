@@ -167,7 +167,7 @@
               </el-button>
             </div>
             <el-button size="small" :type="useThumbnail ? 'info' : 'warning'" @click="toggleImageSource" style="margin-right:8px;">
-              {{ useThumbnail ? '缩略图' : '原图' }}
+              {{ useThumbnail ? $t('inscriptionannotator.t29') : $t('inscriptionannotator.t30')}}
             </el-button>
             <el-radio-group v-model="drawMode" size="small" class="draw-mode-selector">
               <el-radio-button value="poly">{{ $t('inscriptionannotator.t7') }}</el-radio-button>
@@ -191,7 +191,7 @@
               size="small"
             >
               <el-icon><Search /></el-icon>
-              放大镜 {{ magnifierEnabled ? '开' : '关' }}
+              放大镜 {{ magnifierEnabled ? $t('inscriptionannotator.t31') : $t('inscriptionannotator.t32')}}
             </el-button>
           </div>
           <div class="action-buttons">
@@ -203,7 +203,7 @@
               <el-button size="small" @click="undoLast" :disabled="history.length === 0">{{ $t('inscriptionannotator.t11') }}</el-button>
               <el-button size="small" @click="clearAll" :disabled="polygons.length === 0">{{ $t('c-literatureupload.t6') }}</el-button>
               <el-button type="primary" size="small" @click="saveRegions" :loading="saving">
-                {{ isSuggestMode && !isSuggestAdmin ? '保存草稿' : '保存标注' }}
+                {{ isSuggestMode && !isSuggestAdmin ? $t('inscriptionannotator.t33') : $t('inscriptionannotator.t34')}}
               </el-button>
               <el-button v-if="isSuggestMode" type="warning" size="small" @click="submitForReview" :loading="submittingReview">
                 {{ $t('inscriptionannotator.t12') }}

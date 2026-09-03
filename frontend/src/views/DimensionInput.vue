@@ -75,7 +75,7 @@
         <template v-for="albumName in getAlbumNamesForYear(year)" :key="'album-' + albumName">
           <div class="album-card">
             <div class="album-card-header" @click="toggleAlbum(albumName)">
-              <span class="album-toggle-icon">{{ expandedAlbums.has(albumName) ? '▼' : '▶' }}</span>
+              <span class="album-toggle-icon">{{ expandedAlbums.has(albumName) ? '▼' : '▶'}}</span>
               <span class="album-name">
                 【{{ albumName }}】
                 {{ getAlbumRecords(albumName).length }}开

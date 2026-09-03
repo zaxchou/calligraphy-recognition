@@ -311,7 +311,7 @@
           </div>
         </div>
         <div v-else class="detail-empty">
-          {{ albumItemsSearchKeyword.trim() ? '没有匹配的作品' : '册页中暂无作品' }}
+          {{ albumItemsSearchKeyword.trim() ? $t('albummanager.t13') : $t('albummanager.t18')}}
         </div>
       </div>
       <template #footer>

@@ -33,7 +33,7 @@
         <button class="bg-toggle" @click="showVideoBg = !showVideoBg">
           <el-icon v-if="showVideoBg"><Picture /></el-icon>
           <el-icon v-else><VideoPlay /></el-icon>
-          <span>{{ showVideoBg ? '画廊背景' : '视频背景' }}</span>
+          <span>{{ showVideoBg ? $t('home.t14') : $t('home.t15')}}</span>
         </button>
 
         <div class="hero-overlay"></div>

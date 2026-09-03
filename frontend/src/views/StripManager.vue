@@ -292,7 +292,7 @@
           </div>
         </div>
         <div v-else class="detail-empty">
-          {{ stripItemsSearchKeyword.trim() ? '没有匹配的作品' : '条屏中暂无作品' }}
+          {{ stripItemsSearchKeyword.trim() ? $t('albummanager.t13') : $t('stripmanager.t6')}}
         </div>
       </div>
       <template #footer>

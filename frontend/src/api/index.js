@@ -19,6 +19,8 @@ api.interceptors.request.use(
     if (authToken) {
       config.headers['Authorization'] = `Bearer ${authToken}`
     }
+    // 后端按语言返回报错信息（error_i18n）
+    config.headers['Accept-Language'] = localStorage.getItem('lang') || 'zh'
     return config
   },
   error => {

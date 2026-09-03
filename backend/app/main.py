@@ -13,6 +13,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -216,6 +217,19 @@ app = FastAPI(
     description="书法碑帖字体认证系统 API",
     lifespan=lifespan,
 )
+
+
+# 报错信息国际化：Accept-Language: en 时 HTTPException 的中文 detail 翻译为英文
+@app.exception_handler(StarletteHTTPException)
+async def _i18n_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    from fastapi.responses import JSONResponse
+    from app.core.error_i18n import translate_detail
+    headers = getattr(exc, "headers", None)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": translate_detail(exc.detail, request)},
+        headers=headers,
+    )
 
 
 @app.middleware("http")

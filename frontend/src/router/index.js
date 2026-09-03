@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { siteConfig } from '../config'
 import { getStorageJson } from '../utils/storage'
+import { translate } from '@/locales'
 import api from '@/api'
 
 const routes = [
@@ -8,156 +9,156 @@ const routes = [
     path: '/',
     name: 'KnowledgeSearch',
     component: () => import('../views/KnowledgeSearch.vue'),
-    meta: { title: '墨林百科' }
+    meta: { title: 'title.k7' }
   },
   { path: '/knowledge', redirect: '/' },
   {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue'),
-    meta: { title: '登录' }
+    meta: { title: 'title.k20' }
   },
   // 画家百科
   {
     path: '/artists',
     name: 'ArtistList',
     component: () => import('../views/ArtistList.vue'),
-    meta: { title: '艺术家' }
+    meta: { title: 'title.k27' }
   },
   // 画家百科 — 嵌套路由
   {
     path: '/artist/:name',
     component: () => import('../components/artist/ArtistPageLayout.vue'),
-    meta: { title: '画家百科' },
+    meta: { title: 'title.k19' },
     children: [
       { path: '', name: 'ArtistOverview', component: () => import('../views/artist/ArtistOverview.vue') },
-      { path: 'works', name: 'ArtistWorks', component: () => import('../views/artist/ArtistWorks.vue'), meta: { title: '作品' } },
-      { path: 'seals', name: 'ArtistSeals', component: () => import('../views/artist/ArtistSeals.vue'), meta: { title: '印章' } },
-      { path: 'literature', name: 'ArtistLiterature', component: () => import('../views/artist/ArtistLiterature.vue'), meta: { title: '文献' } },
-      { path: 'literature/:bookId', name: 'ArtistLiteratureReader', component: () => import('../views/artist/ArtistLiteratureReader.vue'), meta: { title: '文献阅读' } },
-      { path: 'analysis', name: 'ArtistAnalysis', component: () => import('../views/artist/ArtistAnalysisSlides.vue'), meta: { title: '数据分析' } },
-      { path: 'map', name: 'ArtistMap', component: () => import('../views/MapMode.vue'), meta: { title: '行旅' } },
+      { path: 'works', name: 'ArtistWorks', component: () => import('../views/artist/ArtistWorks.vue'), meta: { title: 'title.k1' } },
+      { path: 'seals', name: 'ArtistSeals', component: () => import('../views/artist/ArtistSeals.vue'), meta: { title: 'title.k5' } },
+      { path: 'literature', name: 'ArtistLiterature', component: () => import('../views/artist/ArtistLiterature.vue'), meta: { title: 'title.k13' } },
+      { path: 'literature/:bookId', name: 'ArtistLiteratureReader', component: () => import('../views/artist/ArtistLiteratureReader.vue'), meta: { title: 'title.k14' } },
+      { path: 'analysis', name: 'ArtistAnalysis', component: () => import('../views/artist/ArtistAnalysisSlides.vue'), meta: { title: 'title.k12' } },
+      { path: 'map', name: 'ArtistMap', component: () => import('../views/MapMode.vue'), meta: { title: 'title.k28' } },
     ],
   },
   {
     path: '/recognize',
     name: 'Recognize',
     component: () => import('../views/Recognize.vue'),
-    meta: { title: '书法识别' }
+    meta: { title: 'title.k0' }
   },
   {
     path: '/steles',
     name: 'Steles',
     component: () => import('../views/Steles.vue'),
-    meta: { title: '碑帖数据库' }
+    meta: { title: 'title.k21' }
   },
   {
     path: '/steles/:id',
     name: 'SteleDetail',
     component: () => import('../views/SteleDetail.vue'),
-    meta: { title: '碑帖详情' }
+    meta: { title: 'title.k22' }
   },
   {
     path: '/tiba',
     name: 'TibaAnalysis',
     component: () => import('../views/TibaAnalysis.vue'),
-    meta: { title: '题跋分析' }
+    meta: { title: 'title.k31' }
   },
   {
     path: '/tiba/:id',
     name: 'TibaDetail',
     component: () => import('../views/TibaDetailPage.vue'),
-    meta: { title: '题跋分析' }
+    meta: { title: 'title.k31' }
   },
   {
     path: '/tiba/list',
     name: 'TibaList',
     component: () => import('../views/TibaList.vue'),
-    meta: { title: '作品库' }
+    meta: { title: 'title.k2' }
   },
   {
     path: '/tiba/dimensions',
     name: 'DimensionInput',
     component: () => import('../views/DimensionInput.vue'),
-    meta: { title: '尺寸录入' }
+    meta: { title: 'title.k8' }
   },
   {
     path: '/composition',
     name: 'CompositionAnalyze',
     component: () => import('../modules/pantianshou-composition/pages/CompositionAnalyze.vue'),
-    meta: { title: '构图分析' }
+    meta: { title: 'title.k16' }
   },
   {
     path: '/composition/print/:taskId',
     name: 'CompositionPrint',
     component: () => import('../modules/pantianshou-composition/pages/CompositionPrint.vue'),
-    meta: { title: '构图报告' }
+    meta: { title: 'title.k17' }
   },
   {
     path: '/composition/arrow-demo',
     name: 'ArrowDemo',
     component: () => import('../modules/pantianshou-composition/pages/ArrowDemo.vue'),
-    meta: { title: '箭头演示' }
+    meta: { title: 'title.k24' }
   },
   {
     path: '/qczh',
     name: 'QczhAnalysis',
     component: () => import('../modules/pantianshou-composition/pages/ArrowDemo.vue'),
-    meta: { title: '起承转合分析' }
+    meta: { title: 'title.k30' }
   },
   {
     path: '/content-analysis',
     name: 'ContentAnalysis',
     component: () => import('../views/ContentAnalysis.vue'),
-    meta: { title: '题跋大数据分析' }
+    meta: { title: 'title.k32' }
   },
   // 管理后台（新布局：侧边栏 + 内容区）
   {
     path: '/admin',
     component: () => import('../views/admin/AdminLayout.vue'),
-    meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true },
+    meta: { title: 'title.k23', requiresAuth: true, requiresAdmin: true },
     children: [
       {
         path: '',
         name: 'Admin',
         component: () => import('../views/ContentVerify.vue'),
-        meta: { title: '管理后台' },
+        meta: { title: 'title.k23' },
       },
       {
         path: 'permissions',
         name: 'AdminPermissions',
         component: () => import('../views/admin/Permissions.vue'),
-        meta: { title: '权限配置', requiresSuperAdmin: true },
+        meta: { title: 'title.k15', requiresSuperAdmin: true },
       },
       {
         path: 'artist/:name/edit',
         name: 'ArtistEditor',
         component: () => import('../views/admin/ArtistEditor.vue'),
-        meta: { title: '编辑画家', requiresAuth: true },
+        meta: { title: 'title.k26', requiresAuth: true },
       },
       {
         path: 'travel-notes',
         name: 'AdminTravelNotes',
         component: () => import('../views/admin/ArtistTravelNotes.vue'),
-        meta: { title: '行旅编辑', requiresAuth: true },
+        meta: { title: 'title.k29', requiresAuth: true },
       },
       {
         path: 'settings',
         name: 'AdminSettings',
         component: () => import('../views/admin/SystemSettings.vue'),
-        meta: { title: '系统设置', requiresAuth: true },
+        meta: { title: 'title.k25', requiresAuth: true },
       },
       {
         path: 'emotion-engine',
         name: 'EmotionEngine',
         component: () => import('../views/EmotionEngine.vue'),
-        meta: { title: '墨林情绪引擎', requiresAuth: true },
+        meta: { title: 'title.k6', requiresAuth: true },
       },
       {
         path: 'emotion-logs',
         name: 'EmotionLogs',
         component: () => import('../views/admin/EmotionLogs.vue'),
-        meta: { title: '情绪分析日志', requiresAuth: true },
+        meta: { title: 'title.k9', requiresAuth: true },
       },
     ],
   },
@@ -174,7 +175,7 @@ const routes = [
     path: '/annotate/:id',
     name: 'InscriptionAnnotator',
     component: () => import('../views/InscriptionAnnotator.vue'),
-    meta: { title: '题跋标注', requiresAuth: true, requiresEditor: true }
+    meta: { title: 'title.k33', requiresAuth: true, requiresEditor: true }
   },
   // 旧 route 重定向
   {
@@ -186,31 +187,31 @@ const routes = [
     path: '/my/knowledge',
     name: 'MyKnowledge',
     component: () => import('../views/MyKnowledge.vue'),
-    meta: { title: '我的知识库', requiresAuth: true }
+    meta: { title: 'title.k11', requiresAuth: true }
   },
   {
     path: '/user/center',
     name: 'UserCenter',
     component: () => import('../views/UserCenter.vue'),
-    meta: { title: '用户中心', requiresAuth: true }
+    meta: { title: 'title.k18', requiresAuth: true }
   },
   {
     path: '/libraries',
     name: 'Libraries',
     component: () => import('../views/Libraries.vue'),
-    meta: { title: '我的作品库', requiresAuth: true }
+    meta: { title: 'title.k10', requiresAuth: true }
   },
   {
     path: '/libraries/public',
     name: 'PublicLibraries',
     component: () => import('../views/PublicLibraries.vue'),
-    meta: { title: '公开作品库' }
+    meta: { title: 'title.k4' }
   },
   {
     path: '/libraries/:id',
     name: 'LibraryDetail',
     component: () => import('../views/LibraryDetail.vue'),
-    meta: { title: '作品库详情' }
+    meta: { title: 'title.k3' }
   },
 ]
 
@@ -256,12 +257,11 @@ router.beforeResolve(async (to, _from) => {
 
 // 全局路由守卫：自动设置页面标题
 router.afterEach((to) => {
-  const pageTitle = to.meta?.title
+  const pageTitle = to.meta?.title ? translate(to.meta.title) : ''
   const name = to.params?.name
   // 画家相关路由 → 动态标题："李鱓 - 作品 - 墨林百科"
   if (name && ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistLiteratureReader', 'ArtistAnalysis', 'ArtistMap'].includes(to.name)) {
-    const section = pageTitle?.replace('画家', '') || ''
-    document.title = section ? `${name} - ${section} - ${siteConfig.fullTitle}` : `${name} - ${siteConfig.fullTitle}`
+    document.title = pageTitle ? `${name} - ${pageTitle} - ${siteConfig.fullTitle}` : `${name} - ${siteConfig.fullTitle}`
     return
   }
   document.title = pageTitle ? `${pageTitle} - ${siteConfig.fullTitle}` : siteConfig.fullTitle

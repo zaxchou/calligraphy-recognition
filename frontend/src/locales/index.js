@@ -10,7 +10,7 @@ try {
   const urlLang = new URLSearchParams(location.search).get('lang')
   if (urlLang === 'zh' || urlLang === 'en') localStorage.setItem('lang', urlLang)
 } catch { /* non-browser env */ }
-const locale = ref(localStorage.getItem('lang') || 'zh')
+export const locale = ref(localStorage.getItem('lang') || 'zh')
 
 function format(template, params) {
   if (!params) return template
@@ -37,7 +37,15 @@ export function useI18n() {
 export function switchLang(lang) {
   locale.value = lang || (locale.value === 'zh' ? 'en' : 'zh')
   localStorage.setItem('lang', locale.value)
+  syncHtmlLang()
 }
+
+function syncHtmlLang() {
+  try {
+    document.documentElement.setAttribute('lang', locale.value === 'en' ? 'en' : 'zh-CN')
+  } catch { /* non-browser env */ }
+}
+syncHtmlLang()
 
 export default {
   install(app) {

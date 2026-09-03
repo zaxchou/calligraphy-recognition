@@ -185,7 +185,7 @@ async function fetchRecords(reset = true) {
       annotatedCount.value = data.annotated_count || 0
       hasMore.value = (data.records || []).length === limit
     } else {
-      ElMessage.error(data.message || '获取记录失败')
+      ElMessage.error(data.message || t('annotationverify.s1'))
     }
   } catch (e) {
     ElMessage.error('获取记录失败: ' + e.message)

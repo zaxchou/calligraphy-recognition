@@ -405,7 +405,7 @@ async function deleteItem(item) {
       // 刷新排行榜数据
       await loadRankings()
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(response.message || t('engine.delete_error'))
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -493,7 +493,7 @@ async function loadRankings() {
       rankings.value = works
       sortRankings() // 应用当前排序
     } else {
-      ElMessage.error(response.message || '加载排行榜失败')
+      ElMessage.error(response.message || t('tibaranking.s1'))
     }
   } catch (error) {
     console.error('加载排行榜失败:', error)

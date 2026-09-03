@@ -97,7 +97,7 @@
             <div v-for="(rule, name) in sealRules" :key="name" class="seal-rule-item"
               :class="{ positive: rule.score > 0, negative: rule.score < 0 }">
               <span class="seal-rule-name">{{ name }}</span>
-              <span class="seal-rule-score">{{ rule.score > 0 ? '+' : '' }}{{ rule.score.toFixed(1) }}</span>
+              <span class="seal-rule-score">{{ rule.score > 0 ? '+' : ''}}{{ rule.score.toFixed(1) }}</span>
               <span class="seal-rule-cat">{{ rule.category }}</span>
               <span class="seal-rule-desc" v-if="rule.desc">{{ rule.desc }}</span>
             </div>
@@ -442,7 +442,7 @@ async function handleAiGenerate() {
         ElMessage.success(`AI 已为「${aiTargetArtist.value}」生成规则，请审查后保存`)
       }
     } else {
-      ElMessage.error(res.message || 'AI 生成失败')
+      ElMessage.error(res.message || t('artistrulesmanager.s5'))
     }
   } catch (e) {
     ElMessage.error('AI 生成失败: ' + (e.response?.data?.detail || e.message || e))

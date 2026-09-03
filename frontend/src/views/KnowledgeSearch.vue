@@ -84,7 +84,7 @@
     </transition>
     <div class="ks-chat-main">
       <div class="ks-chat-topbar">
-        <button class="ks-sidebar-toggle" @click="sidebarOpen=!sidebarOpen" :title="sidebarOpen?'收起侧栏':'展开侧栏'">
+        <button class="ks-sidebar-toggle" @click="sidebarOpen=!sidebarOpen" :title="sidebarOpen? $t('knowledgesearch.a8') : $t('knowledgesearch.a9')">
           <PanelLeft v-if="sidebarOpen" class="icon-sm" />
           <PanelLeftOpen v-else class="icon-sm" />
         </button>

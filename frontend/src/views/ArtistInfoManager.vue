@@ -29,7 +29,7 @@
             <el-button size="small" @click="openEdit(artist)">{{ $t('common.edit') }}</el-button>
             <el-button size="small" type="primary" plain @click="handleAiFill(artist)">{{ $t('artistinfomanager.t4') }}</el-button>
             <el-button size="small" :type="artist.enabled ? 'warning' : 'success'" plain @click="toggleEnabled(artist)">
-              {{ artist.enabled ? '禁用' : '启用' }}
+              {{ artist.enabled ? $t('artistinfomanager.t5') : $t('artistinfomanager.t6')}}
             </el-button>
             <el-button size="small" type="danger" plain @click="handleDelete(artist)">{{ $t('common.delete') }}</el-button>
           </div>
@@ -142,7 +142,7 @@ async function handleDelete(artist) {
     if (data.success) {
       ElMessage.success(t('artistinfomanager.s1'))
       await loadArtists(currentPage.value)
-    } else { ElMessage.error(data.detail || '删除失败') }
+    } else { ElMessage.error(data.detail || t('engine.delete_error')) }
   } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败: ' + e.message) }
 }
 
@@ -160,9 +160,9 @@ async function handleAiFill(artist) {
   try {
     const data = await api.post(`/artists/${artist.id}/ai-fill`)
     if (data.success) {
-      ElMessage.success(data.message || 'AI查询完成')
+      ElMessage.success(data.message || t('artistinfomanager.s2'))
       await loadArtists(currentPage.value)
-    } else { ElMessage.error(data.detail || data.message || 'AI查询失败') }
+    } else { ElMessage.error(data.detail || data.message || t('artistinfomanager.s3')) }
   } catch (e) { ElMessage.error('AI查询失败: ' + e.message) }
 }
 

@@ -440,12 +440,16 @@ def _build_messages(
     rag_context: str,
     history: Optional[List[Dict[str, str]]] = None,
     artist_name: Optional[str] = None,
+    lang: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """构建发送给 LLM 的完整消息列表"""
     if artist_name:
         system_prompt = ARTIST_EXPERT_PROMPT.format(artist_name=artist_name)
     else:
         system_prompt = SYSTEM_PROMPT
+    if lang == 'en':
+        system_prompt += ("\n\n14. IMPORTANT: The user's interface language is English. Respond ENTIRELY in English. "
+                          "Keep proper nouns (artist names, painting titles, seal texts) in Chinese with romanization where helpful, e.g. 'Li Shan (李鱓)'.")
     messages = [{"role": "system", "content": system_prompt}]
 
     # 添加历史消息（最近 N 轮）
@@ -470,6 +474,7 @@ async def chat_stream(
     session_id: Optional[str] = None,
     artist_id: Optional[int] = None,
     artist_name: Optional[str] = None,
+    lang: Optional[str] = None,
 ) -> AsyncGenerator[str, None]:
     """
     RAG 聊天流式 SSE 生成器
@@ -547,7 +552,7 @@ async def chat_stream(
             logger.info("[RAG聊天] 画家上下文注入: artist=%s, intent=%s", artist_name, intent)
 
     # ③ 构建完整消息
-    messages = _build_messages(query, rag_context, history, artist_name=artist_name)
+    messages = _build_messages(query, rag_context, history, artist_name=artist_name, lang=lang)
 
     # ④ 调用 DeepSeek Flash 流式
     url = f"{base_url}/chat/completions"

@@ -14,8 +14,8 @@
         <div class="slide-top">
           <router-link :to="{ name: 'ArtistOverview', params: { name: artistName } }" class="slide-back">← {{ artistName }}</router-link>
           <div class="slide-top-right">
-            <button class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
-              {{ isFullscreen ? '⊞' : '⛶' }}
+            <button class="fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? $t('artist.artistanalysisslides.a1') : $t('artist.artistanalysisslides.a2')">
+              {{ isFullscreen ? '⊞' : '⛶'}}
             </button>
             <span class="slide-tag">{{ slides[currentSlide]?.id }}</span>
           </div>

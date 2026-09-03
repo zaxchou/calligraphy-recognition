@@ -348,6 +348,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     artist_id: Optional[int] = None
     artist_name: Optional[str] = None
+    lang: Optional[str] = None  # 界面语言 zh/en，用于让 AI 跟随语言回答
 
 
 @router.post("/chat")
@@ -420,7 +421,8 @@ async def rag_chat(request: ChatRequest, user: User = Depends(get_current_user))
 
     return StreamingResponse(
         _chat_stream(request.prompt, history, user_id=user.id, session_id=session_id,
-                     artist_id=request.artist_id, artist_name=request.artist_name),
+                     artist_id=request.artist_id, artist_name=request.artist_name,
+                     lang=request.lang),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
