@@ -38,7 +38,7 @@
           <div class="content-section">
             <h3 class="section-title">
               <FileText class="section-icon" />
-              文本内容
+              {{ $t('c-bookreadermodal.t5') }}
             </h3>
             
             <!-- 上文 -->
@@ -46,7 +46,7 @@
               <p class="context-text">{{ result.context_before }}</p>
               <div class="context-divider">
                 <span class="divider-line"></span>
-                <span class="divider-text">上文</span>
+                <span class="divider-text">{{ $t('c-searchresultdetail.t1') }}</span>
                 <span class="divider-line"></span>
               </div>
             </div>
@@ -60,7 +60,7 @@
             <div v-if="result.context_after" class="context-after">
               <div class="context-divider">
                 <span class="divider-line"></span>
-                <span class="divider-text">下文</span>
+                <span class="divider-text">{{ $t('c-searchresultdetail.t2') }}</span>
                 <span class="divider-line"></span>
               </div>
               <p class="context-text">{{ result.context_after }}</p>

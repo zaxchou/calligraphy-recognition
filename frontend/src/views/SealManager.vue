@@ -3,20 +3,20 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <el-button v-if="!batchMode" type="primary" plain size="small" @click="showCreateDialog = true">
-          <el-icon><Plus /></el-icon>新增印章
+          <el-icon><Plus /></el-icon>{{ $t('sealmanager.t1') }}
         </el-button>
         <el-button v-if="!batchMode" plain size="small" @click="handleExtract" :loading="extracting">
-          <el-icon><Download /></el-icon>从作品提取
+          <el-icon><Download /></el-icon>{{ $t('sealmanager.t2') }}
         </el-button>
         <el-button v-if="!batchMode" plain size="small" @click="batchMode = true">
-          <el-icon><Check /></el-icon>批量操作
+          <el-icon><Check /></el-icon>{{ $t('sealmanager.t3') }}
         </el-button>
         <template v-if="batchMode">
           <el-button type="danger" plain size="small" :disabled="selectedIds.length === 0" @click="handleBatchDelete">
             <el-icon><Delete /></el-icon>删除选中（{{ selectedIds.length }}）
           </el-button>
           <el-button plain size="small" @click="cancelBatch">
-            取消
+            {{ $t('common.cancel') }}
           </el-button>
         </template>
       </div>
@@ -46,55 +46,55 @@
           </div>
         </div>
         <div class="seal-actions">
-          <el-tooltip content="编辑" placement="top">
+          <el-tooltip :content="$t('common.edit')" placement="top">
             <el-button :icon="Edit" circle size="small" @click="openEdit(seal)" />
           </el-tooltip>
-          <el-tooltip content="作品" placement="top">
+          <el-tooltip :content="$t('contentverify.a15')" placement="top">
             <el-button :icon="Picture" circle size="small" @click="openArtworks(seal)" />
           </el-tooltip>
-          <el-tooltip content="删除" placement="top">
+          <el-tooltip :content="$t('common.delete')" placement="top">
             <el-button :icon="Delete" circle size="small" type="danger" @click="handleDelete(seal)" />
           </el-tooltip>
         </div>
       </div>
       <div v-if="!loading && seals.length === 0" class="empty-state">
-        <el-empty description="暂无印章数据" />
+        <el-empty :description="$t('sealmanager.a1')" />
       </div>
     </div>
 
     <el-dialog v-model="showEditDialog" :title="editingSeal ? '编辑印章' : '新增印章'" width="560px" class="claude-dialog">
       <el-form :model="editForm" label-position="top" class="modern-form">
-        <el-form-item label="印章名称" required>
-          <el-input v-model="editForm.name" placeholder="请输入印章名称" />
+        <el-form-item :label="$t('sealmanager.a2')" required>
+          <el-input v-model="editForm.name" :placeholder="$t('sealmanager.s1')" />
         </el-form-item>
         <div class="form-row">
-          <el-form-item label="画家" class="form-item-half">
-            <el-select v-model="editForm.artist_name" placeholder="选择画家" clearable filterable allow-create style="width: 100%">
+          <el-form-item :label="$t('suggest.field_artist')" class="form-item-half">
+            <el-select v-model="editForm.artist_name" :placeholder="$t('artistrulesmanager.a1')" clearable filterable allow-create style="width: 100%">
               <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
             </el-select>
           </el-form-item>
-          <el-form-item label="印章类型" class="form-item-half">
-            <el-select v-model="editForm.seal_type" placeholder="选择类型" style="width: 100%">
-              <el-option label="名章" value="名章" />
-              <el-option label="闲章" value="闲章" />
-              <el-option label="收藏印" value="收藏印" />
+          <el-form-item :label="$t('sealmanager.a3')" class="form-item-half">
+            <el-select v-model="editForm.seal_type" :placeholder="$t('sealmanager.a4')" style="width: 100%">
+              <el-option :label="$t('sealmanager.a5')" value="名章" />
+              <el-option :label="$t('sealmanager.a6')" value="闲章" />
+              <el-option :label="$t('sealmanager.a7')" value="收藏印" />
             </el-select>
           </el-form-item>
         </div>
-        <el-form-item label="描述">
-          <el-input v-model="editForm.description" type="textarea" :rows="2" placeholder="印章描述（可选）" />
+        <el-form-item :label="$t('libraries.a3')">
+          <el-input v-model="editForm.description" type="textarea" :rows="2" :placeholder="$t('sealmanager.a8')" />
         </el-form-item>
-        <el-form-item label="来源出处">
-          <el-input v-model="editForm.source" type="textarea" :rows="2" placeholder="如：上海博物馆编《中国书画家印鉴款识》（文物出版社，1987.12）" />
+        <el-form-item :label="$t('sealmanager.a9')">
+          <el-input v-model="editForm.source" type="textarea" :rows="2" :placeholder="$t('sealmanager.a10')" />
         </el-form-item>
 
         <template v-if="editingSeal">
-          <el-form-item label="印章图片">
+          <el-form-item :label="$t('sealmanager.a11')">
             <div class="seal-images-edit">
               <div v-for="(img, idx) in editForm.images" :key="img.id || idx" class="seal-img-item">
                 <img :src="getImageUrl(img.path || img)" class="seal-img-preview" />
                 <el-button type="danger" :icon="Delete" circle size="small" class="seal-img-delete" @click="removeImage(img, idx)" />
-                <el-input v-model="img.description" size="small" placeholder="版本说明，如：早年使用" class="seal-img-desc" @change="saveImageDesc(img)" />
+                <el-input v-model="img.description" size="small" :placeholder="$t('sealmanager.a12')" class="seal-img-desc" @change="saveImageDesc(img)" />
               </div>
               <div class="seal-img-upload" @click="triggerUpload">
                 <el-icon :size="24"><Plus /></el-icon>
@@ -104,7 +104,7 @@
           </el-form-item>
         </template>
         <template v-else>
-          <el-form-item label="印章图片">
+          <el-form-item :label="$t('sealmanager.a11')">
             <div class="seal-images-edit">
               <div v-for="(pf, idx) in pendingFiles" :key="'pf-'+idx" class="seal-img-item">
                 <img :src="pf.previewUrl" class="seal-img-preview" />
@@ -119,8 +119,8 @@
         </template>
       </el-form>
       <template #footer>
-        <el-button @click="showEditDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+        <el-button @click="showEditDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSave" :loading="saving">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
@@ -141,7 +141,7 @@
           </div>
         </div>
         <div v-if="!artworksLoading && artworks.length === 0" class="empty-state">
-          <el-empty description="暂无使用此印章的作品" />
+          <el-empty :description="$t('sealmanager.a13')" />
         </div>
       </div>
     </el-dialog>
@@ -154,6 +154,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Download, Picture, Stamp, Check } from '@element-plus/icons-vue'
 import api, { sealsApi } from '../api'
 import { useRouter } from 'vue-router'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   artist: { type: String, default: '' },
@@ -240,7 +241,7 @@ function openEdit(seal) {
 
 async function handleSave() {
   if (!editForm.value.name?.trim()) {
-    ElMessage.warning('请输入印章名称')
+    ElMessage.warning(t('sealmanager.s1'))
     return
   }
 
@@ -257,7 +258,7 @@ async function handleSave() {
     if (editingSeal.value) {
       const res = await sealsApi.update(editingSeal.value.id, payload)
       if (res.success) {
-        ElMessage.success('印章更新成功')
+        ElMessage.success(t('sealmanager.s2'))
         showEditDialog.value = false
         await loadSeals()
       } else {
@@ -266,7 +267,7 @@ async function handleSave() {
     } else {
       const res = await sealsApi.create(payload)
       if (res.success) {
-        ElMessage.success('印章创建成功')
+        ElMessage.success(t('sealmanager.s3'))
         showEditDialog.value = false
         if (pendingFiles.value.length > 0 && res.id) {
           for (const pf of pendingFiles.value) {
@@ -293,7 +294,7 @@ async function handleSave() {
         payload.merge_on_conflict = true
         const mergeRes = await sealsApi.update(editingSeal.value.id, payload)
         if (mergeRes.success) {
-          ElMessage.success('印章已合并')
+          ElMessage.success(t('sealmanager.s4'))
           showEditDialog.value = false
           await loadSeals()
         }
@@ -405,7 +406,7 @@ async function handleUpload(event) {
         description: img.description || '',
         sort_order: img.sort_order || 0
       }))
-      ElMessage.success('图片上传成功')
+      ElMessage.success(t('sealmanager.s5'))
     }
   } catch (e) {
     ElMessage.error('上传失败: ' + (e.message || e))
@@ -439,7 +440,7 @@ async function removeImage(img, idx) {
         description: i.description || '',
         sort_order: i.sort_order || 0
       }))
-      ElMessage.success('图片已删除')
+      ElMessage.success(t('sealmanager.s6'))
     }
   } catch (e) {
     ElMessage.error('删除图片失败: ' + (e.message || e))

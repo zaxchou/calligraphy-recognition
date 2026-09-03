@@ -3,7 +3,7 @@
     <div class="card-header">
       <div class="card-type">
         <Table class="icon" />
-        <span>表格</span>
+        <span>{{ $t('c-tableresultcard.t1') }}</span>
       </div>
       <span class="card-score" :class="scoreClass">
         {{ formattedScore }}%
@@ -35,7 +35,7 @@
     </div>
     
     <div class="card-footer">
-      <span class="footer-hint">点击查看完整内容</span>
+      <span class="footer-hint">{{ $t('c-tableresultcard.t2') }}</span>
       <ChevronRight class="footer-icon" />
     </div>
   </div>

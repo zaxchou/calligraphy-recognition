@@ -1,8 +1,8 @@
 <template>
   <div class="recognize-page">
     <div class="page-header">
-      <h1>书法字体识别</h1>
-      <p class="sub">使用最新AI技术提升中华传统文化实力</p>
+      <h1>{{ $t('home.s4') }}</h1>
+      <p class="sub">{{ $t('recognize.t1') }}</p>
       <div class="header-ornament">
         <span class="ornament-line"></span>
         <span class="ornament-dot">◇</span>
@@ -16,14 +16,14 @@
         <el-card shadow="hover" class="upload-card">
           <template #header>
             <div class="card-header">
-              <span>上传书法图片</span>
+              <span>{{ $t('recognize.t2') }}</span>
               <el-button 
                 type="info" 
                 size="small" 
                 @click="showHistoryDialog"
                 :icon="Clock"
               >
-                历史记录
+                {{ $t('recognize.t3') }}
               </el-button>
             </div>
           </template>
@@ -39,19 +39,19 @@
           >
             <el-icon class="el-icon--upload" size="60"><UploadFilled /></el-icon>
             <div class="el-upload__text">
-              拖拽图片到此处或 <em>点击上传</em>
+              {{ $t('recognize.t4') }}<em>{{ $t('recognize.t5') }}</em>
             </div>
             <template #tip>
               <div class="el-upload__tip">
-                支持 JPG、PNG、BMP 格式，建议上传清晰的单字书法图片
+                {{ $t('recognize.t6') }}
               </div>
             </template>
           </el-upload>
 
           <!-- 预览区域 -->
           <div v-if="previewImage" class="preview-area">
-            <h4>预览</h4>
-            <img :src="previewImage" alt="预览" class="preview-image">
+            <h4>{{ $t('recognize.t7') }}</h4>
+            <img :src="previewImage" :alt="$t('recognize.t7')" class="preview-image">
             <el-button 
               type="primary" 
               @click="startRecognize"
@@ -71,7 +71,7 @@
         <el-card shadow="hover" class="result-card" v-loading="isRecognizing" :element-loading-text="loadingText">
           <template #header>
             <div class="card-header">
-              <span>识别结果</span>
+              <span>{{ $t('recognize.t8') }}</span>
               <el-tag v-if="result" :type="result.is_confident ? 'success' : 'warning'">
                 {{ result.is_confident ? '高置信度' : '低置信度' }}
               </el-tag>
@@ -95,23 +95,23 @@
           <!-- 无结果状态 -->
           <div v-else-if="!result" class="empty-result">
             <el-icon size="80" color="#dcdfe6"><Document /></el-icon>
-            <p>请上传图片进行识别</p>
+            <p>{{ $t('recognize.t9') }}</p>
           </div>
 
           <!-- 识别结果 -->
           <div v-else class="result-content">
             <!-- 上传的原图 -->
             <div class="original-image-section" v-if="result.uploaded_image_url">
-              <h3>上传的原图</h3>
+              <h3>{{ $t('recognize.t10') }}</h3>
               <div class="original-image-wrapper">
                 <img
                   :src="result.uploaded_image_url"
-                  alt="上传的原图"
+                  :alt="$t('recognize.t10')"
                   class="original-image"
                   @click="openImagePreview(result.uploaded_image_url)"
-                  title="点击放大查看"
+                  :title="$t('action.zoom')"
                 >
-                <div class="image-hint">点击放大查看</div>
+                <div class="image-hint">{{ $t('action.zoom') }}</div>
               </div>
             </div>
 
@@ -119,7 +119,7 @@
 
             <!-- 最佳匹配 -->
             <div class="best-match">
-              <h3>最佳匹配</h3>
+              <h3>{{ $t('recognize.t11') }}</h3>
               <div class="match-info">
                 <div class="character-display">
                   <span class="character">{{ result.recognized_character }}</span>
@@ -132,7 +132,7 @@
                     :stroke-width="12"
                     :width="120"
                   />
-                  <span class="similarity-label">相似度</span>
+                  <span class="similarity-label">{{ $t('recognize.t12') }}</span>
                 </div>
               </div>
               
@@ -148,18 +148,18 @@
               
               <!-- 碑帖信息 -->
               <div v-if="result.best_match?.stele" class="stele-info">
-                <h4>出自碑帖</h4>
+                <h4>{{ $t('recognize.t13') }}</h4>
                 <el-descriptions :column="1" border>
-                  <el-descriptions-item label="碑帖名称">
+                  <el-descriptions-item :label="$t('recognize.a1')">
                     {{ result.best_match.stele.name }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="书法家">
+                  <el-descriptions-item :label="$t('recognize.a2')">
                     {{ result.best_match.stele.calligrapher }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="朝代">
+                  <el-descriptions-item :label="$t('artistlist.a2')">
                     {{ result.best_match.stele.dynasty }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="字体风格">
+                  <el-descriptions-item :label="$t('recognize.a3')">
                     <el-tag>{{ result.best_match.stele.style }}</el-tag>
                   </el-descriptions-item>
                 </el-descriptions>
@@ -170,19 +170,19 @@
 
             <!-- 其他候选 - 只显示相似度 >= 40% 的 -->
             <div class="other-matches" v-if="filteredTopMatches.length > 0">
-              <h4>其他候选</h4>
+              <h4>{{ $t('recognize.t14') }}</h4>
               <el-table :data="filteredTopMatches" style="width: 100%">
-                <el-table-column prop="rank" label="排名" width="80">
+                <el-table-column prop="rank" :label="$t('recognize.a4')" width="80">
                   <template #default="scope">
                     <el-tag size="small">{{ scope.row.rank }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="character" label="字形" width="100">
+                <el-table-column prop="character" :label="$t('recognize.a5')" width="100">
                   <template #default="scope">
                     <span class="table-character">{{ scope.row.character }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="similarity" label="相似度">
+                <el-table-column prop="similarity" :label="$t('recognize.t12')">
                   <template #default="scope">
                     <el-progress 
                       :percentage="Math.round(scope.row.similarity)" 
@@ -210,14 +210,14 @@
     <!-- 历史记录对话框 -->
     <el-dialog
       v-model="historyDialogVisible"
-      title="识别历史记录"
+      :title="$t('recognize.a6')"
       width="1400px"
       :close-on-click-modal="true"
       class="history-dialog"
     >
       <div class="history-content">
         <el-table :data="historyList" style="width: 100%" v-loading="historyLoading" class="history-table">
-          <el-table-column label="上传图片" width="120">
+          <el-table-column :label="$t('recognize.a7')" width="120">
             <template #default="scope">
               <img 
                 :src="getImageUrl(scope.row.uploaded_image_path)" 
@@ -226,12 +226,12 @@
               />
             </template>
           </el-table-column>
-          <el-table-column prop="recognized_character" label="识别结果" width="100">
+          <el-table-column prop="recognized_character" :label="$t('recognize.t8')" width="100">
             <template #default="scope">
               <span class="history-character">{{ scope.row.recognized_character }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="similarity_score" label="相似度" width="120">
+          <el-table-column prop="similarity_score" :label="$t('recognize.t12')" width="120">
             <template #default="scope">
               <el-progress 
                 :percentage="Math.round(scope.row.similarity_score || 0)" 
@@ -240,17 +240,17 @@
               />
             </template>
           </el-table-column>
-          <el-table-column prop="processing_time_ms" label="耗时" width="100">
+          <el-table-column prop="processing_time_ms" :label="$t('recognize.a8')" width="100">
             <template #default="scope">
               {{ scope.row.processing_time_ms }}ms
             </template>
           </el-table-column>
-          <el-table-column prop="created_at" label="识别时间" width="180">
+          <el-table-column prop="created_at" :label="$t('recognize.a9')" width="180">
             <template #default="scope">
               {{ formatDate(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column :label="$t('engine.actions')" width="200" fixed="right">
             <template #default="scope">
               <div class="action-buttons">
                 <el-button
@@ -258,14 +258,14 @@
                   size="default"
                   @click="loadHistoryResult(scope.row)"
                 >
-                  查看
+                  {{ $t('albummanager.t7') }}
                 </el-button>
                 <el-button
                   type="danger"
                   size="default"
                   @click="deleteHistoryItem(scope.row)"
                 >
-                  删除
+                  {{ $t('common.delete') }}
                 </el-button>
               </div>
             </template>
@@ -289,7 +289,7 @@
     <!-- 图片预览对话框 -->
     <el-dialog
       v-model="previewDialogVisible"
-      title="图片预览"
+      :title="$t('recognize.a10')"
       width="600px"
       :close-on-click-modal="true"
     >
@@ -299,7 +299,7 @@
     <!-- 原图放大查看对话框 -->
     <el-dialog
       v-model="imagePreviewVisible"
-      title="原图查看"
+      :title="$t('recognize.a11')"
       width="90%"
       :close-on-click-modal="true"
       class="image-preview-dialog"
@@ -313,7 +313,7 @@
             @click="zoomIn"
             :disabled="previewScale >= 3"
           >
-            放大
+            {{ $t('inscriptionannotator.a2') }}
           </el-button>
           <el-button
             type="primary"
@@ -321,21 +321,21 @@
             @click="zoomOut"
             :disabled="previewScale <= 0.5"
           >
-            缩小
+            {{ $t('inscriptionannotator.a1') }}
           </el-button>
           <el-button
             type="default"
             size="small"
             @click="resetZoom"
           >
-            重置
+            {{ $t('common.reset') }}
           </el-button>
           <span class="zoom-level">{{ Math.round(previewScale * 100) }}%</span>
         </div>
         <div class="image-preview-wrapper" ref="previewWrapper">
           <img
             :src="currentPreviewImage"
-            alt="原图预览"
+            :alt="$t('recognize.a12')"
             class="preview-image-zoom"
             :style="{ transform: `scale(${previewScale})` }"
             @wheel.prevent="handleWheel"
@@ -351,6 +351,7 @@ import { ref, computed, onMounted } from 'vue'
 import { UploadFilled, Search, Document, Clock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { recognitionApi } from '../api'
+import { translate as t } from '@/locales'
 
 const previewImage = ref('')
 const currentFile = ref(null)
@@ -481,13 +482,13 @@ const handleFileChange = (file) => {
   
   const isImage = file.raw.type.startsWith('image/')
   if (!isImage) {
-    ElMessage.error('请上传图片文件')
+    ElMessage.error(t('recognize.s1'))
     return
   }
   
   const isLt10M = file.raw.size / 1024 / 1024 < 10
   if (!isLt10M) {
-    ElMessage.error('图片大小不能超过10MB')
+    ElMessage.error(t('recognize.s2'))
     return
   }
   
@@ -505,7 +506,7 @@ const handleFileChange = (file) => {
 // 开始识别
 const startRecognize = async () => {
   if (!currentFile.value) {
-    ElMessage.warning('请先上传图片')
+    ElMessage.warning(t('recognize.s3'))
     return
   }
   
@@ -522,7 +523,7 @@ const startRecognize = async () => {
       progressPercentage.value = 100
       progressStatus.value = 'success'
       analyzingStep.value = '识别完成！'
-      ElMessage.success('识别完成')
+      ElMessage.success(t('recognize.s4'))
       // 刷新历史记录
       loadHistory()
     } else {
@@ -534,7 +535,7 @@ const startRecognize = async () => {
     console.error('识别错误:', error)
     progressStatus.value = 'exception'
     analyzingStep.value = '识别出错'
-    ElMessage.error('识别失败，请重试')
+    ElMessage.error(t('recognize.s5'))
   } finally {
     clearInterval(progressInterval)
     setTimeout(() => {
@@ -560,7 +561,7 @@ const loadHistory = async () => {
     }
   } catch (error) {
     console.error('加载历史记录失败:', error)
-    ElMessage.error('加载历史记录失败')
+    ElMessage.error(t('recognize.s6'))
   } finally {
     historyLoading.value = false
   }
@@ -592,14 +593,14 @@ const loadHistoryResult = (row) => {
     uploaded_image_url: getImageUrl(row.uploaded_image_path)
   }
   historyDialogVisible.value = false
-  ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent', center: true })
+  ElMessage({ message: t('recognize.s9'), type: 'success', customClass: 'toast-transparent', center: true })
 }
 
 // 删除历史记录
 const deleteHistoryItem = async (row) => {
   try {
     await ElMessageBox.confirm(
-      '确定要删除这条历史记录吗？',
+      t('recognize.s8'),
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -613,7 +614,7 @@ const deleteHistoryItem = async (row) => {
     console.log('删除响应:', response)
     
     if (response.success) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('engine.delete_success'))
       // 刷新历史记录列表
       loadHistory()
     } else {
@@ -627,7 +628,7 @@ const deleteHistoryItem = async (row) => {
         ElMessage.error(`删除失败: ${error.response.data?.detail || error.response.statusText}`)
       } else if (error.request) {
         // 请求发送但没有收到响应
-        ElMessage.error('删除失败: 无法连接到服务器')
+        ElMessage.error(t('recognize.s7'))
       } else {
         // 其他错误
         ElMessage.error(`删除失败: ${error.message || '未知错误'}`)

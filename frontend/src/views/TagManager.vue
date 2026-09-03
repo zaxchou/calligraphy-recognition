@@ -3,8 +3,8 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-title-group">
-        <h1 class="page-title">标签管理</h1>
-        <p class="page-subtitle">灵活的作品分类体系 · 多标签支持 · 筛选管理</p>
+        <h1 class="page-title">{{ $t('contentverify.a6') }}</h1>
+        <p class="page-subtitle">{{ $t('tagmanager.t1') }}</p>
         <div class="header-ornament">
           <span class="ornament-line"></span>
           <span class="ornament-dot">◇</span>
@@ -14,11 +14,11 @@
       <div class="header-actions">
         <el-button type="primary" @click="showCreateDialog = true">
           <el-icon><Plus /></el-icon>
-          新建标签
+          {{ $t('tagmanager.t2') }}
         </el-button>
         <el-button type="danger" @click="handleResetAllTags">
           <el-icon><Delete /></el-icon>
-          清空所有标签
+          {{ $t('tagmanager.t3') }}
         </el-button>
       </div>
     </div>
@@ -26,7 +26,7 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>加载数据中...</span>
+      <span>{{ $t('albummanager.t3') }}</span>
     </div>
 
     <div v-else>
@@ -34,11 +34,11 @@
       <div class="stats-bar">
         <div class="stat-card">
           <span class="stat-num">{{ tags.length }}</span>
-          <span class="stat-label">标签总数</span>
+          <span class="stat-label">{{ $t('tagmanager.t4') }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-num">{{ totalTagItems }}</span>
-          <span class="stat-label">作品标签数</span>
+          <span class="stat-label">{{ $t('tagmanager.t5') }}</span>
         </div>
       </div>
 
@@ -57,11 +57,11 @@
           <div class="tag-actions">
             <el-button size="small" @click.stop="showRenameDialog(tag)">
               <el-icon><Edit /></el-icon>
-              重命名
+              {{ $t('albummanager.t15') }}
             </el-button>
             <el-button size="small" type="danger" @click.stop="confirmDeleteTag(tag.name)">
               <el-icon><Delete /></el-icon>
-              删除
+              {{ $t('common.delete') }}
             </el-button>
           </div>
         </div>
@@ -73,7 +73,7 @@
           <h3 class="detail-title">「{{ selectedTag }}」标签下的作品</h3>
           <el-button size="small" type="primary" @click="showAddItemsDialog = true">
             <el-icon><Plus /></el-icon>
-            添加作品
+            {{ $t('albummanager.t16') }}
           </el-button>
         </div>
         
@@ -92,7 +92,7 @@
               class="item-thumb"
               @error="e => e.target.style.display='none'"
             />
-            <div v-else class="item-thumb-placeholder">无图</div>
+            <div v-else class="item-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
             <div class="item-info">
               <span class="item-title">{{ item.title || '无名' }}</span>
             </div>
@@ -103,43 +103,43 @@
                 @click="confirmRemoveItem(item.id)"
               >
                 <el-icon><Delete /></el-icon>
-                移除
+                {{ $t('librarydetail.t24') }}
               </el-button>
             </div>
           </div>
         </div>
         <div v-else class="detail-empty">
-          该标签下暂无作品
+          {{ $t('tagmanager.t6') }}
         </div>
       </div>
 
       <!-- 空状态 -->
       <div v-else class="empty-state">
         <el-icon class="empty-icon"><PriceTag /></el-icon>
-        <p class="empty-text">暂无标签</p>
-        <p class="empty-hint">点击上方按钮创建第一个标签</p>
+        <p class="empty-text">{{ $t('tagmanager.t7') }}</p>
+        <p class="empty-hint">{{ $t('tagmanager.t8') }}</p>
       </div>
     </div>
 
     <!-- 新建标签弹窗 -->
     <el-dialog
       v-model="showCreateDialog"
-      title="新建标签"
+      :title="$t('tagmanager.t2')"
       width="400px"
       :close-on-click-modal="false"
     >
       <el-form :model="createForm" label-width="70px" @submit.prevent>
-        <el-form-item label="标签名称">
+        <el-form-item :label="$t('tagmanager.a1')">
           <el-input
             v-model="createForm.name"
-            placeholder="如：写意、工笔、精品"
+            :placeholder="$t('tagmanager.a2')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="creating" @click="createTag">
-          创建
+          {{ $t('albummanager.t14') }}
         </el-button>
       </template>
     </el-dialog>
@@ -147,25 +147,25 @@
     <!-- 重命名标签弹窗 -->
     <el-dialog
       v-model="showRenameDialogVisible"
-      title="重命名标签"
+      :title="$t('tagmanager.a3')"
       width="400px"
       :close-on-click-modal="false"
     >
       <el-form :model="renameForm" label-width="70px" @submit.prevent>
-        <el-form-item label="原名称">
+        <el-form-item :label="$t('tagmanager.a4')">
           <span>{{ renamingTag?.name }}</span>
         </el-form-item>
-        <el-form-item label="新名称">
+        <el-form-item :label="$t('tagmanager.a5')">
           <el-input
             v-model="renameForm.new_name"
-            placeholder="输入新名称"
+            :placeholder="$t('tagmanager.a6')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showRenameDialogVisible = false">取消</el-button>
+        <el-button @click="showRenameDialogVisible = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="renaming" @click="renameTag">
-          重命名
+          {{ $t('albummanager.t15') }}
         </el-button>
       </template>
     </el-dialog>
@@ -173,7 +173,7 @@
     <!-- 添加作品到标签弹窗 -->
     <el-dialog
       v-model="showAddItemsDialog"
-      title="添加作品"
+      :title="$t('albummanager.t16')"
       width="600px"
     >
       <div class="add-items-selector">
@@ -189,14 +189,14 @@
             class="record-thumb"
             @error="e => e.target.style.display='none'"
           />
-          <div v-else class="record-thumb-placeholder">无图</div>
+          <div v-else class="record-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
           <span class="record-title">{{ record.title || '无名' }}</span>
         </div>
       </div>
       <template #footer>
-        <el-button @click="showAddItemsDialog = false">取消</el-button>
+        <el-button @click="showAddItemsDialog = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="adding" @click="addItemsToTag">
-          添加
+          {{ $t('albummanager.t17') }}
         </el-button>
       </template>
     </el-dialog>
@@ -208,6 +208,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Plus, Edit, Delete, PriceTag } from '@element-plus/icons-vue'
 import { tibaApi } from '../api'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -277,13 +278,13 @@ function toggleAddingRecord(id) {
 
 async function createTag() {
   if (!createForm.value.name.trim()) {
-    ElMessage.warning('请输入标签名称')
+    ElMessage.warning(t('tagmanager.s1'))
     return
   }
   creating.value = true
   try {
     await tibaApi.createTag(createForm.value.name)
-    ElMessage.success('标签创建成功')
+    ElMessage.success(t('tagmanager.s2'))
     showCreateDialog.value = false
     createForm.value = { name: '' }
     await loadData()
@@ -314,13 +315,13 @@ function showRenameDialog(tag) {
 
 async function renameTag() {
   if (!renameForm.value.new_name.trim()) {
-    ElMessage.warning('请输入新名称')
+    ElMessage.warning(t('tagmanager.s3'))
     return
   }
   renaming.value = true
   try {
     await tibaApi.renameTag(renamingTag.value.name, renameForm.value.new_name)
-    ElMessage.success('标签已重命名')
+    ElMessage.success(t('tagmanager.s4'))
     showRenameDialogVisible.value = false
     if (selectedTag.value === renamingTag.value.name) {
       selectedTag.value = renameForm.value.new_name
@@ -344,7 +345,7 @@ async function confirmDeleteTag(name) {
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
     await tibaApi.deleteTag(name)
-    ElMessage.success('标签已删除')
+    ElMessage.success(t('tagmanager.s5'))
     if (selectedTag.value === name) {
       selectedTag.value = null
       selectedTagItems.value = []
@@ -360,7 +361,7 @@ async function confirmDeleteTag(name) {
 async function handleResetAllTags() {
   try {
     await ElMessageBox.confirm(
-      '确定要清空所有作品的标签吗？\n清空后所有自动标签将被移除，重新分析时会重新生成。',
+      t('tagmanager.s8'),
       '清空所有标签',
       { confirmButtonText: '确定清空', cancelButtonText: '取消', type: 'warning', confirmButtonClass: 'el-button--danger' }
     )
@@ -379,12 +380,12 @@ async function handleResetAllTags() {
 async function confirmRemoveItem(id) {
   try {
     await ElMessageBox.confirm(
-      '确定要将该作品移除此标签吗？',
+      t('tagmanager.s9'),
       '移除标签',
       { confirmButtonText: '确定移除', cancelButtonText: '取消', type: 'warning' }
     )
     await tibaApi.removeItemFromTag(selectedTag.value, id)
-    ElMessage.success('标签已移除')
+    ElMessage.success(t('tagmanager.s6'))
     await selectTag(selectedTag.value)
     await loadData()
   } catch (e) {
@@ -396,13 +397,13 @@ async function confirmRemoveItem(id) {
 
 async function addItemsToTag() {
   if (addingRecordIds.value.length === 0) {
-    ElMessage.warning('请选择要添加的作品')
+    ElMessage.warning(t('albummanager.s6'))
     return
   }
   adding.value = true
   try {
     await tibaApi.addItemsToTag(selectedTag.value, addingRecordIds.value)
-    ElMessage.success('标签已添加')
+    ElMessage.success(t('tagmanager.s7'))
     showAddItemsDialog.value = false
     addingRecordIds.value = []
     await selectTag(selectedTag.value)

@@ -1,25 +1,25 @@
 <template>
   <div class="av-overview-page" style="min-height:200px">
     <template v-if="loading">
-      <div class="av-loading">加载中...</div>
+      <div class="av-loading">{{ $t('common.loading') }}</div>
     </template>
     <template v-else-if="notFound">
       <div class="av-not-found">
         <div class="av-not-found-icon">?</div>
-        <h2>未找到该画家</h2>
-        <p>请确认名称是否正确，或返回<router-link to="/artists">艺术家列表</router-link>浏览</p>
+        <h2>{{ $t('artist.artistoverview.t1') }}</h2>
+        <p>{{ $t('artist.artistoverview.t2') }}<router-link to="/artists">{{ $t('artist.artistoverview.t3') }}</router-link>{{ $t('artist.artistoverview.t4') }}</p>
       </div>
     </template>
     <template v-else-if="artist">
       <div class="av-body">
         <main class="av-main">
           <section v-if="artist.biography" id="bio-life" class="av-section">
-            <h2 class="av-section-title">人物生平</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.t5') }}</h2>
             <p class="av-text">{{ artist.biography }}</p>
           </section>
 
           <section v-if="artChronology.length > 0" id="bio-chrono" class="av-section">
-            <h2 class="av-section-title">艺术年谱</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s6') }}</h2>
             <div class="av-chrono-list">
               <div v-for="(item, idx) in artChronology" :key="idx" class="av-chrono-item">
                 <div class="av-chrono-year">{{ item.year }}</div>
@@ -33,27 +33,27 @@
           </section>
 
           <section v-if="artist.art_style" id="bio-style" class="av-section">
-            <h2 class="av-section-title">艺术特色</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s5') }}</h2>
             <p class="av-text" v-html="$sanitize(renderMarkdown(artist.art_style))" />
           </section>
 
           <section v-if="artist.main_achievements" id="bio-achieve" class="av-section">
-            <h2 class="av-section-title">主要成就</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s7') }}</h2>
             <p class="av-text">{{ artist.main_achievements }}</p>
           </section>
 
           <section v-if="artist.influence" id="bio-influence" class="av-section">
-            <h2 class="av-section-title">后世影响</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s8') }}</h2>
             <p class="av-text">{{ artist.influence }}</p>
           </section>
 
           <section v-if="artist.historical_evaluation" id="bio-evaluation" class="av-section">
-            <h2 class="av-section-title">历史评价</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s9') }}</h2>
             <p class="av-text">{{ artist.historical_evaluation }}</p>
           </section>
 
           <section v-if="characterRelations.length > 0" id="bio-relations" class="av-section">
-            <h2 class="av-section-title">人物关系</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s14') }}</h2>
             <div class="av-relations-grid">
               <div v-for="(rel, idx) in characterRelations" :key="idx" class="av-relation-card" @click="goToRelationArtist(rel)">
                 <el-avatar :src="rel.image_url || ''" :size="52" shape="circle" class="av-avatar-placeholder" @error="e => e.target.style.display = 'none'">{{ (rel.name || '?').charAt(0) }}</el-avatar>
@@ -65,7 +65,7 @@
           </section>
 
           <section v-if="anecdotes.length > 0" id="bio-anecdotes" class="av-section">
-            <h2 class="av-section-title">轶事典故</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s15') }}</h2>
             <div v-for="(item, idx) in anecdotes" :key="idx" class="av-anecdote">
               <div class="av-anecdote-toggle" @click="expandedAnecdote = expandedAnecdote === idx ? -1 : idx">
                 <span class="av-anecdote-title">{{ item.title || `轶事 ${idx + 1}` }}</span>
@@ -78,7 +78,7 @@
           </section>
 
           <section v-if="publishedWorks.length > 0" id="bio-published" class="av-section">
-            <h2 class="av-section-title">出版著作</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s16') }}</h2>
             <div class="av-published-grid">
               <div v-for="(pw, idx) in publishedWorks" :key="idx" class="av-published-item">
                 <div class="av-published-title">{{ pw.title }}</div>
@@ -89,7 +89,7 @@
           </section>
 
           <section v-if="galleryImages.length > 0" id="bio-gallery" class="av-section">
-            <h2 class="av-section-title">作品图集</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.t6') }}</h2>
             <div class="av-gallery-grid">
               <div v-for="(gi, idx) in galleryImages" :key="idx" class="av-gallery-item" @click="gi.artwork_id && goToWork(gi.artwork_id)">
                 <div class="av-gallery-thumb">
@@ -102,7 +102,7 @@
           </section>
 
           <section v-if="references.length > 0" id="bio-refs" class="av-section">
-            <h2 class="av-section-title">参考文献</h2>
+            <h2 class="av-section-title">{{ $t('artist.artistoverview.s17') }}</h2>
             <ol class="av-ref-list">
               <li v-for="(ref, idx) in references" :key="idx" class="av-ref-item">{{ typeof ref === 'string' ? ref : ref.text || ref.title || '' }}</li>
             </ol>
@@ -111,7 +111,7 @@
 
         <aside v-if="tocItems.length > 0" class="av-toc">
           <nav class="av-toc-nav">
-            <div class="av-toc-title">目录</div>
+            <div class="av-toc-title">{{ $t('c-literaturereader.t6') }}</div>
             <a
               v-for="item in tocItems"
               :key="item.id"
@@ -125,26 +125,26 @@
     </template>
   </div>
 
-  <el-dialog v-model="showSuggestDialog" title="我的修改" width="520px" align-center :close-on-click-modal="false" @open="onSuggestDialogOpen">
+  <el-dialog v-model="showSuggestDialog" :title="$t('artist.artistoverview.a1')" width="520px" align-center :close-on-click-modal="false" @open="onSuggestDialogOpen">
     <el-form label-width="80px" label-position="left">
-      <el-form-item label="修改字段">
-        <el-select v-model="suggestForm.field_name" placeholder="选择要修改的字段" style="width:100%">
+      <el-form-item :label="$t('suggest.field')">
+        <el-select v-model="suggestForm.field_name" :placeholder="$t('artist.artistoverview.a2')" style="width:100%">
           <el-option v-for="f in suggestFields" :key="f.value" :label="f.label" :value="f.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="当前内容">
+      <el-form-item :label="$t('c-bookreadermodal.s3')">
         <div class="av-suggest-old">{{ suggestForm.old_value || '(空)' }}</div>
       </el-form-item>
-      <el-form-item label="修改为">
-        <el-input v-model="suggestForm.new_value" type="textarea" :rows="5" placeholder="请输入新内容" />
+      <el-form-item :label="$t('artist.artistoverview.a3')">
+        <el-input v-model="suggestForm.new_value" type="textarea" :rows="5" :placeholder="$t('artist.artistoverview.a4')" />
       </el-form-item>
-      <el-form-item label="修改说明">
-        <el-input v-model="suggestForm.change_summary" placeholder="简要说明为什么做此修改" />
+      <el-form-item :label="$t('suggest.change_desc')">
+        <el-input v-model="suggestForm.change_summary" :placeholder="$t('artist.artistoverview.a5')" />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="showSuggestDialog = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmitChange">提交</el-button>
+      <el-button @click="showSuggestDialog = false">{{ $t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="submitting" @click="handleSubmitChange">{{ $t('common.submit') }}</el-button>
     </template>
   </el-dialog>
 </template>
@@ -155,6 +155,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
+import { translate as t } from '@/locales'
 
 const route = useRoute()
 const router = useRouter()
@@ -168,21 +169,21 @@ const expandedAnecdote = ref(-1)
 const activeToc = ref('')
 
 const suggestFields = [
-  { value: 'summary', label: '概述' },
-  { value: 'biography', label: '生平简介' },
-  { value: 'art_style', label: '艺术特色' },
-  { value: 'art_chronology', label: '艺术年谱' },
-  { value: 'main_achievements', label: '主要成就' },
-  { value: 'influence', label: '后世影响' },
-  { value: 'historical_evaluation', label: '历史评价' },
-  { value: 'occupation', label: '职业' },
-  { value: 'nationality', label: '国籍' },
-  { value: 'representative_works_text', label: '代表作品' },
-  { value: 'specialties', label: '专长' },
-  { value: 'character_relations', label: '人物关系' },
-  { value: 'anecdotes', label: '轶事典故' },
-  { value: 'published_works', label: '出版著作' },
-  { value: 'references', label: '参考文献' },
+  { value: 'summary', label: t('artist.artistoverview.s3') },
+  { value: 'biography', label: t('artist.artistoverview.s4') },
+  { value: 'art_style', label: t('artist.artistoverview.s5') },
+  { value: 'art_chronology', label: t('artist.artistoverview.s6') },
+  { value: 'main_achievements', label: t('artist.artistoverview.s7') },
+  { value: 'influence', label: t('artist.artistoverview.s8') },
+  { value: 'historical_evaluation', label: t('artist.artistoverview.s9') },
+  { value: 'occupation', label: t('artist.artistoverview.s10') },
+  { value: 'nationality', label: t('artist.artistoverview.s11') },
+  { value: 'representative_works_text', label: t('artist.artistoverview.s12') },
+  { value: 'specialties', label: t('artist.artistoverview.s13') },
+  { value: 'character_relations', label: t('artist.artistoverview.s14') },
+  { value: 'anecdotes', label: t('artist.artistoverview.s15') },
+  { value: 'published_works', label: t('artist.artistoverview.s16') },
+  { value: 'references', label: t('artist.artistoverview.s17') },
 ]
 
 const showSuggestDialog = ref(false)
@@ -320,11 +321,11 @@ watch(() => suggestForm.field_name, () => {
 
 async function handleSubmitChange() {
   if (!suggestForm.new_value) {
-    ElMessage.warning('请输入新值')
+    ElMessage.warning(t('suggest.enter_new_value'))
     return
   }
   if (!suggestForm.change_summary.trim()) {
-    ElMessage.warning('请填写修改说明')
+    ElMessage.warning(t('suggest.enter_desc'))
     return
   }
   submitting.value = true
@@ -337,9 +338,9 @@ async function handleSubmitChange() {
     })
     const data = await api.post(`/artists/${artist.value.id}/change-requests?${params}`)
     if (data.direct_update) {
-      ElMessage.success('已直接更新（编辑权限）')
+      ElMessage.success(t('artist.artistoverview.s1'))
     } else {
-      ElMessage.success('修改建议已提交，等待审核')
+      ElMessage.success(t('artist.artistoverview.s2'))
     }
     showSuggestDialog.value = false
   } catch (e) {

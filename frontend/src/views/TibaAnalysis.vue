@@ -3,7 +3,7 @@
   <div v-if="initialLoading" style="position:fixed;inset:0;background:#f5f4ed;z-index:99999;display:flex;align-items:center;justify-content:center;">
     <div style="text-align:center;color:#3d3d3d;">
       <div style="width:40px;height:40px;border:3px solid #e8e4d8;border-top-color:#c45a3c;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div>
-      <p style="margin:0;font-size:15px;color:#8c8c8c;">正在加载作品...</p>
+      <p style="margin:0;font-size:15px;color:#8c8c8c;">{{ $t('tibaanalysis.t1') }}</p>
     </div>
   </div>
 
@@ -122,6 +122,7 @@ import TibaImageZoomDialog from '../components/tiba/TibaImageZoomDialog.vue'
 import { defineAsyncComponent } from 'vue'
 const TibaHome = defineAsyncComponent(() => import('./TibaHome.vue'))
 import TibaDetail from './TibaDetail.vue'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -333,7 +334,7 @@ const editCurrentImage = () => {
   if (currentImage.value) {
     editDialogRef.value.open(currentImage.value)
   } else {
-    ElMessage.warning('请先选择一幅画作')
+    ElMessage.warning(t('tibaanalysis.s1'))
   }
 }
 
@@ -671,7 +672,7 @@ async function selectImage(img) {
 // 清空所有
 async function clearAll() {
   try {
-    await ElMessageBox.confirm('确定要清空所有图片吗？', '提示', {
+    await ElMessageBox.confirm(t('tibaanalysis.s14'), '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -694,10 +695,10 @@ async function clearAll() {
         : {}
       router.replace({ name: 'TibaAnalysis', query })
     }
-    ElMessage.success('已清空')
+    ElMessage.success(t('tibaanalysis.s2'))
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('清空失败')
+      ElMessage.error(t('tibaanalysis.s3'))
     }
   }
 }
@@ -850,7 +851,7 @@ async function autoAnalyze() {
     
     // 检查是否成功入队（Redis 可能不可用）
     if (startResult.data?.enqueued === false) {
-      ElMessage.warning('任务已创建但入队失败，请检查 Redis 和 tubi_worker 是否启动')
+      ElMessage.warning(t('tibaanalysis.s4'))
     }
 
     analyzingStep.value = '已加入队列，等待分析...'
@@ -942,7 +943,7 @@ async function autoAnalyze() {
     await loadHistory()
     refreshAnalyticsKey.value++  // 通知 TibaHome 刷新分析图表缓存
 
-    ElMessage.success('AI分析完成')
+    ElMessage.success(t('tibaanalysis.s5'))
   } catch (error) {
     clearInterval(progressInterval)
     analyzeStatus.value = 'pending'
@@ -1239,7 +1240,7 @@ function updateTrendChart() {
 async function handleSearch(keyword) {
   const kw = (keyword || searchKeyword.value || '').trim()
   if (!kw) {
-    ElMessage.warning('请输入搜索关键词')
+    ElMessage.warning(t('tibaanalysis.s6'))
     return
   }
   searchDialogVisible.value = true
@@ -1263,7 +1264,7 @@ async function handleSearch(keyword) {
         sealContent: item.seal_content
       }))
       if (searchResults.value.length === 0) {
-        ElMessage.info('未找到匹配的画作')
+        ElMessage.info(t('tibaanalysis.s7'))
       }
     } else {
       ElMessage.error(response.message || '搜索失败')
@@ -1405,7 +1406,7 @@ async function loadHistoryItem(row) {
       // 滚动到页面顶部
       window.scrollTo({ top: 0, behavior: 'smooth' })
       
-      ElMessage.success('已加载模拟数据')
+      ElMessage.success(t('tibaanalysis.s8'))
     } else {
       // 正常加载真实数据 - 优先使用 image_id (UUID)
       const recordId = row.image_id || row.id
@@ -1470,7 +1471,7 @@ async function loadHistoryItem(row) {
         // 滚动到页面顶部
         window.scrollTo({ top: 0, behavior: 'smooth' })
         
-        ElMessage({ message: '已加载历史记录', type: 'success', customClass: 'toast-transparent', center: true })
+        ElMessage({ message: t('recognize.s9'), type: 'success', customClass: 'toast-transparent', center: true })
       } else {
         ElMessage.error(response.message || '加载失败')
       }
@@ -1479,9 +1480,9 @@ async function loadHistoryItem(row) {
     console.error('加载历史记录项失败:', error)
     // 检查是否是404错误
     if (error.response && error.response.status === 404) {
-      ElMessage.error('该作品不存在或已被删除')
+      ElMessage.error(t('tibaanalysis.s9'))
     } else {
-      ElMessage.error('加载失败')
+      ElMessage.error(t('engine.load_error'))
     }
   }
 }
@@ -1549,14 +1550,14 @@ async function loadAndSelectImage(imageId) {
     }
   } catch (error) {
     console.error('加载画作失败:', error)
-    ElMessage.error('加载画作失败')
+    ElMessage.error(t('tibaanalysis.s10'))
   }
 }
 
 // 删除历史记录项
 async function deleteHistoryItem(row) {
   try {
-    await ElMessageBox.confirm('确定要删除这条历史记录吗？', '确认删除', {
+    await ElMessageBox.confirm(t('recognize.s8'), '确认删除', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -1564,7 +1565,7 @@ async function deleteHistoryItem(row) {
 
     const response = await tibaApi.deleteImage(row.id)
     if (response.success) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('engine.delete_success'))
       // 从列表中移除
       const idx = historyList.value.findIndex(item => item.id === row.id)
       if (idx > -1) {
@@ -1589,7 +1590,7 @@ async function deleteHistoryItem(row) {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error(t('engine.delete_error'))
     }
   }
 }
@@ -1615,7 +1616,7 @@ async function deleteImage(item) {
 
     const response = await tibaApi.deleteImage(item.id)
     if (response.success) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('engine.delete_success'))
       // 从列表中移除
       const idx = historyList.value.findIndex(h => h.id === item.id)
       if (idx > -1) {
@@ -1643,7 +1644,7 @@ async function deleteImage(item) {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error(t('engine.delete_error'))
     }
   }
 }
@@ -2127,11 +2128,11 @@ onMounted(async () => {
         selectImage(historyImage)
         // 非阻塞加载历史列表（底部作品库需要），不阻塞详情渲染
         loadHistory()
-        ElMessage({ message: '已加载指定作品', type: 'success', customClass: 'toast-transparent', center: true })
+        ElMessage({ message: t('tibaanalysis.s15'), type: 'success', customClass: 'toast-transparent', center: true })
       }
     } catch (error) {
       console.error('加载指定作品失败:', error)
-      ElMessage.error('加载指定作品失败，可能已被删除')
+      ElMessage.error(t('tibaanalysis.s11'))
       // 加载失败时回到列表页，保留 artist 参数
       const query = (currentArtist.value && currentArtist.value !== '李鱓') 
         ? { artist: currentArtist.value } 
@@ -2153,7 +2154,7 @@ onMounted(async () => {
       await loadHistory()
     } catch (err) {
       console.error('loadHistory 失败（已捕获，页面不会白屏）:', err)
-      ElMessage.error('加载历史记录失败，请刷新页面')
+      ElMessage.error(t('tibaanalysis.s12'))
     }
     // 检查 sessionStorage（标签筛选）并滚动到作品库
     try {
@@ -2276,7 +2277,7 @@ async function navigateToAlbumItem(item) {
     }
   } catch (error) {
     console.error('[册页导航] 加载失败:', error)
-    ElMessage.error('加载作品失败')
+    ElMessage.error(t('tibaanalysis.s13'))
   }
 }
 

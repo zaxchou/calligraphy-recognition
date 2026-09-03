@@ -4,26 +4,26 @@
     <div class="aw-toolbar">
       <div class="aw-toolbar-left">
         <div class="aw-type-tabs">
-          <span class="aw-type-tab" :class="{ active: workTypeFilter === '' }" @click="setWorkType('')">全部</span>
-          <span class="aw-type-tab" :class="{ active: workTypeFilter === '画作' }" @click="setWorkType('画作')">画作</span>
-          <span class="aw-type-tab" :class="{ active: workTypeFilter === '书法' }" @click="setWorkType('书法')">书法</span>
-          <span class="aw-type-tab" :class="{ active: workTypeFilter === '篆刻' }" @click="setWorkType('篆刻')">篆刻</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '' }" @click="setWorkType('')">{{ $t('common.all') }}</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '画作' }" @click="setWorkType('画作')">{{ $t('artist.artistworks.t1') }}</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '书法' }" @click="setWorkType('书法')">{{ $t('artist.artistworks.t2') }}</span>
+          <span class="aw-type-tab" :class="{ active: workTypeFilter === '篆刻' }" @click="setWorkType('篆刻')">{{ $t('artist.artistworks.t3') }}</span>
         </div>
-        <el-input v-model="searchQuery" placeholder="搜索标题、题跋..." size="small" style="width:180px" clearable @keyup.enter="onSearch">
+        <el-input v-model="searchQuery" :placeholder="$t('artist.artistworks.a1')" size="small" style="width:180px" clearable @keyup.enter="onSearch">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-button size="small" type="primary" @click="onSearch">搜索</el-button>
-        <el-button size="small" @click="clearSearch" v-if="searchQuery" text>清除</el-button>
+        <el-button size="small" type="primary" @click="onSearch">{{ $t('common.search') }}</el-button>
+        <el-button size="small" @click="clearSearch" v-if="searchQuery" text>{{ $t('annotationverify.t4') }}</el-button>
       </div>
       <div class="aw-toolbar-right">
         <span class="aw-total">共 {{ totalCount }} 件</span>
         <div class="aw-view-toggle">
-          <el-tooltip content="图库模式" placement="top">
+          <el-tooltip :content="$t('artist.artistworks.a2')" placement="top">
             <el-button size="small" :type="viewMode === 'grid' ? 'primary' : 'default'" @click="viewMode = 'grid'" text>
               <el-icon><Grid /></el-icon>
             </el-button>
           </el-tooltip>
-          <el-tooltip content="列表模式" placement="top">
+          <el-tooltip :content="$t('artist.artistworks.a3')" placement="top">
             <el-button size="small" :type="viewMode === 'list' ? 'primary' : 'default'" @click="viewMode = 'list'" text>
               <el-icon><List /></el-icon>
             </el-button>
@@ -33,7 +33,7 @@
     </div>
 
     <div class="aw-sort-bar">
-      <span class="aw-sort-label">排序：</span>
+      <span class="aw-sort-label">{{ $t('artist.artistliterature.t1') }}</span>
       <span v-for="s in sortOptions" :key="s.key" class="aw-sort-item" :class="{ active: activeSort === s.key }" @click="onSort(s.key)">
         {{ s.label }}
         <el-icon v-if="activeSort === s.key" style="font-size:12px;margin-left:2px">
@@ -42,8 +42,8 @@
       </span>
     </div>
 
-    <div v-if="loading" class="av-loading">加载中...</div>
-    <div v-else-if="works.length === 0" class="av-empty">暂无作品数据</div>
+    <div v-if="loading" class="av-loading">{{ $t('common.loading') }}</div>
+    <div v-else-if="works.length === 0" class="av-empty">{{ $t('artist.artistworks.t4') }}</div>
     <template v-else>
       <!-- 图库模式（照搬 TibaGallery 样式） -->
       <div v-show="viewMode === 'grid'" class="aw-grid">
@@ -61,10 +61,10 @@
             </div>
             <!-- 类型标识 -->
             <div v-if="w.work_type === '书法'" class="aw-type-badge">
-              <span>书法</span>
+              <span>{{ $t('artist.artistworks.t2') }}</span>
             </div>
             <div v-if="w.work_type === '篆刻'" class="aw-type-badge seal-type">
-              <span>篆刻</span>
+              <span>{{ $t('artist.artistworks.t3') }}</span>
             </div>
             <!-- 页面角色角标 -->
             <div v-if="w.page_role" class="aw-role-badge" :class="'role-' + w.page_role">
@@ -93,25 +93,25 @@
       <div v-show="viewMode === 'list'" class="aw-table-wrap">
         <div class="aw-table">
           <div class="aw-table-header">
-            <div class="aw-tcol aw-tcol-img">图片</div>
-            <div class="aw-tcol aw-tcol-info">作品信息</div>
-            <div class="aw-tcol aw-tcol-author">作者</div>
+            <div class="aw-tcol aw-tcol-img">{{ $t('tibalist.t5') }}</div>
+            <div class="aw-tcol aw-tcol-info">{{ $t('tibalist.t6') }}</div>
+            <div class="aw-tcol aw-tcol-author">{{ $t('info.author') }}</div>
             <div class="aw-tcol aw-tcol-year sortable" :class="{ sorted: activeSort === 'year' }" @click="onSort('year')">
-              年代 <el-icon v-if="activeSort === 'year'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
+              {{ $t('suggest.field_year') }}<el-icon v-if="activeSort === 'year'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
             </div>
             <div class="aw-tcol aw-tcol-inscription sortable" :class="{ sorted: activeSort === 'inscription' }" @click="onSort('inscription')">
-              题跋% <el-icon v-if="activeSort === 'inscription'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
+              {{ $t('tibalist.t8') }}<el-icon v-if="activeSort === 'inscription'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
             </div>
             <div class="aw-tcol aw-tcol-painting sortable" :class="{ sorted: activeSort === 'painting' }" @click="onSort('painting')">
-              绘画% <el-icon v-if="activeSort === 'painting'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
+              {{ $t('tibalist.t9') }}<el-icon v-if="activeSort === 'painting'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
             </div>
             <div class="aw-tcol aw-tcol-blank sortable" :class="{ sorted: activeSort === 'blank' }" @click="onSort('blank')">
-              留白% <el-icon v-if="activeSort === 'blank'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
+              {{ $t('tibalist.t10') }}<el-icon v-if="activeSort === 'blank'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
             </div>
             <div class="aw-tcol aw-tcol-date sortable" :class="{ sorted: activeSort === 'created' }" @click="onSort('created')">
-              上传时间 <el-icon v-if="activeSort === 'created'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
+              {{ $t('librarydetail.a3') }}<el-icon v-if="activeSort === 'created'"><ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></el-icon>
             </div>
-            <div class="aw-tcol aw-tcol-action">操作</div>
+            <div class="aw-tcol aw-tcol-action">{{ $t('engine.actions') }}</div>
           </div>
           <div class="aw-table-body">
             <div v-for="w in works" :key="w.id || w.db_id" class="aw-table-row" @click="goToWork(w)">
@@ -139,7 +139,7 @@
                 <span class="aw-date-val">{{ w.created_at ? w.created_at.slice(0, 10) : '-' }}</span>
               </div>
               <div class="aw-tcol aw-tcol-action" @click.stop>
-                <el-button size="small" text @click.stop="goToWork(w)">详情</el-button>
+                <el-button size="small" text @click.stop="goToWork(w)">{{ $t('common.detail') }}</el-button>
               </div>
             </div>
           </div>
@@ -158,6 +158,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, ArrowDown, ArrowUp, Grid, List, PictureFilled, Picture, Clock, Loading, Close } from '@element-plus/icons-vue'
 import api from '../../api'
+import { translate as t } from '@/locales'
 
 const route = useRoute()
 const router = useRouter()
@@ -178,11 +179,11 @@ const sortDir = ref('desc')
 const workTypeFilter = ref('')
 
 const sortOptions = [
-  { key: 'year', label: '年代' },
-  { key: 'inscription', label: '题跋比' },
-  { key: 'painting', label: '绘画比' },
-  { key: 'blank', label: '留白比' },
-  { key: 'created', label: '上传时间' },
+  { key: 'year', label: t('suggest.field_year') },
+  { key: 'inscription', label: t('tibaranking.t2') },
+  { key: 'painting', label: t('tibaranking.t3') },
+  { key: 'blank', label: t('tibaranking.t4') },
+  { key: 'created', label: t('librarydetail.a3') },
 ]
 
 const SORT_FIELD_MAP = { year: 'year', inscription: 'inscription_percent', painting: 'painting_percent', blank: 'blank_percent', created: 'created_at' }

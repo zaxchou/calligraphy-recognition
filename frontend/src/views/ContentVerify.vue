@@ -3,25 +3,25 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <h1 class="page-title">管理后台</h1>
+        <h1 class="page-title">{{ $t('app.t6') }}</h1>
         <p class="page-subtitle"></p>
       </div>
       <div class="header-right">
         <div class="stats-tags">
           <span class="stat-tag">
-            <span class="stat-label">已校对</span>
+            <span class="stat-label">{{ $t('contentverify.t1') }}</span>
             <span class="stat-value">{{ verifiedCount }} / {{ totalCount }}</span>
           </span>
           <span class="stat-tag translated" v-if="translatedCount > 0">
-            <span class="stat-label">已翻译</span>
+            <span class="stat-label">{{ $t('contentverify.t2') }}</span>
             <span class="stat-value">{{ translatedCount }}</span>
           </span>
           <span class="stat-tag analyzed" v-if="analyzedCount > 0">
-            <span class="stat-label">已分析</span>
+            <span class="stat-label">{{ $t('analysis.complete') }}</span>
             <span class="stat-value">{{ analyzedCount }}</span>
           </span>
           <span class="stat-tag annotated" v-if="annotatedCount > 0">
-            <span class="stat-label">已标注</span>
+            <span class="stat-label">{{ $t('annotationverify.t3') }}</span>
             <span class="stat-value">{{ annotatedCount }}</span>
           </span>
         </div>
@@ -31,7 +31,7 @@
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" class="admin-tabs">
       <!-- 题跋校对 -->
-      <el-tab-pane label="题跋校对" name="verify">
+      <el-tab-pane :label="$t('contentverify.a1')" name="verify">
 
     <VerifyPanel
       ref="verifyPanelRef"
@@ -59,102 +59,102 @@
       </el-tab-pane>
 
       <!-- 标注图校对 -->
-      <el-tab-pane label="标注图校对" name="annotation">
+      <el-tab-pane :label="$t('contentverify.a2')" name="annotation">
         <div class="tab-content full-tab-content">
           <AnnotationVerify :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'av-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 尺寸录入 -->
-      <el-tab-pane label="尺寸录入" name="dimensions">
+      <el-tab-pane :label="$t('contentverify.a3')" name="dimensions">
         <div class="tab-content full-tab-content">
           <DimensionInput :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'dim-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 印章管理 -->
-      <el-tab-pane label="印章管理" name="seal">
+      <el-tab-pane :label="$t('contentverify.a4')" name="seal">
         <div class="tab-content full-tab-content">
           <SealManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'seal-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 册页管理 -->
-      <el-tab-pane label="册页管理" name="album">
+      <el-tab-pane :label="$t('albummanager.t1')" name="album">
         <div class="tab-content full-tab-content">
           <AlbumManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'album-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 条屏管理 -->
-      <el-tab-pane label="条屏管理" name="strip">
+      <el-tab-pane :label="$t('contentverify.a5')" name="strip">
         <div class="tab-content full-tab-content">
           <StripManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'strip-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 标签管理 -->
-      <el-tab-pane label="标签管理" name="tag">
+      <el-tab-pane :label="$t('contentverify.a6')" name="tag">
         <div class="tab-content full-tab-content">
           <TagManager :artist="selectedArtist" :libraryId="selectedLibraryId" :key="'tag-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 书画家信息 -->
-      <el-tab-pane label="书画家信息" name="artist-info">
+      <el-tab-pane :label="$t('contentverify.a7')" name="artist-info">
         <div class="tab-content full-tab-content">
           <ArtistInfoManager />
         </div>
       </el-tab-pane>
 
       <!-- 画家规则 -->
-      <el-tab-pane label="画家规则" name="artist-rules">
+      <el-tab-pane :label="$t('contentverify.a8')" name="artist-rules">
         <div class="tab-content full-tab-content">
           <ArtistRulesManager :artist="selectedArtist" :key="'rules-'+selectedLibraryId" />
         </div>
       </el-tab-pane>
 
       <!-- 作品查重 -->
-      <el-tab-pane label="作品查重" name="image-search">
+      <el-tab-pane :label="$t('contentverify.a9')" name="image-search">
         <div class="tab-content full-tab-content">
           <ImageSearchPanel @item-click="onImageSearchItemClick" />
         </div>
       </el-tab-pane>
 
       <!-- 系统概览（仅管理员可见） -->
-      <el-tab-pane v-if="isAdmin" label="系统概览" name="dashboard">
+      <el-tab-pane v-if="isAdmin" :label="$t('contentverify.a10')" name="dashboard">
         <div class="tab-content full-tab-content">
           <AdminDashboard />
         </div>
       </el-tab-pane>
 
       <!-- 用户管理（仅管理员可见） -->
-      <el-tab-pane v-if="isAdmin" label="用户管理" name="users">
+      <el-tab-pane v-if="isAdmin" :label="$t('contentverify.a11')" name="users">
         <div class="tab-content full-tab-content">
           <AdminUsers />
         </div>
       </el-tab-pane>
 
       <!-- 系统配置（仅管理员可见） -->
-      <el-tab-pane v-if="isAdmin" label="系统信息" name="config">
+      <el-tab-pane v-if="isAdmin" :label="$t('contentverify.a12')" name="config">
         <div class="tab-content full-tab-content">
           <AdminSettings />
         </div>
       </el-tab-pane>
 
       <!-- 变更请求（仅管理员/编辑可见） -->
-      <el-tab-pane v-if="isAdmin || isEditor" label="变更请求" name="change-requests">
+      <el-tab-pane v-if="isAdmin || isEditor" :label="$t('contentverify.a13')" name="change-requests">
         <div class="tab-content full-tab-content">
           <div class="change-requests-panel">
             <el-radio-group v-model="crViewMode" size="small" style="margin-bottom:16px;">
-              <el-radio-button value="pending">待审核</el-radio-button>
-              <el-radio-button value="mine">我的提交</el-radio-button>
+              <el-radio-button value="pending">{{ $t('c-notificationbell.s3') }}</el-radio-button>
+              <el-radio-button value="mine">{{ $t('contentverify.t3') }}</el-radio-button>
             </el-radio-group>
 
             <!-- 待审核视图 -->
             <template v-if="crViewMode === 'pending'">
               <div class="cr-header">
-                <h3>待审核变更请求</h3>
+                <h3>{{ $t('contentverify.t4') }}</h3>
                 <div class="cr-header-actions">
                   <el-tag v-if="pendingRequests.length > 0" type="warning" effect="dark">
                     {{ pendingRequests.length }} 条待审核
@@ -169,8 +169,8 @@
               </div>
               <el-table :data="pendingRequests" v-loading="loadingRequests" style="width: 100%" stripe size="small" @selection-change="onCrSelectionChange">
                 <el-table-column type="selection" width="40" />
-                <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
-                <el-table-column label="作品" min-width="120" show-overflow-tooltip>
+                <el-table-column prop="library_name" :label="$t('contentverify.a14')" width="110" show-overflow-tooltip />
+                <el-table-column :label="$t('contentverify.a15')" min-width="120" show-overflow-tooltip>
                   <template #default="{ row }">
                     <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tiba/${row.artwork_image_id}`)">
                       {{ row.artwork_title || '未命名' }}
@@ -178,52 +178,52 @@
                     <span v-else>{{ row.artwork_title || '-' }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="field_name" label="字段" width="80" />
-                <el-table-column label="旧值 → 新值" min-width="200">
+                <el-table-column prop="field_name" :label="$t('contentverify.a16')" width="80" />
+                <el-table-column :label="$t('contentverify.a17')" min-width="200">
                   <template #default="{ row }">
                     <div class="cr-diff-inline">
                       <template v-if="row.field_name === 'annotation_regions'">
-                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
+                        <el-tag size="small" type="warning" effect="plain">{{ $t('suggest.field_annotation') }}</el-tag>
                         <span style="color:#999;margin:0 4px;">→</span>
-                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
-                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">查看对比</el-button>
+                        <el-tag size="small" type="warning" effect="plain">{{ $t('suggest.field_annotation') }}</el-tag>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">{{ $t('contentverify.t5') }}</el-button>
                       </template>
                       <template v-else>
                         <span class="cr-diff-old">{{ row.old_value || '-' }}</span>
                         <el-icon><Right /></el-icon>
                         <span class="cr-diff-new">{{ row.new_value || '-' }}</span>
-                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">对比</el-button>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">{{ $t('contentverify.t6') }}</el-button>
                       </template>
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column prop="change_summary" label="摘要" width="120" show-overflow-tooltip />
-                <el-table-column prop="submitter_name" label="提交者" width="80" />
-                <el-table-column prop="created_at" label="时间" width="150" />
-                <el-table-column label="操作" width="160" fixed="right">
+                <el-table-column prop="change_summary" :label="$t('contentverify.a18')" width="120" show-overflow-tooltip />
+                <el-table-column prop="submitter_name" :label="$t('contentverify.a19')" width="80" />
+                <el-table-column prop="created_at" :label="$t('contentverify.a20')" width="150" />
+                <el-table-column :label="$t('engine.actions')" width="160" fixed="right">
                   <template #default="{ row }">
                     <el-button size="small" type="success" plain @click="approveRequest(row)" :loading="reviewingId === row.id">
-                      通过
+                      {{ $t('c-notificationbell.s1') }}
                     </el-button>
                     <el-button size="small" type="danger" plain @click="rejectRequest(row)" :loading="reviewingId === row.id">
-                      拒绝
+                      {{ $t('contentverify.t7') }}
                     </el-button>
                   </template>
                 </el-table-column>
               </el-table>
-              <el-empty v-if="!loadingRequests && pendingRequests.length === 0" description="暂无待审核的变更请求" />
+              <el-empty v-if="!loadingRequests && pendingRequests.length === 0" :description="$t('contentverify.a21')" />
             </template>
 
             <!-- 我的提交视图 -->
             <template v-if="crViewMode === 'mine'">
               <div class="cr-header">
-                <h3>我的提交</h3>
+                <h3>{{ $t('contentverify.t3') }}</h3>
                 <div class="cr-header-actions">
                   <el-radio-group v-model="myCrStatusFilter" size="small">
-                    <el-radio-button value="">全部</el-radio-button>
-                    <el-radio-button value="pending">待审核</el-radio-button>
-                    <el-radio-button value="approved">已通过</el-radio-button>
-                    <el-radio-button value="rejected">已驳回</el-radio-button>
+                    <el-radio-button value="">{{ $t('common.all') }}</el-radio-button>
+                    <el-radio-button value="pending">{{ $t('c-notificationbell.s3') }}</el-radio-button>
+                    <el-radio-button value="approved">{{ $t('contentverify.s2') }}</el-radio-button>
+                    <el-radio-button value="rejected">{{ $t('contentverify.t8') }}</el-radio-button>
                   </el-radio-group>
                   <el-button size="small" circle text @click="loadMyRequests" :loading="loadingMyRequests" style="margin-left:8px;">
                     <el-icon><Refresh /></el-icon>
@@ -231,8 +231,8 @@
                 </div>
               </div>
               <el-table :data="myRequests" v-loading="loadingMyRequests" style="width: 100%" stripe size="small">
-                <el-table-column prop="library_name" label="画库" width="110" show-overflow-tooltip />
-                <el-table-column label="作品" min-width="120" show-overflow-tooltip>
+                <el-table-column prop="library_name" :label="$t('contentverify.a14')" width="110" show-overflow-tooltip />
+                <el-table-column :label="$t('contentverify.a15')" min-width="120" show-overflow-tooltip>
                   <template #default="{ row }">
                     <el-link v-if="row.artwork_image_id" type="primary" :underline="false" @click="$router.push(`/tiba/${row.artwork_image_id}`)">
                       {{ row.artwork_title || '未命名' }}
@@ -240,49 +240,49 @@
                     <span v-else>{{ row.artwork_title || '-' }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="field_name" label="字段" width="80" />
-                <el-table-column label="旧值 → 新值" min-width="200">
+                <el-table-column prop="field_name" :label="$t('contentverify.a16')" width="80" />
+                <el-table-column :label="$t('contentverify.a17')" min-width="200">
                   <template #default="{ row }">
                     <div class="cr-diff-inline">
                       <template v-if="row.field_name === 'annotation_regions'">
-                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
+                        <el-tag size="small" type="warning" effect="plain">{{ $t('suggest.field_annotation') }}</el-tag>
                         <span style="color:#999;margin:0 4px;">→</span>
-                        <el-tag size="small" type="warning" effect="plain">标注图</el-tag>
-                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">查看对比</el-button>
+                        <el-tag size="small" type="warning" effect="plain">{{ $t('suggest.field_annotation') }}</el-tag>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">{{ $t('contentverify.t5') }}</el-button>
                       </template>
                       <template v-else>
                         <span class="cr-diff-old">{{ row.old_value || '-' }}</span>
                         <el-icon><Right /></el-icon>
                         <span class="cr-diff-new">{{ row.new_value || '-' }}</span>
-                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">对比</el-button>
+                        <el-button text size="small" type="primary" @click="showDiff(row)" style="margin-left:6px;">{{ $t('contentverify.t6') }}</el-button>
                       </template>
                     </div>
                   </template>
                 </el-table-column>
-                <el-table-column prop="change_summary" label="摘要" width="120" show-overflow-tooltip />
-                <el-table-column label="状态" width="90">
+                <el-table-column prop="change_summary" :label="$t('contentverify.a18')" width="120" show-overflow-tooltip />
+                <el-table-column :label="$t('contentverify.a22')" width="90">
                   <template #default="{ row }">
                     <el-tag :type="row.status === 'approved' ? 'success' : row.status === 'rejected' ? 'danger' : 'warning'" size="small" effect="plain">
                       {{ row.status === 'approved' ? '已通过' : row.status === 'rejected' ? '已驳回' : '待审核' }}
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="审核意见" width="160" show-overflow-tooltip>
+                <el-table-column :label="$t('contentverify.a23')" width="160" show-overflow-tooltip>
                   <template #default="{ row }">{{ row.review_comment || (row.status === 'pending' ? '等待审核' : '无') }}</template>
                 </el-table-column>
-                <el-table-column label="审核人" width="80">
+                <el-table-column :label="$t('contentverify.a24')" width="80">
                   <template #default="{ row }">{{ row.reviewer_name || '-' }}</template>
                 </el-table-column>
-                <el-table-column prop="created_at" label="提交时间" width="150" />
-                <el-table-column prop="reviewed_at" label="审核时间" width="150" />
+                <el-table-column prop="created_at" :label="$t('contentverify.a25')" width="150" />
+                <el-table-column prop="reviewed_at" :label="$t('contentverify.a26')" width="150" />
               </el-table>
-              <el-empty v-if="!loadingMyRequests && myRequests.length === 0" description="暂无提交记录" />
+              <el-empty v-if="!loadingMyRequests && myRequests.length === 0" :description="$t('contentverify.a27')" />
             </template>
           </div>
         </div>
       </el-tab-pane>
       <!-- 作品库管理 -->
-      <el-tab-pane label="作品库管理" name="libraries">
+      <el-tab-pane :label="$t('contentverify.a28')" name="libraries">
         <div class="tab-content full-tab-content">
           <LibraryManage />
         </div>
@@ -295,43 +295,43 @@
         <template v-if="diffRow.field_name === 'annotation_regions'">
           <div style="padding:24px 0;text-align:center;">
             <el-icon :size="48" style="color:#e6a23c;"><WarningFilled /></el-icon>
-            <p style="margin-top:16px;font-size:15px;color:#333;">标注图变更</p>
+            <p style="margin-top:16px;font-size:15px;color:#333;">{{ $t('contentverify.t9') }}</p>
             <p style="margin-top:8px;color:#999;font-size:13px;">
-              此请求修改了作品的标注区域。点击下方按钮在新标签页中预览新标注区域的效果。
+              {{ $t('contentverify.t10') }}
             </p>
             <el-button type="primary" style="margin-top:16px;" @click="previewAnnotationRegions(diffRow)">
-              在新窗口预览新标注
+              {{ $t('contentverify.t11') }}
             </el-button>
           </div>
         </template>
         <template v-else>
           <div class="diff-container">
             <div class="diff-panel">
-              <h4 class="diff-panel-title diff-panel-old">原值</h4>
+              <h4 class="diff-panel-title diff-panel-old">{{ $t('suggest.old_value') }}</h4>
               <div class="diff-panel-content" v-html="$sanitize(renderDiffSegments(diffOldSegments))"></div>
             </div>
             <div class="diff-arrow"><el-icon size="20"><Right /></el-icon></div>
             <div class="diff-panel">
-              <h4 class="diff-panel-title diff-panel-new">新值</h4>
+              <h4 class="diff-panel-title diff-panel-new">{{ $t('suggest.new_value') }}</h4>
               <div class="diff-panel-content" v-html="$sanitize(renderDiffSegments(diffNewSegments))"></div>
             </div>
           </div>
         </template>
       </div>
       <div class="diff-meta" v-if="diffRow">
-        <p><strong>修改字段：</strong>{{ diffRow.field_name }}</p>
-        <p><strong>修改说明：</strong>{{ diffRow.change_summary || '无' }}</p>
-        <p><strong>提交者：</strong>{{ diffRow.submitter_name }}</p>
+        <p><strong>{{ $t('contentverify.t12') }}</strong>{{ diffRow.field_name }}</p>
+        <p><strong>{{ $t('contentverify.t13') }}</strong>{{ diffRow.change_summary || '无' }}</p>
+        <p><strong>{{ $t('contentverify.t14') }}</strong>{{ diffRow.submitter_name }}</p>
       </div>
     </el-dialog>
 
     <!-- 拒绝原因对话框 -->
-    <el-dialog v-model="showRejectDialog" title="拒绝原因" width="420px" destroy-on-close>
-      <p style="margin-bottom:12px;color:#666;">驳回此变更请求时需要填写原因：</p>
-      <el-input v-model="rejectReason" type="textarea" :rows="4" placeholder="请填写拒绝原因" />
+    <el-dialog v-model="showRejectDialog" :title="$t('contentverify.a29')" width="420px" destroy-on-close>
+      <p style="margin-bottom:12px;color:#666;">{{ $t('contentverify.t15') }}</p>
+      <el-input v-model="rejectReason" type="textarea" :rows="4" :placeholder="$t('contentverify.s3')" />
       <template #footer>
-        <el-button @click="showRejectDialog = false">取消</el-button>
-        <el-button type="danger" @click="confirmReject" :loading="reviewingId !== null">确认拒绝</el-button>
+        <el-button @click="showRejectDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" @click="confirmReject" :loading="reviewingId !== null">{{ $t('contentverify.t16') }}</el-button>
       </template>
     </el-dialog>
 
@@ -348,6 +348,7 @@ import VerifyPanel from './VerifyPanel.vue'
 import { useAuthStore } from '../stores/authStore'
 import api, { libraryApi } from '../api/index.js'
 import { computeDiff } from '../utils/diff'
+import { translate as t } from '@/locales'
 // 懒加载非首屏组件
 const AlbumManager = defineAsyncComponent(() => import('./AlbumManager.vue'))
 const TagManager = defineAsyncComponent(() => import('./TagManager.vue'))
@@ -533,7 +534,7 @@ function showDiff(row) {
 function previewAnnotationRegions(row) {
   const imageId = row.artwork_image_id
   if (!imageId) {
-    ElMessage.warning('无法获取作品图片ID')
+    ElMessage.warning(t('contentverify.s1'))
     return
   }
   let newValue = row.new_value || '[]'
@@ -573,7 +574,7 @@ async function approveRequest(row) {
   reviewingId.value = row.id
   try {
     await libraryApi.reviewChangeRequest(row.id, { action: 'approve', review_comment: '' })
-    ElMessage.success('已通过')
+    ElMessage.success(t('contentverify.s2'))
     pendingRequests.value = pendingRequests.value.filter(r => r.id !== row.id)
   } catch (e) {
     ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
@@ -590,7 +591,7 @@ function rejectRequest(row) {
 
 async function confirmReject() {
   if (!rejectReason.value.trim()) {
-    ElMessage.warning('请填写拒绝原因')
+    ElMessage.warning(t('contentverify.s3'))
     return
   }
   const row = rejectTarget.value
@@ -598,7 +599,7 @@ async function confirmReject() {
   reviewingId.value = row.id
   try {
     await libraryApi.reviewChangeRequest(row.id, { action: 'reject', review_comment: rejectReason.value })
-    ElMessage.success('已拒绝')
+    ElMessage.success(t('contentverify.s4'))
     pendingRequests.value = pendingRequests.value.filter(r => r.id !== row.id)
     showRejectDialog.value = false
   } catch (e) {
@@ -733,24 +734,24 @@ async function onSave(payload) {
           records.value[idx].content_analysis = data.content_analysis
           records.value[idx].theme_tags = data.theme_tags ? data.theme_tags.split(',') : []
           if (!isReverify) {
-            ElMessage.success('校对已保存，分析已同步更新')
+            ElMessage.success(t('contentverify.s5'))
           } else {
-            ElMessage.success('已重新校对，分析已同步更新')
+            ElMessage.success(t('contentverify.s6'))
           }
         } else if (data.analysis_status === 'stale') {
           records.value[idx].content_analysis = null
           records.value[idx].theme_tags = []
           if (!isReverify) {
-            ElMessage.success('校对已保存')
+            ElMessage.success(t('contentverify.s7'))
           } else {
-            ElMessage.success('已重新校对')
+            ElMessage.success(t('contentverify.s8'))
           }
-          ElMessage.warning('题跋分析已过期，请点击「重新分析」更新')
+          ElMessage.warning(t('contentverify.s9'))
         } else {
           if (!isReverify) {
-            ElMessage.success('校对已保存')
+            ElMessage.success(t('contentverify.s7'))
           } else {
-            ElMessage.success('已重新校对')
+            ElMessage.success(t('contentverify.s8'))
           }
         }
       }
@@ -770,7 +771,7 @@ async function onTranslate(payload) {
   try {
     const data = await api.post(`/content-analysis/translate/${id}`, { inscription_content })
     if (data.success) {
-      ElMessage.success('翻译完成')
+      ElMessage.success(t('contentverify.s10'))
       const idx = records.value.findIndex(r => r.id === id)
       if (idx !== -1) {
         records.value[idx].inscription_modern = data.modern
@@ -795,7 +796,7 @@ async function onAnalyze(payload) {
   try {
     const data = await api.post(`/content-analysis/analyze/${id}`, { use_llm: true })
     if (data.success) {
-      ElMessage.success('分析完成')
+      ElMessage.success(t('analysis.complete_tag'))
       // 刷新记录数据
       await fetchRecords()
     } else {
@@ -822,7 +823,7 @@ async function onReanalyze(recordId) {
       } else if (data.llm_error) {
         ElMessage.warning(`分析完成（LLM调用失败: ${data.llm_error.slice(0, 50)}），使用规则引擎结果`)
       } else {
-        ElMessage.success('分析完成！')
+        ElMessage.success(t('contentverify.s11'))
       }
       fetchRecords()
     } else {
@@ -837,7 +838,7 @@ function onTitleUpdated({ id, image_id, title }) {
   const idx = records.value.findIndex(r => r.id === id || r.image_id === image_id)
   if (idx !== -1) {
     records.value[idx].title = title
-    ElMessage.success('作品名已更新')
+    ElMessage.success(t('contentverify.s12'))
   }
 }
 

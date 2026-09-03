@@ -1,8 +1,8 @@
 <template>
   <div class="my-knowledge-page">
     <div class="page-header">
-      <h1>📁 我的知识库</h1>
-      <p class="page-desc">上传私人文档，建立个人书画知识搜索引擎</p>
+      <h1>{{ $t('myknowledge.t1') }}</h1>
+      <p class="page-desc">{{ $t('myknowledge.t2') }}</p>
     </div>
 
     <div class="my-knowledge-content">
@@ -17,8 +17,8 @@
           drag
         >
           <el-icon :size="40"><UploadFilled /></el-icon>
-          <div class="el-upload__text">拖拽 PDF 文件到此处，或点击选择</div>
-          <div class="el-upload__tip">仅支持 PDF 格式，上传后将自动解析和向量化</div>
+          <div class="el-upload__text">{{ $t('myknowledge.t3') }}</div>
+          <div class="el-upload__tip">{{ $t('myknowledge.t4') }}</div>
         </el-upload>
         <el-button
           type="primary"
@@ -33,23 +33,23 @@
 
       <!-- 文档列表 -->
       <div class="docs-section" v-if="documents.length > 0 || docsLoading">
-        <h3>我的文档</h3>
+        <h3>{{ $t('myknowledge.t5') }}</h3>
         <el-table :data="documents" v-loading="docsLoading" style="width: 100%">
-          <el-table-column prop="title" label="文档名称" min-width="200">
+          <el-table-column prop="title" :label="$t('myknowledge.a1')" min-width="200">
             <template #default="{ row }">
               {{ row.title || row.filename || '未命名文档' }}
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态" width="120">
+          <el-table-column prop="status" :label="$t('contentverify.a22')" width="120">
             <template #default="{ row }">
-              <el-tag v-if="row.status === 'ready'" type="success" size="small">就绪</el-tag>
-              <el-tag v-else-if="row.status === 'processing'" type="warning" size="small">处理中</el-tag>
-              <el-tag v-else-if="row.status === 'failed'" type="danger" size="small">失败</el-tag>
+              <el-tag v-if="row.status === 'ready'" type="success" size="small">{{ $t('myknowledge.t6') }}</el-tag>
+              <el-tag v-else-if="row.status === 'processing'" type="warning" size="small">{{ $t('myknowledge.t7') }}</el-tag>
+              <el-tag v-else-if="row.status === 'failed'" type="danger" size="small">{{ $t('common.failed') }}</el-tag>
               <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="chunk_count" label="分块数" width="80" />
-          <el-table-column label="操作" width="100">
+          <el-table-column prop="chunk_count" :label="$t('myknowledge.a2')" width="80" />
+          <el-table-column :label="$t('engine.actions')" width="100">
             <template #default="{ row }">
               <el-button type="danger" size="small" text @click="handleDelete(row)">
                 <el-icon><Delete /></el-icon>
@@ -61,7 +61,7 @@
 
       <div v-else-if="!docsLoading" class="empty-state">
         <el-icon :size="48" color="#ccc"><Document /></el-icon>
-        <p>还没有上传任何文档</p>
+        <p>{{ $t('myknowledge.t8') }}</p>
       </div>
     </div>
   </div>
@@ -73,6 +73,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Delete, Document } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
 import { useKnowledgeStore } from '../stores/knowledgeStore'
+import { translate as t } from '@/locales'
 
 const authStore = useAuthStore()
 const store = useKnowledgeStore()
@@ -91,7 +92,7 @@ async function loadDocuments() {
     await store.fetchMyDocuments()
     documents.value = store.myDocuments || []
   } catch (e) {
-    ElMessage.error('加载文档列表失败')
+    ElMessage.error(t('myknowledge.s1'))
   } finally {
     docsLoading.value = false
   }
@@ -106,7 +107,7 @@ async function handleUpload() {
   uploading.value = true
   try {
     await store.uploadPrivateDocument(pendingFile.value)
-    ElMessage.success('上传成功，正在后台处理...')
+    ElMessage.success(t('myknowledge.s2'))
     pendingFile.value = null
     await loadDocuments()
   } catch (e) {
@@ -118,12 +119,12 @@ async function handleUpload() {
 
 async function handleDelete(doc) {
   try {
-    await ElMessageBox.confirm('确定删除此文档？向量数据和文件将被永久删除。', '确认', { type: 'warning' })
+    await ElMessageBox.confirm(t('myknowledge.s3'), '确认', { type: 'warning' })
     await store.deleteMyDocument(doc.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('knowledgesearch.s2'))
     await loadDocuments()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') ElMessage.error(t('engine.delete_error'))
   }
 }
 </script>

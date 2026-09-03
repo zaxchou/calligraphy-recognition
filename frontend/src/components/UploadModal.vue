@@ -5,7 +5,7 @@
         <div class="modal-header">
           <h2 class="modal-title">
             <Upload class="title-icon" />
-            上传 PDF 书籍
+            {{ $t('c-uploadmodal.t1') }}
           </h2>
           <button class="close-btn" @click="closeModal">
             <X class="icon" />
@@ -36,7 +36,7 @@
             
             <div v-if="!selectedFile" class="upload-placeholder">
               <FileUp class="upload-icon" />
-              <p class="upload-text">点击或拖拽 PDF 文件到此处</p>
+              <p class="upload-text">{{ $t('c-uploadmodal.t2') }}</p>
               <p class="upload-hint">支持 .pdf 格式，最大 200MB</p>
             </div>
             
@@ -104,24 +104,24 @@
 
           <!-- 配置选项 -->
           <div class="config-section">
-            <h3 class="config-title">处理配置</h3>
+            <h3 class="config-title">{{ $t('c-uploadmodal.t3') }}</h3>
             
             <div class="config-item">
-              <label class="config-label">分块策略</label>
+              <label class="config-label">{{ $t('c-uploadmodal.t4') }}</label>
               <select v-model="config.chunkStrategy" class="config-select">
-                <option value="semantic">语义分块（推荐）</option>
-                <option value="fixed">固定长度</option>
-                <option value="sliding">滑动窗口</option>
+                <option value="semantic">{{ $t('c-uploadmodal.t5') }}</option>
+                <option value="fixed">{{ $t('c-uploadmodal.t6') }}</option>
+                <option value="sliding">{{ $t('c-uploadmodal.t7') }}</option>
               </select>
             </div>
             
             <div class="config-item">
-              <label class="config-label">块大小</label>
+              <label class="config-label">{{ $t('c-uploadmodal.t8') }}</label>
               <select v-model="config.chunkSize" class="config-select">
-                <option :value="300">300 字符</option>
-                <option :value="500">500 字符</option>
-                <option :value="800">800 字符</option>
-                <option :value="1000">1000 字符</option>
+                <option :value="300">{{ $t('c-uploadmodal.t9') }}</option>
+                <option :value="500">{{ $t('c-uploadmodal.t10') }}</option>
+                <option :value="800">{{ $t('c-uploadmodal.t11') }}</option>
+                <option :value="1000">{{ $t('c-uploadmodal.t12') }}</option>
               </select>
             </div>
             
@@ -130,15 +130,15 @@
 
           <!-- 系列设置（跨文件定位） -->
           <div class="config-section">
-            <h3 class="config-title">系列设置</h3>
-            <p class="config-desc">如果此PDF是某套书的一部分，设置系列参数后，第一篇的目录可以跨文件跳转</p>
+            <h3 class="config-title">{{ $t('c-uploadmodal.t13') }}</h3>
+            <p class="config-desc">{{ $t('c-uploadmodal.t14') }}</p>
             <div class="config-item">
-              <label class="config-label">系列ID</label>
-              <input v-model="config.seriesId" class="config-input" placeholder="留空则不关联系列" />
+              <label class="config-label">{{ $t('c-uploadmodal.t15') }}</label>
+              <input v-model="config.seriesId" class="config-input" :placeholder="$t('c-uploadmodal.a1')" />
             </div>
             <div class="config-item">
-              <label class="config-label">起始页码</label>
-              <input v-model.number="config.pageOffset" type="number" min="1" class="config-input" placeholder="本卷在完整书中的第1页页码，如201" />
+              <label class="config-label">{{ $t('c-uploadmodal.t16') }}</label>
+              <input v-model.number="config.pageOffset" type="number" min="1" class="config-input" :placeholder="$t('c-uploadmodal.a2')" />
             </div>
           </div>
 
@@ -152,8 +152,8 @@
           <div v-if="uploadSuccess" class="success-message">
             <CheckCircle class="success-icon" />
             <div>
-              <p class="success-title">上传成功！</p>
-              <p class="success-text">PDF 正在后台处理中，请稍后查看</p>
+              <p class="success-title">{{ $t('c-uploadmodal.t17') }}</p>
+              <p class="success-text">{{ $t('c-uploadmodal.t18') }}</p>
             </div>
           </div>
         </div>
@@ -164,7 +164,7 @@
             @click="closeModal"
             :disabled="store.uploadStatus === 'uploading'"
           >
-            取消
+            {{ $t('common.cancel') }}
           </button>
           <button 
             class="upload-submit-btn"
@@ -194,6 +194,7 @@ import {
   Circle
 } from 'lucide-vue-next'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   visible: {
@@ -282,13 +283,13 @@ function handleDrop(event) {
 function validateAndSetFile(file) {
   // 检查文件类型
   if (!file.name.endsWith('.pdf')) {
-    alert('请选择 PDF 文件')
+    alert(t('c-uploadmodal.s1'))
     return
   }
   
   // 检查文件大小 (200MB)
   if (file.size > 200 * 1024 * 1024) {
-    alert('文件大小不能超过 200MB')
+    alert(t('c-uploadmodal.s2'))
     return
   }
   

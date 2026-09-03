@@ -1,6 +1,6 @@
 <template>
   <div class="stele-detail-page">
-    <el-page-header @back="goBack" title="返回列表" />
+    <el-page-header @back="goBack" :title="$t('steledetail.a1')" />
     
     <div v-if="stele" class="detail-content">
       <!-- 碑帖基本信息 -->
@@ -11,19 +11,19 @@
         </div>
         
         <el-descriptions :column="3" border class="stele-meta">
-          <el-descriptions-item label="书法家">
+          <el-descriptions-item :label="$t('recognize.a2')">
             <el-icon><User /></el-icon> {{ stele.calligrapher }}
           </el-descriptions-item>
-          <el-descriptions-item label="朝代">
+          <el-descriptions-item :label="$t('artistlist.a2')">
             <el-icon><Calendar /></el-icon> {{ stele.dynasty }}
           </el-descriptions-item>
-          <el-descriptions-item label="字形数量">
+          <el-descriptions-item :label="$t('steledetail.a2')">
             <el-icon><Document /></el-icon> {{ totalCharacters }} 字
           </el-descriptions-item>
         </el-descriptions>
         
         <div class="stele-description">
-          <h3>简介</h3>
+          <h3>{{ $t('steledetail.t1') }}</h3>
           <p>{{ stele.description }}</p>
         </div>
       </el-card>
@@ -32,7 +32,7 @@
       <el-card shadow="hover" class="characters-card">
         <template #header>
           <div class="card-header">
-            <span>字形库</span>
+            <span>{{ $t('steledetail.t2') }}</span>
             <el-pagination
               v-model:current-page="currentPage"
               v-model:page-size="pageSize"
@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <el-empty v-if="!loading && characters.length === 0" description="暂无字形数据" />
+        <el-empty v-if="!loading && characters.length === 0" :description="$t('steledetail.a3')" />
       </el-card>
     </div>
 
@@ -77,6 +77,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { User, Calendar, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { steleApi } from '../api'
+import { translate as t } from '@/locales'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,7 +100,7 @@ const fetchSteleDetail = async () => {
     }
   } catch (error) {
     console.error('获取碑帖详情失败:', error)
-    ElMessage.error('获取碑帖详情失败')
+    ElMessage.error(t('steledetail.s1'))
   }
 }
 
@@ -120,7 +121,7 @@ const fetchCharacters = async () => {
     }
   } catch (error) {
     console.error('获取字形列表失败:', error)
-    ElMessage.error('获取字形列表失败')
+    ElMessage.error(t('steledetail.s2'))
   } finally {
     loading.value = false
   }

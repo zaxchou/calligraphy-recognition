@@ -2,18 +2,18 @@
   <div class="image-related-chunks">
     <div class="related-header">
       <Link class="icon" />
-      <span>关联文本块</span>
+      <span>{{ $t('c-imagerelatedchunks.t1') }}</span>
       <span v-if="chunks.length" class="related-count">{{ chunks.length }}</span>
     </div>
     
     <div v-if="loading" class="related-loading">
       <Loader2 class="icon spin" />
-      <span>加载中...</span>
+      <span>{{ $t('common.loading') }}</span>
     </div>
     
     <div v-else-if="!chunks.length" class="related-empty">
       <Unlink class="icon" />
-      <span>暂无关联文本</span>
+      <span>{{ $t('c-imagerelatedchunks.t2') }}</span>
     </div>
     
     <div v-else class="related-list">

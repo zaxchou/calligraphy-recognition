@@ -3,8 +3,8 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-title-group">
-        <h1 class="page-title">大数据分析</h1>
-        <p class="page-subtitle">分期量化统计 · 主题分布 · 词频分析 · 内容-形式关联</p>
+        <h1 class="page-title">{{ $t('contentanalysis.t1') }}</h1>
+        <p class="page-subtitle">{{ $t('contentanalysis.t2') }}</p>
         <div class="header-ornament">
           <span class="ornament-line"></span>
           <span class="ornament-dot">◇</span>
@@ -23,8 +23,8 @@
       <template #header>
         <div class="card-header-title">
           <span class="header-insight-icon">✦</span>
-          <span>学术分析报告</span>
-          <el-tag v-if="summaryCached && reportData" type="success" size="small" class="cached-tag">已缓存</el-tag>
+          <span>{{ $t('contentanalysis.t3') }}</span>
+          <el-tag v-if="summaryCached && reportData" type="success" size="small" class="cached-tag">{{ $t('contentanalysis.t4') }}</el-tag>
           <el-button
             size="small"
             type="primary"
@@ -44,13 +44,13 @@
             class="summary-btn"
           >
             <el-icon><Download /></el-icon>
-            导出 Markdown
+            {{ $t('contentanalysis.t5') }}
           </el-button>
         </div>
       </template>
       <div v-if="summaryLoading" class="summary-loading">
         <el-icon class="is-loading"><Loading /></el-icon>
-        <span>正在生成学术报告，请稍候...</span>
+        <span>{{ $t('contentanalysis.t6') }}</span>
       </div>
       <div v-else-if="reportData" class="report-content">
         <!-- 横向章节 Tab -->
@@ -84,8 +84,8 @@
                   </el-tag>
                 </div>
                 <div v-if="item.theme" class="report-item-meta">
-                  <span class="report-meta-label">主题：</span><span class="report-meta-value">{{ item.theme }}</span>
-                  <span class="report-meta-label">情感：</span><span class="report-meta-value">{{ item.polarity }}（{{ item.emotion_score > 0 ? '+' : '' }}{{ item.emotion_score?.toFixed(2) }}）</span>
+                  <span class="report-meta-label">{{ $t('contentanalysis.t7') }}</span><span class="report-meta-value">{{ item.theme }}</span>
+                  <span class="report-meta-label">{{ $t('contentanalysis.t8') }}</span><span class="report-meta-value">{{ item.polarity }}（{{ item.emotion_score > 0 ? '+' : '' }}{{ item.emotion_score?.toFixed(2) }}）</span>
                 </div>
                 <div v-if="item.text" class="report-item-text">「{{ item.text }}」</div>
                 <div v-if="item.question" class="report-item-qa">
@@ -93,7 +93,7 @@
                   <div class="report-qa-a">回应：{{ item.answer }}</div>
                 </div>
                 <div v-if="item.special_rules && item.special_rules.length" class="report-item-rules">
-                  <span class="report-rules-label">触发规则：</span>
+                  <span class="report-rules-label">{{ $t('contentanalysis.t9') }}</span>
                   <span class="report-rules-value">{{ item.special_rules.join('；') }}</span>
                 </div>
               </div>
@@ -102,7 +102,7 @@
         </el-tabs>
       </div>
       <div v-else class="summary-empty">
-        <span>点击上方按钮，基于当前统计数据生成结构化学术报告</span>
+        <span>{{ $t('contentanalysis.t10') }}</span>
       </div>
     </el-card>
 
@@ -114,7 +114,7 @@
         <el-card shadow="hover" class="chart-card pie-card">
           <template #header>
             <div class="card-header-title">
-              <span>主题总体分布</span>
+              <span>{{ $t('contentanalysis.t11') }}</span>
             </div>
           </template>
           <div ref="themePieChartRef" class="chart-container pie-container" />
@@ -122,7 +122,7 @@
         <el-card shadow="hover" class="chart-card pie-card">
           <template #header>
             <div class="card-header-title">
-              <span>情感极性总体分布</span>
+              <span>{{ $t('contentanalysis.t12') }}</span>
             </div>
           </template>
           <div ref="sentimentPieChartRef" class="chart-container pie-container" />
@@ -130,7 +130,7 @@
         <el-card shadow="hover" class="chart-card pie-card">
           <template #header>
             <div class="card-header-title">
-              <span>分期作品占比</span>
+              <span>{{ $t('contentanalysis.t13') }}</span>
             </div>
           </template>
           <div ref="periodPieChartRef" class="chart-container pie-container" />
@@ -141,7 +141,7 @@
       <div class="stats-overview">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-value">{{ statsData.total_count || 0 }}</div>
-          <div class="stat-label">有题跋作品（幅）</div>
+          <div class="stat-label">{{ $t('contentanalysis.t14') }}</div>
         </el-card>
         <el-card shadow="hover" class="stat-card" v-for="ps in statsData.period_stats" :key="ps.period">
           <div class="stat-value">{{ ps.count }}</div>
@@ -155,12 +155,12 @@
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>主题分布（分期对比）</span>
+              <span>{{ $t('contentanalysis.t15') }}</span>
             </div>
           </template>
           <div ref="themeChartRef" class="chart-container" />
           <div class="chart-note">
-            <div class="chart-note-text">五大主题在早/中/晚期的占比变化，验证「从简到繁、从个人到社会」的演变假设</div>
+            <div class="chart-note-text">{{ $t('contentanalysis.t16') }}</div>
             <span v-for="t in THEMES" :key="t.code" class="theme-legend-item theme-link" @click="openThemeDialog(t.name)">
               <span class="legend-dot" :style="{ background: t.color }" />{{ t.name }}
             </span>
@@ -170,24 +170,24 @@
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>情感极性分布（分期对比）</span>
+              <span>{{ $t('contentanalysis.t17') }}</span>
             </div>
           </template>
           <div ref="sentimentChartRef" class="chart-container" />
           <div class="chart-note">
-            <div class="chart-note-text">积极/中性/消极情感在各时期的占比，验证「中期讽喻类题跋情感更消极」假设</div>
+            <div class="chart-note-text">{{ $t('contentanalysis.t18') }}</div>
           </div>
         </el-card>
 
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>题跋长度分期对比</span>
+              <span>{{ $t('contentanalysis.t19') }}</span>
             </div>
           </template>
           <div ref="charCountChartRef" class="chart-container" />
           <div class="chart-note">
-            <div class="chart-note-text">各期题跋平均字符数（不含标点），验证「早期简短、中晚期长篇」的演变规律</div>
+            <div class="chart-note-text">{{ $t('contentanalysis.t20') }}</div>
             <div class="chart-note-text">注：晚期与早期均值差异需 t 检验验证显著性（* p&lt;0.05，** p&lt;0.01）</div>
           </div>
         </el-card>
@@ -198,18 +198,18 @@
         <el-card shadow="hover" class="chart-card material-chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>画材/题材标签统计</span>
+              <span>{{ $t('contentanalysis.t21') }}</span>
             </div>
           </template>
           <div ref="materialChartRef" class="chart-container" />
           <div class="chart-note">
-            从作品标题和AI分析中提取的画材标签，反映李鱓的创作题材偏好
+            {{ $t('contentanalysis.t22') }}
           </div>
         </el-card>
         <el-card shadow="hover" class="chart-card size-chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>作品尺寸统计</span>
+              <span>{{ $t('contentanalysis.t23') }}</span>
             </div>
           </template>
           <div ref="sizeChartRef" class="chart-container" />
@@ -221,8 +221,8 @@
         <el-card shadow="hover" class="compact-inv-card">
           <template #header>
             <div class="card-header-title">
-              <span>题跋闯入率</span>
-              <el-tooltip content="有些题跋闯入了画面中央，有些只在边角——各主题的闯入比例">
+              <span>{{ $t('contentanalysis.t24') }}</span>
+              <el-tooltip :content="$t('contentanalysis.a1')">
                 <span class="hint-icon">?</span>
               </el-tooltip>
             </div>
@@ -230,10 +230,10 @@
           <table class="inv-table inv-table-compact">
             <thead>
               <tr>
-                <th>主题</th>
-                <th>闯入</th>
-                <th>边角</th>
-                <th>闯入率</th>
+                <th>{{ $t('factor.theme') }}</th>
+                <th>{{ $t('contentanalysis.t25') }}</th>
+                <th>{{ $t('contentanalysis.t26') }}</th>
+                <th>{{ $t('contentanalysis.t27') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -269,8 +269,8 @@
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>题跋面积分布</span>
-              <el-tooltip content="每幅作品的题跋面积落在哪个区间？大多数人题跋占多少？">
+              <span>{{ $t('contentanalysis.t28') }}</span>
+              <el-tooltip :content="$t('contentanalysis.a2')">
                 <span class="hint-icon">?</span>
               </el-tooltip>
             </div>
@@ -284,8 +284,8 @@
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-title">
-              <span>画幅大小 vs 题跋占比</span>
-              <el-tooltip content="大画是否题跋更多？还是小画反而写得更密？每个点是一幅作品，颜色代表创作时期">
+              <span>{{ $t('contentanalysis.t29') }}</span>
+              <el-tooltip :content="$t('contentanalysis.a3')">
                 <span class="hint-icon">?</span>
               </el-tooltip>
             </div>
@@ -308,20 +308,20 @@
 >
   <div v-if="themeDialogLoading" class="dialog-loading">
     <el-icon class="is-loading"><Loading /></el-icon>
-    <span>加载中...</span>
+    <span>{{ $t('common.loading') }}</span>
   </div>
   <div v-else>
     <div class="dialog-info">共 {{ themeDialogData.total }} 幅作品</div>
     <el-table :data="themeDialogData.paintings" stripe size="small" @row-click="openPaintingDetail" style="cursor:pointer">
-      <el-table-column prop="title" label="作品名称" min-width="120" />
-      <el-table-column prop="period" label="分期" width="70" />
-      <el-table-column prop="char_count" label="字数" width="50" align="center" />
-      <el-table-column label="情感" width="60" align="center">
+      <el-table-column prop="title" :label="$t('contentanalysis.a4')" min-width="120" />
+      <el-table-column prop="period" :label="$t('contentanalysis.a5')" width="70" />
+      <el-table-column prop="char_count" :label="$t('contentanalysis.a6')" width="50" align="center" />
+      <el-table-column :label="$t('contentanalysis.a7')" width="60" align="center">
         <template #default="{ row }">
           <el-tag size="small" :type="sentimentTagType(row.sentiment)">{{ sentimentLabel(row.sentiment) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="inscription_content" label="题跋内容（节选）" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="inscription_content" :label="$t('contentanalysis.a8')" min-width="180" show-overflow-tooltip />
     </el-table>
     <div class="dialog-footer" v-if="themeDialogData.total > themeDialogData.paintings?.length">
       <el-button size="small" type="primary" plain @click="loadMoreThemePaintings" :loading="themeDialogLoadingMore">
@@ -340,15 +340,15 @@
 >
   <div v-if="sentimentDialogLoading" class="dialog-loading">
     <el-icon class="is-loading"><Loading /></el-icon>
-    <span>加载中...</span>
+    <span>{{ $t('common.loading') }}</span>
   </div>
   <div v-else>
     <div class="dialog-info">共 {{ sentimentDialogData.total }} 幅作品</div>
     <el-table :data="sentimentDialogData.paintings" stripe size="small" @row-click="openPaintingDetail" style="cursor:pointer">
-      <el-table-column prop="title" label="作品名称" min-width="120" />
-      <el-table-column prop="period" label="分期" width="70" />
-      <el-table-column prop="char_count" label="字数" width="50" align="center" />
-      <el-table-column prop="inscription_content" label="题跋内容（节选）" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="title" :label="$t('contentanalysis.a4')" min-width="120" />
+      <el-table-column prop="period" :label="$t('contentanalysis.a5')" width="70" />
+      <el-table-column prop="char_count" :label="$t('contentanalysis.a6')" width="50" align="center" />
+      <el-table-column prop="inscription_content" :label="$t('contentanalysis.a8')" min-width="180" show-overflow-tooltip />
     </el-table>
     <div class="dialog-footer" v-if="sentimentDialogData.total > sentimentDialogData.paintings?.length">
       <el-button size="small" type="primary" plain @click="loadMoreSentimentPaintings" :loading="sentimentDialogLoadingMore">
@@ -367,19 +367,19 @@
 >
   <div v-if="periodDialogLoading" class="dialog-loading">
     <el-icon class="is-loading"><Loading /></el-icon>
-    <span>加载中...</span>
+    <span>{{ $t('common.loading') }}</span>
   </div>
   <div v-else>
     <div class="dialog-info">共 {{ periodDialogData.total }} 幅作品</div>
     <el-table :data="periodDialogData.paintings" stripe size="small" @row-click="openPaintingDetail" style="cursor:pointer">
-      <el-table-column prop="title" label="作品名称" min-width="120" />
-      <el-table-column label="情感" width="60" align="center">
+      <el-table-column prop="title" :label="$t('contentanalysis.a4')" min-width="120" />
+      <el-table-column :label="$t('contentanalysis.a7')" width="60" align="center">
         <template #default="{ row }">
           <el-tag size="small" :type="sentimentTagType(row.sentiment)">{{ sentimentLabel(row.sentiment) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="char_count" label="字数" width="50" align="center" />
-      <el-table-column prop="inscription_content" label="题跋内容（节选）" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="char_count" :label="$t('contentanalysis.a6')" width="50" align="center" />
+      <el-table-column prop="inscription_content" :label="$t('contentanalysis.a8')" min-width="180" show-overflow-tooltip />
     </el-table>
     <div class="dialog-footer" v-if="periodDialogData.total > periodDialogData.paintings?.length">
 <el-button size="small" type="primary" plain @click="loadMorePeriodPaintings" :loading="periodDialogLoadingMore">
@@ -401,6 +401,7 @@ import { ElMessage } from 'element-plus'
 import echarts from '../utils/echarts'
 import { Download, MagicStick, Loading } from '@element-plus/icons-vue'
 import api from '@/api'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -573,15 +574,15 @@ async function generateSummary() {
       if (data.report && data.report.sections && data.report.sections.length) {
         activeReportTab.value = data.report.sections[0].id
       }
-      ElMessage.success('学术报告已重新生成并保存')
+      ElMessage.success(t('contentanalysis.s1'))
     } else {
       ElMessage.error('生成报告失败: ' + (data.error || '未知错误'))
     }
   } catch (e) {
     if (e.response?.status === 401) {
-      ElMessage.warning('生成学术报告需要登录并具有编辑权限，请先登录')
+      ElMessage.warning(t('contentanalysis.s2'))
     } else if (e.response?.status === 403) {
-      ElMessage.warning('您的账号没有编辑权限，无法生成学术报告')
+      ElMessage.warning(t('contentanalysis.s3'))
     } else {
       ElMessage.error('生成报告失败: ' + (e.response?.data?.detail || e.message))
     }
@@ -593,7 +594,7 @@ async function generateSummary() {
 // 导出 Markdown
 function exportReportMarkdown() {
   if (!summaryData.value) {
-    ElMessage.warning('暂无报告可导出')
+    ElMessage.warning(t('contentanalysis.s4'))
     return
   }
   const blob = new Blob([summaryData.value], { type: 'text/markdown' })
@@ -604,7 +605,7 @@ function exportReportMarkdown() {
   a.download = `${artistName}题跋分析学术报告.md`
   a.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('报告已导出')
+  ElMessage.success(t('contentanalysis.s5'))
 }
 
 function getOrCreateChart(domRef) {
@@ -782,9 +783,9 @@ function renderSentimentChart() {
   const periodOrder = { '早期': 0, '中期': 1, '晚期': 2, '年代不详': 3 }
   const periods = [...new Set(sentDist.map(s => s.period))].sort((a, b) => periodOrder[a] - periodOrder[b])
   const polarities = [
-    { key: 'negative', label: '消极', color: '#ff6b35' },
-    { key: 'neutral', label: '中性', color: '#7f7f7f' },
-    { key: 'positive', label: '积极', color: '#4e8cff' },
+    { key: 'negative', label: t('polarity.negative'), color: '#ff6b35' },
+    { key: 'neutral', label: t('polarity.neutral'), color: '#7f7f7f' },
+    { key: 'positive', label: t('polarity.positive'), color: '#4e8cff' },
   ]
   const series = polarities.map(p => ({
     name: p.label, type: 'bar', itemStyle: { color: p.color },

@@ -3,17 +3,17 @@
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <div class="filter-group">
-        <span class="filter-label">标注状态</span>
+        <span class="filter-label">{{ $t('annotationverify.t1') }}</span>
         <el-radio-group v-model="filterStatus" size="small">
-          <el-radio-button value="">全部</el-radio-button>
-          <el-radio-button value="unannotated">未标注</el-radio-button>
-          <el-radio-button value="annotated">已标注</el-radio-button>
+          <el-radio-button value="">{{ $t('common.all') }}</el-radio-button>
+          <el-radio-button value="unannotated">{{ $t('annotationverify.t2') }}</el-radio-button>
+          <el-radio-button value="annotated">{{ $t('annotationverify.t3') }}</el-radio-button>
         </el-radio-group>
       </div>
       <div class="filter-group search-group">
         <el-input
           v-model="searchKeyword"
-          placeholder="搜索作品名、年份、题跋内容..."
+          :placeholder="$t('annotationverify.a1')"
           size="small"
           clearable
           @keyup.enter="handleSearch"
@@ -24,19 +24,19 @@
           </template>
         </el-input>
         <el-button size="small" plain class="btn-edit" @click="handleSearch">
-          <el-icon><Search /></el-icon>搜索
+          <el-icon><Search /></el-icon>{{ $t('common.search') }}
         </el-button>
         <el-button v-if="searchKeyword" size="small" plain class="btn-edit" @click="clearSearch">
-          <el-icon><Close /></el-icon>清除
+          <el-icon><Close /></el-icon>{{ $t('annotationverify.t4') }}
         </el-button>
       </div>
       <div class="stats">
         <span class="stat-item">
-          <span class="stat-label">总计</span>
+          <span class="stat-label">{{ $t('annotationverify.t5') }}</span>
           <span class="stat-value">{{ totalCount }}</span>
         </span>
         <span class="stat-item annotated" v-if="annotatedCount > 0">
-          <span class="stat-label">已标注</span>
+          <span class="stat-label">{{ $t('annotationverify.t3') }}</span>
           <span class="stat-value">{{ annotatedCount }}</span>
         </span>
       </div>
@@ -45,14 +45,14 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-icon class="is-loading" size="32"><Loading /></el-icon>
-      <p>加载中...</p>
+      <p>{{ $t('common.loading') }}</p>
     </div>
 
     <!-- 空状态 -->
     <div v-else-if="filteredRecords.length === 0" class="empty-state">
       <el-icon size="48" color="#c0c0b8"><Picture /></el-icon>
-      <p>暂无记录</p>
-      <p class="empty-hint" v-if="filterStatus || searchKeyword">尝试调整筛选条件或清除搜索</p>
+      <p>{{ $t('annotationverify.t6') }}</p>
+      <p class="empty-hint" v-if="filterStatus || searchKeyword">{{ $t('annotationverify.t7') }}</p>
     </div>
 
     <!-- 图片网格 -->
@@ -72,7 +72,7 @@
             @error="onImageError"
           />
           <!-- 已标注徽章 -->
-          <div v-if="record.is_manual_annotated" class="annotated-badge" title="已手动标注">
+          <div v-if="record.is_manual_annotated" class="annotated-badge" :title="$t('annotationverify.a2')">
             <el-icon><Check /></el-icon>
           </div>
         </div>
@@ -89,7 +89,7 @@
     <!-- 加载更多 -->
     <div v-if="hasMore && !loading" class="load-more">
       <el-button size="small" plain class="btn-edit" @click="loadMore">
-        加载更多
+        {{ $t('annotationverify.t8') }}
       </el-button>
     </div>
   </div>

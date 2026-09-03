@@ -1,39 +1,39 @@
 <template>
   <div class="artist-rules-manager">
     <div class="toolbar">
-      <el-select v-model="selectedArtist" size="small" placeholder="选择画家" @change="loadRules" style="width: 160px;">
+      <el-select v-model="selectedArtist" size="small" :placeholder="$t('artistrulesmanager.a1')" @change="loadRules" style="width: 160px;">
         <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
       </el-select>
       <el-button size="small" @click="refreshRules" :disabled="editing">
-        <el-icon><Refresh /></el-icon>刷新
+        <el-icon><Refresh /></el-icon>{{ $t('common.refresh') }}
       </el-button>
       <div style="flex:1"></div>
       <template v-if="currentRule && !editing">
         <el-button size="small" @click="exportRule">
-          <el-icon><DocumentCopy /></el-icon>复制JSON
+          <el-icon><DocumentCopy /></el-icon>{{ $t('artistrulesmanager.t1') }}
         </el-button>
         <el-button size="small" @click="startEdit">
-          <el-icon><Edit /></el-icon>编辑JSON
+          <el-icon><Edit /></el-icon>{{ $t('artistrulesmanager.t2') }}
         </el-button>
       </template>
       <template v-if="editing">
-        <el-button size="small" @click="cancelEdit">取消</el-button>
+        <el-button size="small" @click="cancelEdit">{{ $t('common.cancel') }}</el-button>
         <el-button size="small" type="primary" @click="saveFromJson" :loading="saving">
-          <el-icon><Check /></el-icon>保存
+          <el-icon><Check /></el-icon>{{ $t('common.save') }}
         </el-button>
       </template>
       <el-button v-if="!editing" size="small" @click="showImportDialog = true">
-        <el-icon><Upload /></el-icon>导入
+        <el-icon><Upload /></el-icon>{{ $t('artistrulesmanager.t3') }}
       </el-button>
     </div>
 
     <div v-loading="loading" class="rules-content">
       <div v-if="!selectedArtist" class="empty-state">
-        <el-empty description="请选择画家查看规则" />
+        <el-empty :description="$t('artistrulesmanager.a2')" />
       </div>
       <div v-else-if="error && !editing" class="empty-state">
         <el-empty :description="error">
-          <el-button type="primary" @click="showImportDialog = true">导入规则</el-button>
+          <el-button type="primary" @click="showImportDialog = true">{{ $t('artistrulesmanager.t4') }}</el-button>
         </el-empty>
       </div>
 
@@ -49,7 +49,7 @@
 
         <!-- 生命周期时间线 -->
         <div class="json-section" v-if="lifeStages.length">
-          <div class="json-section-title">生命周期</div>
+          <div class="json-section-title">{{ $t('artistrulesmanager.t5') }}</div>
           <div class="timeline">
             <div v-for="(s, i) in lifeStages" :key="i" class="timeline-item">
               <div class="timeline-dot" :style="{ background: s.mood_offset > 0 ? '#67c23a' : s.mood_offset < 0 ? '#f56c6c' : '#909399' }"></div>
@@ -68,20 +68,20 @@
 
         <!-- LLM 提示词 -->
         <div class="json-section" v-if="currentRule.sentiment_note || currentRule.theme_note">
-          <div class="json-section-title">LLM 提示词</div>
+          <div class="json-section-title">{{ $t('artistrulesmanager.t6') }}</div>
           <div class="note-card" v-if="currentRule.sentiment_note">
-            <div class="note-label">情感倾向</div>
+            <div class="note-label">{{ $t('artistrulesmanager.t7') }}</div>
             <div class="note-text">{{ currentRule.sentiment_note }}</div>
           </div>
           <div class="note-card" v-if="currentRule.theme_note">
-            <div class="note-label">主题倾向</div>
+            <div class="note-label">{{ $t('artistrulesmanager.t8') }}</div>
             <div class="note-text">{{ currentRule.theme_note }}</div>
           </div>
         </div>
 
         <!-- 主题例外 -->
         <div class="json-section" v-if="Object.keys(themeExceptions).length">
-          <div class="json-section-title">主题情感例外</div>
+          <div class="json-section-title">{{ $t('artistrulesmanager.t9') }}</div>
           <div class="exception-row" v-for="(exc, code) in themeExceptions" :key="code">
             <span class="exc-theme">主题 {{ code }}</span>
             <span class="exc-keywords" v-if="exc.override_if_contains">触发词: {{ exc.override_if_contains.join(', ') }}</span>
@@ -92,7 +92,7 @@
 
         <!-- 印章规则 -->
         <div class="json-section" v-if="Object.keys(sealRules).length">
-          <div class="json-section-title">印章情感规则</div>
+          <div class="json-section-title">{{ $t('artistrulesmanager.t10') }}</div>
           <div class="seal-rules-grid">
             <div v-for="(rule, name) in sealRules" :key="name" class="seal-rule-item"
               :class="{ positive: rule.score > 0, negative: rule.score < 0 }">
@@ -106,7 +106,7 @@
 
         <!-- 预期分布 -->
         <div class="json-section" v-if="Object.keys(expectedTheme).length">
-          <div class="json-section-title">预期分布</div>
+          <div class="json-section-title">{{ $t('artistrulesmanager.t11') }}</div>
           <div class="dist-bars">
             <div v-for="(range, theme) in expectedTheme" :key="theme" class="dist-bar-row">
               <span class="dist-bar-label">{{ theme }}</span>
@@ -123,7 +123,7 @@
 
         <!-- 原始 JSON 折叠 -->
         <el-collapse class="json-raw-collapse">
-          <el-collapse-item title="查看原始 JSON" name="raw">
+          <el-collapse-item :title="$t('artistrulesmanager.a3')" name="raw">
             <pre class="json-raw">{{ formattedJson }}</pre>
           </el-collapse-item>
         </el-collapse>
@@ -132,8 +132,8 @@
       <!-- 编辑模式：JSON 编辑器 -->
       <div v-else-if="editing" class="json-editor-wrap">
         <div class="editor-toolbar">
-          <el-button size="small" text @click="formatJson">格式化</el-button>
-          <el-button size="small" text @click="copyTemplateToEditor">插入模板</el-button>
+          <el-button size="small" text @click="formatJson">{{ $t('artistrulesmanager.t12') }}</el-button>
+          <el-button size="small" text @click="copyTemplateToEditor">{{ $t('artistrulesmanager.t13') }}</el-button>
           <span class="editor-status" :class="{ error: !!jsonError, valid: !jsonError && editing }">
             {{ jsonError || 'JSON 格式正确' }}
           </span>
@@ -143,33 +143,33 @@
     </div>
 
     <!-- 导入/AI生成对话框 -->
-    <el-dialog v-model="showImportDialog" title="导入 / AI 生成画家规则" width="640px">
+    <el-dialog v-model="showImportDialog" :title="$t('artistrulesmanager.a4')" width="640px">
       <!-- AI 一键生成 -->
       <div class="ai-generate-section">
         <div class="ai-section-header">
           <el-icon><MagicStick /></el-icon>
-          <span>AI 一键生成</span>
+          <span>{{ $t('artistrulesmanager.t14') }}</span>
         </div>
         <div class="ai-section-body">
-          <el-select v-model="aiTargetArtist" size="small" placeholder="选择画家" filterable allow-create style="width: 180px;">
+          <el-select v-model="aiTargetArtist" size="small" :placeholder="$t('artistrulesmanager.a1')" filterable allow-create style="width: 180px;">
             <el-option v-for="a in artistList" :key="a" :label="a" :value="a" />
           </el-select>
           <el-button size="small" type="primary" @click="handleAiGenerate" :loading="aiGenerating" :disabled="!aiTargetArtist">
-            <el-icon><MagicStick /></el-icon>生成规则
+            <el-icon><MagicStick /></el-icon>{{ $t('artistrulesmanager.t15') }}
           </el-button>
-          <span class="ai-hint">基于该画家的题跋样本自动生成规则包</span>
+          <span class="ai-hint">{{ $t('artistrulesmanager.t16') }}</span>
         </div>
       </div>
 
-      <el-divider content-position="left">或手动导入</el-divider>
+      <el-divider content-position="left">{{ $t('artistrulesmanager.t17') }}</el-divider>
 
       <div class="import-actions">
-        <el-button size="small" @click="insertTemplate">插入模板</el-button>
-        <el-button size="small" @click="pasteFromClipboard">从剪贴板粘贴</el-button>
+        <el-button size="small" @click="insertTemplate">{{ $t('artistrulesmanager.t13') }}</el-button>
+        <el-button size="small" @click="pasteFromClipboard">{{ $t('artistrulesmanager.t18') }}</el-button>
       </div>
-      <textarea v-model="importJson" class="json-editor import-editor" spellcheck="false" @input="validateImportJson" placeholder="粘贴 JSON 或由 AI 生成..."></textarea>
+      <textarea v-model="importJson" class="json-editor import-editor" spellcheck="false" @input="validateImportJson" :placeholder="$t('artistrulesmanager.a5')"></textarea>
       <div class="import-validation">
-        <span v-if="!importJson.trim()" class="validation-idle">等待输入...</span>
+        <span v-if="!importJson.trim()" class="validation-idle">{{ $t('artistrulesmanager.t19') }}</span>
         <span v-else-if="importJsonError" class="validation-error">
           <el-icon><CircleClose /></el-icon> {{ importJsonError }}
         </span>
@@ -178,8 +178,8 @@
         </span>
       </div>
       <template #footer>
-        <el-button @click="showImportDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleImport" :loading="importing" :disabled="!!importJsonError || !importJson.trim()">导入并保存</el-button>
+        <el-button @click="showImportDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleImport" :loading="importing" :disabled="!!importJsonError || !importJson.trim()">{{ $t('artistrulesmanager.t20') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -190,6 +190,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Edit, Plus, Upload, DocumentCopy, Check, CircleCheck, CircleClose, MagicStick } from '@element-plus/icons-vue'
 import api, { artistRulesApi } from '../api'
+import { translate as t } from '@/locales'
 
 const RULE_SCHEMA_FIELDS = [
   'artist_name', 'emotion_baseline', 'life_stages', 'sentiment_note',
@@ -348,7 +349,7 @@ function copyTemplateToEditor() {
 async function saveFromJson() {
   validateJson()
   if (jsonError.value) {
-    ElMessage.warning('JSON 格式有误，请先修正')
+    ElMessage.warning(t('artistrulesmanager.s1'))
     return
   }
 
@@ -378,13 +379,13 @@ async function saveFromJson() {
 function exportRule() {
   const json = formattedJson.value
   navigator.clipboard.writeText(json).then(() => {
-    ElMessage.success('JSON 已复制到剪贴板，可直接粘贴给 AI')
+    ElMessage.success(t('artistrulesmanager.s2'))
   }).catch(() => {
     const ta = document.createElement('textarea')
     ta.value = json; document.body.appendChild(ta)
     ta.select(); document.execCommand('copy')
     document.body.removeChild(ta)
-    ElMessage.success('已复制')
+    ElMessage.success(t('artistrulesmanager.s3'))
   })
 }
 
@@ -461,7 +462,7 @@ async function pasteFromClipboard() {
     importJson.value = text
     validateImportJson()
   } catch {
-    ElMessage.warning('无法读取剪贴板，请手动粘贴')
+    ElMessage.warning(t('artistrulesmanager.s4'))
   }
 }
 

@@ -3,21 +3,21 @@
     <!-- 工具栏 -->
     <div class="al-toolbar">
       <div class="al-toolbar-left">
-        <el-input v-model="searchQuery" placeholder="搜索标题、作者..." size="small" style="width:200px" clearable @keyup.enter="onSearch">
+        <el-input v-model="searchQuery" :placeholder="$t('artist.artistliterature.a1')" size="small" style="width:200px" clearable @keyup.enter="onSearch">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-button size="small" type="primary" @click="onSearch">搜索</el-button>
-        <el-button size="small" @click="clearSearch" v-if="searchQuery" text>清除</el-button>
+        <el-button size="small" type="primary" @click="onSearch">{{ $t('common.search') }}</el-button>
+        <el-button size="small" @click="clearSearch" v-if="searchQuery" text>{{ $t('annotationverify.t4') }}</el-button>
       </div>
       <div class="al-toolbar-right">
         <el-button v-if="authStore.isEditor || authStore.isAdmin" size="small" type="primary" @click="showUpload = true">
-          <el-icon style="margin-right:4px"><Upload /></el-icon>上传文献
+          <el-icon style="margin-right:4px"><Upload /></el-icon>{{ $t('c-literatureupload.t1') }}
         </el-button>
       </div>
     </div>
 
     <div class="al-sort-bar">
-      <span class="al-sort-label">排序：</span>
+      <span class="al-sort-label">{{ $t('artist.artistliterature.t1') }}</span>
       <span v-for="s in sortOptions" :key="s.key" class="al-sort-item" :class="{ active: activeSort === s.key }" @click="onSort(s.key)">
         {{ s.label }}
         <el-icon v-if="activeSort === s.key" style="font-size:12px;margin-left:2px">
@@ -26,20 +26,20 @@
       </span>
     </div>
 
-    <div v-if="loading" class="av-loading">加载中...</div>
-    <div v-else-if="literature.length === 0" class="av-empty"><p>暂无关联文献</p></div>
+    <div v-if="loading" class="av-loading">{{ $t('common.loading') }}</div>
+    <div v-else-if="literature.length === 0" class="av-empty"><p>{{ $t('artist.artistliterature.t2') }}</p></div>
     <template v-else>
       <!-- 统计栏 -->
       <div class="al-stats-bar">
-        <span class="al-stat-item"><span class="al-stat-num">{{ totalCount }}</span><span class="al-stat-label">篇文献</span></span>
+        <span class="al-stat-item"><span class="al-stat-num">{{ totalCount }}</span><span class="al-stat-label">{{ $t('artist.artistliterature.t3') }}</span></span>
         <span class="al-stat-divider"></span>
-        <span class="al-stat-item"><span class="al-stat-num">{{ literature.filter(d => d.source_type).length }}</span><span class="al-stat-label">已分类</span></span>
+        <span class="al-stat-item"><span class="al-stat-num">{{ literature.filter(d => d.source_type).length }}</span><span class="al-stat-label">{{ $t('artist.artistliterature.t4') }}</span></span>
         <span class="al-stat-divider"></span>
-        <span class="al-stat-item"><span class="al-stat-num">{{ literature.reduce((s, d) => s + (d.chunk_count || 0), 0) }}</span><span class="al-stat-label">章节</span></span>
+        <span class="al-stat-item"><span class="al-stat-num">{{ literature.reduce((s, d) => s + (d.chunk_count || 0), 0) }}</span><span class="al-stat-label">{{ $t('c-bookreadermodal.t3') }}</span></span>
         <span class="al-stat-divider"></span>
         <span class="al-stat-item" v-if="authStore.isEditor">
-          <el-popconfirm title="确定删除 full_md 为空的无效文献？" @confirm="deleteEmptyDocs">
-            <template #reference><span class="al-stat-clean">清空无效记录</span></template>
+          <el-popconfirm :title="$t('artist.artistliterature.a2')" @confirm="deleteEmptyDocs">
+            <template #reference><span class="al-stat-clean">{{ $t('artist.artistliterature.t5') }}</span></template>
           </el-popconfirm>
         </span>
       </div>
@@ -65,9 +65,9 @@
             </div>
           </div>
           <div class="al-card-right">
-            <span class="al-chunk-num">{{ doc.chunk_count || 0 }}</span><span class="al-chunk-label">节</span>
+            <span class="al-chunk-num">{{ doc.chunk_count || 0 }}</span><span class="al-chunk-label">{{ $t('artist.artistliterature.t6') }}</span>
             <span class="al-card-date">{{ doc.created_at?.slice(0, 10) }}</span>
-            <el-button size="small" class="al-card-btn" @click.stop="openReader(doc)">阅读</el-button>
+            <el-button size="small" class="al-card-btn" @click.stop="openReader(doc)">{{ $t('artist.artistliterature.t7') }}</el-button>
           </div>
         </div>
       </div>
@@ -97,6 +97,7 @@ import { useAuthStore } from '../../stores/authStore'
 import LiteratureUpload from '../../components/LiteratureUpload.vue'
 import ChatFloat from '../../components/ChatFloat.vue'
 import api from '../../api'
+import { translate as t } from '@/locales'
 
 const route = useRoute()
 const router = useRouter()
@@ -115,10 +116,10 @@ const sortDir = ref('desc')
 const showUpload = ref(false)
 
 const sortOptions = [
-  { key: 'created_at', label: '上传时间' },
-  { key: 'publish_year', label: '年份' },
-  { key: 'title', label: '标题' },
-  { key: 'source_type', label: '类型' },
+  { key: 'created_at', label: t('librarydetail.a3') },
+  { key: 'publish_year', label: t('info.year') },
+  { key: 'title', label: t('suggest.field_title') },
+  { key: 'source_type', label: t('artist.artistliterature.s1') },
 ]
 
 const pageNumbers = computed(() => {

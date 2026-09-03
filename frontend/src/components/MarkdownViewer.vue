@@ -2,20 +2,20 @@
   <div class="markdown-viewer">
     <div class="md-header">
       <FileCode class="icon" />
-      <span>Markdown 视图</span>
-      <button class="md-copy-btn" @click="copyMarkdown" title="复制 Markdown">
+      <span>{{ $t('c-markdownviewer.t1') }}</span>
+      <button class="md-copy-btn" @click="copyMarkdown" :title="$t('c-markdownviewer.a1')">
         <Copy class="icon" />
       </button>
     </div>
     
     <div v-if="loading" class="md-loading">
       <Loader2 class="icon spin" />
-      <span>加载中...</span>
+      <span>{{ $t('common.loading') }}</span>
     </div>
     
     <div v-else-if="!markdown" class="md-empty">
       <FileText class="icon" />
-      <span>暂无 Markdown 内容</span>
+      <span>{{ $t('c-markdownviewer.t2') }}</span>
     </div>
     
     <div v-else class="md-content" v-html="$sanitize(renderedHtml)"></div>
@@ -26,6 +26,7 @@
 import { computed } from 'vue'
 import { FileCode, FileText, Copy, Loader2 } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   markdown: {
@@ -310,9 +311,9 @@ function closeList(type, items) {
 function copyMarkdown() {
   if (!props.markdown) return
   navigator.clipboard.writeText(props.markdown).then(() => {
-    ElMessage.success('Markdown 已复制到剪贴板')
+    ElMessage.success(t('c-markdownviewer.s1'))
   }).catch(() => {
-    ElMessage.error('复制失败')
+    ElMessage.error(t('c-bookreadermodal.s2'))
   })
 }
 </script>

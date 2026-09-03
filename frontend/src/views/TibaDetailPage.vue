@@ -76,6 +76,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useTibaDetail } from '../composables/useTibaDetail'
 import TibaDetail from './TibaDetail.vue'
 import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -160,7 +161,7 @@ function openAnnotator() {
 
 function editCurrentImage() {
   if (currentImage.value) editDialogRef.value?.open(currentImage.value)
-  else ElMessage.warning('请先选择一幅画作')
+  else ElMessage.warning(t('tibaanalysis.s1'))
 }
 
 function onEditSaved({ id, updates }) {
@@ -248,10 +249,10 @@ onMounted(async () => {
     await selectImage(historyImage)
     initialLoading.value = false
 
-    ElMessage.success('已加载指定作品')
+    ElMessage.success(t('tibaanalysis.s15'))
   } catch (error) {
     console.error('加载指定作品失败:', error)
-    ElMessage.error('加载指定作品失败')
+    ElMessage.error(t('tibadetailpage.s1'))
     router.replace({ name: 'TibaAnalysis' })
   } finally {
     initialLoading.value = false

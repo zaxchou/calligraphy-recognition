@@ -3,16 +3,16 @@
     <!-- 意见提交模式提示 -->
     <div v-if="isSuggestMode" class="suggest-banner">
       <el-icon style="margin-right:8px;"><EditPen /></el-icon>
-      意见提交模式
-      <span v-if="!isSuggestAdmin" style="margin-left:8px;color:#856404;">— 保存草稿到本地，完成后点「提交审阅」</span>
-      <span v-else style="margin-left:8px;color:#856404;">— 管理员直接保存将写入数据库</span>
+      {{ $t('inscriptionannotator.t1') }}
+      <span v-if="!isSuggestAdmin" style="margin-left:8px;color:#856404;">{{ $t('inscriptionannotator.t2') }}</span>
+      <span v-else style="margin-left:8px;color:#856404;">{{ $t('inscriptionannotator.t3') }}</span>
       <el-button v-if="hasDraft && !isSuggestAdmin" size="small" text style="margin-left:12px;color:#856404;" @click="restoreDraft">
-        恢复上次草稿
+        {{ $t('inscriptionannotator.t4') }}
       </el-button>
     </div>
     <div v-if="isReviewMode" class="review-banner">
       <el-icon style="margin-right:8px;"><View /></el-icon>
-      审核预览模式 — 此标注图为变更请求中的新值，仅供查看
+      {{ $t('inscriptionannotator.t5') }}
     </div>
     <!-- 主工作区 -->
     <div class="annotator-workspace">
@@ -142,27 +142,27 @@
       <div class="annotator-panel">
         <!-- 工具栏 -->
         <div class="panel-section toolbar-section">
-          <div class="info-title">操作</div>
+          <div class="info-title">{{ $t('engine.actions') }}</div>
           <div class="toolbar-group">
             <el-button size="small" @click="goBack">
               <el-icon><ArrowLeft /></el-icon>
-              返回
+              {{ $t('common.back') }}
             </el-button>
-            <span class="panel-title">手动标注区域</span>
+            <span class="panel-title">{{ $t('inscriptionannotator.t6') }}</span>
           </div>
           <div class="toolbar-group">
             <span class="tip-text">{{ drawMode === 'rect' ? (currentRegionType === 'margin' ? '框选内容区，自动反算出四边余边' : '按住拖拽绘制矩形；拖拽顶点调整位置') : '点击添加顶点，双击封闭多边形；拖拽顶点调整位置' }}</span>
           </div>
           <div class="toolbar-controls">
             <div class="zoom-controls">
-              <el-button size="small" @click="zoomOut" title="缩小">
+              <el-button size="small" @click="zoomOut" :title="$t('inscriptionannotator.a1')">
                 <el-icon><ZoomOut /></el-icon>
               </el-button>
               <span class="zoom-ratio">{{ displayScale }}%</span>
-              <el-button size="small" @click="zoomIn" title="放大">
+              <el-button size="small" @click="zoomIn" :title="$t('inscriptionannotator.a2')">
                 <el-icon><ZoomIn /></el-icon>
               </el-button>
-              <el-button size="small" @click="resetView" title="重置视图">
+              <el-button size="small" @click="resetView" :title="$t('inscriptionannotator.a3')">
                 <el-icon><FullScreen /></el-icon>
               </el-button>
             </div>
@@ -170,18 +170,18 @@
               {{ useThumbnail ? '缩略图' : '原图' }}
             </el-button>
             <el-radio-group v-model="drawMode" size="small" class="draw-mode-selector">
-              <el-radio-button value="poly">多边形</el-radio-button>
-              <el-radio-button value="rect">矩形</el-radio-button>
+              <el-radio-button value="poly">{{ $t('inscriptionannotator.t7') }}</el-radio-button>
+              <el-radio-button value="rect">{{ $t('inscriptionannotator.t8') }}</el-radio-button>
             </el-radio-group>
             <el-radio-group v-model="currentRegionType" size="small" class="region-type-selector">
               <el-radio-button value="inscription">
-                <span class="type-dot inscription"></span>题跋
+                <span class="type-dot inscription"></span>{{ $t('题跋') }}
               </el-radio-button>
               <el-radio-button value="painting">
-                <span class="type-dot painting"></span>绘画
+                <span class="type-dot painting"></span>{{ $t('inscriptionannotator.t9') }}
               </el-radio-button>
               <el-radio-button value="margin">
-                <span class="type-dot margin"></span>余边
+                <span class="type-dot margin"></span>{{ $t('area.margin') }}
               </el-radio-button>
             </el-radio-group>
             <el-button
@@ -196,51 +196,51 @@
           </div>
           <div class="action-buttons">
             <template v-if="isReviewMode">
-              <el-button size="small" @click="goBack">返回</el-button>
-              <el-tag type="info" effect="plain">只读预览</el-tag>
+              <el-button size="small" @click="goBack">{{ $t('common.back') }}</el-button>
+              <el-tag type="info" effect="plain">{{ $t('inscriptionannotator.t10') }}</el-tag>
             </template>
             <template v-else>
-              <el-button size="small" @click="undoLast" :disabled="history.length === 0">撤销</el-button>
-              <el-button size="small" @click="clearAll" :disabled="polygons.length === 0">清空</el-button>
+              <el-button size="small" @click="undoLast" :disabled="history.length === 0">{{ $t('inscriptionannotator.t11') }}</el-button>
+              <el-button size="small" @click="clearAll" :disabled="polygons.length === 0">{{ $t('c-literatureupload.t6') }}</el-button>
               <el-button type="primary" size="small" @click="saveRegions" :loading="saving">
                 {{ isSuggestMode && !isSuggestAdmin ? '保存草稿' : '保存标注' }}
               </el-button>
               <el-button v-if="isSuggestMode" type="warning" size="small" @click="submitForReview" :loading="submittingReview">
-                提交审阅
+                {{ $t('inscriptionannotator.t12') }}
               </el-button>
             </template>
           </div>
         </div>
         <!-- 图片信息 -->
         <div class="panel-section info-section">
-          <div class="info-title">图片信息</div>
+          <div class="info-title">{{ $t('inscriptionannotator.t13') }}</div>
           <div class="info-row">
             <span class="info-label">ID</span>
             <span class="info-value">{{ recordData?.id }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">标题</span>
+            <span class="info-label">{{ $t('suggest.field_title') }}</span>
             <span class="info-value">{{ recordData?.title || '未命名' }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">作者</span>
+            <span class="info-label">{{ $t('info.author') }}</span>
             <span class="info-value">{{ recordData?.artist || '-' }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">尺寸</span>
+            <span class="info-label">{{ $t('factor.size') }}</span>
             <span class="info-value">{{ imgNaturalW }} × {{ imgNaturalH }}</span>
           </div>
         </div>
 
         <!-- 标注统计 -->
         <div class="panel-section stats-section">
-          <div class="stats-title">标注统计</div>
+          <div class="stats-title">{{ $t('inscriptionannotator.t14') }}</div>
           <div class="stat-big">
             <span class="stat-number">{{ polygons.length }}</span>
-            <span class="stat-label">个区域</span>
+            <span class="stat-label">{{ $t('inscriptionannotator.t15') }}</span>
           </div>
           <div class="stat-row" v-if="totalArea > 0">
-            <span class="stat-row-label">已标面积</span>
+            <span class="stat-row-label">{{ $t('inscriptionannotator.t16') }}</span>
             <span class="stat-row-value">{{ totalArea.toFixed(2) }}%</span>
           </div>
         </div>
@@ -248,7 +248,7 @@
         <!-- 多边形列表 -->
         <div class="panel-section list-section">
           <div class="list-title">
-            区域列表
+            {{ $t('inscriptionannotator.t17') }}
             <span class="list-count">{{ polygons.length }}</span>
           </div>
           <div class="poly-list" v-if="polygons.length > 0">
@@ -278,40 +278,40 @@
             </div>
           </div>
           <div class="poly-empty" v-else>
-            尚未标注任何区域
+            {{ $t('inscriptionannotator.t18') }}
           </div>
         </div>
 
         <!-- 操作提示 -->
         <div class="panel-section hint-section">
-          <div class="hint-title" style="font-size:13px;font-weight:600;margin-bottom:8px;color:#4d4c48;">操作提示</div>
+          <div class="hint-title" style="font-size:13px;font-weight:600;margin-bottom:8px;color:#4d4c48;">{{ $t('inscriptionannotator.t19') }}</div>
           <div class="hint-item">
-            <span class="hint-key">多边形</span>
-            <span class="hint-val">单击加点 / 双击封闭</span>
+            <span class="hint-key">{{ $t('inscriptionannotator.t7') }}</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t20') }}</span>
           </div>
           <div class="hint-item">
-            <span class="hint-key">矩形</span>
-            <span class="hint-val">按住拖拽框选</span>
+            <span class="hint-key">{{ $t('inscriptionannotator.t8') }}</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t21') }}</span>
           </div>
           <div class="hint-item">
-            <span class="hint-key">拖拽顶点</span>
-            <span class="hint-val">调整位置</span>
+            <span class="hint-key">{{ $t('inscriptionannotator.t22') }}</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t23') }}</span>
           </div>
           <div class="hint-item">
-            <span class="hint-key">右键</span>
-            <span class="hint-val">删除当前区域</span>
+            <span class="hint-key">{{ $t('inscriptionannotator.t24') }}</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t25') }}</span>
           </div>
           <div class="hint-item">
             <span class="hint-key">M</span>
-            <span class="hint-val">切换放大镜</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t26') }}</span>
           </div>
           <div class="hint-item">
             <span class="hint-key">Enter</span>
-            <span class="hint-val">封闭多边形</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t27') }}</span>
           </div>
           <div class="hint-item">
             <span class="hint-key">Esc</span>
-            <span class="hint-val">取消绘制</span>
+            <span class="hint-val">{{ $t('inscriptionannotator.t28') }}</span>
           </div>
         </div>
       </div>
@@ -325,6 +325,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Delete, Search, ZoomIn, ZoomOut, FullScreen, EditPen, View } from '@element-plus/icons-vue'
 import api from '../api'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -767,7 +768,7 @@ function closeCurrentPolygon() {
     selectedPolyIdx.value = polygons.value.length - 1
     // 完成题跋后提示切换绘画
     if (currentRegionType.value === 'inscription') {
-      ElMessage.info('题跋区域已保存，可切换到「绘画」继续标注')
+      ElMessage.info(t('inscriptionannotator.s1'))
     }
   }
 }
@@ -913,7 +914,7 @@ function clearAll() {
 // 保存
 async function saveRegions() {
   if (polygons.value.length === 0) {
-    ElMessage.warning('请至少标注一个区域')
+    ElMessage.warning(t('inscriptionannotator.s2'))
     return
   }
 
@@ -930,7 +931,7 @@ async function saveRegions() {
     try {
       localStorage.setItem(DRAFT_KEY.value, JSON.stringify(regions))
       hasDraft.value = true
-      ElMessage.success('草稿已保存到本地')
+      ElMessage.success(t('inscriptionannotator.s3'))
     } catch (e) {
       ElMessage.error('草稿保存失败: ' + e.message)
     }
@@ -946,7 +947,7 @@ async function saveRegions() {
     localStorage.removeItem(DRAFT_KEY.value)
     hasDraft.value = false
 
-    ElMessage.success('标注已保存')
+    ElMessage.success(t('inscriptionannotator.s4'))
     const targetId = recordData.value?.image_id || recordData.value?.id
     if (targetId) {
       router.push(`/tiba/${targetId}`)
@@ -963,7 +964,7 @@ function restoreDraft() {
   try {
     const draft = localStorage.getItem(DRAFT_KEY.value)
     if (!draft) {
-      ElMessage.info('没有找到本地草稿')
+      ElMessage.info(t('inscriptionannotator.s5'))
       return
     }
     const regions = JSON.parse(draft)
@@ -971,7 +972,7 @@ function restoreDraft() {
     history.value = []
     selectedPolyIdx.value = -1
     currentPoly.value = []
-    ElMessage.success('已恢复上次保存的草稿')
+    ElMessage.success(t('inscriptionannotator.s6'))
   } catch (e) {
     ElMessage.error('草稿恢复失败: ' + e.message)
   }
@@ -980,7 +981,7 @@ function restoreDraft() {
 // 意见提交模式：提交标注修改为 change_request
 async function submitForReview() {
   if (polygons.value.length === 0) {
-    ElMessage.warning('请至少标注一个区域')
+    ElMessage.warning(t('inscriptionannotator.s2'))
     return
   }
   submittingReview.value = true
@@ -1001,7 +1002,7 @@ async function submitForReview() {
     if (!libId) libId = sessionStorage.getItem('suggest_library_id')
     if (!artworkId) artworkId = sessionStorage.getItem('suggest_artwork_id') || route.params.id
     if (!libId) {
-      ElMessage.error('缺少作品库信息，请从作品详情页进入')
+      ElMessage.error(t('inscriptionannotator.s7'))
       return
     }
 
@@ -1020,7 +1021,7 @@ async function submitForReview() {
     // 清除本地草稿
     localStorage.removeItem(DRAFT_KEY.value)
 
-    ElMessage.success('标注意见已提交审阅！')
+    ElMessage.success(t('inscriptionannotator.s8'))
     // 提示后关闭窗口
     setTimeout(() => window.close(), 2000)
   } catch (err) {

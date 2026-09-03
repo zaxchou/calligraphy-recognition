@@ -7,7 +7,7 @@
           <div class="toolbar-left">
             <button class="toolbar-btn" @click="closeModal">
               <ArrowLeft class="icon" />
-              <span>返回搜索结果</span>
+              <span>{{ $t('c-bookreadermodal.t1') }}</span>
             </button>
             <span class="toolbar-divider">|</span>
             <span class="book-title">{{ result.result_type === 'image' ? (cleanLatexSymbols(result.image?.artwork_title) || '配图详情') : result.book_title }}</span>
@@ -34,7 +34,7 @@
               <div class="image-detail-page">
                 <div class="image-detail-header">
                   <span class="page-chapter">{{ result.image?.era ? result.image.era + '·' : '' }}{{ result.image?.artist || '未知作者' }}</span>
-                  <span class="page-number">配图</span>
+                  <span class="page-number">{{ $t('c-bookreadermodal.t2') }}</span>
                 </div>
                 
                 <div class="image-detail-body">
@@ -49,11 +49,11 @@
                   <div class="image-detail-info">
                     <h2 v-if="result.image?.artwork_title" class="artwork-title">《{{ cleanLatexSymbols(result.image.artwork_title) }}》</h2>
                     <div v-if="result.image?.artist" class="artwork-meta">
-                      <span class="meta-label">作者</span>
+                      <span class="meta-label">{{ $t('info.author') }}</span>
                       <span class="meta-value">{{ result.image?.era ? result.image.era + '·' : '' }}{{ cleanLatexSymbols(result.image.artist) }}</span>
                     </div>
                     <div v-if="result.image?.chapter" class="artwork-meta">
-                      <span class="meta-label">章节</span>
+                      <span class="meta-label">{{ $t('c-bookreadermodal.t3') }}</span>
                       <span class="meta-value">{{ cleanLatexSymbols(result.image.chapter) }}</span>
                     </div>
                     <div v-if="result.image?.description" class="artwork-desc">
@@ -83,7 +83,7 @@
                 <div class="header-actions">
                   <button class="view-pdf-btn" @click="openPdfSource">
                     <FileDown class="icon" />
-                    <span>查看 PDF</span>
+                    <span>{{ $t('c-bookreadermodal.t4') }}</span>
                   </button>
                 </div>
               </div>
@@ -96,7 +96,7 @@
                   @click="activeTab = 'content'"
                 >
                   <FileText class="icon" />
-                  <span>文本内容</span>
+                  <span>{{ $t('c-bookreadermodal.t5') }}</span>
                 </button>
                 <button 
                   v-if="documentOutline.length > 0"
@@ -105,7 +105,7 @@
                   @click="activeTab = 'outline'"
                 >
                   <ListTree class="icon" />
-                  <span>文档大纲</span>
+                  <span>{{ $t('c-bookreadermodal.t6') }}</span>
                   <span class="tab-count">{{ documentOutline.length }}</span>
                 </button>
                 <button 
@@ -127,7 +127,7 @@
                     <!-- 上文 -->
                     <div v-if="result.context_before" class="context-section before">
                       <p class="context-text">{{ cleanLatexSymbols(result.context_before) }}</p>
-                      <div class="context-marker">⋯ 上文 ⋯</div>
+                      <div class="context-marker">{{ $t('c-bookreadermodal.t7') }}</div>
                     </div>
 
                     <!-- 当前内容（高亮） -->
@@ -158,7 +158,7 @@
                             {{ img.caption || img.figure_id }}
                           </div>
                           <div class="image-overlay">
-                            <span class="zoom-hint">点击放大</span>
+                            <span class="zoom-hint">{{ $t('c-bookreadermodal.t8') }}</span>
                           </div>
                         </div>
                       </div>
@@ -166,7 +166,7 @@
 
                     <!-- 下文 -->
                     <div v-if="result.context_after" class="context-section after">
-                      <div class="context-marker">⋯ 下文 ⋯</div>
+                      <div class="context-marker">{{ $t('c-bookreadermodal.t9') }}</div>
                       <p class="context-text">{{ cleanLatexSymbols(result.context_after) }}</p>
                     </div>
                   </div>
@@ -204,7 +204,7 @@
                   >
                     <Loader2 v-if="loading" class="icon spin" />
                     <ChevronLeft v-else class="icon" />
-                    上一页
+                    {{ $t('c-bookreadermodal.t10') }}
                   </button>
                   <span class="nav-divider">|</span>
                   <button 
@@ -212,7 +212,7 @@
                     :disabled="loading"
                     @click="loadNextChunk"
                   >
-                    下一页
+                    {{ $t('c-bookreadermodal.t11') }}
                     <Loader2 v-if="loading" class="icon spin" />
                     <ChevronRight v-else class="icon" />
                   </button>
@@ -242,11 +242,11 @@
           <div class="footer-actions">
             <button v-if="result.result_type !== 'image'" class="action-btn" @click="copyContent">
               <Copy class="icon" />
-              复制文本
+              {{ $t('c-bookreadermodal.t12') }}
             </button>
             <button v-if="result.book_id && result.result_type !== 'image'" class="action-btn primary" @click="openPdfSource">
               <FileText class="icon" />
-              查看PDF原文
+              {{ $t('c-bookreadermodal.t13') }}
             </button>
           </div>
         </div>
@@ -267,7 +267,7 @@
         <div class="pdf-viewer-header">
           <div class="pdf-viewer-title">
             <FileDown class="icon" />
-            <span>PDF 原文查看</span>
+            <span>{{ $t('c-bookreadermodal.t14') }}</span>
             <span class="pdf-book-name">{{ result.book_title }}</span>
           </div>
           <button class="pdf-viewer-close" @click="closePdfViewer">
@@ -306,6 +306,7 @@ import PdfViewer from './PdfViewer.vue'
 import DocumentOutline from './DocumentOutline.vue'
 import MarkdownViewer from './MarkdownViewer.vue'
 import ImageRelatedChunks from './ImageRelatedChunks.vue'
+import { translate as t } from '@/locales'
 
 const store = useKnowledgeStore()
 
@@ -583,9 +584,9 @@ async function loadNextChunk() {
 function copyContent() {
   const text = readerResult.value.content
   navigator.clipboard.writeText(text).then(() => {
-    ElMessage.success('文本已复制到剪贴板')
+    ElMessage.success(t('c-bookreadermodal.s1'))
   }).catch(() => {
-    ElMessage.error('复制失败')
+    ElMessage.error(t('c-bookreadermodal.s2'))
   })
 }
 
@@ -604,7 +605,7 @@ function openPdfSource() {
         y: props.result.bbox.y || 0,
         width: props.result.bbox.width || 100,
         height: props.result.bbox.height || 50,
-        label: '当前内容',
+        label: t('c-bookreadermodal.s3'),
         active: true
       })
     }

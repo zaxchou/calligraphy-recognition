@@ -1,16 +1,16 @@
 <template>
   <div class="steles-page">
-    <h1 class="page-title">碑帖库</h1>
+    <h1 class="page-title">{{ $t('steles.t1') }}</h1>
     
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <el-radio-group v-model="selectedStyle" @change="handleStyleChange">
-        <el-radio-button value="">全部</el-radio-button>
-        <el-radio-button value="楷书">楷书</el-radio-button>
-        <el-radio-button value="行书">行书</el-radio-button>
-        <el-radio-button value="草书">草书</el-radio-button>
-        <el-radio-button value="隶书">隶书</el-radio-button>
-        <el-radio-button value="篆书">篆书</el-radio-button>
+        <el-radio-button value="">{{ $t('common.all') }}</el-radio-button>
+        <el-radio-button value="楷书">{{ $t('steles.t2') }}</el-radio-button>
+        <el-radio-button value="行书">{{ $t('steles.t3') }}</el-radio-button>
+        <el-radio-button value="草书">{{ $t('steles.t4') }}</el-radio-button>
+        <el-radio-button value="隶书">{{ $t('steles.t5') }}</el-radio-button>
+        <el-radio-button value="篆书">{{ $t('steles.t6') }}</el-radio-button>
       </el-radio-group>
     </div>
 
@@ -37,7 +37,7 @@
         
         <div class="stele-footer">
           <el-button type="primary" text>
-            查看详情
+            {{ $t('steles.t7') }}
             <el-icon class="el-icon--right"><ArrowRight /></el-icon>
           </el-button>
         </div>
@@ -45,7 +45,7 @@
     </div>
 
     <!-- 空状态 -->
-    <el-empty v-if="!loading && steles.length === 0" description="暂无碑帖数据" />
+    <el-empty v-if="!loading && steles.length === 0" :description="$t('steles.a1')" />
 
     <!-- 分页 -->
     <div class="pagination" v-if="total > 0">
@@ -68,6 +68,7 @@ import { useRouter } from 'vue-router'
 import { User, Calendar, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { steleApi } from '../api'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 
@@ -95,7 +96,7 @@ const fetchSteles = async () => {
     }
   } catch (error) {
     console.error('获取碑帖列表失败:', error)
-    ElMessage.error('获取碑帖列表失败')
+    ElMessage.error(t('steles.s1'))
   } finally {
     loading.value = false
   }

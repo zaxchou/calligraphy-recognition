@@ -1,38 +1,38 @@
 <template>
   <div class="artist-list-page">
     <div class="al-hero">
-      <h1 class="al-title">艺术家</h1>
-      <p class="al-subtitle">探索历代书画家的艺术世界</p>
+      <h1 class="al-title">{{ $t('app.t1') }}</h1>
+      <p class="al-subtitle">{{ $t('artistlist.t1') }}</p>
     </div>
 
     <div class="al-toolbar">
       <div class="al-toolbar-top">
-        <el-input v-model="keyword" placeholder="搜索画家、字号..." clearable class="al-search"
+        <el-input v-model="keyword" :placeholder="$t('artistlist.a1')" clearable class="al-search"
           @input="debouncedSearch" @clear="onFilterChange">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-select v-model="dynastyFilters" placeholder="朝代" clearable multiple collapse-tags
+        <el-select v-model="dynastyFilters" :placeholder="$t('artistlist.a2')" clearable multiple collapse-tags
           collapse-tags-tooltip class="al-filter" @change="onFilterChange">
           <el-option v-for="p in store.periods" :key="p" :label="p" :value="p" />
         </el-select>
-        <el-select v-model="schoolFilters" placeholder="画派" clearable multiple collapse-tags
+        <el-select v-model="schoolFilters" :placeholder="$t('artistlist.a3')" clearable multiple collapse-tags
           collapse-tags-tooltip class="al-filter" @change="onFilterChange">
           <el-option v-for="s in store.schools" :key="s.id" :label="s.name" :value="s.name" />
         </el-select>
-        <el-select v-model="sortBy" placeholder="排序" class="al-sort" @change="onFilterChange">
-          <el-option label="出生年份" value="birth_year" />
-          <el-option label="姓名 A-Z" value="name" />
+        <el-select v-model="sortBy" :placeholder="$t('artistlist.a4')" class="al-sort" @change="onFilterChange">
+          <el-option :label="$t('artistlist.a5')" value="birth_year" />
+          <el-option :label="$t('artistlist.a6')" value="name" />
         </el-select>
       </div>
 
       <PinyinNav :groups="store.letterGroups" :active-letter="activeLetter" @select="onLetterSelect" />
     </div>
 
-    <div v-if="loading" class="al-loading">加载中...</div>
+    <div v-if="loading" class="al-loading">{{ $t('common.loading') }}</div>
 
     <template v-else>
       <section v-if="featuredArtists.length > 0" class="al-featured">
-        <h2 class="al-section-title">推荐画家</h2>
+        <h2 class="al-section-title">{{ $t('artistlist.t2') }}</h2>
         <div class="al-featured-scroll">
           <div v-for="artist in featuredArtists" :key="artist.id" class="al-featured-card"
             @click="goToArtist(artist.name)">

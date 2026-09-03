@@ -12,7 +12,7 @@
         <div :class="['cf-hdr', isExpertMode ? 'cf-hdr-expert' : '']">
           <span class="cf-hdr-title">{{ isExpertMode ? artistName + '研究专家' : '小墨' }}</span>
           <div class="cf-hdr-actions">
-            <button class="cf-hdr-btn" @click="expanded = true" title="展开完整模式">
+            <button class="cf-hdr-btn" @click="expanded = true" :title="$t('c-chatfloat.a1')">
               <Maximize2 class="icon-sm" />
             </button>
             <button class="cf-hdr-btn" @click="open=false"><X class="icon-sm" /></button>
@@ -37,7 +37,7 @@
                 </div>
               </div>
               <div v-if="m.role==='assistant'&&m.sources" class="cf-gallery">
-                <div class="cf-gallery-title">🖼 相关作品</div>
+                <div class="cf-gallery-title">{{ $t('c-chatfloat.t1') }}</div>
                 <div class="cf-gallery-grid">
                   <template v-for="s in m.sources" :key="'img-'+s.index">
                     <a v-if="s.thumbnail_url" :href="chatLink(s.url)" target="_blank" class="cf-gallery-card">
@@ -50,7 +50,7 @@
             </div>
           </div>
           <div class="cf-input-row">
-            <textarea ref="inputRef" v-model="input" class="cf-ta" placeholder="问点什么..." @keydown.enter.exact.prevent="send()" @input="autoResize" rows="1" :disabled="loading"></textarea>
+            <textarea ref="inputRef" v-model="input" class="cf-ta" :placeholder="$t('c-chatfloat.a2')" @keydown.enter.exact.prevent="send()" @input="autoResize" rows="1" :disabled="loading"></textarea>
             <button class="cf-send" @click="send()" :disabled="!input.trim()||loading">
               <Send v-if="!loading" class="icon-sm" /><Loader2 v-else class="icon-sm spin" />
             </button>
@@ -66,16 +66,16 @@
           <!-- 左侧：历史会话 -->
           <aside class="cf-history">
             <div class="cf-history-hdr">
-              <span class="cf-history-title">对话历史</span>
-              <button class="cf-hdr-btn" @click="startNewChat" title="新对话"><Plus class="icon-sm" /></button>
+              <span class="cf-history-title">{{ $t('c-chatfloat.t2') }}</span>
+              <button class="cf-hdr-btn" @click="startNewChat" :title="$t('c-chatfloat.a3')"><Plus class="icon-sm" /></button>
             </div>
             <div class="cf-history-list">
               <div v-for="s in filteredSessions" :key="s.id" class="cf-history-item" :class="{ active: chatStore.floatSessionId === s.id || chatStore.artistExpertSessionId === s.id }" @click="switchSession(s.id)">
                 <div class="cf-history-item-title">{{ s.title || '新对话' }}</div>
                 <div class="cf-history-item-meta">{{ s.message_count || 0 }} 条 · {{ formatTime(s.updated_at) }}</div>
-                <button class="cf-history-del" @click.stop="deleteSession(s.id)" title="删除对话"><X class="icon-xs" /></button>
+                <button class="cf-history-del" @click.stop="deleteSession(s.id)" :title="$t('c-chatfloat.a4')"><X class="icon-xs" /></button>
               </div>
-              <div v-if="filteredSessions.length === 0" class="cf-history-empty">暂无历史对话</div>
+              <div v-if="filteredSessions.length === 0" class="cf-history-empty">{{ $t('c-chatfloat.t3') }}</div>
             </div>
           </aside>
 
@@ -87,7 +87,7 @@
                 <span class="cf-chat-hdr-sub" v-if="currentSessionTitle">{{ currentSessionTitle }}</span>
               </div>
               <div class="cf-hdr-actions">
-                <button class="cf-hdr-btn" @click="expanded = false" title="收起为浮窗">
+                <button class="cf-hdr-btn" @click="expanded = false" :title="$t('c-chatfloat.a5')">
                   <Minimize2 class="icon-sm" />
                 </button>
                 <button class="cf-hdr-btn" @click="open=false; expanded=false"><X class="icon-sm" /></button>
@@ -113,7 +113,7 @@
                     </div>
                   </div>
                   <div v-if="m.role==='assistant'&&m.sources" class="cf-gallery">
-                    <div class="cf-gallery-title">🖼 相关作品</div>
+                    <div class="cf-gallery-title">{{ $t('c-chatfloat.t1') }}</div>
                     <div class="cf-gallery-grid">
                       <template v-for="s in m.sources" :key="'fimg-'+s.index">
                         <a v-if="s.thumbnail_url" :href="chatLink(s.url)" target="_blank" class="cf-gallery-card">
@@ -128,7 +128,7 @@
             </div>
 
             <div class="cf-input-row cf-input-full">
-              <textarea ref="inputRefFull" v-model="input" class="cf-ta cf-ta-full" placeholder="输入问题..." @keydown.enter.exact.prevent="send()" @input="autoResize" rows="2" :disabled="loading"></textarea>
+              <textarea ref="inputRefFull" v-model="input" class="cf-ta cf-ta-full" :placeholder="$t('c-chatfloat.a6')" @keydown.enter.exact.prevent="send()" @input="autoResize" rows="2" :disabled="loading"></textarea>
               <button class="cf-send cf-send-full" @click="send()" :disabled="!input.trim()||loading">
                 <Send v-if="!loading" class="icon-sm" /><Loader2 v-else class="icon-sm spin" />
               </button>
@@ -150,7 +150,7 @@
           <div class="cf-cite-body">
             <div v-if="citationSource._source==='database'" class="cf-cite-db">
               <span class="cf-cite-type">{{ {artwork:'画作',artist:'艺术家',seal:'印章'}[citationSource.type]||'实体' }}</span>
-              <a v-if="citationSource.url" :href="chatLink(citationSource.url)" class="cf-cite-go">查看详情 →</a>
+              <a v-if="citationSource.url" :href="chatLink(citationSource.url)" class="cf-cite-go">{{ $t('c-chatfloat.t4') }}</a>
             </div>
             <div v-else class="cf-cite-book">
               <span v-if="citationSource.book">《{{ citationSource.book }}》</span>
@@ -170,6 +170,7 @@ import { MessageCircle, X, Sparkles, Send, Loader2, Maximize2, Minimize2, Plus }
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import { ElMessage } from 'element-plus'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   artistId: { type: Number, default: null },
@@ -411,7 +412,7 @@ async function send(msg) {
       last.thinking = false; last.loading = false; last.content = '查询失败，请重试'
     }
     if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
-    try { ElMessage.error('小墨暂时无法回答，请稍后重试') } catch {}
+    try { ElMessage.error(t('c-chatfloat.s1')) } catch {}
   } finally {
     loading.value = false
     nextTick(scrollToBottom)

@@ -145,7 +145,7 @@
                       <div class="vader-reasoning" v-if="verdictSnippet">{{ verdictSnippet }}</div>
                       <!-- v3.1: 8维极性条 -->
                       <div class="dim-polarity-strip" v-if="Object.keys(dimensionPolarities).length">
-                        <div class="polarity-strip-title">维度极性</div>
+                        <div class="polarity-strip-title">{{ $t('tibadetail.t1') }}</div>
                         <div class="polarity-dots">
                           <el-tooltip v-for="dim in dimensionRows.filter(d => !d.placeholder)" :key="dim.nameKey"
                             :content="$t(dim.nameKey) + ': ' + (dim.raw > 0 ? '+' : '') + dim.raw.toFixed(2)" placement="top">
@@ -239,8 +239,8 @@
                   </div>
 
                   <div class="formula-table-toolbar">
-                    <button class="toolbar-btn" @click="expandAllDims">展开全部</button>
-                    <button class="toolbar-btn" @click="collapseAllDims">收缩全部</button>
+                    <button class="toolbar-btn" @click="expandAllDims">{{ $t('tibadetail.t2') }}</button>
+                    <button class="toolbar-btn" @click="collapseAllDims">{{ $t('tibadetail.t3') }}</button>
                   </div>
                   <div class="formula-table-scroll">
                   <table class="formula-table">
@@ -315,8 +315,8 @@
 
                   <!-- v3.1: 维度分歧条 — 8个维度之间的一致性 -->
                   <div class="conflict-bar" v-if="conflictScore != null && conflictScore > 0">
-                    <el-tooltip content="8个维度情感方向的一致程度。低=各维度同向，高=正负面维度同时存在" placement="top">
-                      <div class="conflict-bar-label">维度分歧</div>
+                    <el-tooltip :content="$t('tibadetail.a1')" placement="top">
+                      <div class="conflict-bar-label">{{ $t('tibadetail.t4') }}</div>
                     </el-tooltip>
                     <div class="conflict-bar-track">
                       <div class="conflict-bar-fill" :style="{ width: (conflictScore * 100) + '%' }"></div>
@@ -331,19 +331,19 @@
                 <div v-if="llmNarrativeSections" class="llm-narrative-section">
                   <div class="llm-narrative-header">
                     <el-icon><MagicStick /></el-icon>
-                    <span>AI 解读</span>
+                    <span>{{ $t('tibadetail.t5') }}</span>
                   </div>
                   <div class="llm-narrative-grid">
                     <div class="narrative-card narrative-positive" v-if="llmNarrativeSections.positive">
-                      <div class="narrative-card-header">积极面 <span class="split-pct" v-if="sentimentSplit?.positive">{{ sentimentSplit.positive }}%</span></div>
+                      <div class="narrative-card-header">{{ $t('tibadetail.t6') }}<span class="split-pct" v-if="sentimentSplit?.positive">{{ sentimentSplit.positive }}%</span></div>
                       <div class="narrative-card-body">{{ llmNarrativeSections.positive }}</div>
                     </div>
                     <div class="narrative-card narrative-negative" v-if="llmNarrativeSections.negative">
-                      <div class="narrative-card-header">消极面 <span class="split-pct" v-if="sentimentSplit?.negative">{{ sentimentSplit.negative }}%</span></div>
+                      <div class="narrative-card-header">{{ $t('tibadetail.t7') }}<span class="split-pct" v-if="sentimentSplit?.negative">{{ sentimentSplit.negative }}%</span></div>
                       <div class="narrative-card-body">{{ llmNarrativeSections.negative }}</div>
                     </div>
                     <div class="narrative-card narrative-verdict" v-if="llmNarrativeSections.verdict">
-                      <div class="narrative-card-header">综合判断</div>
+                      <div class="narrative-card-header">{{ $t('judgment.combined') }}</div>
                       <div class="narrative-card-body">{{ llmNarrativeSections.verdict }}</div>
                     </div>
                   </div>
@@ -352,7 +352,7 @@
                 <div v-else-if="currentImage.contentAnalysis?.llm_analysis?.combined?.summary" class="llm-narrative-section">
                   <div class="llm-narrative-header">
                     <el-icon><MagicStick /></el-icon>
-                    <span>AI 解读</span>
+                    <span>{{ $t('tibadetail.t5') }}</span>
                   </div>
                   <div class="llm-narrative-body">
                     {{ currentImage.contentAnalysis.llm_analysis.combined.summary }}
@@ -1314,7 +1314,7 @@ function getDimDetail(dimKey) {
     }))
   }
 
-  return [{ label: '无详细数据', score: 0, desc: '' }]
+  return [{ label: t('tibadetail.s1'), score: 0, desc: '' }]
 }
 
 // 获取 LLM 对该维度的 reasoning

@@ -17,7 +17,7 @@
     <template #dropdown>
       <div class="notification-dropdown" @click.stop>
         <div class="notification-header">
-          <span class="notification-title">通知</span>
+          <span class="notification-title">{{ $t('c-notificationbell.t1') }}</span>
           <el-button
             v-if="notifications.length > 0"
             text
@@ -25,12 +25,12 @@
             size="small"
             @click="handleMarkAllRead"
           >
-            全部已读
+            {{ $t('c-notificationbell.t2') }}
           </el-button>
         </div>
-        <div v-if="loading" class="notification-loading">加载中...</div>
+        <div v-if="loading" class="notification-loading">{{ $t('common.loading') }}</div>
         <div v-else-if="notifications.length === 0" class="notification-empty">
-          暂无通知
+          {{ $t('c-notificationbell.t3') }}
         </div>
         <div v-else class="notification-list">
           <div
@@ -64,6 +64,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell } from '@element-plus/icons-vue'
 import { notificationApi } from '../api'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const unreadCount = ref(0)
@@ -72,9 +73,9 @@ const loading = ref(false)
 let pollTimer = null
 
 const typeMap = {
-  cr_approved: { label: '通过', type: 'success' },
-  cr_rejected: { label: '驳回', type: 'danger' },
-  cr_pending: { label: '待审核', type: 'warning' },
+  cr_approved: { label: t('c-notificationbell.s1'), type: 'success' },
+  cr_rejected: { label: t('c-notificationbell.s2'), type: 'danger' },
+  cr_pending: { label: t('c-notificationbell.s3'), type: 'warning' },
 }
 
 function tagType(notificationType) {

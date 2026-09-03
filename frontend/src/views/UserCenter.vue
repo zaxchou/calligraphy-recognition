@@ -9,54 +9,54 @@
             <img v-if="avatarPreview" :src="avatarPreview" class="uc-avatar-img" />
             <span v-else class="uc-avatar-placeholder">{{ authStore.nickname?.charAt(0) || '用' }}</span>
             <div class="uc-avatar-overlay">
-              <span>更换</span>
+              <span>{{ $t('usercenter.t1') }}</span>
             </div>
           </div>
           <input ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="handleAvatarFile" />
-          <p v-if="avatarUploading" class="uc-avatar-status">上传中...</p>
+          <p v-if="avatarUploading" class="uc-avatar-status">{{ $t('usercenter.t2') }}</p>
           <AvatarCropper ref="cropperRef" @cropped="onAvatarCropped" />
         </div>
 
         <!-- 基本信息（只读） -->
         <div class="uc-info-block">
-          <h3 class="uc-block-title">基本信息</h3>
+          <h3 class="uc-block-title">{{ $t('usercenter.t3') }}</h3>
           <div class="uc-info-rows">
             <div class="uc-info-row">
               <span class="uc-info-label">UID</span>
               <span class="uc-info-value" style="font-weight:600;color:#c8a45c;">{{ profile?.uid || authStore.userInfo?.uid || '-' }}</span>
             </div>
             <div class="uc-info-row">
-              <span class="uc-info-label">手机号</span>
+              <span class="uc-info-label">{{ $t('usercenter.t4') }}</span>
               <span class="uc-info-value">{{ profile?.phone || '未绑定' }}</span>
             </div>
             <div class="uc-info-row">
-              <span class="uc-info-label">邮箱</span>
+              <span class="uc-info-label">{{ $t('usercenter.t5') }}</span>
               <span class="uc-info-value">{{ profile?.email || '未绑定' }}</span>
             </div>
             <div class="uc-info-row">
-              <span class="uc-info-label">角色</span>
+              <span class="uc-info-label">{{ $t('librarydetail.a17') }}</span>
               <span class="uc-info-value">
                 <span class="uc-role-tag" :class="'role-' + (authStore.role || 'guest')">{{ roleLabel(authStore.role) }}</span>
               </span>
             </div>
             <div class="uc-info-row">
-              <span class="uc-info-label">贡献积分</span>
+              <span class="uc-info-label">{{ $t('usercenter.t6') }}</span>
               <span class="uc-info-value">
                 <span style="font-weight:600;color:#c8a45c;">{{ authStore.score }}</span>
-                <span style="font-size:12px;color:#999;margin-left:4px;">分</span>
+                <span style="font-size:12px;color:#999;margin-left:4px;">{{ $t('usercenter.t7') }}</span>
               </span>
             </div>
             <div class="uc-info-row">
-              <span class="uc-info-label">注册时间</span>
+              <span class="uc-info-label">{{ $t('usercenter.t8') }}</span>
               <span class="uc-info-value">{{ profile?.created_at ? formatDate(profile.created_at) : '-' }}</span>
             </div>
             <div class="uc-info-row">
-              <span class="uc-info-label">已认领画家</span>
+              <span class="uc-info-label">{{ $t('usercenter.t9') }}</span>
               <span class="uc-info-value">
                 <template v-if="profile?.claimed_artists?.length">
                   <span class="uc-artist-tag" v-for="a in profile.claimed_artists" :key="a">{{ a }}</span>
                 </template>
-                <span v-else class="uc-muted">暂无</span>
+                <span v-else class="uc-muted">{{ $t('usercenter.t10') }}</span>
               </span>
             </div>
           </div>
@@ -67,19 +67,19 @@
       <div class="uc-right">
         <!-- 编辑资料 -->
         <div class="uc-card">
-          <h3 class="uc-block-title">编辑资料</h3>
+          <h3 class="uc-block-title">{{ $t('usercenter.t11') }}</h3>
           <div class="uc-form">
             <div class="uc-field">
-              <label class="uc-field-label">昵称 <span class="uc-field-hint">（每年限修改一次，全站唯一）</span></label>
-              <input class="uc-input" v-model="editForm.nickname" placeholder="请输入昵称" maxlength="20" />
+              <label class="uc-field-label">{{ $t('librarydetail.a16') }}<span class="uc-field-hint">{{ $t('usercenter.t12') }}</span></label>
+              <input class="uc-input" v-model="editForm.nickname" :placeholder="$t('usercenter.a1')" maxlength="20" />
             </div>
             <div class="uc-field">
-              <label class="uc-field-label">邮箱</label>
-              <input class="uc-input" v-model="editForm.email" placeholder="请输入邮箱" type="email" />
+              <label class="uc-field-label">{{ $t('usercenter.t5') }}</label>
+              <input class="uc-input" v-model="editForm.email" :placeholder="$t('usercenter.a2')" type="email" />
             </div>
             <div class="uc-field">
-              <label class="uc-field-label">手机号</label>
-              <input class="uc-input" v-model="editForm.phone" placeholder="请输入手机号" maxlength="11" />
+              <label class="uc-field-label">{{ $t('usercenter.t4') }}</label>
+              <input class="uc-input" v-model="editForm.phone" :placeholder="$t('login.s1')" maxlength="11" />
             </div>
             <button class="uc-btn primary" :disabled="profileSaving" @click="handleUpdateProfile">
               {{ profileSaving ? '保存中...' : '保存资料' }}
@@ -89,19 +89,19 @@
 
         <!-- 修改密码 -->
         <div class="uc-card">
-          <h3 class="uc-block-title">修改密码</h3>
+          <h3 class="uc-block-title">{{ $t('usercenter.t13') }}</h3>
           <div class="uc-form">
             <div v-if="profile?.has_password" class="uc-field">
-              <label class="uc-field-label">旧密码</label>
-              <input class="uc-input" v-model="pwdForm.old_password" type="password" placeholder="请输入旧密码" />
+              <label class="uc-field-label">{{ $t('usercenter.t14') }}</label>
+              <input class="uc-input" v-model="pwdForm.old_password" type="password" :placeholder="$t('usercenter.s9')" />
             </div>
             <div class="uc-field">
-              <label class="uc-field-label">新密码</label>
-              <input class="uc-input" v-model="pwdForm.password" type="password" placeholder="至少6位" maxlength="32" />
+              <label class="uc-field-label">{{ $t('usercenter.t15') }}</label>
+              <input class="uc-input" v-model="pwdForm.password" type="password" :placeholder="$t('usercenter.a3')" maxlength="32" />
             </div>
             <div class="uc-field">
-              <label class="uc-field-label">确认新密码</label>
-              <input class="uc-input" v-model="pwdForm.confirm" type="password" placeholder="再次输入新密码" />
+              <label class="uc-field-label">{{ $t('usercenter.t16') }}</label>
+              <input class="uc-input" v-model="pwdForm.confirm" type="password" :placeholder="$t('usercenter.a4')" />
             </div>
             <button class="uc-btn primary" :disabled="pwdSaving" @click="handleChangePassword">
               {{ pwdSaving ? '修改中...' : '修改密码' }}
@@ -111,12 +111,12 @@
 
         <!-- 我的贡献 -->
         <div class="uc-card">
-          <h3 class="uc-block-title">我的贡献</h3>
+          <h3 class="uc-block-title">{{ $t('usercenter.t17') }}</h3>
           <div v-if="contributionsLoading" style="text-align:center;padding:20px;">
             <el-icon class="is-loading" size="20"><Loading /></el-icon>
           </div>
           <div v-else-if="contributions.length === 0" style="padding:12px 0;color:#999;font-size:13px;">
-            你还没有提交过修改建议。
+            {{ $t('usercenter.t18') }}
           </div>
           <el-timeline v-else>
             <el-timeline-item
@@ -155,6 +155,7 @@ import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import api, { notificationApi } from '../api'
 import AvatarCropper from '../components/AvatarCropper.vue'
+import { translate as t } from '@/locales'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -197,7 +198,7 @@ async function loadProfile() {
     editForm.phone = resp.phone || ''
     avatarPreview.value = authStore.avatarUrl || resp.avatar_url || ''
   } catch (e) {
-    ElMessage.error('加载用户信息失败')
+    ElMessage.error(t('usercenter.s1'))
   }
 }
 
@@ -208,8 +209,8 @@ function triggerAvatarUpload() {
 function handleAvatarFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  if (file.size > 10 * 1024 * 1024) { ElMessage.warning('头像文件不能超过10MB'); return }
-  if (!cropperRef.value) { ElMessage.error('裁剪组件未加载，请刷新页面重试'); return }
+  if (file.size > 10 * 1024 * 1024) { ElMessage.warning(t('usercenter.s2')); return }
+  if (!cropperRef.value) { ElMessage.error(t('usercenter.s3')); return }
   cropperRef.value.open(file)
   // 延迟清除避免触发二次 change 事件
   setTimeout(() => { e.target.value = '' }, 100)
@@ -227,7 +228,7 @@ async function onAvatarCropped(blob) {
     if (resp.avatar_url) {
       avatarPreview.value = resp.avatar_url
       await authStore.refreshProfile()
-      ElMessage.success('头像已更新')
+      ElMessage.success(t('usercenter.s4'))
     }
   } catch (err) {
     ElMessage.error(err?.response?.data?.detail || '头像上传失败')
@@ -238,7 +239,7 @@ async function onAvatarCropped(blob) {
 }
 
 async function handleUpdateProfile() {
-  if (!editForm.nickname.trim()) { ElMessage.warning('昵称不能为空'); return }
+  if (!editForm.nickname.trim()) { ElMessage.warning(t('usercenter.s5')); return }
   profileSaving.value = true
   try {
     await api.put('/auth/profile', {
@@ -247,7 +248,7 @@ async function handleUpdateProfile() {
       phone: editForm.phone.trim() || null,
     })
     await authStore.refreshProfile()
-    ElMessage.success('资料已更新')
+    ElMessage.success(t('usercenter.s6'))
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '保存失败')
   } finally { profileSaving.value = false }
@@ -266,17 +267,17 @@ async function loadContributions() {
 }
 
 async function handleChangePassword() {
-  if (!pwdForm.password || pwdForm.password.length < 6) { ElMessage.warning('新密码至少6位'); return }
-  if (pwdForm.password !== pwdForm.confirm) { ElMessage.warning('两次输入的新密码不一致'); return }
+  if (!pwdForm.password || pwdForm.password.length < 6) { ElMessage.warning(t('usercenter.s7')); return }
+  if (pwdForm.password !== pwdForm.confirm) { ElMessage.warning(t('usercenter.s8')); return }
   pwdSaving.value = true
   try {
     const payload = { password: pwdForm.password }
     if (profile.value?.has_password) {
-      if (!pwdForm.old_password) { ElMessage.warning('请输入旧密码'); pwdSaving.value = false; return }
+      if (!pwdForm.old_password) { ElMessage.warning(t('usercenter.s9')); pwdSaving.value = false; return }
       payload.old_password = pwdForm.old_password
     }
     await api.put('/auth/password', payload)
-    ElMessage.success('密码修改成功')
+    ElMessage.success(t('usercenter.s10'))
     pwdForm.old_password = ''
     pwdForm.password = ''
     pwdForm.confirm = ''

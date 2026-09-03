@@ -2,15 +2,15 @@
   <div class="map-mode-page">
     <!-- Loading -->
     <div v-if="loading" class="map-loading">
-      <p class="loading-text">正在绘制翰墨行旅…</p>
+      <p class="loading-text">{{ $t('mapmode.t1') }}</p>
       <el-skeleton :rows="6" animated />
     </div>
 
     <!-- Error -->
     <div v-else-if="error" class="map-error">
-      <el-result icon="error" title="数据加载失败" :sub-title="error">
+      <el-result icon="error" :title="$t('mapmode.a1')" :sub-title="error">
         <template #extra>
-          <el-button type="primary" @click="retry">重试</el-button>
+          <el-button type="primary" @click="retry">{{ $t('mapmode.t2') }}</el-button>
         </template>
       </el-result>
     </div>
@@ -50,7 +50,7 @@
 
           <!-- City Quick List (top-left overlay) -->
           <div class="city-quick-list">
-            <div class="city-quick-title">行 旅</div>
+            <div class="city-quick-title">{{ $t('mapmode.t3') }}</div>
             <div
               v-for="city in cityQuickList"
               :key="city.locId"
@@ -78,7 +78,7 @@
                 <button
                   v-if="isTourActive"
                   class="panel-close tour-stop-btn"
-                  title="停止播放"
+                  :title="$t('mapmode.a2')"
                   @click="stopTour"
                 >&#9632;</button>
                 <button class="panel-close" @click="closePeriodPanel">&times;</button>
@@ -87,13 +87,13 @@
 
             <!-- City Detail Header -->
             <div v-else class="panel-header">
-              <button v-if="selectedPeriod" class="panel-back" @click="backToPeriod">&larr; 返回</button>
+              <button v-if="selectedPeriod" class="panel-back" @click="backToPeriod">{{ $t('mapmode.t4') }}</button>
               <h2 class="panel-location">{{ selectedLocation?.name }}</h2>
               <div class="panel-header-actions">
                 <button
                   v-if="isTourActive"
                   class="panel-close tour-stop-btn"
-                  title="停止播放"
+                  :title="$t('mapmode.a2')"
                   @click="stopTour"
                 >&#9632;</button>
                 <button class="panel-close" @click="closePanel">&times;</button>
@@ -125,7 +125,7 @@
           :class="{ active: selectedPeriod === null && tourState === 'idle' }"
           @click="onFilterAll"
         >
-          <span class="period-btn-label">全 程</span>
+          <span class="period-btn-label">{{ $t('mapmode.t5') }}</span>
           <span class="period-btn-year">{{ totalYearRange }}</span>
         </button>
         <button
@@ -147,9 +147,9 @@
           :class="{ playing: tourState === 'playing', paused: tourState === 'paused' }"
           @click="toggleTour"
         >
-          <span v-if="tourState === 'playing'">&#9646;&#9646; 暂停 <em class="tour-progress">{{ tourIndex }}/{{ tourEntries.length }}</em></span>
-          <span v-else-if="tourState === 'paused'">&#9654; 继续 <em class="tour-progress">{{ tourIndex }}/{{ tourEntries.length }}</em></span>
-          <span v-else>&#9654; 播放行旅</span>
+          <span v-if="tourState === 'playing'">{{ $t('mapmode.t6') }}<em class="tour-progress">{{ tourIndex }}/{{ tourEntries.length }}</em></span>
+          <span v-else-if="tourState === 'paused'">{{ $t('mapmode.t7') }}<em class="tour-progress">{{ tourIndex }}/{{ tourEntries.length }}</em></span>
+          <span v-else>{{ $t('mapmode.t8') }}</span>
         </button>
       </div>
     </template>

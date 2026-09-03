@@ -12,8 +12,8 @@
       <div class="alu-header">
         <span class="alu-header-icon">📄</span>
         <div class="alu-header-text">
-          <span class="alu-header-title">上传文献</span>
-          <span class="alu-header-desc">支持批量拖拽 PDF，自动提取元数据</span>
+          <span class="alu-header-title">{{ $t('c-literatureupload.t1') }}</span>
+          <span class="alu-header-desc">{{ $t('c-literatureupload.t2') }}</span>
         </div>
       </div>
     </template>
@@ -35,8 +35,8 @@
             <div class="alu-upload-icon-wrap">
               <span class="alu-upload-big-icon">📄</span>
             </div>
-            <div class="alu-upload-text">拖拽 PDF 到此处，或<span class="alu-upload-link">点击选择</span></div>
-            <div class="alu-upload-hint">支持批量选择，仅限 PDF 格式</div>
+            <div class="alu-upload-text">{{ $t('c-literatureupload.t3') }}<span class="alu-upload-link">{{ $t('c-literatureupload.t4') }}</span></div>
+            <div class="alu-upload-hint">{{ $t('c-literatureupload.t5') }}</div>
           </div>
         </el-upload>
       </div>
@@ -45,7 +45,7 @@
       <div v-if="files.length > 0" class="alu-file-list">
         <div class="alu-file-list-header">
           <span class="alu-file-count">已选 {{ files.length }} 个文件</span>
-          <span v-if="!uploading" class="alu-file-clear" @click="clearFiles">清空</span>
+          <span v-if="!uploading" class="alu-file-clear" @click="clearFiles">{{ $t('c-literatureupload.t6') }}</span>
         </div>
         <div class="alu-file-items">
           <div v-for="(f, i) in files" :key="f.uid" class="alu-file-item" :class="{ 'alu-file-item-done': f._done, 'alu-file-item-error': f._error }">
@@ -76,7 +76,7 @@
 
     <template #footer>
       <div class="alu-footer">
-        <el-button class="alu-btn alu-btn-cancel" :disabled="uploading" @click="$emit('close')">取消</el-button>
+        <el-button class="alu-btn alu-btn-cancel" :disabled="uploading" @click="$emit('close')">{{ $t('common.cancel') }}</el-button>
         <el-button class="alu-btn alu-btn-submit" :disabled="files.length === 0 || uploading" :loading="uploading" @click="doUpload">
           {{ uploading ? '上传中…' : '开始上传' + (files.length > 1 ? `（${files.length} 个）` : '') }}
         </el-button>
@@ -89,6 +89,7 @@
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/authStore'
+import { translate as t } from '@/locales'
 
 const props = defineProps({ artistId: { type: Number, required: true } })
 const emit = defineEmits(['uploaded', 'close'])
@@ -182,7 +183,7 @@ async function doUpload() {
     uploading.value = false
     uploadProgress.value = 0
   } else {
-    ElMessage.error('全部上传失败，请检查后重试')
+    ElMessage.error(t('c-literatureupload.s1'))
     uploading.value = false
     uploadProgress.value = 0
   }

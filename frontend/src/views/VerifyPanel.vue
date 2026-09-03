@@ -3,28 +3,28 @@
     <div class="filter-section">
       <div class="filter-row">
         <div class="filter-group">
-          <span class="filter-label">分期</span>
+          <span class="filter-label">{{ $t('contentanalysis.a5') }}</span>
           <el-radio-group v-model="filterPeriod" size="small">
-            <el-radio-button value="">全部</el-radio-button>
-            <el-radio-button value="早期">早期</el-radio-button>
-            <el-radio-button value="中期">中期</el-radio-button>
-            <el-radio-button value="晚期">晚期</el-radio-button>
-            <el-radio-button value="年代不详">年代不详</el-radio-button>
+            <el-radio-button value="">{{ $t('common.all') }}</el-radio-button>
+            <el-radio-button value="早期">{{ $t('早期') }}</el-radio-button>
+            <el-radio-button value="中期">{{ $t('中期') }}</el-radio-button>
+            <el-radio-button value="晚期">{{ $t('晚期') }}</el-radio-button>
+            <el-radio-button value="年代不详">{{ $t('年代不详') }}</el-radio-button>
           </el-radio-group>
         </div>
         <div class="filter-group">
-          <span class="filter-label">状态</span>
+          <span class="filter-label">{{ $t('contentverify.a22') }}</span>
           <el-radio-group v-model="verifyFilter" size="small">
-            <el-radio-button value="">全部</el-radio-button>
-            <el-radio-button value="unverified">未校对</el-radio-button>
-            <el-radio-button value="verified">已校对</el-radio-button>
+            <el-radio-button value="">{{ $t('common.all') }}</el-radio-button>
+            <el-radio-button value="unverified">{{ $t('verifypanel.t1') }}</el-radio-button>
+            <el-radio-button value="verified">{{ $t('contentverify.t1') }}</el-radio-button>
           </el-radio-group>
         </div>
         <div class="filter-group search-group">
-          <span class="filter-label">搜索</span>
+          <span class="filter-label">{{ $t('common.search') }}</span>
           <el-input
             v-model="searchKeyword"
-            placeholder="作品名/年份/题跋/ID..."
+            :placeholder="$t('verifypanel.a1')"
             size="small"
             style="width: 200px"
             clearable
@@ -40,7 +40,7 @@
     </div>
     <div class="progress-section">
       <div class="progress-header">
-        <span class="progress-title">校对进度</span>
+        <span class="progress-title">{{ $t('verifypanel.t2') }}</span>
         <span class="progress-percent">{{ Math.round((verifiedCount / Math.max(totalCount, 1)) * 100) }}%</span>
       </div>
       <el-progress :percentage="Math.round((verifiedCount / Math.max(totalCount, 1)) * 100)" :color="progressColor" :stroke-width="6" class="verify-progress" />
@@ -57,26 +57,26 @@
               <el-input
                 v-model="editTitle"
                 size="large"
-                placeholder="输入作品名..."
+                :placeholder="$t('verifypanel.a2')"
                 @keyup.enter="saveTitle"
                 @blur="onTitleBlur"
                 ref="titleInputRef"
               />
-              <el-button size="small" type="primary" @click="saveTitle" :loading="savingTitle">保存</el-button>
-              <el-button size="small" @click="cancelEditTitle">取消</el-button>
+              <el-button size="small" type="primary" @click="saveTitle" :loading="savingTitle">{{ $t('common.save') }}</el-button>
+              <el-button size="small" @click="cancelEditTitle">{{ $t('common.cancel') }}</el-button>
             </div>
           </div>
           <div class="record-tags">
             <span class="period-tag" :class="currentRecord.period_phase">{{ currentRecord.period_phase || '未分期' }}</span>
             <span class="year-tag">{{ currentRecord.year ? currentRecord.year + '年' : '年代不详' }}</span>
-            <span v-if="currentRecord.inscription_verified" class="verified-tag"><el-icon><Check /></el-icon>已校对</span>
+            <span v-if="currentRecord.inscription_verified" class="verified-tag"><el-icon><Check /></el-icon>{{ $t('contentverify.t1') }}</span>
           </div>
         </div>
         <div class="record-nav">
-          <el-button plain size="small" class="btn-edit" @click="prevRecord" :disabled="currentIndex === 0"><el-icon><ArrowLeft /></el-icon>上一条</el-button>
+          <el-button plain size="small" class="btn-edit" @click="prevRecord" :disabled="currentIndex === 0"><el-icon><ArrowLeft /></el-icon>{{ $t('verifypanel.t3') }}</el-button>
           <span class="nav-indicator">{{ currentIndex + 1 }} / {{ filteredRecords.length }}</span>
-          <el-button plain size="small" class="btn-edit" @click="nextRecord" :disabled="currentIndex === filteredRecords.length - 1">下一条<el-icon><ArrowRight /></el-icon></el-button>
-          <el-button plain size="small" class="btn-edit" @click="openAnnotator"><el-icon><Edit /></el-icon>手动标注</el-button>
+          <el-button plain size="small" class="btn-edit" @click="nextRecord" :disabled="currentIndex === filteredRecords.length - 1">{{ $t('verifypanel.t4') }}<el-icon><ArrowRight /></el-icon></el-button>
+          <el-button plain size="small" class="btn-edit" @click="openAnnotator"><el-icon><Edit /></el-icon>{{ $t('btn.manual_annotate') }}</el-button>
           <el-button plain size="small" class="btn-edit" @click="reanalyzeRecord" :loading="reanalyzing"><el-icon><Refresh /></el-icon>重分析(v5.5)</el-button>
         </div>
       </div>
@@ -84,32 +84,32 @@
         <div class="verify-image-section">
           <div class="image-card" @click="showFullImage = true">
             <img v-if="imageUrl" :src="imageUrl" :alt="currentRecord.title" class="record-image" />
-            <div v-else class="image-placeholder"><el-icon><Picture /></el-icon><span>无图片</span></div>
-            <div class="image-overlay"><el-icon><ZoomIn /></el-icon><span>点击查看大图</span></div>
+            <div v-else class="image-placeholder"><el-icon><Picture /></el-icon><span>{{ $t('verifypanel.t5') }}</span></div>
+            <div class="image-overlay"><el-icon><ZoomIn /></el-icon><span>{{ $t('verifypanel.t6') }}</span></div>
           </div>
         </div>
-        <TibaImageZoomDialog v-model="showFullImage" :image-url="fullImageUrl" title="查看大图" />
+        <TibaImageZoomDialog v-model="showFullImage" :image-url="fullImageUrl" :title="$t('knowledgesearch.t10')" />
         <div class="verify-text-section">
           <div class="text-card">
             <div class="card-header">
-              <div class="card-title"><el-icon><Document /></el-icon>题跋文本</div>
-              <el-tooltip content="请对照图片中的题跋内容进行校对"><span class="hint-icon">?</span></el-tooltip>
+              <div class="card-title"><el-icon><Document /></el-icon>{{ $t('verifypanel.t7') }}</div>
+              <el-tooltip :content="$t('verifypanel.a3')"><span class="hint-icon">?</span></el-tooltip>
             </div>
-            <el-input v-model="editContent" type="textarea" :rows="6" placeholder="请输入或修改题跋文本..." class="content-input" />
+            <el-input v-model="editContent" type="textarea" :rows="6" :placeholder="$t('verifypanel.a4')" class="content-input" />
             <div class="char-count">字数：{{ editContent.length }}（不含标点约 {{ charCountNoPunct }}）</div>
           </div>
           <div class="text-card translation-card" v-if="(currentRecord.inscription_modern && currentRecord.inscription_modern !== currentRecord.inscription_content) || translating">
             <div class="card-header">
-              <div class="card-title"><el-icon><ChatDotRound /></el-icon>现代文翻译</div>
+              <div class="card-title"><el-icon><ChatDotRound /></el-icon>{{ $t('verifypanel.t8') }}</div>
               <span class="translation-status" :class="{ translated: currentRecord.inscription_modern, translating: translating }">{{ currentRecord.inscription_modern ? '已翻译' : (translating ? '翻译中...' : '') }}</span>
             </div>
             <div class="translation-content" :class="{ translating: translating }">{{ currentRecord.inscription_modern || '正在翻译中，请稍候...' }}</div>
           </div>
           <div class="text-card">
             <div class="card-header">
-              <div class="card-title"><el-icon><Stamp /></el-icon>印章内容</div>
-              <el-tooltip content="请对照图片中的印章文字进行校对，多个印章用逗号分隔"><span class="hint-icon">?</span></el-tooltip>
-              <span v-if="currentRecord.seal_verified" class="verified-badge"><el-icon><Check /></el-icon>已校对</span>
+              <div class="card-title"><el-icon><Stamp /></el-icon>{{ $t('verifypanel.t9') }}</div>
+              <el-tooltip :content="$t('verifypanel.a5')"><span class="hint-icon">?</span></el-tooltip>
+              <span v-if="currentRecord.seal_verified" class="verified-badge"><el-icon><Check /></el-icon>{{ $t('contentverify.t1') }}</span>
             </div>
             <!-- 印章标签插入模式 -->
             <div class="seal-tag-editor">
@@ -130,13 +130,13 @@
                     <img :src="sealImageMap[seal.name]" class="seal-preview-img" />
                   </div>
                 </el-tag>
-                <el-button v-if="sealTags.length > 0" type="danger" text size="small" @click="clearAllSeals" class="clear-seals-btn">清空</el-button>
+                <el-button v-if="sealTags.length > 0" type="danger" text size="small" @click="clearAllSeals" class="clear-seals-btn">{{ $t('c-literatureupload.t6') }}</el-button>
               </div>
               <div class="seal-input-row">
-                <el-input v-model="sealInput" placeholder="输入印章名回车添加" size="small" style="width: 200px;" @keyup.enter="addSealInput" />
+                <el-input v-model="sealInput" :placeholder="$t('verifypanel.a6')" size="small" style="width: 200px;" @keyup.enter="addSealInput" />
               </div>
               <div v-if="sealLibrary.length > 0" class="seal-library">
-                <div class="seal-library-title">印章库（点击添加）</div>
+                <div class="seal-library-title">{{ $t('verifypanel.t10') }}</div>
                 <div v-for="group in groupedSeals" :key="group.type" class="seal-group">
                   <div class="seal-group-header">{{ group.type }}</div>
                   <div class="seal-library-grid">
@@ -161,22 +161,22 @@
           </div>
           <div class="text-card">
             <div class="card-header">
-              <div class="card-title"><el-icon><Document /></el-icon>AI 分析说明</div>
-              <el-tooltip content="AI 生成的分析说明，可对照图片内容进行校对"><span class="hint-icon">?</span></el-tooltip>
+              <div class="card-title"><el-icon><Document /></el-icon>{{ $t('verifypanel.t11') }}</div>
+              <el-tooltip :content="$t('verifypanel.a7')"><span class="hint-icon">?</span></el-tooltip>
             </div>
-            <el-input v-model="editAnalysisNote" type="textarea" :rows="4" placeholder="AI 分析说明内容..." class="content-input" />
+            <el-input v-model="editAnalysisNote" type="textarea" :rows="4" :placeholder="$t('verifypanel.a8')" class="content-input" />
           </div>
           <div class="action-row">
-            <el-button v-if="!currentRecord.inscription_verified" plain class="btn-edit btn-primary" @click="handleSave(false)" :loading="saving"><el-icon><Check /></el-icon>确认校对</el-button>
-            <el-button v-else plain class="btn-edit btn-warning" @click="handleSave(true)" :loading="saving"><el-icon><RefreshRight /></el-icon>重新校对</el-button>
-            <el-button plain class="btn-edit" @click="skipRecord"><el-icon><Right /></el-icon>跳过</el-button>
-            <el-button v-if="currentRecord.inscription_verified && !currentRecord.inscription_modern" plain class="btn-edit btn-primary" @click="handleTranslate" :loading="translating"><el-icon><Edit /></el-icon>翻译</el-button>
-            <el-button v-else-if="currentRecord.inscription_verified && currentRecord.inscription_modern" plain class="btn-edit btn-warning" @click="handleTranslate" :loading="translating"><el-icon><RefreshRight /></el-icon>重新翻译</el-button>
-            <el-button v-if="currentRecord.inscription_verified" plain class="btn-edit btn-primary" @click="handleAnalyze" :loading="analyzing"><el-icon><DataAnalysis /></el-icon>重新分析</el-button>
+            <el-button v-if="!currentRecord.inscription_verified" plain class="btn-edit btn-primary" @click="handleSave(false)" :loading="saving"><el-icon><Check /></el-icon>{{ $t('verifypanel.t12') }}</el-button>
+            <el-button v-else plain class="btn-edit btn-warning" @click="handleSave(true)" :loading="saving"><el-icon><RefreshRight /></el-icon>{{ $t('verifypanel.t13') }}</el-button>
+            <el-button plain class="btn-edit" @click="skipRecord"><el-icon><Right /></el-icon>{{ $t('verifypanel.t14') }}</el-button>
+            <el-button v-if="currentRecord.inscription_verified && !currentRecord.inscription_modern" plain class="btn-edit btn-primary" @click="handleTranslate" :loading="translating"><el-icon><Edit /></el-icon>{{ $t('librarydetail.t7') }}</el-button>
+            <el-button v-else-if="currentRecord.inscription_verified && currentRecord.inscription_modern" plain class="btn-edit btn-warning" @click="handleTranslate" :loading="translating"><el-icon><RefreshRight /></el-icon>{{ $t('verifypanel.t15') }}</el-button>
+            <el-button v-if="currentRecord.inscription_verified" plain class="btn-edit btn-primary" @click="handleAnalyze" :loading="analyzing"><el-icon><DataAnalysis /></el-icon>{{ $t('verifypanel.t16') }}</el-button>
           </div>
           <div v-if="analysisPreview" class="analysis-preview">
             <div class="preview-header">
-              <el-icon><DataAnalysis /></el-icon>AI 分析预览
+              <el-icon><DataAnalysis /></el-icon>{{ $t('verifypanel.t17') }}
               <span v-if="analysisPreview.v4_confidence != null" class="overall-confidence" :class="{ low: analysisPreview.v4_confidence < 0.6 }">
                 可信度 {{ Math.round(analysisPreview.v4_confidence * 100) }}%
               </span>
@@ -187,13 +187,13 @@
             </div>
           </div>
           <div v-else-if="currentRecord?.inscription_content" class="analysis-preview analysis-stale">
-            <div class="preview-header"><el-icon><WarningFilled /></el-icon>分析已过期</div>
-            <p class="stale-hint">题跋文本已修改，请点击「重新分析」更新主题与情感</p>
+            <div class="preview-header"><el-icon><WarningFilled /></el-icon>{{ $t('verifypanel.t18') }}</div>
+            <p class="stale-hint">{{ $t('verifypanel.t19') }}</p>
           </div>
         </div>
       </div>
     </div>
-    <el-empty v-else-if="!loading" description="暂无需要校对的内容" />
+    <el-empty v-else-if="!loading" :description="$t('verifypanel.a9')" />
     <el-skeleton v-if="loading" :rows="6" animated />
 
     <!-- 搜索结果弹窗 -->
@@ -208,7 +208,7 @@
         <el-skeleton :rows="4" animated />
       </div>
       <div v-else-if="searchResults.length === 0" class="search-empty">
-        <el-empty description="未找到匹配记录" />
+        <el-empty :description="$t('verifypanel.a10')" />
       </div>
       <div v-else class="search-result-list">
         <div
@@ -225,7 +225,7 @@
             <div class="result-title">{{ item.title || '无标题' }}</div>
             <div class="result-meta">
               <span v-if="item.year" class="year-badge">{{ item.year }}年</span>
-              <span v-else class="year-badge">年代不详</span>
+              <span v-else class="year-badge">{{ $t('年代不详') }}</span>
               <span v-if="item.period_phase" class="period-badge">{{ item.period_phase }}</span>
             </div>
             <div v-if="item.inscription_content" class="result-inscription">
@@ -233,7 +233,7 @@
             </div>
           </div>
           <el-button plain size="small" class="btn-edit btn-jump" @click.stop="onSelectSearchResult(item)">
-            <el-icon><Position /></el-icon>跳转
+            <el-icon><Position /></el-icon>{{ $t('verifypanel.t20') }}
           </el-button>
         </div>
       </div>
@@ -248,6 +248,7 @@ import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Ed
 import TibaImageZoomDialog from '../components/tiba/TibaImageZoomDialog.vue'
 import { tibaApi, sealsApi } from '../api'
 import api from '../api'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   records: { type: Array, default: () => [] },
@@ -302,7 +303,7 @@ function clearAllSeals() {
 function addSealInput() {
   const name = sealInput.value.trim()
   if (!name) return
-  if (sealTags.value.some(t => t.name === name)) { ElMessage.warning('该印章已添加'); return }
+  if (sealTags.value.some(t => t.name === name)) { ElMessage.warning(t('verifypanel.s1')); return }
   sealTags.value.push({ name, isNew: true })
   editSealContent.value = sealTagsToString()
   sealInput.value = ''
@@ -436,7 +437,7 @@ const progressColor = computed(() => {
 
 
 function prevRecord() { if (currentIndex.value > 0) currentIndex.value-- }
-function nextRecord() { if (currentIndex.value < filteredRecords.value.length - 1) currentIndex.value++; else ElMessage.info('已是最后一条') }
+function nextRecord() { if (currentIndex.value < filteredRecords.value.length - 1) currentIndex.value++; else ElMessage.info(t('verifypanel.s2')) }
 function skipRecord() { nextRecord() }
 async function jumpToRecordById(id) {
   if (!id) return false
@@ -480,14 +481,14 @@ function startEditTitle() {
 async function saveTitle() {
   if (!currentRecord.value || !isEditingTitle.value) return
   const newTitle = editTitle.value.trim()
-  if (!newTitle) { ElMessage.warning('作品名不能为空'); return }
+  if (!newTitle) { ElMessage.warning(t('verifypanel.s3')); return }
   if (newTitle === currentRecord.value.title) { isEditingTitle.value = false; return }
   savingTitle.value = true
   try {
     const imageId = currentRecord.value.image_id || currentRecord.value.id
     await tibaApi.updateImageInfo(imageId, { title: newTitle })
     emit('update-title', { id: currentRecord.value.id, image_id: imageId, title: newTitle })
-    ElMessage.success('作品名已更新')
+    ElMessage.success(t('contentverify.s12'))
   } catch (e) {
     ElMessage.error('更新失败：' + e.message)
   } finally {
@@ -517,7 +518,7 @@ function getThumbnailUrl(thumbPath) {
 
 async function doSearch() {
   const kw = searchKeyword.value.trim()
-  if (!kw) { ElMessage.warning('请输入搜索关键词'); return }
+  if (!kw) { ElMessage.warning(t('tibaanalysis.s6')); return }
 
   // 纯数字输入：优先本地精确匹配 id
   const isPureNumeric = /^\d+$/.test(kw)
@@ -558,7 +559,7 @@ async function onSelectSearchResult(item) {
   // 不在当前 records 中，需要刷新后重试
   showSearchDialog.value = false
   searchKeyword.value = ''
-  ElMessage.info('记录不在当前列表中，请从管理页面重新加载')
+  ElMessage.info(t('verifypanel.s4'))
 }
 
 

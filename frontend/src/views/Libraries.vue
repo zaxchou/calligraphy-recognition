@@ -1,16 +1,16 @@
 <template>
   <div class="libraries-page" :class="{ 'embedded': embedded }">
     <div class="page-header" v-if="!embedded">
-      <h1 class="page-title">我的作品库</h1>
+      <h1 class="page-title">{{ $t('libraries.t1') }}</h1>
     </div>
 
     <div class="libraries-toolbar">
       <div class="toolbar-left">
         <el-button type="primary" @click="showCreateDialog = true" :disabled="!authStore.isLoggedIn">
-          <el-icon><Plus /></el-icon> 新建作品库
+          <el-icon><Plus /></el-icon> {{ $t('libraries.t2') }}
         </el-button>
         <el-button plain @click="$router.push('/libraries/public')">
-          <el-icon><View /></el-icon> 浏览公开库
+          <el-icon><View /></el-icon> {{ $t('libraries.t3') }}
         </el-button>
       </div>
       <div class="toolbar-right">
@@ -26,8 +26,8 @@
     </div>
 
     <div v-if="!authStore.isLoggedIn" class="empty-wrap">
-      <el-empty description="请先登录以管理您的作品库" :image-size="100">
-        <el-button type="primary" @click="$router.push('/login')">去登录</el-button>
+      <el-empty :description="$t('libraries.a1')" :image-size="100">
+        <el-button type="primary" @click="$router.push('/login')">{{ $t('libraries.t4') }}</el-button>
       </el-empty>
     </div>
 
@@ -36,8 +36,8 @@
     </div>
 
     <div v-else-if="libraries.length === 0" class="empty-wrap">
-      <el-empty description="还没有作品库，快去创建一个吧" :image-size="80">
-        <el-button type="primary" @click="showCreateDialog = true">新建作品库</el-button>
+      <el-empty :description="$t('libraries.a2')" :image-size="80">
+        <el-button type="primary" @click="showCreateDialog = true">{{ $t('libraries.t2') }}</el-button>
       </el-empty>
     </div>
 
@@ -74,7 +74,7 @@
     <!-- 列表模式 -->
     <div v-else class="library-list-wrap">
       <el-table :data="libraries" stripe size="small" style="width:100%" @row-click="row => $router.push(`/libraries/${row.id}`)">
-        <el-table-column label="作品库" min-width="180">
+        <el-table-column :label="$t('gallery.title')" min-width="180">
           <template #default="{ row }">
             <div class="list-name">
               <el-icon><Collection /></el-icon>
@@ -82,46 +82,46 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="artist_name" label="画家" width="120" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip>
+        <el-table-column prop="artist_name" :label="$t('suggest.field_artist')" width="120" />
+        <el-table-column prop="description" :label="$t('libraries.a3')" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">{{ row.description || '-' }}</template>
         </el-table-column>
-        <el-table-column label="可见性" width="80">
+        <el-table-column :label="$t('libraries.a4')" width="80">
           <template #default="{ row }">
             <el-tag :type="row.visibility === 'public' ? 'success' : 'info'" size="small" effect="plain">
               {{ row.visibility === 'public' ? '公开' : '私有' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="作品数" width="80" align="center">
+        <el-table-column :label="$t('libraries.a5')" width="80" align="center">
           <template #default="{ row }">{{ row.artwork_count || 0 }}</template>
         </el-table-column>
       </el-table>
     </div>
 
-    <el-dialog v-model="showCreateDialog" title="新建作品库" width="500px" destroy-on-close>
+    <el-dialog v-model="showCreateDialog" :title="$t('libraries.t2')" width="500px" destroy-on-close>
       <el-form :model="createForm" label-position="top">
-        <el-form-item label="作品库名称" required>
-          <el-input v-model="createForm.name" placeholder="如：李鱓花鸟册" maxlength="100" />
+        <el-form-item :label="$t('libraries.a6')" required>
+          <el-input v-model="createForm.name" :placeholder="$t('libraries.a7')" maxlength="100" />
         </el-form-item>
-        <el-form-item label="画家">
-          <el-select v-model="createForm.artist_name" filterable allow-create default-first-option placeholder="搜索或输入新画家" style="width:100%" :loading="artistLoading" remote :remote-method="searchArtists">
+        <el-form-item :label="$t('suggest.field_artist')">
+          <el-select v-model="createForm.artist_name" filterable allow-create default-first-option :placeholder="$t('libraries.a8')" style="width:100%" :loading="artistLoading" remote :remote-method="searchArtists">
             <el-option v-for="a in artistOptions" :key="a.name" :label="a.label" :value="a.name" />
           </el-select>
         </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="简要描述这个作品库..." />
+        <el-form-item :label="$t('libraries.a3')">
+          <el-input v-model="createForm.description" type="textarea" :rows="3" :placeholder="$t('libraries.a9')" />
         </el-form-item>
-        <el-form-item label="可见性">
+        <el-form-item :label="$t('libraries.a4')">
           <el-radio-group v-model="createForm.visibility">
-            <el-radio value="private">私有（仅自己可见）</el-radio>
-            <el-radio value="public">公开（所有人可见）</el-radio>
+            <el-radio value="private">{{ $t('libraries.t5') }}</el-radio>
+            <el-radio value="public">{{ $t('libraries.t6') }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="creating">创建</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleCreate" :loading="creating">{{ $t('albummanager.t14') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -134,6 +134,7 @@ import { ElMessage } from 'element-plus'
 import { Plus, View, Collection, Grid, List } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
 import api, { libraryApi } from '../api'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   embedded: { type: Boolean, default: false }
@@ -187,7 +188,7 @@ async function loadLibraries() {
     const data = await libraryApi.getMine()
     libraries.value = Array.isArray(data) ? data : (data.items || [])
   } catch (e) {
-    ElMessage.error('加载作品库失败')
+    ElMessage.error(t('libraries.s1'))
   } finally {
     loading.value = false
   }
@@ -195,13 +196,13 @@ async function loadLibraries() {
 
 async function handleCreate() {
   if (!createForm.name.trim()) {
-    ElMessage.warning('请输入作品库名称')
+    ElMessage.warning(t('libraries.s2'))
     return
   }
   creating.value = true
   try {
     await libraryApi.create(createForm)
-    ElMessage.success('作品库创建成功')
+    ElMessage.success(t('libraries.s3'))
     showCreateDialog.value = false
     createForm.name = ''
     createForm.artist_name = ''

@@ -4,22 +4,22 @@
     <div class="alr-topbar">
       <div class="alr-topbar-left">
         <el-button text @click="$emit('close')" size="small">
-          <el-icon><ArrowLeft /></el-icon> 返回
+          <el-icon><ArrowLeft /></el-icon> {{ $t('common.back') }}
         </el-button>
         <span class="alr-topbar-title">{{ book.title }}</span>
         <span class="alr-topbar-author" v-if="artistName">{{ artistName }}</span>
       </div>
       <div class="alr-topbar-right">
         <el-button-group size="small">
-          <el-button :type="mode === 'text' ? 'primary' : 'default'" @click="mode = 'text'">正文</el-button>
-          <el-button :type="mode === 'pdf' ? 'primary' : 'default'" @click="loadPdf">原 PDF</el-button>
+          <el-button :type="mode === 'text' ? 'primary' : 'default'" @click="mode = 'text'">{{ $t('c-literaturereader.t1') }}</el-button>
+          <el-button :type="mode === 'pdf' ? 'primary' : 'default'" @click="loadPdf">{{ $t('c-literaturereader.t2') }}</el-button>
         </el-button-group>
       </div>
     </div>
 
     <!-- 内文搜索条 -->
     <div class="alr-searchbar" v-if="mode === 'text'">
-      <el-input v-model="searchQuery" size="small" placeholder="搜索内文..." clearable
+      <el-input v-model="searchQuery" size="small" :placeholder="$t('c-literaturereader.a1')" clearable
         @keyup.enter="doSearch" @clear="clearSearch" class="alr-search-input">
         <template #prefix>
           <el-icon><Search /></el-icon>
@@ -27,16 +27,16 @@
       </el-input>
       <template v-if="searchResults.length">
         <span class="alr-search-count">{{ searchIdx + 1 }} / {{ searchResults.length }} 条匹配</span>
-        <el-button text size="small" @click="prevMatch">‹ 上一个</el-button>
-        <el-button text size="small" @click="nextMatch">下一个 ›</el-button>
+        <el-button text size="small" @click="prevMatch">{{ $t('c-literaturereader.t3') }}</el-button>
+        <el-button text size="small" @click="nextMatch">{{ $t('c-literaturereader.t4') }}</el-button>
       </template>
-      <span v-else-if="searchQuery && searchResults.length === 0" class="alr-search-count">无匹配</span>
+      <span v-else-if="searchQuery && searchResults.length === 0" class="alr-search-count">{{ $t('c-literaturereader.t5') }}</span>
     </div>
 
     <div class="alr-body">
       <!-- 左侧目录 -->
       <aside class="alr-sidebar" v-if="mode === 'text' && outline.length > 0">
-        <div class="alr-outline-title">目录</div>
+        <div class="alr-outline-title">{{ $t('c-literaturereader.t6') }}</div>
         <div
           v-for="(item, idx) in outline"
           :key="idx"
@@ -50,8 +50,8 @@
 
       <!-- 正文区 -->
       <main class="alr-main" ref="mainRef" v-show="mode === 'text'">
-        <div v-if="loadingChunks" class="alr-loading">加载中...</div>
-        <div v-else-if="chunks.length === 0" class="alr-empty">暂无章节内容</div>
+        <div v-if="loadingChunks" class="alr-loading">{{ $t('common.loading') }}</div>
+        <div v-else-if="chunks.length === 0" class="alr-empty">{{ $t('c-literaturereader.t7') }}</div>
         <div v-else class="alr-content">
           <div
             v-for="(chunk, idx) in chunks"
@@ -77,7 +77,7 @@
 
       <!-- PDF iframe -->
       <main class="alr-main alr-pdf-main" v-show="mode === 'pdf'">
-        <div v-if="pdfLoading" class="alr-loading">加载 PDF 中...</div>
+        <div v-if="pdfLoading" class="alr-loading">{{ $t('c-literaturereader.t8') }}</div>
         <iframe
           v-if="pdfUrl"
           :src="pdfUrl"

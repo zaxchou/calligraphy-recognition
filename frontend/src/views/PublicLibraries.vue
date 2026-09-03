@@ -3,11 +3,11 @@
     <div class="page-header">
       <div>
         <el-breadcrumb separator="/">
-          <el-breadcrumb-item :to="{ path: '/libraries' }">作品库</el-breadcrumb-item>
-          <el-breadcrumb-item>公开作品库</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/libraries' }">{{ $t('gallery.title') }}</el-breadcrumb-item>
+          <el-breadcrumb-item>{{ $t('publiclibraries.t1') }}</el-breadcrumb-item>
         </el-breadcrumb>
-        <h1 class="page-title">公开作品库</h1>
-        <p class="page-subtitle">探索社区分享的书画作品收藏</p>
+        <h1 class="page-title">{{ $t('publiclibraries.t1') }}</h1>
+        <p class="page-subtitle">{{ $t('publiclibraries.t2') }}</p>
       </div>
     </div>
 
@@ -15,8 +15,8 @@
       <el-skeleton :rows="3" animated />
     </div>
 
-    <el-empty v-else-if="libraries.length === 0" description="暂无公开作品库">
-      <el-button type="primary" @click="$router.push('/libraries')">创建我的作品库</el-button>
+    <el-empty v-else-if="libraries.length === 0" :description="$t('publiclibraries.a1')">
+      <el-button type="primary" @click="$router.push('/libraries')">{{ $t('publiclibraries.t3') }}</el-button>
     </el-empty>
 
     <div v-else class="library-grid">

@@ -94,6 +94,7 @@ import { LabelLayout, UniversalTransition } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
 import { artistRulesApi } from '@/api'
 import api from '@/api'
+import { translate as t } from '@/locales'
 
 echarts.use([PieChart, BarChart, ScatterChart, RadarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent, LabelLayout, UniversalTransition, CanvasRenderer])
 
@@ -135,82 +136,82 @@ echarts.registerTheme('molin', {
 })
 
 const slides = [
-  { id: 'overview', title: '概览', subtitle: '该画家题跋的整体画像',
+  { id: 'overview', title: t('artist.artistanalysisslides.s1'), subtitle: t('artist.artistanalysisslides.s2'),
     layout: 'split',
-    charts: [{ title: '分期作品分布' }, { title: '生命阶段情感偏移' }],
+    charts: [{ title: t('artist.artistanalysisslides.s3') }, { title: t('artist.artistanalysisslides.s4') }],
     insight: `<p><strong>分期作品分布</strong>饼图告诉我们每个时期留下了多少作品——作品越多，样本越可靠。如果某个时期只有寥寥几幅，统计结论就不够可信。</p>
 <p><strong>生命阶段情感偏移</strong>柱状图是关键：情感偏移值反映画家在不同时期的心境基调。正值偏乐观，负值偏沉重。这个偏移值来自画家规则——是根据历史研究和题跋分析预先设定的。</p>
 <p>大多数画家呈现"早年意气风发（偏正）→ 中年转折 → 晚年归于平淡或感慨（偏负）"的规律。但也有例外——有些画家一生豁达，晚期反而更积极。这张图就是判断画家情感底色的第一步。</p>
 <p>注意看<strong>权重</strong>的变化——晚期作品的权重通常更高，因为画家的技法和思想都更成熟，晚期的题跋往往更能代表其真实的内心世界。</p>`,
-    tip: '如果晚期偏移值远低于早期，说明画家人生际遇对其创作情感影响很大。权重越高，该时期对整体分析的影响越大。',
+    tip: t('artist.artistanalysisslides.s5'),
     load: loadOverview, render: renderOverview },
 
-  { id: 'sentiment', title: '情感分析', subtitle: '画作情绪的全景扫描',
+  { id: 'sentiment', title: t('artist.artistanalysisslides.s6'), subtitle: t('artist.artistanalysisslides.s7'),
     layout: 'wide',
-    charts: [{ title: '情感极性分布' }, { title: '情绪时间线' }],
+    charts: [{ title: t('artist.artistanalysisslides.s8') }, { title: t('artist.artistanalysisslides.s9') }],
     insight: `<p><strong>情感极性分布</strong>饼图展示消极/中性/积极的整体比例。这个比例本身就是画家"情感DNA"的快照——有的画家七成作品是消极的，有的则大部分是积极的。</p>
 <p><strong>情绪时间线</strong>散点图展示每幅画的情感分数（文字 VADER 分 + 时期基线修正）。虚线是趋势线。</p>
 <p>注意：趋势线可能与第1页的「生命阶段情感偏移」方向不完全一致。这是因为时间线叠加了<strong>实际文字情感</strong>——即使画家规则设定晚期偏消极，但如果晚期题跋中大量使用正面词汇（如"寿""福""牡丹"），文字分仍会偏高。这种"规则与现实的差距"本身就值得研究。</p>
 <p>关注散点图中的<strong>离群点</strong>——情感特别极端的作品往往对应画家人生中的重大转折。</p>`,
-    tip: '散点图中离群最远的点，值得点开看原作——那里藏着画家最真实的瞬间。',
+    tip: t('artist.artistanalysisslides.s10'),
     load: loadSentiment, render: renderSentiment },
 
-  { id: 'theme', title: '主题分析', subtitle: '画家在题跋中说了什么',
+  { id: 'theme', title: t('artist.artistanalysisslides.s11'), subtitle: t('artist.artistanalysisslides.s12'),
     layout: 'split',
-    charts: [{ title: '主题总体分布' }, { title: '主题分期对比' }],
+    charts: [{ title: t('contentanalysis.t11') }, { title: t('artist.artistanalysisslides.s13') }],
     insight: `<p>我们把题跋内容分为六大主题。<strong>身世自况</strong>是谈自己的经历和处境——仕途不顺、卖画为生、感叹人生。<strong>咏物寄兴</strong>是借画面中的花鸟山水来抒发情感，表面写竹子，实际写自己。</p>
 <p><strong>画理自叙</strong>是画家谈论自己的绘画理念和技法。<strong>时事讽喻</strong>是对社会现实的评论和批评——这在清代文人画中特别常见。<strong>吉语祥瑞</strong>是祝福和祈愿。<strong>交游赠答</strong>是送给朋友的画作题跋。</p>
 <p><strong>主题分期对比</strong>堆叠柱状图展示各时期主题的变化规律。如果"身世自况"在晚期大幅上升，说明画家晚年更倾向于在画中倾诉个人遭遇。如果"时事讽喻"集中在某个时期，那往往对应着当时的社会动荡。</p>
 <p>六大主题的分布比例，就是理解一位画家精神世界的"地图"。</p>`,
-    tip: '身世自况比例高的画家，题跋往往是理解其人生观的第一手材料，比任何传记都真实。',
+    tip: t('artist.artistanalysisslides.s14'),
     load: loadTheme, render: renderTheme },
 
-  { id: 'style', title: '题跋风格', subtitle: '字数与面积的量化规律',
+  { id: 'style', title: t('artist.artistanalysisslides.s15'), subtitle: t('artist.artistanalysisslides.s16'),
     layout: 'wide',
-    charts: [{ title: '题跋字数分期对比' }, { title: '题跋面积分布' }],
+    charts: [{ title: t('artist.artistanalysisslides.s17') }, { title: t('contentanalysis.t28') }],
     insight: `<p>题跋的<strong>长度</strong>本身就是情感信号。早期作品题跋简短，可能是"某年某月写于某地"的套路化文字；晚期题跋变长，往往是因为心中有话不吐不快。字数的变化曲线，就是画家"想说话"的欲望曲线。</p>
 <p><strong>题跋面积分布</strong>图告诉我们：题跋占画面的比例集中在哪个区间。比例越大，说明画家越重视文字表达，甚至不惜"侵占"画面空间来抒发情感。有些画家晚期的题跋面积比早期大了三倍——那不是画不下，而是有太多话要说。</p>
 <p>字数和面积的结合分析，能帮我们判断：这幅画的题跋是"例行公事"还是"真情流露"。</p>`,
-    tip: '题跋字数突然增多的作品，往往是画家情感最充沛的时期——那里藏着他们最想说的话。',
+    tip: t('artist.artistanalysisslides.s18'),
     load: loadStyle, render: renderStyle },
 
-  { id: 'dimension', title: '印章与维度', subtitle: '六个维度的情感贡献',
+  { id: 'dimension', title: t('artist.artistanalysisslides.s19'), subtitle: t('artist.artistanalysisslides.s20'),
     layout: 'wide',
-    charts: [{ title: '引擎维度雷达图' }, { title: '印章情感规则' }],
+    charts: [{ title: t('artist.artistanalysisslides.s21') }, { title: t('artistrulesmanager.t10') }],
     insight: `<p>我们的引擎从<strong>六个维度</strong>综合评判一幅画的情感。每个维度贡献不同的情感信号，最终加权得出综合分。</p>
 <p><strong>文字维度</strong>是题跋本身的情感分析，权重最大（40%）。<strong>主题维度</strong>根据主题分类施加情感偏移——时事讽喻强制偏消极，吉语祥瑞强制偏积极。<strong>印章维度</strong>读取画家盖的印章来判断情感。</p>
 <p><strong>时期维度</strong>根据画家所处的人生阶段施加基线偏移。<strong>空间维度</strong>分析题跋在画面中的布局——侵入画面中央的题跋往往情感更激烈。<strong>尺寸维度</strong>根据画幅大小施加修正。</p>
 <p><strong>印章情感规则</strong>图表列出该画家所有<strong>非中性印章</strong>的得分。印章是画家的"签名"——"苦李"得 -1.0 分（极度消极），因为这是用来自嘲的号；"卖画不为官"得 +1.0（极度积极），表达不向权贵低头的傲骨。</p>`,
-    tip: '印章是画家主动盖上去的，是最"诚实"的情感信号——它不像题跋那样可以被反复斟酌修改。',
+    tip: t('artist.artistanalysisslides.s22'),
     load: loadDimension, render: renderDimension },
 
-  { id: 'ranking', title: '情感排行', subtitle: '情感最极端的作品——点击查看详情',
+  { id: 'ranking', title: t('artist.artistanalysisslides.s23'), subtitle: t('artist.artistanalysisslides.s24'),
     layout: 'split',
-    charts: [{ title: '最消极 Top 10' }, { title: '最积极 Top 10' }],
+    charts: [{ title: t('artist.artistanalysisslides.s25') }, { title: t('artist.artistanalysisslides.s26') }],
     insight: `<p>上面是这位画家<strong>情感最沉重</strong>的 10 幅作品，下方是<strong>最积极乐观</strong>的 10 幅。这些是八维度综合评分的极端值——不是单一维度的偏高偏低，而是所有维度的综合判断。</p>
 <p>消极作品中常见的元素：题跋出现"泣""泪""困""愁"等字眼，主题为"时事讽喻"，印章有"苦李""墨磨人"等消极符号。积极作品则常见"春""乐""寿""福"等吉语，印章有"卖画不为官""不折腰"等正面表达。</p>
 <p>点击任意一条可以跳转到作品详情页，查看完整的题跋内容、每个维度的评分明细和分析推理过程。</p>`,
-    tip: '对比左右两列——情感弹性越大，说明这位画家的内心世界越丰富复杂。',
+    tip: t('artist.artistanalysisslides.s27'),
     load: loadRanking, render: renderRanking },
 
-  { id: 'spatial', title: '空间与形式', subtitle: '画幅大小与题跋策略',
+  { id: 'spatial', title: t('artist.artistanalysisslides.s28'), subtitle: t('artist.artistanalysisslides.s29'),
     layout: 'wide',
-    charts: [{ title: '画幅 vs 题跋占比' }, { title: '布局形式统计' }],
+    charts: [{ title: t('artist.artistanalysisslides.s30') }, { title: t('artist.artistanalysisslides.s31') }],
     insight: `<p><strong>画幅 vs 题跋占比</strong>散点图探索一个有趣的问题：大画和小画的题跋策略是否不同？如果散点呈水平分布，说明无论画幅大小，题跋占比始终如一——这是一种稳定的个人风格。如果大画的散点偏高，说明画家在大画上更敢写。</p>
 <p><strong>布局形式统计</strong>图表展示题跋的空间布局形式。传统文人画最常见的布局是"边角规整式"——题跋规矩地写在画面边角，不打扰主体。而"穿插式"则是大胆地将文字融入画面，让书法成为构图的一部分。</p>
 <p>布局形式反映的是画家的自信程度和创新意识。一个画家如果从早年的"边角式"逐渐演变为晚年的"穿插式"，说明他越来越自信，越来越不拘泥于传统规范。</p>
 <p>题跋面积和布局形式的组合，能看出画家是"保守型"还是"突破型"的创作者。</p>`,
-    tip: '大量使用穿插式布局的画家，在空间上有创新意识——他们把题跋当成了画的一部分，而不是附属品。',
+    tip: t('artist.artistanalysisslides.s32'),
     load: loadSpatial, render: renderSpatial },
 
-  { id: 'material', title: '画材与尺寸', subtitle: '画了什么、用的多大的纸',
+  { id: 'material', title: t('artist.artistanalysisslides.s33'), subtitle: t('artist.artistanalysisslides.s34'),
     layout: 'split',
-    charts: [{ title: '画材标签统计' }, { title: '作品尺寸分布' }],
+    charts: [{ title: t('artist.artistanalysisslides.s35') }, { title: t('artist.artistanalysisslides.s36') }],
     insight: `<p><strong>画材标签统计</strong>图表统计这位画家最常画的题材和元素。在中国画的传统里，每种题材都有象征意义——竹子象征坚韧不屈，兰花象征高洁典雅，梅花象征傲骨凌霜，菊花象征隐逸淡泊。</p>
 <p>题材偏好本身就是一种情感表达。一个画家如果一生都在画竹子，他可能在用竹子表达自己的人生态度。如果晚期突然开始画"枯木""残荷"，这往往是心境变化的信号——从积极向上转为感慨人生。</p>
 <p><strong>作品尺寸分布</strong>饼图展示尺幅偏好。小幅作品（如册页、扇面）适合随手抒发，是日常情感的自然流露。大幅作品（如中堂、条屏）则需要郑重其事，往往是在重要场合或特殊心境下创作的。</p>
 <p>尺幅的选择反映了画家的创作场景和意图。如果一个画家早期多大幅、晚期多小幅，可能说明他从"示人"转向"自娱"。</p>`,
-    tip: '花鸟画家晚期突然开始大量画"枯木""残荷"，这往往是心境变化的信号——题材就是画家的心电图。',
+    tip: t('artist.artistanalysisslides.s37'),
     load: loadMaterial, render: renderMaterial },
 ]
 

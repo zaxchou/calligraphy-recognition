@@ -2,12 +2,12 @@
   <div class="artist-info-manager">
     <div class="toolbar">
       <div class="toolbar-left">
-        <el-input v-model="searchQuery" placeholder="搜索画家姓名..." clearable size="small" style="width:200px" @input="onSearchInput" @clear="onSearchInput" />
-        <el-select v-model="dynastyFilter" placeholder="筛选朝代" clearable size="small" style="width:130px" @change="onDynastyChange">
+        <el-input v-model="searchQuery" :placeholder="$t('artistinfomanager.a1')" clearable size="small" style="width:200px" @input="onSearchInput" @clear="onSearchInput" />
+        <el-select v-model="dynastyFilter" :placeholder="$t('artistinfomanager.a2')" clearable size="small" style="width:130px" @change="onDynastyChange">
           <el-option v-for="p in periods" :key="p" :label="p" :value="p" />
         </el-select>
       </div>
-      <el-button type="primary" plain size="small" @click="openCreate"><el-icon><Plus /></el-icon>新增画家</el-button>
+      <el-button type="primary" plain size="small" @click="openCreate"><el-icon><Plus /></el-icon>{{ $t('artistinfomanager.t1') }}</el-button>
     </div>
 
     <div v-loading="loading" class="artist-list">
@@ -22,20 +22,20 @@
             <template v-if="artist.birth_year || artist.death_year">
               <el-tag size="small" type="info">{{ artist.birth_year || '?' }}-{{ artist.death_year || '?' }}</el-tag>
             </template>
-            <el-tag v-if="!artist.enabled" size="small" type="danger">已禁用</el-tag>
-            <el-tag v-if="artist.featured" size="small" type="warning">推荐</el-tag>
+            <el-tag v-if="!artist.enabled" size="small" type="danger">{{ $t('artistinfomanager.t2') }}</el-tag>
+            <el-tag v-if="artist.featured" size="small" type="warning">{{ $t('artistinfomanager.t3') }}</el-tag>
           </div>
           <div class="artist-actions">
-            <el-button size="small" @click="openEdit(artist)">编辑</el-button>
-            <el-button size="small" type="primary" plain @click="handleAiFill(artist)">AI补充</el-button>
+            <el-button size="small" @click="openEdit(artist)">{{ $t('common.edit') }}</el-button>
+            <el-button size="small" type="primary" plain @click="handleAiFill(artist)">{{ $t('artistinfomanager.t4') }}</el-button>
             <el-button size="small" :type="artist.enabled ? 'warning' : 'success'" plain @click="toggleEnabled(artist)">
               {{ artist.enabled ? '禁用' : '启用' }}
             </el-button>
-            <el-button size="small" type="danger" plain @click="handleDelete(artist)">删除</el-button>
+            <el-button size="small" type="danger" plain @click="handleDelete(artist)">{{ $t('common.delete') }}</el-button>
           </div>
         </div>
       </div>
-      <div v-if="!loading && artists.length === 0" class="empty-state"><el-empty description="暂无画家数据" /></div>
+      <div v-if="!loading && artists.length === 0" class="empty-state"><el-empty :description="$t('artistinfomanager.a3')" /></div>
     </div>
 
     <div v-if="totalArtists > pageSize" class="pagination-bar">
@@ -52,6 +52,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import api from '@/api'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 
@@ -139,7 +140,7 @@ async function handleDelete(artist) {
     await ElMessageBox.confirm(`确定删除画家「${artist.name}」？`, '确认删除', { type: 'warning' })
     const data = await api.delete(`/artists/${artist.id}`)
     if (data.success) {
-      ElMessage.success('画家已删除')
+      ElMessage.success(t('artistinfomanager.s1'))
       await loadArtists(currentPage.value)
     } else { ElMessage.error(data.detail || '删除失败') }
   } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败: ' + e.message) }

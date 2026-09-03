@@ -9,44 +9,44 @@
           layout="total, sizes, prev, pager, next"
           :page-sizes="[10, 20, 50, 100]"
           :pager-count="5"
-          prev-text="← 上一页"
-          next-text="下一页 →"
+          :prev-text="$t('tibalist.a1')"
+          :next-text="$t('tibalist.a2')"
           :total="total"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
       </div>
       <div class="top-bar-right">
-        <el-select v-model="selectedArtist" size="small" placeholder="筛选画家" @change="onArtistChange" clearable>
-          <el-option label="全部画家" value="all" />
+        <el-select v-model="selectedArtist" size="small" :placeholder="$t('tibalist.a3')" @change="onArtistChange" clearable>
+          <el-option :label="$t('tibalist.a4')" value="all" />
           <el-option v-for="name in artistOptions" :key="name" :label="name" :value="name" />
         </el-select>
         <div class="search-box">
-          <el-input v-model="searchKeyword" placeholder="搜索标题、题跋、印章..." size="small" style="width: 160px" clearable @keyup.enter="handleSearch">
+          <el-input v-model="searchKeyword" :placeholder="$t('tibalist.a5')" size="small" style="width: 160px" clearable @keyup.enter="handleSearch">
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
-          <el-button type="primary" size="small" @click="handleSearch" :icon="Search">搜索</el-button>
+          <el-button type="primary" size="small" @click="handleSearch" :icon="Search">{{ $t('common.search') }}</el-button>
         </div>
-        <el-button size="small" @click="backToTubi" :icon="ArrowLeft" text>返回主页</el-button>
+        <el-button size="small" @click="backToTubi" :icon="ArrowLeft" text>{{ $t('tibalist.t1') }}</el-button>
       </div>
     </div>
 
     <!-- 标签筛选指示条 -->
     <div v-if="filterTag" class="filter-indicator">
-      <span>当前筛选: <strong>{{ filterTag }}</strong></span>
+      <span>{{ $t('tibalist.t2') }}<strong>{{ filterTag }}</strong></span>
       <span class="filter-count">共 {{ total }} 幅</span>
       <el-button size="small" text @click="clearTagFilter">
         <el-icon><Close /></el-icon>
-        清除
+        {{ $t('annotationverify.t4') }}
       </el-button>
     </div>
     <!-- 搜索模式指示条 -->
     <div v-if="isSearchMode" class="filter-indicator search-indicator">
-      <span>搜索结果: <strong>{{ searchKeyword }}</strong></span>
+      <span>{{ $t('tibalist.t3') }}<strong>{{ searchKeyword }}</strong></span>
       <span class="filter-count">共 {{ total }} 幅</span>
       <el-button size="small" text @click="clearSearch">
         <el-icon><Close /></el-icon>
-        清除搜索
+        {{ $t('tibalist.t4') }}
       </el-button>
     </div>
 
@@ -55,12 +55,12 @@
       <div class="works-table-container" v-if="pagedRankings.length > 0">
         <div class="works-table">
           <div class="works-table-header">
-            <div class="table-col col-image">图片</div>
-            <div class="table-col col-info">作品信息</div>
-            <div class="table-col col-author">作者</div>
-            <div class="table-col col-age">年龄</div>
+            <div class="table-col col-image">{{ $t('tibalist.t5') }}</div>
+            <div class="table-col col-info">{{ $t('tibalist.t6') }}</div>
+            <div class="table-col col-author">{{ $t('info.author') }}</div>
+            <div class="table-col col-age">{{ $t('tibalist.t7') }}</div>
             <div class="table-col col-year sortable" :class="{ 'is-sorted': activeSort === 'year' }" @click="sortBy('year')">
-              <span class="sort-label">年代</span>
+              <span class="sort-label">{{ $t('suggest.field_year') }}</span>
               <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'year' }">
                 <ArrowDown v-if="activeSort === 'year' && sortDirection === 'desc'" />
                 <ArrowUp v-else-if="activeSort === 'year'" />
@@ -68,7 +68,7 @@
               </el-icon>
             </div>
             <div class="table-col col-inscription sortable" :class="{ 'is-sorted': activeSort === 'inscription' }" @click="sortBy('inscription')">
-              <span class="sort-label">题跋%</span>
+              <span class="sort-label">{{ $t('tibalist.t8') }}</span>
               <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'inscription' }">
                 <ArrowDown v-if="activeSort === 'inscription' && sortDirection === 'desc'" />
                 <ArrowUp v-else-if="activeSort === 'inscription'" />
@@ -76,7 +76,7 @@
               </el-icon>
             </div>
             <div class="table-col col-painting sortable" :class="{ 'is-sorted': activeSort === 'painting' }" @click="sortBy('painting')">
-              <span class="sort-label">绘画%</span>
+              <span class="sort-label">{{ $t('tibalist.t9') }}</span>
               <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'painting' }">
                 <ArrowDown v-if="activeSort === 'painting' && sortDirection === 'desc'" />
                 <ArrowUp v-else-if="activeSort === 'painting'" />
@@ -84,7 +84,7 @@
               </el-icon>
             </div>
             <div class="table-col col-blank sortable" :class="{ 'is-sorted': activeSort === 'blank' }" @click="sortBy('blank')">
-              <span class="sort-label">留白%</span>
+              <span class="sort-label">{{ $t('tibalist.t10') }}</span>
               <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'blank' }">
                 <ArrowDown v-if="activeSort === 'blank' && sortDirection === 'desc'" />
                 <ArrowUp v-else-if="activeSort === 'blank'" />
@@ -92,14 +92,14 @@
               </el-icon>
             </div>
             <div class="table-col col-created sortable" :class="{ 'is-sorted': activeSort === 'created' }" @click="sortBy('created')">
-              <span class="sort-label">创建时间</span>
+              <span class="sort-label">{{ $t('tibalist.t11') }}</span>
               <el-icon class="sort-icon" :class="{ 'sort-active': activeSort === 'created' }">
                 <ArrowDown v-if="activeSort === 'created' && sortDirection === 'desc'" />
                 <ArrowUp v-else-if="activeSort === 'created'" />
                 <svg v-else viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 10l4-4 4 4H8zM8 14l4 4 4-4H8z"/></svg>
               </el-icon>
             </div>
-            <div class="table-col col-action">操作</div>
+            <div class="table-col col-action">{{ $t('engine.actions') }}</div>
           </div>
           <div class="works-table-body">
             <div
@@ -152,7 +152,7 @@
               <div class="table-col col-action" @click.stop="toggleActionMenu($event, item)">
                 <div class="action-btn-wrap">
                   <span class="action-btn">
-                    操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                    {{ $t('engine.actions') }}<el-icon class="el-icon--right"><ArrowDown /></el-icon>
                   </span>
                 </div>
               </div>
@@ -169,14 +169,14 @@
             :style="menuStyle"
             @click.stop
           >
-            <div class="tl-action-menu-item" @click.stop="doDetail">详情</div>
+            <div class="tl-action-menu-item" @click.stop="doDetail">{{ $t('common.detail') }}</div>
             <div v-if="authStore.isLoggedIn" class="tl-action-menu-divider"></div>
-            <div v-if="authStore.isLoggedIn" class="tl-action-menu-item" @click.stop="doSuggest">我的意见</div>
+            <div v-if="authStore.isLoggedIn" class="tl-action-menu-item" @click.stop="doSuggest">{{ $t('btn.suggest') }}</div>
             <template v-if="activeActionItem && canEditItem(activeActionItem)">
               <div class="tl-action-menu-divider"></div>
-              <div class="tl-action-menu-item" @click.stop="doEdit">编辑</div>
+              <div class="tl-action-menu-item" @click.stop="doEdit">{{ $t('common.edit') }}</div>
               <div class="tl-action-menu-divider"></div>
-              <div class="tl-action-menu-item tl-action-menu-danger" @click.stop="doDelete">删除</div>
+              <div class="tl-action-menu-item tl-action-menu-danger" @click.stop="doDelete">{{ $t('common.delete') }}</div>
             </template>
           </div>
         </Teleport>
@@ -199,8 +199,8 @@
       <!-- 无数据提示 -->
       <div v-if="!loading && rankings.length === 0" class="no-data">
         <el-icon size="48"><Picture /></el-icon>
-        <p>暂无数据，请先上传画作</p>
-        <el-button type="primary" @click="backToTubi">返回上传</el-button>
+        <p>{{ $t('ranking.no_data') }}</p>
+        <el-button type="primary" @click="backToTubi">{{ $t('tibalist.t12') }}</el-button>
       </div>
     </div>
 
@@ -212,8 +212,8 @@
         layout="total, sizes, prev, pager, next"
           :page-sizes="[10, 20, 50, 100]"
           :pager-count="5"
-        prev-text="← 上一页"
-        next-text="下一页 →"
+        :prev-text="$t('tibalist.a1')"
+        :next-text="$t('tibalist.a2')"
         :total="total"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
@@ -228,34 +228,34 @@
     />
 
     <!-- 我的意见对话框 -->
-    <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close>
+    <el-dialog v-model="showSuggestDialog" :title="$t('btn.suggest')" width="560px" destroy-on-close>
       <p style="margin-bottom:16px;color:var(--stone-gray)">
-        您正在对 <strong>{{ suggestArtwork?.title || '未命名' }}</strong> 提出修改意见，提交后由管理员审核。
+        {{ $t('librarydetail.t31') }}<strong>{{ suggestArtwork?.title || '未命名' }}</strong> {{ $t('tibalist.t13') }}
       </p>
       <el-form :model="suggestForm" label-position="top">
-        <el-form-item label="修改字段">
+        <el-form-item :label="$t('suggest.field')">
           <el-select v-model="suggestForm.field_name" style="width:100%">
-            <el-option label="标题" value="title" />
-            <el-option label="画家" value="artist" />
-            <el-option label="年代" value="year" />
-            <el-option label="时期" value="period" />
-            <el-option label="备注" value="notes" />
-            <el-option label="题跋内容" value="inscription_content" />
+            <el-option :label="$t('suggest.field_title')" value="title" />
+            <el-option :label="$t('suggest.field_artist')" value="artist" />
+            <el-option :label="$t('suggest.field_year')" value="year" />
+            <el-option :label="$t('factor.period')" value="period" />
+            <el-option :label="$t('suggest.field_notes')" value="notes" />
+            <el-option :label="$t('suggest.field_inscription')" value="inscription_content" />
           </el-select>
         </el-form-item>
-        <el-form-item label="原值">
+        <el-form-item :label="$t('suggest.old_value')">
           <div class="old-value-display">{{ suggestForm.old_value }}</div>
         </el-form-item>
-        <el-form-item label="新值" required>
-          <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="在原值基础上修改，或输入新内容" />
+        <el-form-item :label="$t('suggest.new_value')" required>
+          <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" :placeholder="$t('suggest.new_value_ph')" />
         </el-form-item>
-        <el-form-item label="修改说明" required>
-          <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
+        <el-form-item :label="$t('suggest.change_desc')" required>
+          <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" :placeholder="$t('suggest.change_desc_ph')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showSuggestDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交意见</el-button>
+        <el-button @click="showSuggestDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">{{ $t('suggest.submit') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -270,6 +270,7 @@ import { tibaApi } from '../api'
 import api from '../api'
 import { useAuthStore } from '../stores/authStore'
 import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -497,11 +498,11 @@ function openSuggestEdit(item) {
 
 async function handleSubmitChange() {
   if (!suggestForm.new_value) {
-    ElMessage.warning('请输入新值')
+    ElMessage.warning(t('suggest.enter_new_value'))
     return
   }
   if (!suggestForm.change_summary || !suggestForm.change_summary.trim()) {
-    ElMessage.warning('请填写修改说明')
+    ElMessage.warning(t('suggest.enter_desc'))
     return
   }
   if (!suggestArtwork.value) return
@@ -516,7 +517,7 @@ async function handleSubmitChange() {
       request_type: suggestForm.field_name === 'inscription_content' ? 'edit_inscription' : 'edit_field'
     }
     await api.post(`/libraries/${suggestArtwork.value.library_id}/requests`, data)
-    ElMessage.success('修改建议已提交')
+    ElMessage.success(t('tibalist.s1'))
     showSuggestDialog.value = false
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '提交失败')
@@ -618,7 +619,7 @@ async function deleteItem(item) {
 
     const response = await tibaApi.deleteImage(item.id)
     if (response.success) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('engine.delete_success'))
       // 刷新排行榜数据
       await loadRankings()
     } else {
@@ -627,7 +628,7 @@ async function deleteItem(item) {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error(t('engine.delete_error'))
     }
   }
 }
@@ -685,7 +686,7 @@ function sortBy(sortType) {
 // 匹配字段标签显示
 function matchFieldLabel(field) {
   const labels = {
-    title: '作品名',
+    title: t('tibalist.s2'),
     artist: '作者',
     inscription_content: '题跋',
     inscription_modern: '题跋(白话)',
@@ -742,7 +743,7 @@ async function loadRankings() {
     }
   } catch (error) {
     console.error('加载列表失败:', error)
-    ElMessage.error('加载失败')
+    ElMessage.error(t('engine.load_error'))
   } finally {
     loading.value = false
   }

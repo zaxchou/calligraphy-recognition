@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-title-group">
         <h1 class="page-title">{{ selectedArtist === 'all' ? '全部作品' : selectedArtist + '作品' }}尺寸录入</h1>
-        <p class="page-subtitle">画作实际尺寸（厘米） · 册页批量管理</p>
+        <p class="page-subtitle">{{ $t('dimensioninput.t1') }}</p>
         <div class="header-ornament">
           <span class="ornament-line"></span>
           <span class="ornament-dot">◇</span>
@@ -13,14 +13,14 @@
       </div>
       <div class="header-actions">
         <el-select v-model="selectedArtist" size="default" @change="onArtistChange" style="width: 150px;" class="claude-select">
-          <el-option label="全部作者" value="all" />
+          <el-option :label="$t('dimensioninput.a1')" value="all" />
           <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
         </el-select>
         <div class="progress-badge">
           <span class="progress-num">{{ filled }}</span>
           <span class="progress-sep">/</span>
           <span class="progress-total">{{ total }}</span>
-          <span class="progress-label">已录</span>
+          <span class="progress-label">{{ $t('dimensioninput.t2') }}</span>
         </div>
       </div>
     </div>
@@ -28,7 +28,7 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>加载数据中...</span>
+      <span>{{ $t('albummanager.t3') }}</span>
     </div>
 
     <div v-else>
@@ -59,7 +59,7 @@
       <!-- 册页批量录入提示 -->
       <div class="album-tip" v-if="albumNames.length > 0">
         <span class="album-tip-icon">✦</span>
-        检测到 <strong>{{ albumNames.length }}</strong> 部册页，
+        {{ $t('dimensioninput.t3') }}<strong>{{ albumNames.length }}</strong> 部册页，
         可在册页卡片内批量录入整组尺寸
       </div>
 
@@ -89,12 +89,12 @@
             <div v-if="expandedAlbums.has(albumName)" class="album-card-body">
               <!-- 册页整组批量输入 -->
               <div class="album-batch-input">
-                <span class="batch-label">整组尺寸：</span>
+                <span class="batch-label">{{ $t('dimensioninput.t4') }}</span>
             <input
               class="dim-input"
               :class="{ filled: albumWidthFilled(albumName) }"
               v-model="albumHeights[albumName]"
-              placeholder="高cm"
+              :placeholder="$t('dimensioninput.a2')"
               type="number"
               step="0.1"
               min="0"
@@ -107,7 +107,7 @@
               class="dim-input"
               :class="{ filled: albumHeightFilled(albumName) }"
               v-model="albumWidths[albumName]"
-              placeholder="宽cm"
+              :placeholder="$t('dimensioninput.a3')"
               type="number"
               step="0.1"
               min="0"
@@ -116,7 +116,7 @@
               @blur="saveAlbumDimension(albumName)"
             />
                 <span class="dim-unit">cm</span>
-                <span class="batch-hint">回车保存整组</span>
+                <span class="batch-hint">{{ $t('dimensioninput.t5') }}</span>
               </div>
 
               <!-- 册页内各开列表 -->
@@ -133,7 +133,7 @@
                     class="record-thumb"
                     @error="e => e.target.style.display='none'"
                   />
-                  <div v-else class="record-thumb-placeholder">无图</div>
+                  <div v-else class="record-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
                   <div class="record-info">
                     <span class="record-title">{{ item.title || '无名' }}</span>
                     <span class="record-meta">
@@ -148,9 +148,9 @@
                   </div>
                   <button
                     class="sync-to-album-btn"
-                    title="将此尺寸同步到整组册页"
+                    :title="$t('dimensioninput.a4')"
                     @click="syncOneToAlbum(item)"
-                  >同步</button>
+                  >{{ $t('dimensioninput.t6') }}</button>
                 </div>
               </div>
             </div>
@@ -170,7 +170,7 @@
             class="record-thumb"
             @error="e => e.target.style.display='none'"
           />
-          <div v-else class="record-thumb-placeholder">无图</div>
+          <div v-else class="record-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
           <div class="record-info">
             <span class="record-title">{{ item.title || '无名' }}</span>
             <span class="record-meta">
@@ -182,7 +182,7 @@
               class="dim-input"
               :class="{ filled: item.artwork_width_cm }"
               v-model.number="heightValues[item.id]"
-              placeholder="高"
+              :placeholder="$t('dimensioninput.a5')"
               type="number"
               step="0.1"
               min="0"
@@ -194,7 +194,7 @@
               class="dim-input"
               :class="{ filled: item.artwork_height_cm }"
               v-model.number="widthValues[item.id]"
-              placeholder="宽"
+              :placeholder="$t('dimensioninput.a6')"
               type="number"
               step="0.1"
               min="0"
@@ -218,6 +218,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import api from '../api'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -470,10 +471,10 @@ async function saveAlbumDimension(albumName) {
   const w = albumWidths.value[albumName]
   console.log('[saveAlbum]', albumName, 'h=', h, 'w=', w)
   if (!h && !w) return
-  if (!h || !w) { ElMessage.warning('请同时填写高和宽'); return }
+  if (!h || !w) { ElMessage.warning(t('dimensioninput.s1')); return }
   const height = parseFloat(h)
   const width = parseFloat(w)
-  if (isNaN(height) || isNaN(width)) { ElMessage.warning('请输入有效数字'); return }
+  if (isNaN(height) || isNaN(width)) { ElMessage.warning(t('dimensioninput.s2')); return }
 
   try {
     console.log('[saveAlbum] sending...', { album_name: albumName, height, width })
@@ -506,7 +507,7 @@ async function saveAlbumDimension(albumName) {
 // 将某一开的尺寸同步到整组册页
 async function syncOneToAlbum(item) {
   if (!item.artwork_width_cm || !item.artwork_height_cm) {
-    ElMessage.warning('该作品尚未录入尺寸')
+    ElMessage.warning(t('dimensioninput.s3'))
     return
   }
   if (!item.album_name) return

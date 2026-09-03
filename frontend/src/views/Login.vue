@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <img src="/logo.png" alt="墨" class="login-logo">
+        <img src="/logo.png" :alt="$t('app.a1')" class="login-logo">
         <h1 class="login-title">{{ siteConfig.title }}</h1>
         <p class="login-subtitle">{{ siteConfig.subtitle }}</p>
       </div>
@@ -10,9 +10,9 @@
       <div class="login-body">
         <!-- 模式切换 -->
         <div class="mode-tabs">
-          <button :class="['mode-tab', { active: mode === 'password' }]" @click="mode = 'password'">密码登录</button>
-          <button :class="['mode-tab', { active: mode === 'register' }]" @click="mode = 'register'">注册</button>
-          <button v-if="siteConfig.login_phone_enabled === 'true'" :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">手机登录</button>
+          <button :class="['mode-tab', { active: mode === 'password' }]" @click="mode = 'password'">{{ $t('login.t1') }}</button>
+          <button :class="['mode-tab', { active: mode === 'register' }]" @click="mode = 'register'">{{ $t('common.register') }}</button>
+          <button v-if="siteConfig.login_phone_enabled === 'true'" :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">{{ $t('login.t2') }}</button>
         </div>
 
         <!-- 手机号 / 账号 -->
@@ -20,7 +20,7 @@
           v-if="mode !== 'register'"
           class="login-input"
           v-model="phone"
-          :placeholder="mode === 'password' ? 'UID / 手机号 / 邮箱 / 昵称' : '请输入手机号'"
+          :placeholder="mode === 'password' ? $t('login.a6') : $t('login.a7')"
           maxlength="20"
           :type="mode === 'code' ? 'tel' : 'text'"
           @keyup.enter="mode === 'code' ? handleCodeLogin() : handlePasswordLogin()"
@@ -29,41 +29,41 @@
         <!-- 验证码模式 -->
         <template v-if="mode === 'code'">
           <div class="code-row">
-            <input class="login-input code-field" v-model="code" placeholder="验证码" maxlength="6" @keyup.enter="handleCodeLogin" />
+            <input class="login-input code-field" v-model="code" :placeholder="$t('login.a1')" maxlength="6" @keyup.enter="handleCodeLogin" />
             <button class="send-code-btn" :disabled="countdown > 0 || sendingCode" @click="handleSendCode">
-              {{ countdown > 0 ? `${countdown}s` : (sendingCode ? '...' : '获取验证码') }}
+              {{ countdown > 0 ? `${countdown}s` : (sendingCode ? '...' : $t('login.t6')) }}
             </button>
           </div>
           <button class="login-submit" :disabled="loading" @click="handleCodeLogin">
-            {{ loading ? '登录中...' : '登录 / 注册' }}
+            {{ loading ? $t('login.t7') : $t('login.t8') }}
           </button>
-          <p class="login-hint">未注册手机号将自动注册</p>
+          <p class="login-hint">{{ $t('login.t3') }}</p>
         </template>
 
         <!-- 密码模式 -->
         <template v-if="mode === 'password'">
           <div class="password-row">
-            <input class="login-input" v-model="password" placeholder="请输入密码" :type="showPwd ? 'text' : 'password'" @keyup.enter="handlePasswordLogin" />
-            <button class="pwd-toggle" @click="showPwd = !showPwd" tabindex="-1">{{ showPwd ? '隐' : '显' }}</button>
+            <input class="login-input" v-model="password" :placeholder="$t('login.a2')" :type="showPwd ? 'text' : 'password'" @keyup.enter="handlePasswordLogin" />
+            <button class="pwd-toggle" @click="showPwd = !showPwd" tabindex="-1">{{ showPwd ? $t('login.t10') : $t('login.t11') }}</button>
           </div>
           <button class="login-submit" :disabled="loading" @click="handlePasswordLogin">
-            {{ loading ? '登录中...' : '密码登录' }}
+            {{ loading ? $t('login.t7') : $t('login.t1') }}
           </button>
-          <p class="login-hint">未设置密码请使用验证码登录</p>
+          <p class="login-hint">{{ $t('login.t4') }}</p>
         </template>
 
         <!-- 注册模式 -->
         <template v-if="mode === 'register'">
-          <input class="login-input" v-model="regUsername" placeholder="用户名（2 位以上）" maxlength="20" @keyup.enter="handleRegister" />
+          <input class="login-input" v-model="regUsername" :placeholder="$t('login.a3')" maxlength="20" @keyup.enter="handleRegister" />
           <div class="password-row">
-            <input class="login-input" v-model="regPassword" placeholder="密码（6 位以上）" :type="showPwd ? 'text' : 'password'" />
-            <button class="pwd-toggle" @click="showPwd = !showPwd" tabindex="-1">{{ showPwd ? '隐' : '显' }}</button>
+            <input class="login-input" v-model="regPassword" :placeholder="$t('login.a4')" :type="showPwd ? 'text' : 'password'" />
+            <button class="pwd-toggle" @click="showPwd = !showPwd" tabindex="-1">{{ showPwd ? $t('login.t10') : $t('login.t11') }}</button>
           </div>
-          <input class="login-input" v-model="regNickname" placeholder="昵称（可选，不填则用用户名）" maxlength="20" @keyup.enter="handleRegister" />
+          <input class="login-input" v-model="regNickname" :placeholder="$t('login.a5')" maxlength="20" @keyup.enter="handleRegister" />
           <button class="login-submit" :disabled="loading" @click="handleRegister">
-            {{ loading ? '注册中...' : '注册' }}
+            {{ loading ? $t('login.t9') : $t('common.register') }}
           </button>
-          <p class="login-hint">注册后自动登录，角色为普通用户</p>
+          <p class="login-hint">{{ $t('login.t5') }}</p>
         </template>
 
       </div>
@@ -77,6 +77,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { ElMessage } from 'element-plus'
 import { siteConfig } from '../config'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -112,44 +113,44 @@ function startCountdown() {
 }
 
 async function handleSendCode() {
-  if (!phone.value.trim()) { ElMessage.warning('请输入手机号'); return }
+  if (!phone.value.trim()) { ElMessage.warning(t('login.s1')); return }
   sendingCode.value = true
   try {
     await authStore.sendCode(phone.value.trim())
-    ElMessage.success('验证码已发送')
+    ElMessage.success(t('login.s2'))
     startCountdown()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '发送失败')
+    ElMessage.error(e?.response?.data?.detail || t('login.s5'))
   } finally { sendingCode.value = false }
 }
 
 async function handleCodeLogin() {
-  if (!phone.value.trim() || !code.value.trim()) { ElMessage.warning('请输入手机号和验证码'); return }
+  if (!phone.value.trim() || !code.value.trim()) { ElMessage.warning(t('login.s3')); return }
   loading.value = true
   try {
     await authStore.loginByCode(phone.value.trim(), code.value.trim())
-    ElMessage.success('登录成功')
+    ElMessage.success(t('login.s4'))
     router.push(route.query.redirect || '/')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '登录失败')
+    ElMessage.error(e?.response?.data?.detail || t('login.s6'))
   } finally { loading.value = false }
 }
 
 async function handlePasswordLogin() {
-  if (!phone.value.trim() || !password.value) { ElMessage.warning('请输入账号和密码'); return }
+  if (!phone.value.trim() || !password.value) { ElMessage.warning(t('login.s5')); return }
   loading.value = true
   try {
     await authStore.loginByPassword(phone.value.trim(), password.value)
-    ElMessage.success('登录成功')
+    ElMessage.success(t('login.s4'))
     router.push(route.query.redirect || '/')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '登录失败')
+    ElMessage.error(e?.response?.data?.detail || t('login.s6'))
   } finally { loading.value = false }
 }
 
 async function handleRegister() {
-  if (!regUsername.value.trim()) { ElMessage.warning('请输入用户名'); return }
-  if (!regPassword.value || regPassword.value.length < 6) { ElMessage.warning('密码至少 6 位'); return }
+  if (!regUsername.value.trim()) { ElMessage.warning(t('login.s6')); return }
+  if (!regPassword.value || regPassword.value.length < 6) { ElMessage.warning(t('login.s7')); return }
   loading.value = true
   try {
     await authStore.register({
@@ -157,10 +158,10 @@ async function handleRegister() {
       password: regPassword.value,
       nickname: regNickname.value.trim() || undefined,
     })
-    ElMessage.success('注册成功')
+    ElMessage.success(t('login.s8'))
     router.push(route.query.redirect || '/')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.detail || '注册失败')
+    ElMessage.error(e?.response?.data?.detail || t('login.s7'))
   } finally { loading.value = false }
 }
 </script>

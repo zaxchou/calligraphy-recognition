@@ -5,6 +5,11 @@ import zh from './zh'
 import en from './en'
 
 const DICTS = { zh, en }
+// URL 参数优先（?lang=en 可直接分享英文版链接），其次 localStorage
+try {
+  const urlLang = new URLSearchParams(location.search).get('lang')
+  if (urlLang === 'zh' || urlLang === 'en') localStorage.setItem('lang', urlLang)
+} catch { /* non-browser env */ }
 const locale = ref(localStorage.getItem('lang') || 'zh')
 
 function format(template, params) {

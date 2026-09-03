@@ -41,10 +41,10 @@
     <el-card shadow="hover" class="trend-card" v-if="filteredTrendChartData.length > 0">
       <template #header>
         <div class="card-header">
-          <span class="card-title">题跋占比趋势</span>
+          <span class="card-title">{{ $t('tibahome.t1') }}</span>
           <div class="trend-stats">
             <el-select v-model="trendArtistFilter" size="small" style="width: 120px; margin-right: 10px;">
-              <el-option label="全部作者" value="all" />
+              <el-option :label="$t('dimensioninput.a1')" value="all" />
               <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
             </el-select>
             <el-tag type="info" size="small">共 {{ filteredTrendChartData.length }} 幅作品</el-tag>

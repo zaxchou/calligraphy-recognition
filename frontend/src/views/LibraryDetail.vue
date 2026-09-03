@@ -4,7 +4,7 @@
     <div class="page-header" v-if="!embedded">
       <div>
         <el-breadcrumb separator="/">
-          <el-breadcrumb-item :to="{ path: '/libraries' }">作品库</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/libraries' }">{{ $t('gallery.title') }}</el-breadcrumb-item>
           <el-breadcrumb-item>{{ library.name }}</el-breadcrumb-item>
         </el-breadcrumb>
         <div class="header-title-row">
@@ -23,17 +23,17 @@
     <!-- 文件名格式提示 -->
     <el-alert v-if="showUploadArea" type="info" :closable="false" show-icon class="filename-tip">
       <template #title>
-        推荐文件名格式：<code>清_李鱓_兰竹图_1750.jpg</code>
-        按下划线分割：朝代_作者_作品名_年份，系统将自动提取元数据
+        {{ $t('librarydetail.t1') }}<code>清_李鱓_兰竹图_1750.jpg</code>
+        {{ $t('librarydetail.t2') }}
       </template>
     </el-alert>
 
     <!-- 批量上传区域 -->
     <div v-if="showUploadArea" class="inline-upload-area">
       <div class="upload-area-header">
-        <h3>批量上传作品</h3>
+        <h3>{{ $t('librarydetail.t3') }}</h3>
         <el-button size="small" text @click="showUploadArea = false">
-          <el-icon><Close /></el-icon> 收起
+          <el-icon><Close /></el-icon> {{ $t('librarydetail.t4') }}
         </el-button>
       </div>
       <TibaUploadInline
@@ -45,19 +45,19 @@
 
     <!-- Tab 切换 -->
     <el-tabs v-model="activeTab" class="detail-tabs">
-      <el-tab-pane label="作品列表" name="artworks">
+      <el-tab-pane :label="$t('librarydetail.a1')" name="artworks">
         <!-- 统一工具栏 -->
         <div class="toolbar unified-toolbar">
           <div class="toolbar-left">
             <el-select v-model="switchingLibraryId" size="small" style="width: 180px" @change="onSwitchLibrary">
-              <el-option label="📚 当前作品库" value="" disabled />
+              <el-option :label="$t('librarydetail.a2')" value="" disabled />
               <el-option v-for="lib in accessibleLibs" :key="lib.id" :label="lib.name" :value="lib.id" />
             </el-select>
             <span class="toolbar-sep">|</span>
             <el-select v-model="sortBy" size="small" style="width: 140px" @change="loadArtworks">
-              <el-option label="上传时间" value="created_at" />
-              <el-option label="画家" value="artist" />
-              <el-option label="年代" value="year" />
+              <el-option :label="$t('librarydetail.a3')" value="created_at" />
+              <el-option :label="$t('suggest.field_artist')" value="artist" />
+              <el-option :label="$t('suggest.field_year')" value="year" />
             </el-select>
             <el-button size="small" @click="toggleOrder">
               {{ order === 'desc' ? '↓ 降序' : '↑ 升序' }}
@@ -71,20 +71,20 @@
               <el-icon><Upload /></el-icon>{{ showUploadArea ? '收起上传' : '上传作品' }}
             </el-button>
             <span class="flow-arrow">→</span>
-            <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" title="从图片中检测题跋区域、OCR提取文字">
-              <el-icon><MagicStick /></el-icon>AI识图
+            <el-button plain size="small" @click="showAiAnalyzeDialog = true" :loading="aiAnalyzing" :title="$t('librarydetail.a4')">
+              <el-icon><MagicStick /></el-icon>{{ $t('librarydetail.t5') }}
             </el-button>
             <span class="flow-arrow">→</span>
-            <el-button plain size="small" @click="goVerifyPage" title="人工校对题跋文字后系统自动提取画材标签">
-              <el-icon><EditPen /></el-icon>校对
+            <el-button plain size="small" @click="goVerifyPage" :title="$t('librarydetail.a5')">
+              <el-icon><EditPen /></el-icon>{{ $t('librarydetail.t6') }}
             </el-button>
             <span class="flow-arrow">→</span>
-            <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" title="对题跋文字进行主题分类与情感分析">
-              <el-icon><Refresh /></el-icon>文字分析
+            <el-button plain size="small" @click="showAnalyzeModeDialog = true" :loading="analyzing" :title="$t('librarydetail.a6')">
+              <el-icon><Refresh /></el-icon>{{ $t('analysis.text') }}
             </el-button>
             <span class="flow-arrow">→</span>
-            <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" title="翻译题跋文字">
-              <el-icon><Bottom /></el-icon>翻译
+            <el-button plain size="small" @click="showTranslateModeDialog = true" :loading="batchTranslating" :title="$t('librarydetail.a7')">
+              <el-icon><Bottom /></el-icon>{{ $t('librarydetail.t7') }}
             </el-button>
           </div>
         </div>
@@ -93,8 +93,8 @@
           <el-skeleton :rows="3" animated />
         </div>
 
-        <el-empty v-else-if="artworks.length === 0" description="库内还没有作品">
-          <el-button type="primary" @click="handleUploadClick" :disabled="!canEdit">上传作品</el-button>
+        <el-empty v-else-if="artworks.length === 0" :description="$t('librarydetail.a8')">
+          <el-button type="primary" @click="handleUploadClick" :disabled="!canEdit">{{ $t('librarydetail.t8') }}</el-button>
         </el-empty>
 
         <!-- 作品网格 -->
@@ -112,19 +112,19 @@
               </div>
               <div class="artwork-status-dots">
                 <el-tooltip :content="artwork.inscription_modern ? '翻译已完成' : '待翻译'" placement="top">
-                  <span class="status-dot" :class="artwork.inscription_modern ? 'done' : 'pending'">译</span>
+                  <span class="status-dot" :class="artwork.inscription_modern ? 'done' : 'pending'">{{ $t('librarydetail.t9') }}</span>
                 </el-tooltip>
                 <el-tooltip :content="artwork.content_analysis ? '文字分析已完成' : '待文字分析'" placement="top">
-                  <span class="status-dot" :class="artwork.content_analysis ? 'done' : 'pending'">析</span>
+                  <span class="status-dot" :class="artwork.content_analysis ? 'done' : 'pending'">{{ $t('librarydetail.t10') }}</span>
                 </el-tooltip>
                 <el-tooltip :content="artwork.inscription_verified ? '题跋已校对' : '题跋待校对'" placement="top">
-                  <span class="status-dot" :class="artwork.inscription_verified ? 'done' : 'pending'">校</span>
+                  <span class="status-dot" :class="artwork.inscription_verified ? 'done' : 'pending'">{{ $t('librarydetail.t11') }}</span>
                 </el-tooltip>
                 <el-tooltip :content="artwork.is_manual_annotated ? '标注已完成' : '标注待定'" placement="top">
-                  <span class="status-dot" :class="artwork.is_manual_annotated ? 'done' : 'pending'">注</span>
+                  <span class="status-dot" :class="artwork.is_manual_annotated ? 'done' : 'pending'">{{ $t('librarydetail.t12') }}</span>
                 </el-tooltip>
                 <el-tooltip :content="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis || artwork.analysis_note)) ? 'AI识图已完成' : 'AI识图待定'" placement="top">
-                  <span class="status-dot" :class="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis || artwork.analysis_note)) ? 'done' : 'pending'">识</span>
+                  <span class="status-dot" :class="(artwork.status === 'analyzed' && (artwork.inscription_content || artwork.content_analysis || artwork.analysis_note)) ? 'done' : 'pending'">{{ $t('librarydetail.t13') }}</span>
                 </el-tooltip>
               </div>
             </div>
@@ -136,11 +136,11 @@
               </p>
             </div>
             <div class="artwork-card-footer" v-if="canEdit">
-              <button class="card-btn" @click.stop="openProofread(artwork)" title="校对题跋"><el-icon><EditPen /></el-icon></button>
-              <button class="card-btn" @click.stop="openEdit(artwork)" title="编辑作品"><el-icon><Edit /></el-icon></button>
-              <button class="card-btn" @click.stop="handleTriggerAnalyze(artwork)" title="AI分析"><el-icon><VideoPlay /></el-icon></button>
-              <button class="card-btn card-btn-danger" @click.stop="handleDeleteArtwork(artwork)" title="删除"><el-icon><Delete /></el-icon></button>
-              <button class="card-btn card-btn-suggest" v-if="!canEdit" @click.stop="openSuggestEdit(artwork)" title="我的意见"><el-icon><Edit /></el-icon></button>
+              <button class="card-btn" @click.stop="openProofread(artwork)" :title="$t('librarydetail.a9')"><el-icon><EditPen /></el-icon></button>
+              <button class="card-btn" @click.stop="openEdit(artwork)" :title="$t('librarydetail.a10')"><el-icon><Edit /></el-icon></button>
+              <button class="card-btn" @click.stop="handleTriggerAnalyze(artwork)" :title="$t('librarydetail.a11')"><el-icon><VideoPlay /></el-icon></button>
+              <button class="card-btn card-btn-danger" @click.stop="handleDeleteArtwork(artwork)" :title="$t('common.delete')"><el-icon><Delete /></el-icon></button>
+              <button class="card-btn card-btn-suggest" v-if="!canEdit" @click.stop="openSuggestEdit(artwork)" :title="$t('btn.suggest')"><el-icon><Edit /></el-icon></button>
             </div>
           </div>
         </div>
@@ -160,82 +160,82 @@
       <!-- 管理 Tab -->
       <el-tab-pane name="manage" v-if="isOwner || isMaintainer">
         <template #label>
-          管理
+          {{ $t('librarydetail.t14') }}
           <el-badge v-if="pendingRequestCount > 0" :value="pendingRequestCount" class="manage-badge" />
         </template>
 
         <el-tabs v-model="manageTab" type="card">
-          <el-tab-pane label="库信息" name="info">
+          <el-tab-pane :label="$t('librarydetail.a12')" name="info">
             <el-form :model="editForm" label-width="100px" class="manage-form">
-              <el-form-item label="名称">
+              <el-form-item :label="$t('librarydetail.a13')">
                 <el-input v-model="editForm.name" maxlength="100" />
               </el-form-item>
-              <el-form-item label="画家">
+              <el-form-item :label="$t('suggest.field_artist')">
                 <el-input v-model="editForm.artist_name" maxlength="100" />
               </el-form-item>
-              <el-form-item label="描述">
+              <el-form-item :label="$t('libraries.a3')">
                 <el-input v-model="editForm.description" type="textarea" :rows="3" />
               </el-form-item>
-              <el-form-item label="可见性">
+              <el-form-item :label="$t('libraries.a4')">
                 <el-radio-group v-model="editForm.visibility">
-                  <el-radio value="private">私有</el-radio>
-                  <el-radio value="public">公开</el-radio>
+                  <el-radio value="private">{{ $t('librarydetail.t15') }}</el-radio>
+                  <el-radio value="public">{{ $t('librarydetail.t16') }}</el-radio>
                 </el-radio-group>
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" @click="handleUpdateLibrary" :loading="saving">保存修改</el-button>
+                <el-button type="primary" @click="handleUpdateLibrary" :loading="saving">{{ $t('librarydetail.t17') }}</el-button>
                 <el-button type="danger" plain @click="handleDeleteLibrary" :disabled="library.artwork_count > 0">
-                  删除作品库
+                  {{ $t('librarydetail.t18') }}
                 </el-button>
               </el-form-item>
             </el-form>
           </el-tab-pane>
 
-          <el-tab-pane label="协作者" name="collaborators">
+          <el-tab-pane :label="$t('librarydetail.a14')" name="collaborators">
             <div class="manage-section">
-              <h3>添加协作者</h3>
+              <h3>{{ $t('librarydetail.t19') }}</h3>
               <div class="add-collab-row">
-                <el-input v-model="newCollabOpenid" placeholder="输入用户 OpenID（mock_xxx）" size="small" style="width: 300px" />
+                <el-input v-model="newCollabOpenid" :placeholder="$t('librarydetail.a15')" size="small" style="width: 300px" />
                 <el-select v-model="newCollabRole" size="small" style="width: 120px">
-                  <el-option label="浏览者" value="viewer" />
-                  <el-option label="编辑者" value="editor" />
-                  <el-option label="维护者" value="maintainer" />
+                  <el-option :label="$t('librarydetail.t21')" value="viewer" />
+                  <el-option :label="$t('librarydetail.t22')" value="editor" />
+                  <el-option :label="$t('librarydetail.t23')" value="maintainer" />
                 </el-select>
-                <el-button type="primary" size="small" @click="handleAddCollaborator">添加</el-button>
+                <el-button type="primary" size="small" @click="handleAddCollaborator">{{ $t('albummanager.t17') }}</el-button>
               </div>
 
-              <h3 style="margin-top: 24px">当前协作者</h3>
+              <h3 style="margin-top: 24px">{{ $t('librarydetail.t20') }}</h3>
               <el-table :data="collaborators" style="width: 100%" v-if="collaborators.length > 0">
-                <el-table-column prop="nickname" label="昵称" />
-                <el-table-column prop="role" label="角色">
+                <el-table-column prop="nickname" :label="$t('librarydetail.a16')" />
+                <el-table-column prop="role" :label="$t('librarydetail.a17')">
                   <template #default="{ row }">
-                    <el-tag v-if="row.role === 'viewer'" size="small">浏览者</el-tag>
-                    <el-tag v-else-if="row.role === 'editor'" type="warning" size="small">编辑者</el-tag>
-                    <el-tag v-else-if="row.role === 'maintainer'" type="danger" size="small">维护者</el-tag>
+                    <el-tag v-if="row.role === 'viewer'" size="small">{{ $t('librarydetail.t21') }}</el-tag>
+                    <el-tag v-else-if="row.role === 'editor'" type="warning" size="small">{{ $t('librarydetail.t22') }}</el-tag>
+                    <el-tag v-else-if="row.role === 'maintainer'" type="danger" size="small">{{ $t('librarydetail.t23') }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="100">
+                <el-table-column :label="$t('engine.actions')" width="100">
                   <template #default="{ row }">
-                    <el-button type="danger" link size="small" @click="handleRemoveCollaborator(row.user_id)">移除</el-button>
+                    <el-button type="danger" link size="small" @click="handleRemoveCollaborator(row.user_id)">{{ $t('librarydetail.t24') }}</el-button>
                   </template>
                 </el-table-column>
               </el-table>
-              <el-empty v-else description="暂无协作者" :image-size="60" />
+              <el-empty v-else :description="$t('librarydetail.a18')" :image-size="60" />
             </div>
           </el-tab-pane>
 
-          <el-tab-pane label="待审核" name="pending">
+          <el-tab-pane :label="$t('c-notificationbell.s3')" name="pending">
             <div class="manage-section">
               <div v-if="pendingRequests.length === 0">
-                <el-empty description="暂无待审核的变更请求" :image-size="80" />
+                <el-empty :description="$t('contentverify.a21')" :image-size="80" />
               </div>
               <div v-else class="request-list">
                 <div v-for="req in pendingRequests" :key="req.id" class="request-card">
                   <div class="request-header">
                     <span class="request-type">
-                      <el-tag v-if="req.request_type === 'edit_field'" size="small">字段修改</el-tag>
-                      <el-tag v-else-if="req.request_type === 'edit_inscription'" type="warning" size="small">题跋修改</el-tag>
-                      <el-tag v-else-if="req.request_type === 'adjust_region'" type="danger" size="small">区域调整</el-tag>
+                      <el-tag v-if="req.request_type === 'edit_field'" size="small">{{ $t('librarydetail.t25') }}</el-tag>
+                      <el-tag v-else-if="req.request_type === 'edit_inscription'" type="warning" size="small">{{ $t('librarydetail.t26') }}</el-tag>
+                      <el-tag v-else-if="req.request_type === 'adjust_region'" type="danger" size="small">{{ $t('librarydetail.t27') }}</el-tag>
                       <el-tag v-else size="small">{{ req.request_type }}</el-tag>
                     </span>
                     <span class="request-meta">
@@ -252,8 +252,8 @@
                     <p class="request-summary" v-if="req.change_summary">{{ req.change_summary }}</p>
                   </div>
                   <div class="request-actions">
-                    <el-button type="success" size="small" @click="handleReview(req.id, 'approve')">通过</el-button>
-                    <el-button type="danger" size="small" @click="handleReview(req.id, 'reject')">拒绝</el-button>
+                    <el-button type="success" size="small" @click="handleReview(req.id, 'approve')">{{ $t('c-notificationbell.s1') }}</el-button>
+                    <el-button type="danger" size="small" @click="handleReview(req.id, 'reject')">{{ $t('contentverify.t7') }}</el-button>
                   </div>
                 </div>
               </div>
@@ -264,7 +264,7 @@
     </el-tabs>
 
     <!-- 作品详情抽屉 -->
-    <el-drawer v-model="showDetailDrawer" title="作品详情" size="600px">
+    <el-drawer v-model="showDetailDrawer" :title="$t('librarydetail.a19')" size="600px">
       <template v-if="selectedArtwork">
         <div class="drawer-thumb">
           <el-image
@@ -281,103 +281,103 @@
           </el-image>
         </div>
         <el-descriptions :column="2" border style="margin-top:16px">
-          <el-descriptions-item label="标题">{{ selectedArtwork.title || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="画家">{{ selectedArtwork.artist || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="年代">{{ selectedArtwork.year || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="时期">{{ selectedArtwork.period || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="画材">{{ selectedArtwork.material || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="装裱">{{ selectedArtwork.mounting_format || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="现藏地">{{ selectedArtwork.current_location || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag v-if="selectedArtwork.status === 'analyzed'" type="success" size="small">已分析</el-tag>
-            <el-tag v-else-if="selectedArtwork.status === 'analyzing'" type="warning" size="small">分析中</el-tag>
-            <el-tag v-else type="info" size="small">待分析</el-tag>
+          <el-descriptions-item :label="$t('suggest.field_title')">{{ selectedArtwork.title || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('suggest.field_artist')">{{ selectedArtwork.artist || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('suggest.field_year')">{{ selectedArtwork.year || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('factor.period')">{{ selectedArtwork.period || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('factor.painting')">{{ selectedArtwork.material || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('librarydetail.a20')">{{ selectedArtwork.mounting_format || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('librarydetail.a21')">{{ selectedArtwork.current_location || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('contentverify.a22')">
+            <el-tag v-if="selectedArtwork.status === 'analyzed'" type="success" size="small">{{ $t('analysis.complete') }}</el-tag>
+            <el-tag v-else-if="selectedArtwork.status === 'analyzing'" type="warning" size="small">{{ $t('librarydetail.t28') }}</el-tag>
+            <el-tag v-else type="info" size="small">{{ $t('librarydetail.t29') }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="备注" :span="2">{{ selectedArtwork.notes || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="流传" :span="2">{{ selectedArtwork.provenance || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('suggest.field_notes')" :span="2">{{ selectedArtwork.notes || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('librarydetail.a22')" :span="2">{{ selectedArtwork.provenance || '-' }}</el-descriptions-item>
         </el-descriptions>
         <div class="drawer-actions" style="margin-top:16px">
-          <el-button type="primary" @click="showDetailDrawer = false; openSuggestEdit(selectedArtwork)">我的意见</el-button>
-          <el-button @click="openTibaDetail">打开完整详情</el-button>
+          <el-button type="primary" @click="showDetailDrawer = false; openSuggestEdit(selectedArtwork)">{{ $t('btn.suggest') }}</el-button>
+          <el-button @click="openTibaDetail">{{ $t('librarydetail.t30') }}</el-button>
         </div>
       </template>
     </el-drawer>
 
     <!-- 我的意见对话框 -->
-    <el-dialog v-model="showSuggestDialog" title="我的意见" width="560px" destroy-on-close>
+    <el-dialog v-model="showSuggestDialog" :title="$t('btn.suggest')" width="560px" destroy-on-close>
       <template v-if="suggestArtwork">
         <p style="margin-bottom:16px;color:var(--stone-gray)">
-          您正在对 <strong>{{ suggestArtwork.title || '未命名' }}</strong> 提出修改意见，提交后由库主审核。
+          {{ $t('librarydetail.t31') }}<strong>{{ suggestArtwork.title || '未命名' }}</strong> {{ $t('librarydetail.t32') }}
         </p>
         <el-form :model="suggestForm" label-position="top">
-          <el-form-item label="修改字段">
+          <el-form-item :label="$t('suggest.field')">
             <el-select v-model="suggestForm.field_name" style="width:100%">
-              <el-option label="标题" value="title" />
-              <el-option label="画家" value="artist" />
-              <el-option label="年代" value="year" />
-              <el-option label="时期" value="period" />
-              <el-option label="画材" value="material" />
-              <el-option label="装裱形式" value="mounting_format" />
-              <el-option label="现藏地" value="current_location" />
-              <el-option label="流传经过" value="provenance" />
-              <el-option label="风格标签" value="style_tags" />
-              <el-option label="题材标签" value="subject_tags" />
-              <el-option label="技法标签" value="technique_tags" />
-              <el-option label="款识作者" value="inscription_author" />
-              <el-option label="款识日期" value="inscription_date" />
-              <el-option label="备注" value="notes" />
-              <el-option label="题跋内容" value="inscription_content" />
+              <el-option :label="$t('suggest.field_title')" value="title" />
+              <el-option :label="$t('suggest.field_artist')" value="artist" />
+              <el-option :label="$t('suggest.field_year')" value="year" />
+              <el-option :label="$t('factor.period')" value="period" />
+              <el-option :label="$t('factor.painting')" value="material" />
+              <el-option :label="$t('librarydetail.a23')" value="mounting_format" />
+              <el-option :label="$t('librarydetail.a21')" value="current_location" />
+              <el-option :label="$t('librarydetail.a24')" value="provenance" />
+              <el-option :label="$t('librarydetail.a25')" value="style_tags" />
+              <el-option :label="$t('librarydetail.a26')" value="subject_tags" />
+              <el-option :label="$t('librarydetail.a27')" value="technique_tags" />
+              <el-option :label="$t('librarydetail.a28')" value="inscription_author" />
+              <el-option :label="$t('librarydetail.a29')" value="inscription_date" />
+              <el-option :label="$t('suggest.field_notes')" value="notes" />
+              <el-option :label="$t('suggest.field_inscription')" value="inscription_content" />
             </el-select>
           </el-form-item>
-          <el-form-item label="原值">
+          <el-form-item :label="$t('suggest.old_value')">
             <div class="old-value-display">{{ suggestForm.old_value }}</div>
           </el-form-item>
-          <el-form-item label="新值" required>
-            <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="在原值基础上修改，或输入新内容" />
+          <el-form-item :label="$t('suggest.new_value')" required>
+            <el-input v-model="suggestForm.new_value" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" :placeholder="$t('suggest.new_value_ph')" />
           </el-form-item>
-          <el-form-item label="修改说明">
-            <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" placeholder="请说明修改依据，如文献出处、专家意见等" />
+          <el-form-item :label="$t('suggest.change_desc')">
+            <el-input v-model="suggestForm.change_summary" type="textarea" :rows="3" :placeholder="$t('suggest.change_desc_ph')" />
           </el-form-item>
         </el-form>
       </template>
       <template #footer>
-        <el-button @click="showSuggestDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">提交意见</el-button>
+        <el-button @click="showSuggestDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmitChange" :loading="submitting">{{ $t('suggest.submit') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 批量翻译选项弹窗 -->
-    <el-dialog v-model="showTranslateModeDialog" title="批量翻译选项" width="420px">
+    <el-dialog v-model="showTranslateModeDialog" :title="$t('librarydetail.a30')" width="420px">
       <div class="translate-mode-options">
         <div class="mode-option" @click="startBatchTranslate('untranslated')">
           <div class="mode-icon"><el-icon><Bottom /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">仅翻译未翻译的（白话文）</div>
-            <div class="mode-desc">跳过已有翻译的记录</div>
+            <div class="mode-title">{{ $t('librarydetail.t33') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t34') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
         <div class="mode-option" @click="startBatchTranslate('all')">
           <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">重新翻译全部（白话文）</div>
-            <div class="mode-desc">覆盖已有翻译</div>
+            <div class="mode-title">{{ $t('librarydetail.t35') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t36') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
         <div class="mode-option" @click="startBatchTranslate('en_untranslated')">
           <div class="mode-icon" style="background:#e8f0f8;"><el-icon><Bottom /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">仅翻译未翻译的（English）</div>
-            <div class="mode-desc">跳过已有英文翻译的记录</div>
+            <div class="mode-title">{{ $t('librarydetail.t37') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t38') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
         <div class="mode-option" @click="startBatchTranslate('en_all')">
           <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">重新翻译全部（English）</div>
-            <div class="mode-desc">覆盖已有英文翻译</div>
+            <div class="mode-title">{{ $t('librarydetail.t39') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t40') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
@@ -385,21 +385,21 @@
     </el-dialog>
 
     <!-- 批量重跑选项弹窗 -->
-    <el-dialog v-model="showAnalyzeModeDialog" title="解析文字" width="420px">
+    <el-dialog v-model="showAnalyzeModeDialog" :title="$t('librarydetail.a31')" width="420px">
       <div class="translate-mode-options">
         <div class="mode-option" @click="startBatchAnalyze('incremental')">
           <div class="mode-icon"><el-icon><Refresh /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">增量重跑</div>
-            <div class="mode-desc">仅处理未分析/已过期的作品</div>
+            <div class="mode-title">{{ $t('librarydetail.t41') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t42') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
         <div class="mode-option" @click="startBatchAnalyze('full')">
           <div class="mode-icon warning"><el-icon><RefreshRight /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">全部重跑</div>
-            <div class="mode-desc">重新分析所有作品（覆盖已有结果）</div>
+            <div class="mode-title">{{ $t('analysis.all') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t43') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
@@ -407,59 +407,59 @@
     </el-dialog>
 
     <!-- 翻译进度弹窗 -->
-    <el-dialog v-model="showTranslateProgress" title="批量翻译进度" width="420px" :close-on-click-modal="false" :show-close="false">
+    <el-dialog v-model="showTranslateProgress" :title="$t('librarydetail.a32')" width="420px" :close-on-click-modal="false" :show-close="false">
       <div class="progress-body">
         <div class="progress-info">
-          <span class="progress-label">正在翻译：</span>
+          <span class="progress-label">{{ $t('librarydetail.t44') }}</span>
           <span class="progress-value">{{ translateProgress.current }} / {{ translateProgress.total }}</span>
         </div>
         <el-progress :percentage="translateProgress.percent" :stroke-width="8" />
         <div class="progress-status">
-          <span v-if="translateProgress.status === 'translating'" class="status-text">翻译中，请稍候...</span>
-          <span v-else-if="translateProgress.status === 'done'" class="status-text done">翻译完成！</span>
+          <span v-if="translateProgress.status === 'translating'" class="status-text">{{ $t('librarydetail.t45') }}</span>
+          <span v-else-if="translateProgress.status === 'done'" class="status-text done">{{ $t('librarydetail.t46') }}</span>
         </div>
       </div>
       <template #footer>
-        <el-button plain @click="cancelBatchTranslate" :disabled="translateProgress.status === 'done'">取消</el-button>
-        <el-button plain @click="showTranslateProgress = false" :disabled="translateProgress.status !== 'done'">关闭</el-button>
+        <el-button plain @click="cancelBatchTranslate" :disabled="translateProgress.status === 'done'">{{ $t('common.cancel') }}</el-button>
+        <el-button plain @click="showTranslateProgress = false" :disabled="translateProgress.status !== 'done'">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 批量分析进度弹窗 -->
-    <el-dialog v-model="showAnalyzeProgress" title="批量重新分析进度" width="420px" :close-on-click-modal="false" :show-close="false">
+    <el-dialog v-model="showAnalyzeProgress" :title="$t('librarydetail.a33')" width="420px" :close-on-click-modal="false" :show-close="false">
       <div class="progress-body">
         <div class="progress-info">
-          <span class="progress-label">正在分析：</span>
+          <span class="progress-label">{{ $t('librarydetail.t47') }}</span>
           <span class="progress-value">{{ analyzeProgress.current }} / {{ analyzeProgress.total }}</span>
         </div>
         <el-progress :percentage="analyzeProgress.percent" :stroke-width="8" />
         <div class="progress-status">
-          <span v-if="analyzeProgress.status === 'analyzing'" class="status-text">分析中，请稍候...</span>
-          <span v-else-if="analyzeProgress.status === 'done'" class="status-text done">分析完成！</span>
+          <span v-if="analyzeProgress.status === 'analyzing'" class="status-text">{{ $t('librarydetail.t48') }}</span>
+          <span v-else-if="analyzeProgress.status === 'done'" class="status-text done">{{ $t('contentverify.s11') }}</span>
         </div>
       </div>
       <template #footer>
-        <el-button plain @click="cancelBatchAnalyze" :disabled="analyzeProgress.status === 'done'">取消</el-button>
-        <el-button plain @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">关闭</el-button>
+        <el-button plain @click="cancelBatchAnalyze" :disabled="analyzeProgress.status === 'done'">{{ $t('common.cancel') }}</el-button>
+        <el-button plain @click="showAnalyzeProgress = false" :disabled="analyzeProgress.status !== 'done'">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- AI识图弹窗 -->
-    <el-dialog v-model="showAiAnalyzeDialog" title="批量AI识图" width="400px">
+    <el-dialog v-model="showAiAnalyzeDialog" :title="$t('librarydetail.a34')" width="400px">
       <div class="translate-mode-options">
         <div class="mode-option" @click="startBatchAiAnalyze('incremental')">
           <div class="mode-icon"><el-icon><MagicStick /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">增量识图</div>
-            <div class="mode-desc">只对未分析的作品进行AI识图</div>
+            <div class="mode-title">{{ $t('librarydetail.t49') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t50') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
         <div class="mode-option warn" @click="startBatchAiAnalyze('analyze')">
           <div class="mode-icon warning"><el-icon><Refresh /></el-icon></div>
           <div class="mode-info">
-            <div class="mode-title">全部重新识图</div>
-            <div class="mode-desc">覆盖已有结果，对库内所有作品重新分析</div>
+            <div class="mode-title">{{ $t('librarydetail.t51') }}</div>
+            <div class="mode-desc">{{ $t('librarydetail.t52') }}</div>
           </div>
           <el-icon class="mode-arrow"><Right /></el-icon>
         </div>
@@ -467,21 +467,21 @@
     </el-dialog>
 
     <!-- AI识图进度弹窗 -->
-    <el-dialog v-model="showAiAnalyzeProgress" title="AI识图进度" width="420px" :close-on-click-modal="false" :show-close="false">
+    <el-dialog v-model="showAiAnalyzeProgress" :title="$t('librarydetail.a35')" width="420px" :close-on-click-modal="false" :show-close="false">
       <div class="progress-body">
         <div class="progress-info">
-          <span class="progress-label">正在分析：</span>
+          <span class="progress-label">{{ $t('librarydetail.t47') }}</span>
           <span class="progress-value">{{ aiAnalyzeProgress.current }} / {{ aiAnalyzeProgress.total }}</span>
         </div>
         <el-progress :percentage="aiAnalyzeProgress.percent" :stroke-width="8" />
         <div class="progress-status">
-          <span v-if="aiAnalyzeProgress.status === 'analyzing'" class="status-text">识图中，请稍候...</span>
-          <span v-else-if="aiAnalyzeProgress.status === 'done'" class="status-text done">识图完成！</span>
+          <span v-if="aiAnalyzeProgress.status === 'analyzing'" class="status-text">{{ $t('librarydetail.t53') }}</span>
+          <span v-else-if="aiAnalyzeProgress.status === 'done'" class="status-text done">{{ $t('librarydetail.t54') }}</span>
         </div>
       </div>
       <template #footer>
-        <el-button plain @click="cancelBatchAiAnalyze" :disabled="aiAnalyzeProgress.status === 'done'">取消</el-button>
-        <el-button plain @click="showAiAnalyzeProgress = false" :disabled="aiAnalyzeProgress.status !== 'done'">关闭</el-button>
+        <el-button plain @click="cancelBatchAiAnalyze" :disabled="aiAnalyzeProgress.status === 'done'">{{ $t('common.cancel') }}</el-button>
+        <el-button plain @click="showAiAnalyzeProgress = false" :disabled="aiAnalyzeProgress.status !== 'done'">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
 
@@ -499,6 +499,7 @@ import { libraryApi, artworkApi, tibaApi } from '../api'
 import TibaUploadInline from '@/components/tiba/TibaUploadInline.vue'
 import TibaEditDialog from '@/components/tiba/TibaEditDialog.vue'
 import { useSSEStream } from '@/composables/useSSEStream'
+import { translate as t } from '@/locales'
 
 const route = useRoute()
 const router = useRouter()
@@ -614,7 +615,7 @@ async function loadLibrary() {
       isMaintainer.value = me?.role === 'maintainer'
     }
   } catch (e) {
-    ElMessage.error('加载作品库失败')
+    ElMessage.error(t('libraries.s1'))
     if (!props.embedded) router.push('/libraries')
   }
 }
@@ -631,7 +632,7 @@ async function loadArtworks() {
     artworks.value = data.items || []
     totalArtworks.value = data.total || 0
   } catch (e) {
-    ElMessage.error('加载作品列表失败')
+    ElMessage.error(t('librarydetail.s1'))
   } finally {
     artworkLoading.value = false
   }
@@ -733,7 +734,7 @@ async function startBatchTranslate(mode) {
       onComplete: () => { batchTranslating.value = false },
     })
   } catch (e) {
-    ElMessage.error('批量翻译失败')
+    ElMessage.error(t('librarydetail.s2'))
     batchTranslating.value = false
   }
 }
@@ -775,7 +776,7 @@ async function startBatchAnalyze(mode) {
       onComplete: () => { analyzing.value = false },
     })
   } catch (e) {
-    ElMessage.error('批量重跑失败')
+    ElMessage.error(t('librarydetail.s3'))
     analyzing.value = false
   }
 }
@@ -817,7 +818,7 @@ async function startBatchAiAnalyze(mode) {
     }
     aiAnalyzeCancelFn = startAiPolling(imageIds)
   } catch (e) {
-    ElMessage.error('触发分析失败')
+    ElMessage.error(t('librarydetail.s4'))
     aiAnalyzing.value = false
     showAiAnalyzeProgress.value = false
   }
@@ -861,7 +862,7 @@ async function handleUpdateLibrary() {
   saving.value = true
   try {
     await libraryApi.update(libraryId.value, editForm)
-    ElMessage.success('保存成功')
+    ElMessage.success(t('librarydetail.s5'))
     await loadLibrary()
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '保存失败')
@@ -872,12 +873,12 @@ async function handleUpdateLibrary() {
 
 async function handleDeleteLibrary() {
   try {
-    await ElMessageBox.confirm('确定要删除此作品库吗？此操作不可撤销。', '确认删除', { type: 'warning' })
+    await ElMessageBox.confirm(t('librarydetail.s12'), '确认删除', { type: 'warning' })
     await libraryApi.delete(libraryId.value, true)
-    ElMessage.success('已删除')
+    ElMessage.success(t('knowledgesearch.s2'))
     if (!props.embedded) router.push('/libraries')
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') ElMessage.error(t('engine.delete_error'))
   }
 }
 
@@ -890,7 +891,7 @@ async function loadCollaborators() {
 
 async function handleAddCollaborator() {
   if (!newCollabOpenid.value.trim()) {
-    ElMessage.warning('请输入用户 OpenID')
+    ElMessage.warning(t('librarydetail.s6'))
     return
   }
   try {
@@ -898,7 +899,7 @@ async function handleAddCollaborator() {
       openid: newCollabOpenid.value.trim(),
       role: newCollabRole.value,
     })
-    ElMessage.success('协作者添加成功')
+    ElMessage.success(t('librarydetail.s7'))
     newCollabOpenid.value = ''
     await loadCollaborators()
   } catch (e) {
@@ -908,12 +909,12 @@ async function handleAddCollaborator() {
 
 async function handleRemoveCollaborator(userId) {
   try {
-    await ElMessageBox.confirm('确定要移除该协作者吗？', '确认', { type: 'warning' })
+    await ElMessageBox.confirm(t('librarydetail.s13'), '确认', { type: 'warning' })
     await libraryApi.removeCollaborator(libraryId.value, userId)
-    ElMessage.success('已移除')
+    ElMessage.success(t('librarydetail.s8'))
     await loadCollaborators()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error(t('common.failure'))
   }
 }
 
@@ -975,11 +976,11 @@ watch(() => suggestForm.field_name, updateSuggestOldValue)
 
 async function handleSubmitChange() {
   if (!suggestForm.new_value.trim()) {
-    ElMessage.warning('请输入新值')
+    ElMessage.warning(t('suggest.enter_new_value'))
     return
   }
   if (suggestForm.new_value === suggestForm.old_value) {
-    ElMessage.warning('新值与原值相同')
+    ElMessage.warning(t('librarydetail.s9'))
     return
   }
   submitting.value = true
@@ -993,7 +994,7 @@ async function handleSubmitChange() {
       new_value: suggestForm.new_value,
       change_summary: suggestForm.change_summary,
     })
-    ElMessage.success('修改建议已提交，等待库主审核')
+    ElMessage.success(t('librarydetail.s10'))
     showSuggestDialog.value = false
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '提交失败')
@@ -1006,7 +1007,7 @@ async function handleSubmitChange() {
 async function handleTriggerAnalyze(artwork) {
   try {
     await artworkApi.triggerAnalysis(artwork.id)
-    ElMessage.success('AI 分析已触发')
+    ElMessage.success(t('librarydetail.s11'))
     await loadArtworks()
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '触发分析失败')
@@ -1017,9 +1018,9 @@ async function handleDeleteArtwork(artwork) {
   try {
     await ElMessageBox.confirm(`确定从作品库中删除「${artwork.title || artwork.filename || '未命名'}」？`, '确认删除', { type: 'warning' })
     await artworkApi.delete(artwork.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('knowledgesearch.s2'))
     await loadArtworks()
-  } catch (e) { if (e !== 'cancel') ElMessage.error('删除失败') }
+  } catch (e) { if (e !== 'cancel') ElMessage.error(t('engine.delete_error')) }
 }
 
 function formatTime(iso) {

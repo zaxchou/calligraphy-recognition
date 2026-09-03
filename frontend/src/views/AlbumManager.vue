@@ -3,8 +3,8 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-title-group">
-        <h1 class="page-title">册页管理</h1>
-        <p class="page-subtitle">成套册页作品管理 · 顺序编排 · 批量操作</p>
+        <h1 class="page-title">{{ $t('albummanager.t1') }}</h1>
+        <p class="page-subtitle">{{ $t('albummanager.t2') }}</p>
         <div class="header-ornament">
           <span class="ornament-line"></span>
           <span class="ornament-dot">◇</span>
@@ -16,7 +16,7 @@
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <el-icon class="is-loading"><Loading /></el-icon>
-      <span>加载数据中...</span>
+      <span>{{ $t('albummanager.t3') }}</span>
     </div>
 
     <div v-else>
@@ -24,16 +24,16 @@
       <div class="stats-bar">
         <div class="stat-card">
           <span class="stat-num">{{ albums.length }}</span>
-          <span class="stat-label">册页总数</span>
+          <span class="stat-label">{{ $t('albummanager.t4') }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-num">{{ totalItems }}</span>
-          <span class="stat-label">作品总数</span>
+          <span class="stat-label">{{ $t('albummanager.t5') }}</span>
         </div>
         <div class="stats-bar-actions">
           <el-button type="primary" size="large" @click="showCreateDialog = true">
             <el-icon><Plus /></el-icon>
-            新建册页
+            {{ $t('albummanager.t6') }}
           </el-button>
         </div>
       </div>
@@ -68,11 +68,11 @@
             <div class="album-actions">
               <el-button size="small" @click="viewAlbum(album.name)">
                 <el-icon><View /></el-icon>
-                查看
+                {{ $t('albummanager.t7') }}
               </el-button>
               <el-button size="small" type="danger" @click="confirmDeleteAlbum(album.name)">
                 <el-icon><Delete /></el-icon>
-                删除
+                {{ $t('common.delete') }}
               </el-button>
             </div>
           </div>
@@ -82,30 +82,30 @@
       <!-- 空状态 -->
       <div v-else class="empty-state">
         <el-icon class="empty-icon"><Collection /></el-icon>
-        <p class="empty-text">暂无册页</p>
-        <p class="empty-hint">点击上方按钮创建第一个册页</p>
+        <p class="empty-text">{{ $t('albummanager.t8') }}</p>
+        <p class="empty-hint">{{ $t('albummanager.t9') }}</p>
       </div>
     </div>
 
     <!-- 新建册页弹窗 -->
     <el-dialog
       v-model="showCreateDialog"
-      title="新建册页"
+      :title="$t('albummanager.t6')"
       width="900px"
       :close-on-click-modal="false"
     >
       <el-form :model="createForm" label-width="70px" @submit.prevent>
-        <el-form-item label="册页名称">
+        <el-form-item :label="$t('albummanager.a1')">
           <el-input
             v-model="createForm.name"
-            placeholder="如：花鸟册页十开"
+            :placeholder="$t('albummanager.a2')"
           />
         </el-form-item>
-        <el-form-item label="选择作品" class="full-width-item">
+        <el-form-item :label="$t('albummanager.a3')" class="full-width-item">
           <div class="selector-toolbar">
             <el-input
               v-model="createSearchKeyword"
-              placeholder="搜索作品标题..."
+              :placeholder="$t('albummanager.a4')"
               clearable
               size="small"
               class="search-input"
@@ -115,8 +115,8 @@
               </template>
             </el-input>
             <div class="selector-actions">
-              <el-button size="small" @click="selectAllFilteredCreate">全选筛选结果</el-button>
-              <el-button size="small" @click="clearSelectedCreate">取消选择</el-button>
+              <el-button size="small" @click="selectAllFilteredCreate">{{ $t('albummanager.t10') }}</el-button>
+              <el-button size="small" @click="clearSelectedCreate">{{ $t('albummanager.t11') }}</el-button>
             </div>
           </div>
           <div class="record-selector">
@@ -132,22 +132,22 @@
                 class="record-thumb"
                 @error="e => e.target.style.display='none'"
               />
-              <div v-else class="record-thumb-placeholder">无图</div>
+              <div v-else class="record-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
               <span class="record-title">
                 {{ record.title || '无名' }}
                 <span v-if="record.year" class="record-year">({{ record.year }}年)</span>
               </span>
             </div>
             <div v-if="filteredCreateRecords.length === 0" class="empty-selector">
-              没有匹配的作品
+              {{ $t('albummanager.t13') }}
             </div>
           </div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="creating" @click="createAlbum">
-          创建
+          {{ $t('albummanager.t14') }}
         </el-button>
       </template>
     </el-dialog>
@@ -166,7 +166,7 @@
           <div v-else class="album-name-edit">
             <el-input
               v-model="editingAlbumName"
-              placeholder="请输入册页名称"
+              :placeholder="$t('albummanager.s1')"
               class="album-name-input"
             />
           </div>
@@ -174,19 +174,19 @@
             <template v-if="!isEditingAlbum">
               <el-button size="small" @click="startEditAlbum">
                 <el-icon><Edit /></el-icon>
-                重命名
+                {{ $t('albummanager.t15') }}
               </el-button>
               <el-button size="small" @click="showAddItemsDialog = true">
                 <el-icon><Plus /></el-icon>
-                添加作品
+                {{ $t('albummanager.t16') }}
               </el-button>
             </template>
             <template v-else>
               <el-button size="small" @click="cancelEditAlbum">
-                取消
+                {{ $t('common.cancel') }}
               </el-button>
               <el-button size="small" type="primary" :loading="renaming" @click="saveAlbumName">
-                保存
+                {{ $t('common.save') }}
               </el-button>
             </template>
           </div>
@@ -195,7 +195,7 @@
         <div class="album-items-toolbar">
           <el-input
             v-model="albumItemsSearchKeyword"
-            placeholder="搜索册页内作品..."
+            :placeholder="$t('albummanager.a5')"
             clearable
             size="small"
             class="album-items-search"
@@ -222,7 +222,7 @@
               class="item-thumb"
               @error="e => e.target.style.display='none'"
             />
-            <div v-else class="item-thumb-placeholder">无图</div>
+            <div v-else class="item-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
             <div class="item-info-wrapper" @click.stop>
               <!-- 标题 -->
               <div class="item-title-row">
@@ -230,7 +230,7 @@
                   v-if="editingItemId !== item.id"
                   class="item-title"
                   @click="startEditItemTitle(item)"
-                  title="点击修改作品名称"
+                  :title="$t('albummanager.a6')"
                 >
                   {{ item.title || '无名' }}
                   <el-icon class="edit-icon"><Edit /></el-icon>
@@ -253,7 +253,7 @@
                   class="item-year-editable"
                   :class="{ 'year-empty': !item.year }"
                   @click="startEditItemYear(item)"
-                  title="点击修改年份"
+                  :title="$t('albummanager.a7')"
                 >
                   {{ item.year ? item.year + '年' : '+ 年份' }}
                   <el-icon v-if="item.year" class="edit-icon"><Edit /></el-icon>
@@ -275,15 +275,15 @@
               :model-value="item.page_role || ''"
               size="small"
               class="item-role-select"
-              placeholder="正文"
+              :placeholder="$t('c-literaturereader.t1')"
               @change="(val) => setItemPageRole(item, val)"
             >
-              <el-option label="正文" value="" />
-              <el-option label="封面" value="cover" />
-              <el-option label="封底" value="back_cover" />
-              <el-option label="题跋页" value="inscription" />
-              <el-option label="附件" value="accessory" />
-              <el-option label="其他" value="other" />
+              <el-option :label="$t('c-literaturereader.t1')" value="" />
+              <el-option :label="$t('封面')" value="cover" />
+              <el-option :label="$t('封底')" value="back_cover" />
+              <el-option :label="$t('role.inscription')" value="inscription" />
+              <el-option :label="$t('附件')" value="accessory" />
+              <el-option :label="$t('albummanager.a8')" value="other" />
             </el-select>
             <div class="item-actions">
               <el-button
@@ -315,20 +315,20 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="showViewDialog = false">关闭</el-button>
+        <el-button @click="showViewDialog = false">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 添加作品到册页弹窗 -->
     <el-dialog
       v-model="showAddItemsDialog"
-      title="添加作品"
+      :title="$t('albummanager.t16')"
       width="900px"
     >
       <div class="selector-toolbar">
         <el-input
           v-model="addSearchKeyword"
-          placeholder="搜索作品标题..."
+          :placeholder="$t('albummanager.a4')"
           clearable
           size="small"
           class="search-input"
@@ -338,8 +338,8 @@
           </template>
         </el-input>
         <div class="selector-actions">
-          <el-button size="small" @click="selectAllFilteredAdd">全选筛选结果</el-button>
-          <el-button size="small" @click="clearSelectedAdd">取消选择</el-button>
+          <el-button size="small" @click="selectAllFilteredAdd">{{ $t('albummanager.t10') }}</el-button>
+          <el-button size="small" @click="clearSelectedAdd">{{ $t('albummanager.t11') }}</el-button>
         </div>
       </div>
       <div class="add-items-selector">
@@ -355,17 +355,17 @@
             class="record-thumb"
             @error="e => e.target.style.display='none'"
           />
-          <div v-else class="record-thumb-placeholder">无图</div>
+          <div v-else class="record-thumb-placeholder">{{ $t('albummanager.t12') }}</div>
           <span class="record-title">{{ record.title || '无名' }}</span>
         </div>
         <div v-if="filteredAddRecords.length === 0" class="empty-selector">
-          没有匹配的作品
+          {{ $t('albummanager.t13') }}
         </div>
       </div>
       <template #footer>
-        <el-button @click="showAddItemsDialog = false">取消</el-button>
+        <el-button @click="showAddItemsDialog = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="adding" @click="addItemsToAlbum">
-          添加
+          {{ $t('albummanager.t17') }}
         </el-button>
       </template>
     </el-dialog>
@@ -377,6 +377,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Plus, View, Delete, Collection, Picture, Top, Bottom, Search, Edit } from '@element-plus/icons-vue'
 import { tibaApi } from '../api'
+import { translate as t } from '@/locales'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -548,7 +549,7 @@ function toggleAddingRecord(id) {
 
 async function createAlbum() {
   if (!createForm.value.name.trim()) {
-    ElMessage.warning('请输入册页名称')
+    ElMessage.warning(t('albummanager.s1'))
     return
   }
   creating.value = true
@@ -561,7 +562,7 @@ async function createAlbum() {
     console.log('发送创建册页请求，payload:', payload)
     console.log('payload.record_ids 类型:', typeof payload.record_ids, '是否数组:', Array.isArray(payload.record_ids))
     await tibaApi.createAlbum(payload)
-    ElMessage.success('册页创建成功')
+    ElMessage.success(t('albummanager.s2'))
     showCreateDialog.value = false
     createForm.value = { name: '' }
     selectedRecordIds.value = []
@@ -601,7 +602,7 @@ async function confirmDeleteAlbum(name) {
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
     await tibaApi.deleteAlbum(name)
-    ElMessage.success('册页已删除')
+    ElMessage.success(t('albummanager.s3'))
     await loadData()
   } catch (e) {
     if (e !== 'cancel') {
@@ -613,12 +614,12 @@ async function confirmDeleteAlbum(name) {
 async function confirmRemoveItem(id) {
   try {
     await ElMessageBox.confirm(
-      '确定要将该作品移出册页吗？',
+      t('albummanager.s11'),
       '移出作品',
       { confirmButtonText: '确定移出', cancelButtonText: '取消', type: 'warning' }
     )
     await tibaApi.removeItemFromAlbum(currentAlbum.value.name, id)
-    ElMessage.success('作品已移出')
+    ElMessage.success(t('albummanager.s4'))
     await viewAlbum(currentAlbum.value.name)
     await loadData()
   } catch (e) {
@@ -642,7 +643,7 @@ async function moveItem(filteredIndex, direction) {
       currentAlbum.value.name,
       newOrder.map(i => i.id)
     )
-    ElMessage.success('顺序已更新')
+    ElMessage.success(t('albummanager.s5'))
     currentAlbumItems.value = newOrder
   } catch (e) {
     ElMessage.error('更新顺序失败: ' + e.message)
@@ -651,13 +652,13 @@ async function moveItem(filteredIndex, direction) {
 
 async function addItemsToAlbum() {
   if (addingRecordIds.value.length === 0) {
-    ElMessage.warning('请选择要添加的作品')
+    ElMessage.warning(t('albummanager.s6'))
     return
   }
   adding.value = true
   try {
     await tibaApi.addItemsToAlbum(currentAlbum.value.name, addingRecordIds.value)
-    ElMessage.success('作品已添加')
+    ElMessage.success(t('albummanager.s7'))
     showAddItemsDialog.value = false
     addingRecordIds.value = []
     await viewAlbum(currentAlbum.value.name)
@@ -682,7 +683,7 @@ function cancelEditAlbum() {
 
 async function saveAlbumName() {
   if (!editingAlbumName.value.trim()) {
-    ElMessage.warning('请输入册页名称')
+    ElMessage.warning(t('albummanager.s1'))
     return
   }
   if (editingAlbumName.value.trim() === currentAlbum.value.name) {
@@ -692,7 +693,7 @@ async function saveAlbumName() {
   renaming.value = true
   try {
     await tibaApi.renameAlbum(currentAlbum.value.name, editingAlbumName.value.trim())
-    ElMessage.success('册页名称已更新')
+    ElMessage.success(t('albummanager.s8'))
     isEditingAlbum.value = false
     // 重新加载册页数据
     await viewAlbum(editingAlbumName.value.trim())
@@ -733,7 +734,7 @@ async function saveItemTitle(item) {
   savingItemTitle.value = true
   try {
     await tibaApi.updateImageInfo(item.id, { title: newTitle })
-    ElMessage.success('作品名称已更新')
+    ElMessage.success(t('albummanager.s9'))
     // 更新本地数据
     item.title = newTitle
     // 同时更新 allRecords 中对应的数据
@@ -776,7 +777,7 @@ async function saveItemYear(item) {
   try {
     const yearNum = newYear ? Number(newYear) : null
     await tibaApi.updateImageInfo(item.id, { year: yearNum })
-    ElMessage.success('年份已更新')
+    ElMessage.success(t('albummanager.s10'))
     item.year = yearNum
     const record = allRecords.value.find(r => r.id === item.id)
     if (record) record.year = yearNum

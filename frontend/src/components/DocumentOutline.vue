@@ -2,18 +2,18 @@
   <div class="document-outline">
     <div class="outline-header">
       <ListTree class="icon" />
-      <span>文档大纲</span>
+      <span>{{ $t('c-bookreadermodal.t6') }}</span>
       <span v-if="outline.length" class="outline-count">{{ outline.length }}</span>
     </div>
     
     <div v-if="loading" class="outline-loading">
       <Loader2 class="icon spin" />
-      <span>加载大纲...</span>
+      <span>{{ $t('c-documentoutline.t1') }}</span>
     </div>
     
     <div v-else-if="!outline.length" class="outline-empty">
       <FileText class="icon" />
-      <span>暂无大纲信息</span>
+      <span>{{ $t('c-documentoutline.t2') }}</span>
     </div>
     
     <div v-else class="outline-tree">

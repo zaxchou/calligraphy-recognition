@@ -3,22 +3,22 @@
     <div class="as-toolbar">
       <div class="as-search">
         <el-icon class="as-search-icon"><Search /></el-icon>
-        <input v-model="searchText" placeholder="搜索印章名称..." class="as-search-input" />
+        <input v-model="searchText" :placeholder="$t('artist.artistseals.a1')" class="as-search-input" />
         <span v-if="searchText" class="as-search-clear" @click="searchText = ''">✕</span>
       </div>
       <span class="as-count">{{ filteredSeals.length }} / {{ seals.length }} 方</span>
     </div>
 
-    <div v-if="loading" class="av-loading">加载中...</div>
-    <div v-else-if="seals.length === 0" class="av-empty">暂无印章数据</div>
-    <div v-else-if="filteredSeals.length === 0" class="av-empty">无匹配印章</div>
+    <div v-if="loading" class="av-loading">{{ $t('common.loading') }}</div>
+    <div v-else-if="seals.length === 0" class="av-empty">{{ $t('sealmanager.a1') }}</div>
+    <div v-else-if="filteredSeals.length === 0" class="av-empty">{{ $t('artist.artistseals.t1') }}</div>
     <div v-else class="as-grid">
       <div v-for="s in filteredSeals" :key="s.id" class="as-card" @click="openLightbox(s)">
         <div v-if="s.images && s.images.length > 0" class="as-image-wrap">
           <div v-if="s.images.length > 1" class="as-badge">{{ s.images.length }}图</div>
           <img :src="getImageUrl(s.images[0].thumb_url || s.images[0].path || s.images[0])" class="as-image" :alt="s.name" />
         </div>
-        <div v-else class="as-image-placeholder">印</div>
+        <div v-else class="as-image-placeholder">{{ $t('artist.artistseals.t2') }}</div>
         <div class="as-info">
           <div class="as-name">{{ s.name }}</div>
           <div class="as-type">{{ s.seal_type || '印章' }}</div>

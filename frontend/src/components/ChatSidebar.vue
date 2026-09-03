@@ -1,12 +1,12 @@
 <template>
   <div class="cs-sidebar">
     <button class="cs-new-btn" @click="$emit('newChat')">
-      <PlusCircle class="icon-sm" /> 新对话
+      <PlusCircle class="icon-sm" /> {{ $t('c-chatfloat.a3') }}
     </button>
 
     <div class="cs-list">
       <div v-if="sessions.length === 0" class="cs-empty">
-        暂无对话记录
+        {{ $t('c-chatsidebar.t1') }}
       </div>
       <div
         v-for="s in sessions"
@@ -23,7 +23,7 @@
             </span>
           </div>
         </div>
-        <button class="cs-del-btn" @click.stop="$emit('delete', s.id)" title="删除">
+        <button class="cs-del-btn" @click.stop="$emit('delete', s.id)" :title="$t('common.delete')">
           <Trash2 class="icon-xs" />
         </button>
       </div>

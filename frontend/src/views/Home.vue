@@ -41,18 +41,18 @@
 
         <div class="hero-content t-stagger is-shown">
           <h1 class="hero-title t-stagger-line">{{ siteConfig.title }}<br/><span class="hero-title-accent">{{ siteConfig.subtitle }}</span></h1>
-          <p class="hero-subtitle t-stagger-line t-stagger-line--2">题跋识别 · 字体溯源 · 构图分析 · 知识检索</p>
+          <p class="hero-subtitle t-stagger-line t-stagger-line--2">{{ $t('home.t1') }}</p>
           <div class="hero-actions t-stagger-line t-stagger-line--3">
             <button class="btn-primary" @click="$router.push('/tiba')">
-              <span>开始分析</span>
+              <span>{{ $t('home.t2') }}</span>
               <el-icon><ArrowRight /></el-icon>
             </button>
             <button class="btn-secondary" @click="scrollToFeatures">
-              <span>了解功能</span>
+              <span>{{ $t('home.t3') }}</span>
             </button>
           </div>
           <div v-if="!loading && stats.total > 0" class="hero-trust t-stagger-line t-stagger-line--4">
-            已收录 <strong>{{ stats.total }}</strong> 幅画作 · <strong>{{ artists.length }}</strong> 位艺术家
+            {{ $t('home.t4') }}<strong>{{ stats.total }}</strong> {{ $t('home.t5') }}<strong>{{ artists.length }}</strong> {{ $t('home.t6') }}
           </div>
         </div>
       </div>
@@ -62,27 +62,27 @@
         <div class="stats-wall-inner">
           <div class="stat-item">
             <div class="stat-num">{{ formatNumber(stats.total) }}</div>
-            <div class="stat-label">收录画作</div>
+            <div class="stat-label">{{ $t('home.t7') }}</div>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
             <div class="stat-num">{{ formatNumber(artists.length) }}</div>
-            <div class="stat-label">艺术家</div>
+            <div class="stat-label">{{ $t('app.t1') }}</div>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
             <div class="stat-num">{{ formatNumber(stats.albums?.count || 0) }}</div>
-            <div class="stat-label">册页套数</div>
+            <div class="stat-label">{{ $t('home.t8') }}</div>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
             <div class="stat-num">{{ formatNumber(stats.tags?.count || 0) }}</div>
-            <div class="stat-label">标签类别</div>
+            <div class="stat-label">{{ $t('home.t9') }}</div>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
             <div class="stat-num">{{ formatNumber(stats.albums?.item_count || 0) }}</div>
-            <div class="stat-label">册页作品</div>
+            <div class="stat-label">{{ $t('home.t10') }}</div>
           </div>
         </div>
       </div>
@@ -92,7 +92,7 @@
     <div class="features-section-light" ref="featuresRef">
       <div class="section-header-light">
         <div class="section-accent-bar"></div>
-        <h2 class="section-title-light">核心功能</h2>
+        <h2 class="section-title-light">{{ $t('home.t11') }}</h2>
         <span class="section-line-light"></span>
       </div>
       <div class="feature-cards-light">
@@ -140,15 +140,16 @@
     <div class="quote-section">
       <div class="quote-content">
         <div class="quote-ornament">&#10077;</div>
-        <p class="quote-text">书之妙道，神采为上，形质次之</p>
-        <p class="quote-author">—— 王僧虔 《笔意赞》</p>
+        <p class="quote-text">{{ $t('home.t12') }}</p>
+        <p class="quote-author">{{ $t('home.t13') }}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import {
+import { translate as t } from '@/locales' ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { siteConfig } from '../config'
 import api from '../api'
@@ -178,7 +179,7 @@ const showVideoBg = ref(true)
 // ── 功能卡片配置 ──────────────────────────────────
 const features = [
   { 
-    title: '艺术家百科', 
+    title: t('home.s1'), 
     desc: '探索历代书画名家生平、作品与艺术风格', 
     path: '/artists', 
     icon: 'UserFilled', 
@@ -187,7 +188,7 @@ const features = [
     tag: '百科',
   },
   { 
-    title: '写意知识库', 
+    title: t('home.s2'), 
     desc: '潘天寿、黄宾虹等名家题跋印章与绘画作品语义检索', 
     path: '/knowledge', 
     icon: 'Collection', 
@@ -196,7 +197,7 @@ const features = [
     tag: '知识检索',
   },
   { 
-    title: '题跋空间分析', 
+    title: t('home.s3'), 
     desc: 'AI 自动识别画作中的题跋、绘画、留白区域', 
     path: '/tiba', 
     icon: 'DataAnalysis', 
@@ -205,7 +206,7 @@ const features = [
     tag: 'AI识别',
   },
   { 
-    title: '书法字体识别', 
+    title: t('home.s4'), 
     desc: '上传书法单字，智能匹配碑帖来源与相似度', 
     path: '/recognize', 
     icon: 'Camera', 
@@ -214,7 +215,7 @@ const features = [
     tag: '字体溯源',
   },
   { 
-    title: '潘天寿构图体系', 
+    title: t('home.s5'), 
     desc: '基于潘天寿教学理论，AI 分析国画构图与起承转合', 
     path: '/composition', 
     icon: 'PictureFilled', 
@@ -223,7 +224,7 @@ const features = [
     tag: '构图分析',
   },
   { 
-    title: '起承转合分析', 
+    title: t('home.s6'), 
     desc: '运用多模态 AI 对国画构图的起承转合进行深度解读', 
     path: '/qczh', 
     icon: 'TrendCharts', 

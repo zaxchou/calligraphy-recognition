@@ -5,18 +5,18 @@
     <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistMap' || $route.name === 'ArtistLiteratureReader'))" class="main-header">
       <div class="header-content">
         <router-link to="/" class="logo">
-          <img src="/logo.png" alt="墨" class="logo-img">
+          <img src="/logo.png" :alt="$t('app.a1')" class="logo-img">
           <div class="logo-text">
             <span class="logo-main">{{ displayTitle }}</span>
             <span class="logo-sub">{{ displaySubtitle }}</span>
           </div>
         </router-link>
         <nav class="main-nav">
-          <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">首页</span></router-link>
-          <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">艺术家</span></router-link>
-          <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="handleTibaNav"><span class="nav-text">题跋分析</span></router-link>
-          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
-          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
+          <router-link to="/" class="nav-item" active-class="active" exact-active-class="active"><span class="nav-text">{{ $t('nav.home') }}</span></router-link>
+          <router-link to="/artists" class="nav-item" active-class="active"><span class="nav-text">{{ $t('app.t1') }}</span></router-link>
+          <router-link to="/tiba" class="nav-item" :class="{ active: $route.path.startsWith('/tiba') }" @click="handleTibaNav"><span class="nav-text">{{ $t('app.t2') }}</span></router-link>
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">{{ $t('app.t3') }}</span></router-link>
+          <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">{{ $t('app.t4') }}</span></router-link>
         </nav>
         <div class="header-right">
           <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">{{ locale === 'zh' ? 'EN' : '中' }}</button>
@@ -31,22 +31,22 @@
                   {{ authStore.nickname }} <span class="user-arrow">▾</span>
                 </button>
                 <div class="t-morph-menu">
-                  <div class="user-dropdown-item" @click="go('/user/center')"><el-icon><User /></el-icon> 用户中心</div>
-                  <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')"><el-icon><Setting /></el-icon> 管理后台</div>
-                  <div class="user-dropdown-item" @click="go('/my/knowledge')"><el-icon><FolderOpened /></el-icon> 我的知识库</div>
-                  <div class="user-dropdown-item" @click="go('/content-analysis?my=1')"><el-icon><DataAnalysis /></el-icon> 我的分析历史</div>
-                  <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">退出登录</div>
+                  <div class="user-dropdown-item" @click="go('/user/center')"><el-icon><User /></el-icon> {{ $t('app.t5') }}</div>
+                  <div v-if="authStore.isEditor" class="user-dropdown-item" @click="go('/admin')"><el-icon><Setting /></el-icon> {{ $t('app.t6') }}</div>
+                  <div class="user-dropdown-item" @click="go('/my/knowledge')"><el-icon><FolderOpened /></el-icon> {{ $t('app.t7') }}</div>
+                  <div class="user-dropdown-item" @click="go('/content-analysis?my=1')"><el-icon><DataAnalysis /></el-icon> {{ $t('app.t8') }}</div>
+                  <div class="user-dropdown-item user-dropdown-divider" @click="handleLogout()">{{ $t('common.logout') }}</div>
                 </div>
               </div>
             </div>
           </template>
           <router-link v-else to="/login" class="user-login-link">
-            <span class="nav-text">登录</span>
+            <span class="nav-text">{{ $t('common.login') }}</span>
           </router-link>
           </div>
         </div>
         <!-- 移动端汉堡菜单按钮 -->
-        <button class="mobile-menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
+        <button class="mobile-menu-toggle" @click="toggleMobileMenu" :aria-label="$t('app.a2')">
           <el-icon :size="22"><Menu /></el-icon>
         </button>
       </div>
@@ -59,51 +59,51 @@
     <div v-show="mobileMenuOpen" class="mobile-drawer" :data-open="mobileMenuOpen ? 'true' : 'false'">
         <div class="drawer-header">
           <div class="drawer-logo">
-            <img src="/logo.png" alt="墨" class="drawer-logo-img">
+            <img src="/logo.png" :alt="$t('app.a1')" class="drawer-logo-img">
             <div class="drawer-logo-text">
               <span class="drawer-logo-main">{{ displayTitle }}</span>
             </div>
           </div>
-          <button class="drawer-close" @click="closeMobileMenu" aria-label="关闭菜单">
+          <button class="drawer-close" @click="closeMobileMenu" :aria-label="$t('app.a3')">
             <el-icon :size="20"><Close /></el-icon>
           </button>
         </div>
         <nav class="drawer-nav">
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/')">
-            <span class="nav-text">首页</span>
+            <span class="nav-text">{{ $t('nav.home') }}</span>
           </a>
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/artists')">
-            <span class="nav-text">艺术家</span>
+            <span class="nav-text">{{ $t('app.t1') }}</span>
           </a>
           <a class="drawer-nav-item" @click.prevent="drawerNavigate('/tiba')">
-            <span class="nav-text">题跋分析</span>
+            <span class="nav-text">{{ $t('app.t2') }}</span>
           </a>
           <a v-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/composition')">
-            <span class="nav-text">潘天寿教你构图</span>
+            <span class="nav-text">{{ $t('app.t3') }}</span>
           </a>
           <a v-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/qczh')">
-            <span class="nav-text">起承转合</span>
+            <span class="nav-text">{{ $t('app.t4') }}</span>
           </a>
           <template v-if="authStore.isLoggedIn && siteConfig.readonly !== 'true'">
-            <div class="drawer-section-label">个人中心</div>
+            <div class="drawer-section-label">{{ $t('app.t9') }}</div>
             <a class="drawer-nav-item" @click.prevent="drawerNavigate('/user/center')">
-              <span class="nav-text"><el-icon><User /></el-icon> 用户中心</span>
+              <span class="nav-text"><el-icon><User /></el-icon> {{ $t('app.t5') }}</span>
             </a>
             <a v-if="authStore.isEditor" class="drawer-nav-item" @click.prevent="drawerNavigate('/admin')">
-              <span class="nav-text"><el-icon><Setting /></el-icon> 管理后台</span>
+              <span class="nav-text"><el-icon><Setting /></el-icon> {{ $t('app.t6') }}</span>
             </a>
             <a class="drawer-nav-item" @click.prevent="drawerNavigate('/my/knowledge')">
-              <span class="nav-text"><el-icon><FolderOpened /></el-icon> 我的知识库</span>
+              <span class="nav-text"><el-icon><FolderOpened /></el-icon> {{ $t('app.t7') }}</span>
             </a>
             <a class="drawer-nav-item" @click.prevent="drawerNavigate('/content-analysis')">
-              <span class="nav-text"><el-icon><DataAnalysis /></el-icon> 我的分析历史</span>
+              <span class="nav-text"><el-icon><DataAnalysis /></el-icon> {{ $t('app.t8') }}</span>
             </a>
             <div class="drawer-nav-item drawer-logout-item" @click="handleLogout(); closeMobileMenu()">
-              <span class="nav-text">退出登录</span>
+              <span class="nav-text">{{ $t('common.logout') }}</span>
             </div>
           </template>
           <a v-else-if="siteConfig.readonly !== 'true'" class="drawer-nav-item" @click.prevent="drawerNavigate('/login')">
-            <span class="nav-text">登录</span>
+            <span class="nav-text">{{ $t('common.login') }}</span>
           </a>
         </nav>
       </div>
@@ -126,7 +126,7 @@
         <a href="https://molin.wiki" target="_blank" rel="noopener">molin.wiki</a>
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026019654号-2</a>
       </div>
-      <div class="fa-text">墨林百科 · 周豪</div>
+      <div class="fa-text">{{ $t('app.t10') }}</div>
     </footer>
   </div>
   </el-config-provider>

@@ -1,29 +1,29 @@
 <template>
   <div class="my-stats-page">
     <div class="page-header">
-      <h1>📈 我的统计</h1>
-      <p class="page-desc">我的作品库数据分析</p>
+      <h1>{{ $t('mystats.t1') }}</h1>
+      <p class="page-desc">{{ $t('mystats.t2') }}</p>
     </div>
 
     <div v-if="!authStore.isLoggedIn" class="login-hint">
       <el-icon :size="40"><Lock /></el-icon>
-      <p>请先登录后查看个人统计</p>
+      <p>{{ $t('mystats.t3') }}</p>
     </div>
 
     <div v-else-if="loading" class="loading-state">
       <el-icon class="is-loading" :size="32"><Loading /></el-icon>
-      <p>加载中...</p>
+      <p>{{ $t('common.loading') }}</p>
     </div>
 
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
-      <el-button @click="loadStats">重试</el-button>
+      <el-button @click="loadStats">{{ $t('mapmode.t2') }}</el-button>
     </div>
 
     <div v-else-if="!stats || stats.total_artworks === 0" class="empty-state">
       <el-icon :size="48" color="#ccc"><DataAnalysis /></el-icon>
-      <p>还没有上传任何作品，统计数据为空</p>
-      <el-button type="primary" @click="$router.push('/libraries')">去上传作品</el-button>
+      <p>{{ $t('mystats.t4') }}</p>
+      <el-button type="primary" @click="$router.push('/libraries')">{{ $t('mystats.t5') }}</el-button>
     </div>
 
     <template v-else>
@@ -31,20 +31,20 @@
       <div class="overview-cards">
         <div class="stat-card">
           <span class="stat-value">{{ stats.total_artworks }}</span>
-          <span class="stat-label">我的作品总数</span>
+          <span class="stat-label">{{ $t('mystats.t6') }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-value">{{ stats.total_libraries || 0 }}</span>
-          <span class="stat-label">我的作品库</span>
+          <span class="stat-label">{{ $t('libraries.t1') }}</span>
         </div>
       </div>
 
       <!-- 情感分布 -->
       <div class="stat-section" v-if="stats.sentiment_distribution">
-        <h3>题跋情感分布</h3>
+        <h3>{{ $t('mystats.t7') }}</h3>
         <table class="d-table">
           <tr class="d-tr d-th">
-            <td class="d-td">情感</td><td class="d-td">数量</td><td class="d-td">占比</td>
+            <td class="d-td">{{ $t('contentanalysis.a7') }}</td><td class="d-td">{{ $t('mystats.t8') }}</td><td class="d-td">{{ $t('mystats.t9') }}</td>
           </tr>
           <tr class="d-tr" v-for="(v, k) in stats.sentiment_distribution" :key="k">
             <td class="d-td">
@@ -59,10 +59,10 @@
 
       <!-- 时期分布 -->
       <div class="stat-section" v-if="stats.period_distribution">
-        <h3>时期分布</h3>
+        <h3>{{ $t('mystats.t10') }}</h3>
         <table class="d-table">
           <tr class="d-tr d-th">
-            <td class="d-td">时期</td><td class="d-td">数量</td><td class="d-td">占比</td>
+            <td class="d-td">{{ $t('factor.period') }}</td><td class="d-td">{{ $t('mystats.t8') }}</td><td class="d-td">{{ $t('mystats.t9') }}</td>
           </tr>
           <tr class="d-tr" v-for="(v, k) in stats.period_distribution" :key="k">
             <td class="d-td">{{ k || '未知' }}</td>
@@ -74,10 +74,10 @@
 
       <!-- 尺寸分布 -->
       <div class="stat-section" v-if="stats.size_distribution">
-        <h3>尺寸分布</h3>
+        <h3>{{ $t('mystats.t11') }}</h3>
         <table class="d-table">
           <tr class="d-tr d-th">
-            <td class="d-td">分类</td><td class="d-td">数量</td>
+            <td class="d-td">{{ $t('engine.category') }}</td><td class="d-td">{{ $t('mystats.t8') }}</td>
           </tr>
           <tr class="d-tr" v-for="(v, k) in stats.size_distribution" :key="k">
             <td class="d-td">{{ k }}</td>

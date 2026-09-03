@@ -2,8 +2,8 @@
   <div class="tubi-ranking tubi-page">
     <!-- 页面标题 -->
     <div class="tubi-header">
-      <h1>作品列表</h1>
-      <p class="sub">多维度作品排序与筛选</p>
+      <h1>{{ $t('librarydetail.a1') }}</h1>
+      <p class="sub">{{ $t('tibaranking.t1') }}</p>
       <div class="header-ornament">
         <span class="ornament-line"></span>
         <span class="ornament-dot">◇</span>
@@ -15,11 +15,11 @@
     <el-card shadow="hover" class="ranking-list-card">
       <!-- 标签筛选指示条 -->
       <div v-if="filterTag" class="filter-indicator">
-        <span>当前筛选: <strong>{{ filterTag }}</strong></span>
+        <span>{{ $t('tibalist.t2') }}<strong>{{ filterTag }}</strong></span>
         <span class="filter-count">共 {{ total }} 幅</span>
         <el-button size="small" text @click="clearTagFilter">
           <el-icon><Close /></el-icon>
-          清除
+          {{ $t('annotationverify.t4') }}
         </el-button>
       </div>
       <template #header>
@@ -30,7 +30,7 @@
               size="small" 
               @click="sortBy('inscription')"
             >
-              题跋比
+              {{ $t('tibaranking.t2') }}
               <el-icon v-if="activeSort === 'inscription'" class="sort-icon">
                 <ArrowDown v-if="sortDirection === 'desc'" />
                 <ArrowUp v-else />
@@ -41,7 +41,7 @@
               size="small" 
               @click="sortBy('painting')"
             >
-              绘画比
+              {{ $t('tibaranking.t3') }}
               <el-icon v-if="activeSort === 'painting'" class="sort-icon">
                 <ArrowDown v-if="sortDirection === 'desc'" />
                 <ArrowUp v-else />
@@ -52,7 +52,7 @@
               size="small" 
               @click="sortBy('blank')"
             >
-              留白比
+              {{ $t('tibaranking.t4') }}
               <el-icon v-if="activeSort === 'blank'" class="sort-icon">
                 <ArrowDown v-if="sortDirection === 'desc'" />
                 <ArrowUp v-else />
@@ -63,7 +63,7 @@
               size="small" 
               @click="sortBy('year')"
             >
-              年代
+              {{ $t('suggest.field_year') }}
               <el-icon v-if="activeSort === 'year'" class="sort-icon">
                 <ArrowDown v-if="sortDirection === 'desc'" />
                 <ArrowUp v-else />
@@ -74,7 +74,7 @@
               size="small" 
               @click="sortBy('created')"
             >
-              创建时间
+              {{ $t('tibalist.t11') }}
               <el-icon v-if="activeSort === 'created'" class="sort-icon">
                 <ArrowDown v-if="sortDirection === 'desc'" />
                 <ArrowUp v-else />
@@ -85,7 +85,7 @@
               size="small" 
               @click="sortBy('updated')"
             >
-              更新时间
+              {{ $t('tibaranking.t5') }}
               <el-icon v-if="activeSort === 'updated'" class="sort-icon">
                 <ArrowDown v-if="sortDirection === 'desc'" />
                 <ArrowUp v-else />
@@ -96,7 +96,7 @@
             <div class="search-box">
               <el-input 
                 v-model="searchKeyword" 
-                placeholder="搜索标题、作者、年代..." 
+                :placeholder="$t('tibaranking.a1')" 
                 size="small" 
                 style="width: 200px"
                 clearable
@@ -107,12 +107,12 @@
                 </template>
               </el-input>
               <el-button type="primary" size="small" @click="handleSearch" :icon="Search">
-                搜索
+                {{ $t('common.search') }}
               </el-button>
             </div>
             <el-tag type="info" size="small">共 {{ total }} 幅作品</el-tag>
             <el-button type="primary" size="small" @click="backToTubi" :icon="ArrowLeft">
-              返回题跋分析
+              {{ $t('tibaranking.t6') }}
             </el-button>
           </div>
         </div>
@@ -122,12 +122,12 @@
       <div class="works-table-container" v-if="pagedRankings.length > 0">
         <div class="works-table">
           <div class="works-table-header">
-            <div class="table-col col-image">图片</div>
-            <div class="table-col col-info">作品信息</div>
-            <div class="table-col col-author">作者</div>
-            <div class="table-col col-year">年代</div>
-            <div class="table-col col-stats">占比数据</div>
-            <div class="table-col col-action">操作</div>
+            <div class="table-col col-image">{{ $t('tibalist.t5') }}</div>
+            <div class="table-col col-info">{{ $t('tibalist.t6') }}</div>
+            <div class="table-col col-author">{{ $t('info.author') }}</div>
+            <div class="table-col col-year">{{ $t('suggest.field_year') }}</div>
+            <div class="table-col col-stats">{{ $t('tibaranking.t7') }}</div>
+            <div class="table-col col-action">{{ $t('engine.actions') }}</div>
           </div>
           <div class="works-table-body">
             <div 
@@ -164,13 +164,13 @@
               </div>
               <div class="table-col col-action">
                 <el-button type="primary" size="small" @click.stop="openDetailInNewWindow(item)">
-                  详情
+                  {{ $t('common.detail') }}
                 </el-button>
                 <el-button type="warning" size="small" @click.stop="editItem(item)">
-                  编辑
+                  {{ $t('common.edit') }}
                 </el-button>
                 <el-button type="danger" size="small" @click.stop="deleteItem(item)">
-                  删除
+                  {{ $t('common.delete') }}
                 </el-button>
               </div>
             </div>
@@ -194,8 +194,8 @@
       <!-- 无数据提示 -->
       <div v-if="rankings.length === 0" class="no-data">
         <el-icon size="48"><Picture /></el-icon>
-        <p>暂无数据，请先上传画作</p>
-        <el-button type="primary" @click="backToTubi">返回上传</el-button>
+        <p>{{ $t('ranking.no_data') }}</p>
+        <el-button type="primary" @click="backToTubi">{{ $t('tibalist.t12') }}</el-button>
       </div>
     </el-card>
 
@@ -215,6 +215,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { tibaApi } from '../api'
 import TibaEditDialog from '../components/tiba/TibaEditDialog.vue'
+import { translate as t } from '@/locales'
 
 const router = useRouter()
 const route = useRoute()
@@ -400,7 +401,7 @@ async function deleteItem(item) {
 
     const response = await tibaApi.deleteImage(item.id)
     if (response.success) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('engine.delete_success'))
       // 刷新排行榜数据
       await loadRankings()
     } else {
@@ -409,7 +410,7 @@ async function deleteItem(item) {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error(t('engine.delete_error'))
     }
   }
 }
@@ -496,7 +497,7 @@ async function loadRankings() {
     }
   } catch (error) {
     console.error('加载排行榜失败:', error)
-    ElMessage.error('加载失败')
+    ElMessage.error(t('engine.load_error'))
   }
 }
 
