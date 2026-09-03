@@ -1,0 +1,18 @@
+{
+  "name": "emotion-orb",
+  "version": "0.1.0",
+  "description": "本地实现的玻璃光球，并将情绪效价 v∈[-1,1] 映射为颜色/大小/能量，用于实时情绪可视化。基于 opc8838-hub/glass-light-orb。",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "ogl": "^1.0.11",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vite": "^7.0.0"
+  }
+}

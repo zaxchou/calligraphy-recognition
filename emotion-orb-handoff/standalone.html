@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>情绪光球 / Emotion Orb（独立版）</title>
+    <style>
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: radial-gradient(circle at 50% 40%, #15151f 0%, #07070b 70%);
+        color: #eee;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 28px;
+      }
+      #orb { width: min(86vmin, 560px); height: min(86vmin, 560px); position: relative; }
+      #orb canvas { display: block; width: 100%; height: 100%; }
+      .label { text-align: center; user-select: none; }
+      .label .name { font-size: 30px; font-weight: 600; letter-spacing: 2px; }
+      .label .val { font-size: 15px; opacity: 0.7; margin-top: 6px; font-variant-numeric: tabular-nums; }
+      input[type="range"] { width: min(86vmin, 560px); accent-color: #7C3AED; }
+      .hint { font-size: 12px; opacity: 0.45; }
+    </style>
+  </head>
+  <body>
+    <div id="orb"></div>
+    <div class="label">
+      <div class="name" id="name">平静</div>
+      <div class="val" id="val">情绪值 v = 0.000&nbsp;&nbsp;（-1.000 愤怒 → +1.000 快乐）</div>
+    </div>
+    <input id="slider" type="range" min="-1" max="1" step="0.001" value="0" />
+    <div class="hint">提示：拖动滑块即可实时看到颜色 / 大小 / 能量随情绪变化。需要联网以从 CDN 加载 OGL。</div>
+
+    <script type="module">
+      import { Renderer, Program, Mesh, Color, Triangle, RenderTarget } from "https://esm.sh/ogl@1.0.11";
+
+      // ---------- 情绪 → 视觉参数（与 src/emotion-utils.js 一致） ----------
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      function emotionLabel(v) {
+        if (v <= -0.8) return "暴怒";
+        if (v <= -0.5) return "愤怒";
+        if (v <= -0.2) return "烦躁";
+        if (v < 0.2) return "平静";
+        if (v < 0.5) return "愉悦";
+        if (v < 0.8) return "开心";
+        return "快乐";
+      }
+      function lerpRgb(a, b, t) {
+        return [Math.round(lerp(a[0], b[0], t)), Math.round(lerp(a[1], b[1], t)), Math.round(lerp(a[2], b[2], t))];
+      }
+      function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0; const l = (max + min) / 2;
+        const d = max - min;
+        if (d !== 0) {
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+          else if (max === g) h = (b - r) / d + 2;
+          else h = (r - g) / d + 4;
+          h *= 60;
+        }
+        return [h, s, l];
+      }
+      function hslToHex(h, s, l) {
+        h = ((h % 360) + 360) % 360;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+        if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+        else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+        else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+        const to = (v) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
+        return "#" + to(r) + to(g) + to(b);
+      }
+      const ANGER = [255, 59, 48], NEUTRAL = [56, 132, 246], HAPPY = [255, 209, 64];
+      function emotionColors(v) {
+        const val = clamp(v, -1, 1);
+        const base = val < 0 ? lerpRgb(ANGER, NEUTRAL, val + 1) : lerpRgb(NEUTRAL, HAPPY, val);
+        const [h, s, l] = rgbToHsl(base[0], base[1], base[2]);
+        return [
+          hslToHex(h, Math.min(1, s * 1.1), Math.min(1, l * 1.15)),
+          hslToHex(h, s, l),
+          hslToHex((h + 18) % 360, s, Math.max(0, l * 0.82)),
+        ];
+      }
+      const emotionGlassSize = (v) => lerp(0.82, 1.22, Math.abs(clamp(v, -1, 1)));
+      const emotionEnergy = (v) => Math.abs(clamp(v, -1, 1));
+
+      // ---------- 玻璃光球着色器（与 Strands.jsx 一致） ----------
+      const MAX_STRANDS = 12, MAX_COLORS = 8;
+      const VERT = `#version 300 es
+      in vec2 position; void main(){ gl_Position = vec4(position,0.0,1.0); }`;
+      const FRAG = `#version 300 es
+      precision highp float;
+      uniform float uTime; uniform vec2 uResolution;
+      uniform vec3 uColors[${MAX_COLORS}]; uniform int uColorCount; uniform int uStrandCount;
+      uniform float uSpeed, uAmplitude, uWaviness, uThickness, uGlow, uTaper, uSpread, uHueShift, uIntensity, uOpacity, uScale, uSaturation;
+      out vec4 fragColor; const float PI = 3.14159265;
+      vec3 spectrum(float t){ return 0.5 + 0.5*cos(2.0*PI*(t+vec3(0.0,0.33,0.67))); }
+      vec3 samplePalette(float t){ t=fract(t); float sc=t*float(uColorCount); int idx=int(floor(sc)); float bl=fract(sc); int nx=idx+1; if(nx>=uColorCount) nx=0; return mix(uColors[idx],uColors[nx],bl); }
+      vec3 strandColor(float t){ if(uColorCount>0) return samplePalette(t); return spectrum(t); }
+      void main(){
+        vec2 uv=(gl_FragCoord.xy-0.5*uResolution)/min(uResolution.x,uResolution.y); uv/=max(uScale,0.0001);
+        float e=0.06+uIntensity*0.94; float env=pow(max(cos(uv.x*PI*1.3),0.0),uTaper);
+        vec3 col=vec3(0.0);
+        for(int i=0;i<${MAX_STRANDS};i++){ if(i>=uStrandCount) break;
+          float fi=float(i); float ph=fi*1.7*uSpread; float freq=(2.0+fi*0.35)*uWaviness; float spd=1.4+fi*1.2;
+          float tt=uTime*uSpeed;
+          float w=sin(uv.x*freq+tt*spd+ph)*0.60 + sin(uv.x*freq*1.1-tt*spd*0.7+ph*1.7)*0.40;
+          float amp=(0.1+0.02*e)*env*uAmplitude; float y=w*amp;
+          float d=abs(uv.y-y); float thick=(0.001+0.05*e)*(0.35+env)*uThickness;
+          float g=thick/(d+thick*0.45); g=g*g;
+          float h=fi/float(uStrandCount)+uv.x*0.30+uTime*0.04+uHueShift;
+          col+=strandColor(h)*g*env;
+        }
+        col*=0.45+0.7*e; col=1.0-exp(-col*uGlow);
+        float gray=dot(col,vec3(0.2126,0.7152,0.0722)); col=max(mix(vec3(gray),col,uSaturation),0.0);
+        float lum=max(max(col.r,col.g),col.b); float alpha=clamp(lum,0.0,1.0)*uOpacity;
+        fragColor=vec4(col*uOpacity,alpha);
+      }`;
+      const GLASS_FRAG = `#version 300 es
+      precision highp float;
+      uniform sampler2D uScene; uniform vec2 uResolution;
+      uniform float uRadius, uRefraction, uDispersion;
+      out vec4 fragColor;
+      vec2 toUv(vec2 p){ return p*(min(uResolution.x,uResolution.y)/uResolution)+0.5; }
+      void main(){
+        vec2 p=(gl_FragCoord.xy-0.5*uResolution)/min(uResolution.x,uResolution.y); float d=length(p); float r=uRadius;
+        float edge=fwidth(d)*1.5; float mask=1.0-smoothstep(r-edge,r+edge,d);
+        if(mask<=0.0){ fragColor=vec4(0.0); return; }
+        float z=sqrt(max(r*r-d*d,0.0))/r; float nd=d/r;
+        vec2 dir=d>0.0?p/d:vec2(0.0);
+        float lens=smoothstep(0.85,1.0,nd)*pow(nd,6.0);
+        vec2 offset=-dir*lens*uRefraction*0.15; vec2 disp=-dir*lens*uDispersion*0.012;
+        vec3 light;
+        light.r=texture(uScene,toUv(p+offset-disp)).r;
+        light.g=texture(uScene,toUv(p+offset)).g;
+        light.b=texture(uScene,toUv(p+offset+disp)).b;
+        float fres=pow(1.0-z,3.0); vec3 rim=vec3(1.0)*fres*0.18;
+        vec2 lightDir=normalize(vec2(-0.55,0.6));
+        float spec=pow(max(dot(p/max(r,1e-4),lightDir),0.0),6.0); spec*=smoothstep(r,r*0.55,d);
+        vec3 emissive=light+rim+vec3(spec)*0.4;
+        float emissiveA=clamp(max(max(emissive.r,emissive.g),emissive.b),0.0,1.0);
+        float bodyA=0.05+fres*0.05; float outA=emissiveA+bodyA*(1.0-emissiveA);
+        fragColor=vec4(emissive*mask,outA*mask);
+      }`;
+      const buildPalette = (colors) => {
+        const filled = colors && colors.length ? colors : ["#ffffff"];
+        const padded = [];
+        for (let i = 0; i < MAX_COLORS; i++) {
+          const hex = filled[i] ?? filled[filled.length - 1];
+          const c = new Color(hex); padded.push([c.r, c.g, c.b]);
+        }
+        return padded;
+      };
+
+      // ---------- 挂载 + 情绪驱动循环 ----------
+      const container = document.getElementById("orb");
+      const renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true });
+      const gl = renderer.gl;
+      gl.clearColor(0, 0, 0, 0);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.canvas.style.backgroundColor = "transparent";
+
+      const geometry = new Triangle(gl);
+      if (geometry.attributes.uv) delete geometry.attributes.uv;
+
+      const program = new Program(gl, {
+        vertex: VERT, fragment: FRAG,
+        uniforms: {
+          uTime: { value: 0 },
+          uResolution: { value: [container.offsetWidth, container.offsetHeight] },
+          uColors: { value: buildPalette(emotionColors(0)) },
+          uColorCount: { value: 3 },
+          uStrandCount: { value: 4 },
+          uSpeed: { value: 0.4 }, uAmplitude: { value: 0.7 }, uWaviness: { value: 1 },
+          uThickness: { value: 0.85 }, uGlow: { value: 2.2 }, uTaper: { value: 3 },
+          uSpread: { value: 1 }, uHueShift: { value: 0 }, uIntensity: { value: 0.6 },
+          uOpacity: { value: 1 }, uScale: { value: 1.4 }, uSaturation: { value: 1.5 },
+        },
+      });
+      const mesh = new Mesh(gl, { geometry, program });
+
+      const renderTarget = new RenderTarget(gl, { width: container.offsetWidth, height: container.offsetHeight });
+      const glassProgram = new Program(gl, {
+        vertex: VERT, fragment: GLASS_FRAG,
+        uniforms: {
+          uScene: { value: renderTarget.texture },
+          uResolution: { value: [container.offsetWidth, container.offsetHeight] },
+          uRadius: { value: 0.375 }, uRefraction: { value: 1.1 }, uDispersion: { value: 1.25 },
+        },
+      });
+      const glassMesh = new Mesh(gl, { geometry, program: glassProgram });
+      container.appendChild(gl.canvas);
+
+      function resize() {
+        const w = container.offsetWidth, h = container.offsetHeight;
+        renderer.setSize(w, h);
+        program.uniforms.uResolution.value = [w, h];
+        renderTarget.setSize(w, h);
+        glassProgram.uniforms.uResolution.value = [w, h];
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      let value = 0;
+      function frame(time) {
+        requestAnimationFrame(frame);
+        const v = clamp(value, -1, 1);
+        const e = emotionEnergy(v);
+        program.uniforms.uTime.value = time * 0.001;
+        program.uniforms.uColors.value = buildPalette(emotionColors(v));
+        program.uniforms.uSpeed.value = 0.4 + 0.6 * e;
+        program.uniforms.uAmplitude.value = 0.7 + 0.7 * e;
+        program.uniforms.uGlow.value = 1.9 + 1.2 * e;
+        program.uniforms.uIntensity.value = 0.5 + 0.35 * e;
+        renderer.render({ scene: mesh, target: renderTarget });
+        glassProgram.uniforms.uScene.value = renderTarget.texture;
+        glassProgram.uniforms.uRadius.value = 0.375 * emotionGlassSize(v);
+        renderer.render({ scene: glassMesh });
+      }
+      requestAnimationFrame(frame);
+
+      // ---------- UI ----------
+      const slider = document.getElementById("slider");
+      const nameEl = document.getElementById("name");
+      const valEl = document.getElementById("val");
+      function sync() {
+        value = parseFloat(slider.value);
+        nameEl.textContent = emotionLabel(value);
+        valEl.innerHTML = `情绪值 v = ${value.toFixed(3)}&nbsp;&nbsp;（-1.000 愤怒 → +1.000 快乐）`;
+      }
+      slider.addEventListener("input", sync);
+      sync();
+    </script>
+  </body>
+</html>
