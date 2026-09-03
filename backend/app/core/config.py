@@ -171,14 +171,8 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_HOURS: int = int(os.getenv("JWT_EXPIRATION_HOURS", "168"))  # 7天
 
     # 微信小程序配置
-    WECHAT_APP_ID: str = os.getenv("WECHAT_APP_ID", "")
-    WECHAT_APP_SECRET: str = os.getenv("WECHAT_APP_SECRET", "")
-    WECHAT_MOCK_MODE: bool = os.getenv("WECHAT_MOCK_MODE", "true").lower() in ("1", "true", "yes", "y")
 
     # 微信开放平台网站应用配置（网页扫码登录用，与小程序是不同产品）
-    WEBSITE_APP_ID: str = os.getenv("WEBSITE_APP_ID", "")
-    WEBSITE_APP_SECRET: str = os.getenv("WEBSITE_APP_SECRET", "")
-    WECHAT_REDIRECT_URI: str = os.getenv("WECHAT_REDIRECT_URI", "")
 
     # 百度百科 / 百度搜索 API Key
     BAIDU_API_KEY: str = os.getenv("BAIDU_API_KEY", "")

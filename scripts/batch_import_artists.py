@@ -26,7 +26,7 @@ if not AUTH_TOKEN:
             AUTH_TOKEN = f.read().strip()
 
 if not AUTH_TOKEN:
-    print("请设置 AUTH_TOKEN 环境变量 或运行 get_token.py")
+    print("请设置 AUTH_TOKEN 环境变量（浏览器登录后从 localStorage 的 auth_token 取）")
     print("  $env:AUTH_TOKEN='eyJ...'  (PowerShell)")
     sys.exit(1)
 

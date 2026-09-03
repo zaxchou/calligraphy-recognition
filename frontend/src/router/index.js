@@ -16,12 +16,6 @@ const routes = [
     component: () => import('../views/Login.vue'),
     meta: { title: '登录' }
   },
-  {
-    path: '/auth/callback',
-    name: 'AuthCallback',
-    component: () => import('../views/AuthCallback.vue'),
-    meta: { title: '登录中' }
-  },
   // 画家百科
   {
     path: '/artists',

@@ -109,22 +109,6 @@
           </div>
         </div>
 
-        <!-- 微信绑定 -->
-        <div class="uc-card">
-          <h3 class="uc-block-title">账号绑定</h3>
-          <div class="uc-bind-row">
-            <span class="uc-bind-label">微信</span>
-            <span v-if="profile?.has_wechat" class="uc-bind-status bound">已绑定</span>
-            <span v-else class="uc-bind-status">未绑定</span>
-            <button
-              v-if="!profile?.has_wechat"
-              class="uc-btn small"
-              style="background:#07c160;color:#fff;"
-              @click="handleBindWechat"
-            >绑定微信</button>
-          </div>
-        </div>
-
         <!-- 我的贡献 -->
         <div class="uc-card">
           <h3 class="uc-block-title">我的贡献</h3>
@@ -300,11 +284,6 @@ async function handleChangePassword() {
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '修改失败')
   } finally { pwdSaving.value = false }
-}
-
-function handleBindWechat() {
-  const base = import.meta.env.VITE_API_BASE || ''
-  window.location.href = `${base}/api/v1/auth/wechat/qrcode?action=bind&redirect=${encodeURIComponent('/user/center')}`
 }
 </script>
 

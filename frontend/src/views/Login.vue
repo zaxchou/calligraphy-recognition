@@ -13,12 +13,11 @@
           <button :class="['mode-tab', { active: mode === 'password' }]" @click="mode = 'password'">密码登录</button>
           <button :class="['mode-tab', { active: mode === 'register' }]" @click="mode = 'register'">注册</button>
           <button v-if="siteConfig.login_phone_enabled === 'true'" :class="['mode-tab', { active: mode === 'code' }]" @click="mode = 'code'">手机登录</button>
-          <button v-if="siteConfig.login_wechat_enabled === 'true'" :class="['mode-tab', { active: mode === 'wechat' }]" @click="mode = 'wechat'">微信登录</button>
         </div>
 
         <!-- 手机号 / 账号 -->
         <input
-          v-if="mode !== 'wechat' && mode !== 'register'"
+          v-if="mode !== 'register'"
           class="login-input"
           v-model="phone"
           :placeholder="mode === 'password' ? 'UID / 手机号 / 邮箱 / 昵称' : '请输入手机号'"
@@ -67,18 +66,6 @@
           <p class="login-hint">注册后自动登录，角色为普通用户</p>
         </template>
 
-        <!-- 微信扫码模式 -->
-        <template v-if="mode === 'wechat'">
-          <div class="wechat-login-area">
-            <div class="wechat-icon">⊞</div>
-            <p class="wechat-desc">点击下方按钮，跳转微信扫码登录</p>
-            <button class="wechat-btn" :disabled="wechatLoading" @click="handleWechatLogin">
-              {{ wechatLoading ? '跳转中...' : '微信扫码登录' }}
-            </button>
-            <p class="login-hint">首次扫码将自动注册</p>
-          </div>
-        </template>
-
       </div>
     </div>
   </div>
@@ -114,7 +101,6 @@ const loading = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
 const showPwd = ref(false)
-const wechatLoading = ref(false)
 let countdownTimer = null
 
 function startCountdown() {
@@ -130,7 +116,7 @@ async function handleSendCode() {
   sendingCode.value = true
   try {
     await authStore.sendCode(phone.value.trim())
-    ElMessage.success('验证码已发送（开发模式：123456）')
+    ElMessage.success('验证码已发送')
     startCountdown()
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '发送失败')
@@ -176,14 +162,6 @@ async function handleRegister() {
   } catch (e) {
     ElMessage.error(e?.response?.data?.detail || '注册失败')
   } finally { loading.value = false }
-}
-
-function handleWechatLogin() {
-  if (wechatLoading.value) return
-  wechatLoading.value = true
-  const base = import.meta.env.VITE_API_BASE || ''
-  const redirect = encodeURIComponent(route.query.redirect || '/')
-  window.location.href = `${base}/api/v1/auth/wechat/qrcode?action=login&redirect=${redirect}`
 }
 </script>
 
@@ -278,22 +256,4 @@ function handleWechatLogin() {
 .login-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .login-hint { font-size: 12px; color: var(--stone-gray, #8c8c8c); text-align: center; margin-top: -4px; }
-
-/* 微信扫码 */
-.wechat-login-area { text-align: center; padding: 20px 0 8px; }
-.wechat-icon { font-size: 48px; color: #07c160; margin-bottom: 12px; }
-.wechat-desc { font-size: 13px; color: var(--stone-gray, #8c8c8c); margin-bottom: 16px; }
-.wechat-btn {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: #07c160;
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.wechat-btn:hover { opacity: 0.9; }
-.wechat-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

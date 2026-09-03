@@ -85,18 +85,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // ── 微信登录（兼容） ──
-  async function login(code) {
-    loading.value = true
-    try {
-      const resp = await api.post('/auth/wechat-login', { code })
-      _saveSession(resp)
-      return resp
-    } finally {
-      loading.value = false
-    }
-  }
-
   function logout() {
     token.value = null
     userInfo.value = null
@@ -133,7 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
     token, userInfo, loading,
     isLoggedIn, userId, nickname, avatarUrl, role,
     isAdmin, isSuperAdmin, isEditor, score,
-    loginByCode, loginByPassword, sendCode, register, login,
+    loginByCode, loginByPassword, sendCode, register,
     logout, getAuthHeader, refreshProfile,
   }
 })
