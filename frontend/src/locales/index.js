@@ -11,7 +11,11 @@ function format(template, params) {
 }
 
 export function translate(key, params) {
-  const node = key.split('.').reduce((acc, seg) => (acc == null ? acc : acc[seg]), zh)
+  // 优先扁平键直查（zh.js 的实际结构：398 个扁平键名），再回退嵌套下钻
+  let node = zh[key]
+  if (typeof node !== 'string') {
+    node = key.split('.').reduce((acc, seg) => (acc == null ? acc : acc[seg]), zh)
+  }
   if (typeof node !== 'string') return key
   return format(node, params)
 }
