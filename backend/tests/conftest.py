@@ -1,8 +1,11 @@
 """
 v2.0 测试安全网 — API 契约测试夹具。
 
-关键点：必须在导入 app 之前设置 DATA_DIR 环境变量，
-使应用建表/迁移指向临时目录中的全新 SQLite，而非开发库。
+关键点：
+1. 必须在导入 app 之前设置 DATA_DIR 环境变量，
+   使应用建表/迁移指向临时目录中的全新 SQLite，而非开发库。
+2. client 为 session 级 fixture，以 context manager 运行以触发 lifespan
+   （v2.0 起 main.py 的建表/迁移/Worker 均在 lifespan 中）。
 """
 import os
 import sqlite3
@@ -16,13 +19,17 @@ os.environ.setdefault("ENVIRONMENT", "test")
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.main import app  # noqa: E402  (导入即建表+迁移，指向临时 DATA_DIR)
+from app.main import app  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
 
 settings = get_settings()
 DB_PATH = settings.DATABASE_URL.replace("sqlite:///", "")
 
-client = TestClient(app)
+
+@pytest.fixture(scope="session")
+def client():
+    with TestClient(app) as c:
+        yield c
 
 
 def _db():
@@ -30,7 +37,7 @@ def _db():
     return conn
 
 
-def _register_and_get_token(username: str, password: str = "test-pass-123", role: str = None):
+def _register_and_get_token(client, username: str, password: str = "test-pass-123", role: str = None):
     """注册一个用户并返回 (token, user_id)；role 非空时直接改库提权。"""
     resp = client.post("/api/v1/auth/register", json={
         "username": username, "password": password,
@@ -54,23 +61,19 @@ def _register_and_get_token(username: str, password: str = "test-pass-123", role
     return token, user_id
 
 
-def _auth(token):
-    return {"Authorization": f"Bearer {token}"}
-
-
 @pytest.fixture(scope="session")
-def reader_token():
-    token, _ = _register_and_get_token("reader_user")
+def reader_token(client):
+    token, _ = _register_and_get_token(client, "reader_user")
     return token
 
 
 @pytest.fixture(scope="session")
-def editor_token():
-    token, _ = _register_and_get_token("editor_user", role="editor")
+def editor_token(client):
+    token, _ = _register_and_get_token(client, "editor_user", role="editor")
     return token
 
 
 @pytest.fixture(scope="session")
-def admin_token():
-    token, _ = _register_and_get_token("admin_user", role="super_admin")
+def admin_token(client):
+    token, _ = _register_and_get_token(client, "admin_user", role="super_admin")
     return token

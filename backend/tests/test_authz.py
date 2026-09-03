@@ -1,23 +1,23 @@
 """鉴权收口契约测试：seals 写操作与 content_analysis 匿名访问。"""
-from tests.conftest import client
 
 
-def test_seals_list_public():
+
+def test_seals_list_public(client):
     assert client.get("/api/v1/seals").status_code == 200
 
 
-def test_seal_create_anonymous_rejected():
+def test_seal_create_anonymous_rejected(client):
     resp = client.post("/api/v1/seals", json={"name": "anon-seal"})
     assert resp.status_code in (401, 403)
 
 
-def test_seal_create_reader_rejected(reader_token):
+def test_seal_create_reader_rejected(client, reader_token):
     resp = client.post("/api/v1/seals", headers={"Authorization": f"Bearer {reader_token}"},
                        json={"name": "reader-seal"})
     assert resp.status_code == 403
 
 
-def test_seal_create_editor_ok(editor_token):
+def test_seal_create_editor_ok(client, editor_token):
     resp = client.post("/api/v1/seals", headers={"Authorization": f"Bearer {editor_token}"},
                        json={"name": "editor-seal", "seal_type": "名章"})
     assert resp.status_code == 200, resp.text
@@ -27,7 +27,7 @@ def test_seal_create_editor_ok(editor_token):
     assert resp2.status_code in (401, 403)
 
 
-def test_seal_delete_needs_admin(editor_token):
+def test_seal_delete_needs_admin(client, editor_token):
     resp = client.post("/api/v1/seals", headers={"Authorization": f"Bearer {editor_token}"},
                        json={"name": "del-seal"})
     seal_id = resp.json().get("id") or resp.json().get("seal", {}).get("id")
@@ -37,7 +37,7 @@ def test_seal_delete_needs_admin(editor_token):
     assert resp2.status_code == 403
 
 
-def test_seal_delete_admin_ok(admin_token):
+def test_seal_delete_admin_ok(client, admin_token):
     resp = client.post("/api/v1/seals", headers={"Authorization": f"Bearer {admin_token}"},
                        json={"name": "admin-del-seal"})
     seal_id = resp.json().get("id") or resp.json().get("seal", {}).get("id")
@@ -46,12 +46,12 @@ def test_seal_delete_admin_ok(admin_token):
     assert resp2.status_code in (200, 204)
 
 
-def test_content_analysis_anonymous_rejected():
+def test_content_analysis_anonymous_rejected(client):
     assert client.get("/api/v1/content-analysis/stats").status_code in (401, 403)
     assert client.get("/api/v1/content-analysis/artists").status_code in (401, 403)
 
 
-def test_content_analysis_with_token(reader_token):
+def test_content_analysis_with_token(client, reader_token):
     resp = client.get("/api/v1/content-analysis/stats",
                       headers={"Authorization": f"Bearer {reader_token}"})
     assert resp.status_code == 200
