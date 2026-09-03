@@ -1,9 +1,11 @@
 // v2.0 i18n 减法：vue-i18n 移除，改为此零依赖 shim。
-// 保留 zh 词表与 $t / useI18n 接口（含 {param} 插值），站点当前仅面向中文用户。
+// 支持 zh/en 切换（语言按钮），词表为扁平键名（'card.emotion': '情绪解读'）。
 import { ref } from 'vue'
 import zh from './zh'
+import en from './en'
 
-const locale = ref('zh')
+const DICTS = { zh, en }
+const locale = ref(localStorage.getItem('lang') || 'zh')
 
 function format(template, params) {
   if (!params) return template
@@ -11,11 +13,14 @@ function format(template, params) {
 }
 
 export function translate(key, params) {
+  const dict = DICTS[locale.value] || zh
   // 优先扁平键直查（zh.js 的实际结构：398 个扁平键名），再回退嵌套下钻
-  let node = zh[key]
+  let node = dict[key]
   if (typeof node !== 'string') {
-    node = key.split('.').reduce((acc, seg) => (acc == null ? acc : acc[seg]), zh)
+    node = key.split('.').reduce((acc, seg) => (acc == null ? acc : acc[seg]), dict)
   }
+  // 当前语言缺失时回退中文
+  if (typeof node !== 'string' && dict !== zh) node = zh[key]
   if (typeof node !== 'string') return key
   return format(node, params)
 }
@@ -24,8 +29,10 @@ export function useI18n() {
   return { t: translate, locale }
 }
 
-// 兼容旧调用（语言切换按钮已移除，保留 no-op 防御）
-export function switchLang() {}
+export function switchLang(lang) {
+  locale.value = lang || (locale.value === 'zh' ? 'en' : 'zh')
+  localStorage.setItem('lang', locale.value)
+}
 
 export default {
   install(app) {

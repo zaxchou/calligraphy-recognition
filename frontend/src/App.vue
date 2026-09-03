@@ -1,5 +1,5 @@
 <template>
-  <el-config-provider :locale="zhCnLocale">
+  <el-config-provider :locale="epLocale">
   <div class="app">
     <!-- 顶部导航（annotate 和全屏页面隐藏：分析/行旅 tab） -->
     <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap' || $route.name === 'ArtistLiteratureReader'))" class="main-header">
@@ -18,6 +18,7 @@
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
+        <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">{{ locale === 'zh' ? 'EN' : '中' }}</button>
         <div class="user-area" v-if="siteConfig.readonly !== 'true'">
           <template v-if="authStore.isLoggedIn">
             <NotificationBell />
@@ -132,11 +133,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-const zhCnLocale = zhCn
+import enLocale from 'element-plus/dist/locale/en.mjs'
+const epLocale = computed(() => (locale.value === 'en' ? enLocale : zhCnLocale))
 import { useRouter, useRoute } from 'vue-router'
 import { Menu, Close, ArrowDown, User, Setting, FolderOpened, DataAnalysis } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
-import { useI18n } from './locales/index'
+import { useI18n, switchLang } from './locales/index'
 import NotificationBell from './components/NotificationBell.vue'
 import ChatFloat from './components/ChatFloat.vue'
 import { siteConfig } from './config'
@@ -184,10 +186,7 @@ function handleTibaNav(e) {
     router.push('/tiba')
   }
 }
-function toggleLang() {
-  locale.value = locale.value === 'zh' ? 'en' : 'zh'
-  localStorage.setItem('lang', locale.value)
-}
+function toggleLang() { switchLang() }
 function go(path) { router.push(path); morphOpen.value = 'false' }
 </script>
 
