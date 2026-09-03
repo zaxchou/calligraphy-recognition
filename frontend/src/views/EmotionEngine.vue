@@ -124,7 +124,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { useI18n } from '../locales/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../api'
 

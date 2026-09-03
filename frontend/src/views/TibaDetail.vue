@@ -762,7 +762,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { useI18n } from '../locales/index'
 const { t, locale } = useI18n()
 
 // 内容文本翻译：对中文分词逐个查字典翻译

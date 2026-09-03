@@ -1,21 +1,30 @@
-import { createI18n } from 'vue-i18n'
+// v2.0 i18n 减法：vue-i18n 移除，改为此零依赖 shim。
+// 保留 zh 词表与 $t / useI18n 接口（含 {param} 插值），站点当前仅面向中文用户。
+import { ref } from 'vue'
 import zh from './zh'
-import en from './en'
 
-const savedLang = localStorage.getItem('lang') || 'zh'
+const locale = ref('zh')
 
-const i18n = createI18n({
-  legacy: false,
-  locale: savedLang,
-  fallbackLocale: 'zh',
-  messages: { zh, en },
-  silentTranslationWarn: true,
-  silentFallbackWarn: true,
-})
-
-export function switchLang(lang) {
-  i18n.global.locale.value = lang
-  localStorage.setItem('lang', lang)
+function format(template, params) {
+  if (!params) return template
+  return String(template).replace(/\{(\w+)\}/g, (_, k) => params[k] ?? `{${k}}`)
 }
 
-export default i18n
+export function translate(key, params) {
+  const node = key.split('.').reduce((acc, seg) => (acc == null ? acc : acc[seg]), zh)
+  if (typeof node !== 'string') return key
+  return format(node, params)
+}
+
+export function useI18n() {
+  return { t: translate, locale }
+}
+
+// 兼容旧调用（语言切换按钮已移除，保留 no-op 防御）
+export function switchLang() {}
+
+export default {
+  install(app) {
+    app.config.globalProperties.$t = translate
+  },
+}

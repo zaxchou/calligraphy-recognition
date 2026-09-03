@@ -19,9 +19,6 @@
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
         <div class="user-area" v-if="siteConfig.readonly !== 'true'">
-          <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">
-            {{ locale === 'zh' ? 'EN' : '中' }}
-          </button>
           <template v-if="authStore.isLoggedIn">
             <NotificationBell />
             <div class="user-morph-wrap">
@@ -139,7 +136,7 @@ const zhCnLocale = zhCn
 import { useRouter, useRoute } from 'vue-router'
 import { Menu, Close, ArrowDown, User, Setting, FolderOpened, DataAnalysis } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'
-import { useI18n } from 'vue-i18n'
+import { useI18n } from './locales/index'
 import NotificationBell from './components/NotificationBell.vue'
 import ChatFloat from './components/ChatFloat.vue'
 import { siteConfig } from './config'
