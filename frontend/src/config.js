@@ -5,8 +5,7 @@
  * 管理员在后台编辑后，全站即时生效，无需重新部署。
  */
 import { reactive } from 'vue'
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+import api from './api/index.js'
 
 /** 硬编码默认值（后端不可用时回退） */
 const DEFAULTS = {
@@ -43,9 +42,7 @@ export async function loadSiteConfig() {
   _loaded = true
 
   try {
-    const resp = await fetch(`${API_BASE}/site-settings`)
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
+    const data = await api.get('/site-settings')
     const settings = data.settings || {}
     // 合并：API 有值的覆盖默认值
     const merged = { ...DEFAULTS, ...settings }

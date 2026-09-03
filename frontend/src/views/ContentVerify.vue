@@ -43,7 +43,6 @@
       :verified-count="verifiedCount"
       :total-count="totalCount"
       :base-url="API_BASE.replace('/api/v1', '')"
-      :api-base="API_BASE"
       :artist="selectedArtist"
       @save="onSave"
       @translate="onTranslate"

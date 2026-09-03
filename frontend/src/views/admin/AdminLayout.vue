@@ -81,6 +81,7 @@ import { ref, computed, onMounted, provide, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 import { adminApi } from '../../api/adminApi'
+import api from '../../api'
 
 
 const route = useRoute()
@@ -234,13 +235,7 @@ function toggleLibrary(libId) {
 // ── 作品库列表 ──
 async function loadAccessibleLibraries() {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-    const token = localStorage.getItem('auth_token') || ''
-    const res = await fetch(`${API_BASE}/libraries/accessible-libraries`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
+    const data = await api.get('/libraries/accessible-libraries')
     accessibleLibraries.value = data.libraries || []
     // 自动选中第一个
     if (accessibleLibraries.value.length > 0 && !selectedLibraryId.value) {
@@ -261,13 +256,7 @@ async function loadAccessibleLibraries() {
 async function loadLibStats() {
   if (!selectedLibraryId.value) return
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-    const token = localStorage.getItem('auth_token') || ''
-    const res = await fetch(`${API_BASE}/libraries/${selectedLibraryId.value}/stats`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
+    const data = await api.get(`/libraries/${selectedLibraryId.value}/stats`)
     Object.assign(libStats, data)
   } catch (e) { console.error('获取作品库统计失败', e) }
 }

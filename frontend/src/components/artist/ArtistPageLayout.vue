@@ -77,9 +77,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowUp } from '@element-plus/icons-vue'
 import ArtistSubNav from './ArtistSubNav.vue'
+import api from '../../api'
 
 const route = useRoute()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const isOverview = computed(() => route.name === 'ArtistOverview')
 const isFullscreen = computed(() => route.name === 'ArtistAnalysis' || route.name === 'ArtistMap' || route.name === 'ArtistLiteratureReader')
@@ -132,11 +132,8 @@ let backTopHandler = null
 onMounted(async () => {
   const name = route.params.name
   try {
-    const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(name)}`)
-    if (res.ok) {
-      const result = await res.json()
-      artistData.value = result.artist
-    }
+    const result = await api.get(`/artists/by-name/${encodeURIComponent(name)}`)
+    artistData.value = result.artist
   } catch (_) {}
   backTopHandler = () => { showBackTop.value = window.scrollY > 600 }
   window.addEventListener('scroll', backTopHandler, { passive: true })

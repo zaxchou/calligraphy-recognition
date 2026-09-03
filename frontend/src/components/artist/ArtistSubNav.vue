@@ -16,14 +16,13 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
+import api from '../../api'
 
 const props = defineProps({
   artistName: { type: String, required: true },
   currentRoute: { type: String, required: true },
   artist: { type: Object, default: null },
 })
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const TAB_ICONS = {
   概览: '&#x25CB;',      /* ◯ */
@@ -90,12 +89,9 @@ onMounted(async () => {
     checkChronology(props.artist)
   } else {
     try {
-      const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(props.artistName)}`)
-      if (res.ok) {
-        const result = await res.json()
-        artistData.value = result.artist
-        checkChronology(result.artist)
-      }
+      const result = await api.get(`/artists/by-name/${encodeURIComponent(props.artistName)}`)
+      artistData.value = result.artist
+      checkChronology(result.artist)
     } catch (e) {
       // 静默失败，行旅 tab 不显示
     }

@@ -247,6 +247,7 @@ import { ElMessage } from 'element-plus'
 import { Bottom, RefreshRight, Refresh, Right, ZoomIn, ArrowLeft, ArrowRight, Edit, Check, Document, ChatDotRound, Stamp, Picture, DataAnalysis, Search, Position, WarningFilled } from '@element-plus/icons-vue'
 import TibaImageZoomDialog from '../components/tiba/TibaImageZoomDialog.vue'
 import { tibaApi, sealsApi } from '../api'
+import api from '../api'
 
 const props = defineProps({
   records: { type: Array, default: () => [] },
@@ -257,7 +258,6 @@ const props = defineProps({
   verifiedCount: { type: Number, default: 0 },
   totalCount: { type: Number, default: 0 },
   baseUrl: { type: String, default: '' },
-  apiBase: { type: String, default: '/api/v1' },
   artist: { type: String, default: 'all' },
 })
 const emit = defineEmits(['save', 'translate', 'analyze', 'open-annotator', 'update-title', 'reanalyze'])
@@ -538,8 +538,7 @@ async function doSearch() {
     const artistParam = props.artist === 'all' ? '' : props.artist
     const params = new URLSearchParams({ keyword: kw, limit: '50' })
     if (artistParam) params.set('artist', artistParam)
-    const res = await fetch(`${props.apiBase}/content-analysis/records?${params}`)
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/records?${params}`)
     searchResults.value = data.records || []
   } catch (e) {
     ElMessage.error('搜索失败: ' + e.message)

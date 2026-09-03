@@ -66,6 +66,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ArrowUp } from '@element-plus/icons-vue'
 import ArtistSubNav from './ArtistSubNav.vue'
+import api from '../../api'
 
 const props = defineProps({
   artistName: { type: String, required: true },
@@ -74,7 +75,6 @@ const props = defineProps({
   compact: { type: Boolean, default: false },
 })
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 const artistData = ref(null)
 const showBackTop = ref(false)
 const avatarError = ref(false)
@@ -126,11 +126,8 @@ async function fetchArtist() {
     return
   }
   try {
-    const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(props.artistName)}`)
-    if (res.ok) {
-      const result = await res.json()
-      artistData.value = result.artist
-    }
+    const result = await api.get(`/artists/by-name/${encodeURIComponent(props.artistName)}`)
+    artistData.value = result.artist
   } catch (_) {}
 }
 
