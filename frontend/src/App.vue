@@ -18,8 +18,9 @@
           <router-link v-if="siteConfig.readonly !== 'true'" to="/composition" class="nav-item" :class="{ active: $route.path.startsWith('/composition') }"><span class="nav-text">潘天寿教你构图</span></router-link>
           <router-link v-if="siteConfig.readonly !== 'true'" to="/qczh" class="nav-item" active-class="active"><span class="nav-text">起承转合</span></router-link>
         </nav>
-        <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">{{ locale === 'zh' ? 'EN' : '中' }}</button>
-        <div class="user-area" v-if="siteConfig.readonly !== 'true'">
+        <div class="header-right">
+          <button class="lang-switch" @click="toggleLang" :title="$t('lang.switch')">{{ locale === 'zh' ? 'EN' : '中' }}</button>
+          <div class="user-area" v-if="siteConfig.readonly !== 'true'">
           <template v-if="authStore.isLoggedIn">
             <NotificationBell />
             <div class="user-morph-wrap">
@@ -42,6 +43,7 @@
           <router-link v-else to="/login" class="user-login-link">
             <span class="nav-text">登录</span>
           </router-link>
+          </div>
         </div>
         <!-- 移动端汉堡菜单按钮 -->
         <button class="mobile-menu-toggle" @click="toggleMobileMenu" aria-label="打开菜单">
@@ -515,6 +517,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* === 用户区域 === */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .user-area {
   display: flex;
   align-items: center;
