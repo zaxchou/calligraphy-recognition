@@ -165,7 +165,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { MessageCircle, X, Sparkles, Send, Loader2, Maximize2, Minimize2, Plus } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
@@ -200,6 +200,11 @@ const inputRefFull = ref(null)
 const citationSource = ref(null)
 const thinkSeconds = ref(0)
 let thinkTimer = null
+
+// 组件卸载时清理计时器，避免路由切换后 interval 泄漏
+onUnmounted(() => {
+  if (thinkTimer) { clearInterval(thinkTimer); thinkTimer = null }
+})
 
 // 完整模式：历史会话
 const filteredSessions = computed(() => {

@@ -107,6 +107,8 @@ export const useArtistStore = defineStore('artist', () => {
     list.value = []
     total.value = 0
     lastFetchTime.value = 0
+    lastFetchKey.value = ''
+    lastFetchList.value = []
   }
 
   const hasMore = computed(() => list.value.length < total.value)

@@ -15,7 +15,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
 from pydantic import BaseModel
 from app.core.database import get_db_connection
-from app.core.auth import require_admin_role
+from app.core.auth import require_admin_role, require_editor
 
 router = APIRouter(prefix="/seals", tags=["seals"])
 
@@ -318,7 +318,7 @@ async def get_seal(seal_id: int):
 
 
 @router.post("")
-async def create_seal(seal: SealCreate):
+async def create_seal(seal: SealCreate, editor=Depends(require_editor)):
     conn = get_db_connection()
     try:
         now = datetime.now().isoformat()
@@ -337,7 +337,7 @@ async def create_seal(seal: SealCreate):
 
 
 @router.put("/{seal_id}")
-async def update_seal(seal_id: int, seal: SealUpdate):
+async def update_seal(seal_id: int, seal: SealUpdate, editor=Depends(require_editor)):
     conn = get_db_connection()
     try:
         existing = conn.execute("SELECT * FROM seals WHERE id = ?", (seal_id,)).fetchone()
@@ -464,7 +464,7 @@ async def delete_seal(seal_id: int, admin=Depends(require_admin_role)):
 
 
 @router.post("/{seal_id}/images")
-async def upload_seal_image(seal_id: int, file: UploadFile = File(...), description: str = Form("")):
+async def upload_seal_image(seal_id: int, file: UploadFile = File(...), description: str = Form(""), editor=Depends(require_editor)):
     conn = get_db_connection()
     try:
         seal = conn.execute("SELECT * FROM seals WHERE id = ?", (seal_id,)).fetchone()
@@ -512,7 +512,7 @@ async def upload_seal_image(seal_id: int, file: UploadFile = File(...), descript
 
 
 @router.put("/{seal_id}/images/{image_id}")
-async def update_seal_image(seal_id: int, image_id: int, data: SealImageUpdate):
+async def update_seal_image(seal_id: int, image_id: int, data: SealImageUpdate, editor=Depends(require_editor)):
     conn = get_db_connection()
     try:
         seal = conn.execute("SELECT * FROM seals WHERE id = ?", (seal_id,)).fetchone()
@@ -542,7 +542,7 @@ async def update_seal_image(seal_id: int, image_id: int, data: SealImageUpdate):
 
 
 @router.delete("/{seal_id}/images/{image_id}")
-async def delete_seal_image(seal_id: int, image_id: int):
+async def delete_seal_image(seal_id: int, image_id: int, editor=Depends(require_editor)):
     conn = get_db_connection()
     try:
         seal = conn.execute("SELECT * FROM seals WHERE id = ?", (seal_id,)).fetchone()
@@ -576,7 +576,7 @@ async def delete_seal_image(seal_id: int, image_id: int):
 
 
 @router.post("/extract")
-async def extract_seals_from_analyses():
+async def extract_seals_from_analyses(admin=Depends(require_admin_role)):
     conn = get_db_connection()
     try:
         rows = conn.execute(

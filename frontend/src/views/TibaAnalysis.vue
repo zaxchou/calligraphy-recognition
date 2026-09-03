@@ -427,6 +427,11 @@ const translationExpanded = ref(false)
 let trendChart = null
 let friendCircleChart = null
 
+// 响应式调整（具名函数：可在卸载时移除，避免匿名监听器累积泄漏）
+function handleFriendCircleResize() {
+  friendCircleChart?.resize()
+}
+
 // 趋势图数据
 // 趋势图数据
 const trendChartData = ref([])
@@ -2050,15 +2055,11 @@ function initFriendCircleChart() {
   }
   
   friendCircleChart.setOption(option)
-  
-  // 响应式调整
-  window.addEventListener('resize', () => {
-    friendCircleChart.resize()
-  })
 }
 
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('resize', handleFriendCircleResize)
 
   // 自动检测未完成的作品并启动后台轮询
   startHistoryPollingForPending()
@@ -2172,6 +2173,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('resize', handleFriendCircleResize)
   trendChart?.dispose()
   friendCircleChart?.dispose()
   stopHistoryPolling()

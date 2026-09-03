@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from app.core.auth import require_editor
+from app.core.auth import require_editor, get_current_user
 from app.core.database import get_db_connection
 from app.services.molin_engine import analyze as molin_analyze
 from app.services.scoring_engine import (
@@ -39,7 +39,9 @@ from app.services.content_form_correlation import (
 )
 from app.services.inscription_position_analyzer import FORM_TYPES
 
-router = APIRouter(prefix="/content-analysis", tags=["content-analysis"])
+router = APIRouter(prefix="/content-analysis", tags=["content-analysis"],
+                  # S6 (2026-09-04): 路由级鉴权——学术分析数据不对匿名开放
+                  dependencies=[Depends(get_current_user)])
 
 
 # ============ 辅助函数 ============

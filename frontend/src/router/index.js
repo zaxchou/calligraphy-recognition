@@ -115,7 +115,7 @@ const routes = [
   {
     path: '/admin',
     component: () => import('../views/admin/AdminLayout.vue'),
-    meta: { title: '管理后台', requiresAuth: true },
+    meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true },
     children: [
       {
         path: '',
@@ -225,10 +225,6 @@ const router = createRouter({
 
 const nameCache = new Map()
 
-router.beforeEach((to, _from, next) => {
-  next()
-})
-
 router.beforeResolve(async (to, _from) => {
   const artistRoutes = ['ArtistOverview', 'ArtistWorks', 'ArtistSeals', 'ArtistLiterature', 'ArtistLiteratureReader', 'ArtistAnalysis', 'ArtistAnalysisLegacy', 'ArtistMap']
   if (artistRoutes.includes(to.name) && to.params.name) {
@@ -272,6 +268,14 @@ router.afterEach((to) => {
 })
 
 router.beforeEach((to, _from, next) => {
+  // 读取本地用户角色（容错：localStorage 数据损坏时按未登录处理，避免导航白屏）
+  const readRole = () => {
+    try {
+      return JSON.parse(localStorage.getItem('auth_user') || 'null')?.role || null
+    } catch {
+      return null
+    }
+  }
   // 需要登录的路由
   if (to.meta?.requiresAuth) {
     const token = localStorage.getItem('auth_token')
@@ -282,8 +286,7 @@ router.beforeEach((to, _from, next) => {
   }
   // 需要编者权限的路由
   if (to.meta?.requiresEditor) {
-    const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
-    const role = userInfo?.role
+    const role = readRole()
     if (role !== 'editor' && role !== 'admin' && role !== 'super_admin') {
       next({ name: 'KnowledgeSearch' })
       return
@@ -291,8 +294,7 @@ router.beforeEach((to, _from, next) => {
   }
   // 需要管理员权限的路由
   if (to.meta?.requiresAdmin) {
-    const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
-    const role = userInfo?.role
+    const role = readRole()
     if (role !== 'admin' && role !== 'super_admin') {
       next({ name: 'KnowledgeSearch' })
       return
@@ -300,8 +302,7 @@ router.beforeEach((to, _from, next) => {
   }
   // 需要站长权限的路由
   if (to.meta?.requiresSuperAdmin) {
-    const userInfo = JSON.parse(localStorage.getItem('auth_user') || 'null')
-    if (userInfo?.role !== 'super_admin') {
+    if (readRole() !== 'super_admin') {
       next({ name: 'KnowledgeSearch' })
       return
     }
