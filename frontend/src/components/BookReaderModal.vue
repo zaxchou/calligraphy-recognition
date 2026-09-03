@@ -301,6 +301,7 @@ import {
 } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
+import api from '@/api'
 import PdfViewer from './PdfViewer.vue'
 import DocumentOutline from './DocumentOutline.vue'
 import MarkdownViewer from './MarkdownViewer.vue'
@@ -625,11 +626,8 @@ async function loadDocumentOutline(bookId) {
   if (!bookId) return
   loadingOutline.value = true
   try {
-    const response = await fetch(`/api/v1/knowledge/books/${bookId}/outline`)
-    if (response.ok) {
-      const data = await response.json()
-      documentOutline.value = data.outline || []
-    }
+    const data = await api.get(`/knowledge/books/${bookId}/outline`)
+    documentOutline.value = data.outline || []
   } catch (e) {
     console.error('加载大纲失败:', e)
   } finally {
@@ -642,11 +640,8 @@ async function loadMarkdownContent(bookId) {
   if (!bookId) return
   loadingMarkdown.value = true
   try {
-    const response = await fetch(`/api/v1/knowledge/books/${bookId}/markdown`)
-    if (response.ok) {
-      const data = await response.json()
-      markdownContent.value = data.markdown || ''
-    }
+    const data = await api.get(`/knowledge/books/${bookId}/markdown`)
+    markdownContent.value = data.markdown || ''
   } catch (e) {
     console.error('加载 Markdown 失败:', e)
   } finally {
@@ -659,11 +654,8 @@ async function loadRelatedChunks(imageId) {
   if (!imageId) return
   loadingRelatedChunks.value = true
   try {
-    const response = await fetch(`/api/v1/knowledge/images/${imageId}/related-chunks`)
-    if (response.ok) {
-      const data = await response.json()
-      relatedChunks.value = data.chunks || []
-    }
+    const data = await api.get(`/knowledge/images/${imageId}/related-chunks`)
+    relatedChunks.value = data.chunks || []
   } catch (e) {
     console.error('加载关联文本块失败:', e)
   } finally {

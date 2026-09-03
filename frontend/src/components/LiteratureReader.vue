@@ -93,6 +93,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ArrowLeft, Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
+import api from '../api'
 
 const props = defineProps({
   book: { type: Object, required: true },
@@ -193,23 +194,20 @@ function loadPdf() {
 async function loadChunks() {
   loadingChunks.value = true
   try {
-    const res = await fetch(`${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/chunks`)
-    if (res.ok) {
-      const data = await res.json()
-      chunks.value = data.chunks || []
-      // 如果没有 outline 数据，用 chunk 的 chapter_title 去重构建目录
-      if (outline.value.length === 0 && chunks.value.length > 0) {
-        const seen = new Set()
-        const deduped = []
-        chunks.value.forEach(c => {
-          const title = c.chapter_title || `第 ${c.chunk_index + 1} 节`
-          if (!seen.has(title)) {
-            seen.add(title)
-            deduped.push({ title, chunkIdx: c.chunk_index })
-          }
-        })
-        outline.value = deduped
-      }
+    const data = await api.get(`/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/chunks`)
+    chunks.value = data.chunks || []
+    // 如果没有 outline 数据，用 chunk 的 chapter_title 去重构建目录
+    if (outline.value.length === 0 && chunks.value.length > 0) {
+      const seen = new Set()
+      const deduped = []
+      chunks.value.forEach(c => {
+        const title = c.chapter_title || `第 ${c.chunk_index + 1} 节`
+        if (!seen.has(title)) {
+          seen.add(title)
+          deduped.push({ title, chunkIdx: c.chunk_index })
+        }
+      })
+      outline.value = deduped
     }
   } catch (e) { console.error(e) }
   finally { loadingChunks.value = false }
@@ -217,11 +215,8 @@ async function loadChunks() {
 
 async function loadImages() {
   try {
-    const res = await fetch(`${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/images`)
-    if (res.ok) {
-      const data = await res.json()
-      images.value = data.images || []
-    }
+    const data = await api.get(`/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}/images`)
+    images.value = data.images || []
   } catch {}
 }
 
@@ -266,12 +261,9 @@ onMounted(async () => {
   mainRef.value?.addEventListener('scroll', onScroll, { passive: true })
   // 先获取详情（含 outline），再加载 chunks
   try {
-    const detRes = await fetch(`${API_BASE}/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}`)
-    if (detRes.ok) {
-      const det = await detRes.json()
-      if (det.outline && det.outline.length > 0) {
-        outline.value = typeof det.outline === 'string' ? JSON.parse(det.outline) : det.outline
-      }
+    const det = await api.get(`/knowledge/artists/${props.book.artist_id}/literature/${props.book.id}`)
+    if (det.outline && det.outline.length > 0) {
+      outline.value = typeof det.outline === 'string' ? JSON.parse(det.outline) : det.outline
     }
   } catch {}
   loadChunks()
