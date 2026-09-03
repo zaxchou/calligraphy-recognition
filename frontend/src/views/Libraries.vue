@@ -133,7 +133,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, View, Collection, Grid, List } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
-import { libraryApi } from '../api'
+import api, { libraryApi } from '../api'
 
 const props = defineProps({
   embedded: { type: Boolean, default: false }
@@ -163,15 +163,12 @@ async function fetchArtists(keyword) {
   try {
     const params = new URLSearchParams({ limit: 50 })
     if (keyword) params.set('keyword', keyword)
-    const res = await fetch(`${API_BASE}/artists?${params}`)
-    if (res.ok) {
-      const data = await res.json()
-      const list = data.artists || data.data || []
-      artistOptions.value = list.map(a => ({
-        name: a.name,
-        label: a.alias ? `${a.name}（${a.alias}）` : a.name,
-      }))
-    }
+    const data = await api.get(`/artists?${params}`)
+    const list = data.artists || data.data || []
+    artistOptions.value = list.map(a => ({
+      name: a.name,
+      label: a.alias ? `${a.name}（${a.alias}）` : a.name,
+    }))
   } catch (e) { console.error(e) }
   finally { artistLoading.value = false }
 }

@@ -100,6 +100,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Close, Loading, Picture, Check } from '@element-plus/icons-vue'
+import api from '../api'
 
 const props = defineProps({
   artist: { type: String, default: 'all' },
@@ -172,8 +173,7 @@ async function fetchRecords(reset = true) {
     
     const url = `${API_BASE}/content-analysis/records?${params}`
     console.log('[AnnotationVerify] Fetch URL:', url)
-    const res = await fetch(url)
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/records?${params}`)
     
     if (data.success !== false) {
       if (reset) {

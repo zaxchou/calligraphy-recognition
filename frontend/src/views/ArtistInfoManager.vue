@@ -55,8 +55,6 @@ import api from '@/api'
 
 const router = useRouter()
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-
 const props = defineProps({
   artist: { type: Object, default: null },
   libraryId: { type: [Number, String], default: null }
@@ -108,8 +106,7 @@ async function loadArtists(pageOverride = null) {
 
 async function loadPeriods() {
   try {
-    const res = await fetch(`${API_BASE}/artists/periods`)
-    const data = await res.json()
+    const data = await api.get('/artists/periods')
     periods.value = data.periods || data || []
   } catch (e) { console.warn('加载朝代列表失败', e) }
 }

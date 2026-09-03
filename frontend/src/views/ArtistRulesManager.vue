@@ -189,9 +189,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Edit, Plus, Upload, DocumentCopy, Check, CircleCheck, CircleClose, MagicStick } from '@element-plus/icons-vue'
-import { artistRulesApi } from '../api'
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+import api, { artistRulesApi } from '../api'
 
 const RULE_SCHEMA_FIELDS = [
   'artist_name', 'emotion_baseline', 'life_stages', 'sentiment_note',
@@ -285,8 +283,7 @@ watch(() => props.artist, (val) => {
 // ── Data loading ──
 async function loadArtistList() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
   } catch (e) { /* ignore */ }
 }

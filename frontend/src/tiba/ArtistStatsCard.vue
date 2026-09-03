@@ -100,10 +100,9 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { DataAnalysis } from '@element-plus/icons-vue'
 import echarts from '../utils/echarts'
+import api from '../api'
 
 const emit = defineEmits(['artist-change'])
-
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 // ── 作者列表 ──
 const artistList = ref([])
@@ -115,8 +114,7 @@ const displayArtistName = computed(() => {
 
 async function fetchArtistList() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
   } catch (e) {
     console.error('获取作者列表失败', e)
@@ -219,8 +217,7 @@ function animateTotalCount(target, duration = 900) {
 async function fetchStats() {
   loading.value = true
   try {
-    const resp = await fetch(`${API_BASE}/content-analysis/stats?artist=${encodeURIComponent(currentArtist.value)}`)
-    const data = await resp.json()
+    const data = await api.get(`/content-analysis/stats?artist=${encodeURIComponent(currentArtist.value)}`)
     if (data.total_count !== undefined) {
       totalCount.value = data.total_count
       const themeMap = {}
@@ -279,8 +276,7 @@ const areaThemeData = ref({ sample_total: 0, theme_area: [], period_trend: [], i
 async function fetchAreaThemeStats() {
   try {
     const artist = currentArtist.value === 'all' ? 'all' : currentArtist.value
-    const res = await fetch(`${API_BASE}/content-analysis/area-theme-stats?artist=${encodeURIComponent(artist)}`)
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/area-theme-stats?artist=${encodeURIComponent(artist)}`)
     areaThemeData.value = {
       sample_total: data.sample_total || 0,
       theme_area: data.theme_area || [],
