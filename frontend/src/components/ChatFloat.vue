@@ -360,6 +360,7 @@ async function send(msg) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(300000), // 流式响应整体超时保护（5 分钟）
     })
 
     if (!r.ok) {

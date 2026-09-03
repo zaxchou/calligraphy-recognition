@@ -333,6 +333,7 @@ async function sendChat(msg) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authStore.token}` },
       body: JSON.stringify({ prompt: t, history, session_id: sid || undefined }),
+      signal: AbortSignal.timeout(300000), // 流式响应整体超时保护（5 分钟）
     })
 
     // SSE 流式读取

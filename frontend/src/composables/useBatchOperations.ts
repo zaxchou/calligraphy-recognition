@@ -93,7 +93,7 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
       params.set('incremental', String(incremental))
       const response = await fetch(
         `${apiBase}/content-analysis/batch-reanalyze/stream?${params.toString()}`,
-        { method: 'POST' }
+        { method: 'POST', signal: AbortSignal.timeout(300000) }
       )
 
       await streamAnalyzeSSE<AnalyzeEvent>(response, {
@@ -159,7 +159,7 @@ export function useBatchOperations(options: UseBatchOperationsOptions) {
       params.set('force_retranslate', String(forceRetranslate))
       const response = await fetch(
         `${apiBase}/content-analysis/translate/batch/stream?${params.toString()}`,
-        { method: 'POST' }
+        { method: 'POST', signal: AbortSignal.timeout(300000) }
       )
 
       await streamTranslateSSE<TranslateEvent>(response, {

@@ -713,7 +713,7 @@ async function startBatchTranslate(mode) {
     params.set('library_id', String(libraryId.value))
     params.set('force_retranslate', String(forceRetranslate))
     if (isEnglish) params.set('target', 'english')
-    const response = await fetch(`${API_BASE}/content-analysis/translate/batch/stream?${params.toString()}`, { method: 'POST' })
+    const response = await fetch(`${API_BASE}/content-analysis/translate/batch/stream?${params.toString()}`, { method: 'POST', signal: AbortSignal.timeout(300000) })
     const { streamSSE, cancel } = useSSEStream()
     translateCancelFn = cancel
     await streamSSE(response, {
@@ -755,7 +755,7 @@ async function startBatchAnalyze(mode) {
     const params = new URLSearchParams()
     params.set('library_id', String(libraryId.value))
     params.set('incremental', String(incremental))
-    const response = await fetch(`${API_BASE}/content-analysis/batch-reanalyze/stream?${params.toString()}`, { method: 'POST' })
+    const response = await fetch(`${API_BASE}/content-analysis/batch-reanalyze/stream?${params.toString()}`, { method: 'POST', signal: AbortSignal.timeout(300000) })
     const { streamSSE, cancel } = useSSEStream()
     analyzeCancelFn = cancel
     await streamSSE(response, {
