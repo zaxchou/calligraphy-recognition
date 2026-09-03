@@ -167,6 +167,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Folder } from '@element-plus/icons-vue'
 import { libraryApi } from '../../api/index.js'
 import { artworkApi } from '../../api/index.js'
+import api from '../../api/index.js'
 import LibraryDetail from '../LibraryDetail.vue'
 import DimensionInput from '../DimensionInput.vue'
 import SealManager from '../SealManager.vue'
@@ -218,13 +219,10 @@ function clearBatch() {
 async function executeBatch() {
   if (selectedLibIds.value.length === 0) return
   batchRunning.value = true
-  const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
-  const token = localStorage.getItem('auth_token') || ''
   try {
     for (const libId of selectedLibIds.value) {
       const lib = libs.value.find(l => l.id === libId)
       if (!lib || !lib.artist_name) continue
-      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       let endpoint, body
       if (batchMode.value === 'ai') {
         const data = await artworkApi.list(libId, { limit: 9999 })
@@ -232,19 +230,16 @@ async function executeBatch() {
         const imageIds = artworks.filter(a => a.image_id).map(a => a.image_id)
         if (imageIds.length === 0) continue
         endpoint = '/tiba/batch-auto-analyze'
-        body = JSON.stringify({ image_ids: imageIds, mode: 'analyze' })
+        body = { image_ids: imageIds, mode: 'analyze' }
       } else if (batchMode.value === 'analyze') {
         endpoint = `/content-analysis/batch-reanalyze?library_id=${libId}&incremental=false`
       } else {
         endpoint = `/content-analysis/translate/batch?artist=${encodeURIComponent(lib.artist_name)}&force_retranslate=false`
       }
-      const url = `${API_BASE}${endpoint}`
-      const res = body
-        ? await fetch(url, { method: 'POST', headers, body })
-        : await fetch(url, { method: 'POST', headers })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        console.warn(`库 "${lib.name}" (${libId}) 批量操作失败:`, err.detail || res.status)
+      try {
+        await api.post(endpoint, body)
+      } catch (err) {
+        console.warn(`库 "${lib.name}" (${libId}) 批量操作失败:`, err?.response?.data?.detail || err?.response?.status)
       }
     }
     ElMessage.success(`已触发 ${selectedLibIds.value.length} 个库的批量${BATCH_LABELS[batchMode.value]}（后台排队执行）`)
@@ -286,7 +281,6 @@ const createForm = reactive({
 
 const artistOptions = ref([])
 const artistLoading = ref(false)
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 // ── 协作者 ──
 const showCollab = ref(false)
@@ -299,13 +293,10 @@ const newCollabRole = ref('viewer')
 async function fetchArtists(keyword) {
   artistLoading.value = true
   try {
-    const res = await fetch(`${API_BASE}/artists?keyword=${encodeURIComponent(keyword || '')}&limit=50`)
-    if (res.ok) {
-      const data = await res.json()
-      artistOptions.value = (data.artists || []).map(a => ({
-        name: a.name, label: a.alias ? `${a.name}（${a.alias}）` : a.name,
-      }))
-    }
+    const data = await api.get(`/artists?keyword=${encodeURIComponent(keyword || '')}&limit=50`)
+    artistOptions.value = (data.artists || []).map(a => ({
+      name: a.name, label: a.alias ? `${a.name}（${a.alias}）` : a.name,
+    }))
   } catch (e) { console.error(e) }
   finally { artistLoading.value = false }
 }

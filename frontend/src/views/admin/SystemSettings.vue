@@ -83,6 +83,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { WarningFilled, Loading } from '@element-plus/icons-vue'
+import api from '../../api'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -121,34 +122,24 @@ async function load() {
   loadError.value = ''
   msg.value = ''
   try {
-    const token = localStorage.getItem('auth_token')
-    const resp = await fetch('/api/v1/admin/site-settings', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    if (resp.ok) {
-      const data = await resp.json()
-      const s = data.settings || {}
-      for (const f of [...brandFields, ...footerFields]) {
-        if (s[f.key] !== undefined) {
-          form[f.key] = s[f.key]
-          initialForm[f.key] = s[f.key]
-        }
-      }
-    } else {
-      // 尝试解析错误消息，失败则用状态码
-      let errMsg = `HTTP ${resp.status}`
-      try {
-        const err = await resp.json()
-        errMsg = err.detail || errMsg
-      } catch {}
-      if (resp.status === 401 || resp.status === 403) {
-        loadError.value = '您没有管理员权限，无法加载系统设置。请确认已登录管理员账号。'
-      } else {
-        loadError.value = `加载失败：${errMsg}`
+    const data = await api.get('/admin/site-settings')
+    const s = data.settings || {}
+    for (const f of [...brandFields, ...footerFields]) {
+      if (s[f.key] !== undefined) {
+        form[f.key] = s[f.key]
+        initialForm[f.key] = s[f.key]
       }
     }
   } catch (e) {
-    loadError.value = '网络请求失败：' + e.message
+    if (e.response && (e.response.status === 401 || e.response.status === 403)) {
+      loadError.value = '您没有管理员权限，无法加载系统设置。请确认已登录管理员账号。'
+    } else if (e.response) {
+      // 尝试取后端错误消息，失败则用状态码
+      const errMsg = e.response.data?.detail || `HTTP ${e.response.status}`
+      loadError.value = `加载失败：${errMsg}`
+    } else {
+      loadError.value = '网络请求失败：' + e.message
+    }
   } finally {
     loading.value = false
   }
@@ -175,41 +166,26 @@ async function save() {
       }
     }
 
-    const token = localStorage.getItem('auth_token')
-    const resp = await fetch('/api/v1/admin/site-settings', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ settings: payload }),
-    })
+    await api.put('/admin/site-settings', { settings: payload })
 
-    if (resp.ok) {
-      // 更新 initialForm 以匹配已保存的值
-      for (const f of [...brandFields, ...footerFields]) {
-        initialForm[f.key] = form[f.key]
-      }
-      // 写入 localStorage 作为前端缓存
-      localStorage.setItem('molin_site_config', JSON.stringify({ ...form }))
-      dirty.value = false
-      msg.value = '设置已保存，刷新页面即可看到效果'
-      msgErr.value = false
-    } else {
-      let errMsg = `HTTP ${resp.status}`
-      try {
-        const err = await resp.json()
-        errMsg = err.detail || errMsg
-      } catch {
-        // 响应不是 JSON（如 500 纯文本错误）
-        const text = await resp.text()
-        errMsg = text.substring(0, 80) || errMsg
-      }
-      msg.value = errMsg
-      msgErr.value = true
+    // 更新 initialForm 以匹配已保存的值
+    for (const f of [...brandFields, ...footerFields]) {
+      initialForm[f.key] = form[f.key]
     }
+    // 写入 localStorage 作为前端缓存
+    localStorage.setItem('molin_site_config', JSON.stringify({ ...form }))
+    dirty.value = false
+    msg.value = '设置已保存，刷新页面即可看到效果'
+    msgErr.value = false
   } catch (e) {
-    msg.value = '请求失败: ' + e.message
+    if (e.response) {
+      // 尝试取后端错误消息（detail 或纯文本），失败则用状态码
+      const data = e.response.data
+      const detail = data?.detail || (typeof data === 'string' ? data.substring(0, 80) : '')
+      msg.value = detail || `HTTP ${e.response.status}`
+    } else {
+      msg.value = '请求失败: ' + e.message
+    }
     msgErr.value = true
   } finally {
     saving.value = false

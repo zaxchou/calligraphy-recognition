@@ -96,11 +96,11 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/authStore'
 import LiteratureUpload from '../../components/LiteratureUpload.vue'
 import ChatFloat from '../../components/ChatFloat.vue'
+import api from '../../api'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
 const artistName = computed(() => route.params.name)
 const artistId = ref(null)
@@ -157,10 +157,8 @@ async function deleteEmptyDocs() {
   let done = 0
   for (const id of ids) {
     try {
-      const res = await fetch(`${API_BASE}/knowledge/artists/${artistId.value}/literature/${id}`, {
-        method: 'DELETE', headers: { Authorization: `Bearer ${authStore.token}` }
-      })
-      if (res.ok) done++
+      await api.delete(`/knowledge/artists/${artistId.value}/literature/${id}`)
+      done++
     } catch (_) {}
   }
   if (done) { ElMessage.success(`已删除 ${done} 篇无效文献`); loadLiterature() }
@@ -168,11 +166,8 @@ async function deleteEmptyDocs() {
 
 async function fetchArtistId() {
   try {
-    const res = await fetch(`${API_BASE}/artists/by-name/${encodeURIComponent(artistName.value)}`)
-    if (res.ok) {
-      const data = await res.json()
-      artistId.value = data.artist?.id || null
-    }
+    const data = await api.get(`/artists/by-name/${encodeURIComponent(artistName.value)}`)
+    artistId.value = data.artist?.id || null
   } catch (e) { console.error(e) }
 }
 
@@ -185,12 +180,9 @@ async function loadLiterature() {
       sort_by: activeSort.value, sort_dir: sortDir.value,
     })
     if (searchQuery.value) params.set('keyword', searchQuery.value)
-    const res = await fetch(`${API_BASE}/knowledge/artists/${artistId.value}/literature?${params}`)
-    if (res.ok) {
-      const data = await res.json()
-      literature.value = data.items || []
-      totalCount.value = data.total || 0
-    }
+    const data = await api.get(`/knowledge/artists/${artistId.value}/literature?${params}`)
+    literature.value = data.items || []
+    totalCount.value = data.total || 0
   } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
