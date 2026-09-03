@@ -1,15 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../api'
+import { getStorageJson, getStorageString, setStorageJson, setStorageString, removeStorage } from '../utils/storage'
 
 const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'auth_user'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem(TOKEN_KEY) || null)
-  let parsedUser = null
-  try { parsedUser = JSON.parse(localStorage.getItem(USER_KEY)) } catch {}
-  const userInfo = ref(parsedUser)
+  const token = ref(getStorageString(TOKEN_KEY) || null)
+  const userInfo = ref(getStorageJson(USER_KEY))
   const loading = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)
@@ -35,8 +34,8 @@ export const useAuthStore = defineStore('auth', () => {
       role: data.role || 'reader',
       score: data.score || 0,
     }
-    localStorage.setItem(TOKEN_KEY, data.token)
-    localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
+    setStorageString(TOKEN_KEY, data.token)
+    setStorageJson(USER_KEY, userInfo.value)
   }
 
   // ── 验证码登录 ──
@@ -88,8 +87,8 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null
     userInfo.value = null
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+    removeStorage(TOKEN_KEY)
+    removeStorage(USER_KEY)
   }
 
   function getAuthHeader() {
@@ -110,7 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
         role: resp.role || 'reader',
         score: resp.score || 0,
       }
-      localStorage.setItem(USER_KEY, JSON.stringify(userInfo.value))
+      setStorageJson(USER_KEY, userInfo.value)
     } catch (e) {
       // token invalid, clear
       if (e?.response?.status === 401) logout()

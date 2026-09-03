@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { siteConfig } from '../config'
+import { getStorageJson } from '../utils/storage'
 import api from '@/api'
 
 const routes = [
@@ -269,11 +270,9 @@ router.afterEach((to) => {
 router.beforeEach((to, _from, next) => {
   // 读取本地用户角色（容错：localStorage 数据损坏时按未登录处理，避免导航白屏）
   const readRole = () => {
-    try {
-      return JSON.parse(localStorage.getItem('auth_user') || 'null')?.role || null
-    } catch {
-      return null
-    }
+    // 兼容旧格式（裸 JSON）与新格式（storage 层版本包裹）
+    const info = getStorageJson('auth_user')
+    return (info && typeof info === 'object' ? info.role : null) || null
   }
   // 需要登录的路由
   if (to.meta?.requiresAuth) {
