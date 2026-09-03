@@ -13,10 +13,11 @@ from app.models.literature_reference import LiteratureReference
 from app.models.auction_record import AuctionRecord
 from app.models.work_revision import WorkRevision
 from app.models.notification import Notification
+from app.models.ai_text_translation import AiTextTranslation
 
 __all__ = [
     "Stele", "Character", "RecognitionLog", "TibaAnalysis", "TibaJob", "User",
     "Artist", "ArtistClaim", "CollaboratorRequest",
     "ChangeRequest", "ResearchNote", "LiteratureReference", "AuctionRecord",
-    "WorkRevision", "Notification",
+    "WorkRevision", "Notification", "AiTextTranslation",
 ]

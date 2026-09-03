@@ -4,6 +4,7 @@
   import app.main 不再有副作用（测试可隔离）
 - 路由注册表驱动；可选重依赖路由集中降级管理
 """
+import json
 import logging
 import os
 import threading
@@ -14,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from app.services.ai_translation import translate_json
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -237,6 +239,36 @@ async def redirect_root(request: Request, call_next):
     if request.url.path == "/" and request.method == "GET":
         return RedirectResponse(url="http://localhost:8080")
     return await call_next(request)
+
+
+# ── AI 分析内容读时英文化：EN 请求把 tiba/content-analysis 响应里的中文换成缓存译文 ──
+@app.middleware("http")
+async def ai_content_i18n(request: Request, call_next):
+    response = await call_next(request)
+    try:
+        path = request.url.path
+        lang = (request.headers.get("accept-language") or "").lower()
+        if (request.method == "GET" and lang.startswith("en")
+                and (path.startswith("/api/v1/tiba/") or path.startswith("/api/v1/content-analysis"))
+                and "application/json" in response.headers.get("content-type", "")):
+            body = b""
+            async for chunk in response.body_iterator:
+                body += chunk
+            data = json.loads(body)
+            from app.core.database import SessionLocal
+            db = SessionLocal()
+            try:
+                data = translate_json(data, db)
+            finally:
+                db.close()
+            new_body = json.dumps(data, ensure_ascii=False).encode()
+            headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+            from starlette.responses import Response as StarletteResponse
+            return StarletteResponse(content=new_body, status_code=response.status_code,
+                                     headers=headers, media_type="application/json")
+    except Exception:  # noqa: BLE001 — 翻译层故障必须降级为原响应
+        logger.exception("ai_content_i18n failed; serving original response")
+    return response
 
 
 @app.get("/api/v1/health")
