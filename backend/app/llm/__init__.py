@@ -3,8 +3,9 @@
 公开接口：
     from app.llm import chat_completion, chat_completion_async, LLMError, parse_json_loose
 """
-from app.llm.client import LLMError, chat_completion, chat_completion_async
-from app.llm.providers import ProviderError, resolve_provider
+from app.llm.client import chat_completion, chat_completion_async
+from app.llm.errors import LLMError, ProviderError
+from app.llm.providers import resolve_provider
 from app.llm.usage import snapshot
 
 

@@ -14,6 +14,7 @@ import argparse
 import json
 import sqlite3
 import sys
+import uuid
 
 
 def cmd_reindex_qdrant(args: argparse.Namespace) -> int:
@@ -43,6 +44,10 @@ def cmd_reindex_qdrant(args: argparse.Namespace) -> int:
     conn.close()
     print(f"权威源 {db_path}: 共 {len(rows)} 个文本块")
 
+    # vector_id 写回列表：与摄入管道同方案 uuid5(NAMESPACE_URL, "{book_id}_{chunk_id}")，
+    # 重建后回写保证搜索侧 vector_id 匹配不落入孤立向量兜底
+    vector_id_updates: list[tuple[str, str]] = []
+
     batch: list[dict] = []
     last_bid = None
     done = 0
@@ -64,7 +69,9 @@ def cmd_reindex_qdrant(args: argparse.Namespace) -> int:
                 _flush(batch, last_bid)
                 batch = []
             last_bid = bid
-            batch.append({"id": str(cid), "vector": r.embedding, "content": text,
+            vector_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{bid}_{cid}"))
+            vector_id_updates.append((vector_id, str(cid)))
+            batch.append({"id": vector_id, "vector": r.embedding, "content": text,
                           "chapter": ch or "", "page_start": ps or 0, "page_end": ps or 0,
                           "chunk_index": ci or 0, "metadata": meta})
         except Exception as e:
@@ -74,6 +81,13 @@ def cmd_reindex_qdrant(args: argparse.Namespace) -> int:
             _flush(batch, bid)
             batch = []
     _flush(batch, last_bid)
+
+    # 回写 vector_id 到 SQLite（搜索侧按 vector_id 匹配）
+    conn = sqlite3.connect(db_path)
+    conn.executemany("UPDATE text_chunks SET vector_id=? WHERE id=?", vector_id_updates)
+    conn.commit()
+    conn.close()
+    print(f"已回写 {len(vector_id_updates)} 条 text_chunks.vector_id")
 
     cnt = qc.count_collection(qc.KNOWLEDGE_TEXTS_COLLECTION)
     print(f"DONE: Qdrant knowledge_texts 共 {cnt} 点")

@@ -132,7 +132,7 @@ class Settings(BaseSettings):
     )
     QWEN_MODEL: str = Field(default="qwen3-vl-plus")
     QWEN_ENABLED: bool = Field(default=True)
-    QWEN_THINKING_ENABLED: bool = Field(default=True)
+    QWEN_THINKING_ENABLED: bool = Field(default=False)  # 原 os.getenv 默认 false，非流式传 true 会 400
     QWEN_TRANSLATION_MODEL: str = Field(default="qwen3.5-plus")
     QWEN_INSIGHT_MODEL: str = Field(default="qwen3.5-plus")
 

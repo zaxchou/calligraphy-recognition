@@ -2,10 +2,7 @@
 from typing import Any, Dict, Optional, Tuple
 
 from app.core.config import get_settings
-
-
-class ProviderError(Exception):
-    """没有任何可用供应商（密钥未配置等）。"""
+from app.llm.errors import ProviderError
 
 
 def resolve_provider(

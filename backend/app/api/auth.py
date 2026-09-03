@@ -12,12 +12,11 @@ from typing import Optional
 
 from fastapi import APIRouter, File, HTTPException, Depends, Request, UploadFile
 from pydantic import BaseModel, field_validator
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import DATA_DIR, get_settings
+from app.core.config import DATA_DIR
 from app.core.database import get_db
-from app.core.auth import get_current_user, get_optional_user
+from app.core.auth import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 

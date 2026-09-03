@@ -99,10 +99,10 @@ def main():
     signal.signal(signal.SIGINT, _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)
 
+    # 必须先导入 models 注册表再 create_all（否则 metadata 为空，全新库缺表）
+    import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
     run_migrations()
-    # 抢占式启动保护：独立 worker 运行时，禁止 web 进程再起内嵌线程
-    os.environ["TIBA_EMBEDDED_WORKER"] = "false"
     _loop()
 
 

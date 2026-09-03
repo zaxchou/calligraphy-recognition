@@ -191,7 +191,7 @@ def _embedded_worker_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── startup ──
+    _stop_event.clear()  # 复位停止信号（防二次进入 lifespan 时 Worker 静默失效）
     Base.metadata.create_all(bind=engine)
     run_migrations()
     _ensure_indexes()
