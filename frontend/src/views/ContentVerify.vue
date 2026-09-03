@@ -347,7 +347,7 @@ import { Refresh, Right, WarningFilled } from '@element-plus/icons-vue'
 
 import VerifyPanel from './VerifyPanel.vue'
 import { useAuthStore } from '../stores/authStore'
-import { libraryApi } from '../api/index.js'
+import api, { libraryApi } from '../api/index.js'
 import { computeDiff } from '../utils/diff'
 // 懒加载非首屏组件
 const AlbumManager = defineAsyncComponent(() => import('./AlbumManager.vue'))
@@ -464,8 +464,7 @@ function onArtistChange() {
 }
 async function fetchArtistList() {
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/artists`)
-    const data = await res.json()
+    const data = await api.get('/content-analysis/artists')
     artistList.value = data.artists || []
     const urlArtist = route.query.artist
     if (urlArtist === 'all') {
@@ -674,8 +673,7 @@ async function fetchRecords() {
     if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
     if (isUnverified) params.set('unverified_only', 'true')
     if (isVerified) params.set('verified_only', 'true')
-    const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/records?${params}`)
     records.value = data.records || []
     totalCount.value = data.total || records.value.length
     verifiedCount.value = data.verified_count || 0
@@ -705,8 +703,7 @@ async function loadMoreRecords() {
     const params = new URLSearchParams({ limit: 50, offset: records.value.length })
     if (artistParam) params.set('artist', artistParam)
     if (selectedLibraryId.value) params.set('library_id', String(selectedLibraryId.value))
-    const res = await fetch(`${API_BASE}/content-analysis/records?${params}`)
-    const data = await res.json()
+    const data = await api.get(`/content-analysis/records?${params}`)
     records.value.push(...(data.records || []))
   } catch (e) {
     ElMessage.error('加载更多失败: ' + e.message)
@@ -720,12 +717,9 @@ async function onSave(payload) {
   if (!id) return
   saving.value = true
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/verify/${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inscription_content, seal_content, analysis_note }),
+    const data = await api.post(`/content-analysis/verify/${id}`, {
+      inscription_content, seal_content, analysis_note,
     })
-    const data = await res.json()
     if (data.success) {
       const idx = records.value.findIndex(r => r.id === id)
       if (idx !== -1) {
@@ -775,12 +769,7 @@ async function onTranslate(payload) {
   if (!id) return
   translating.value = true
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/translate/${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inscription_content })
-    })
-    const data = await res.json()
+    const data = await api.post(`/content-analysis/translate/${id}`, { inscription_content })
     if (data.success) {
       ElMessage.success('翻译完成')
       const idx = records.value.findIndex(r => r.id === id)
@@ -805,12 +794,7 @@ async function onAnalyze(payload) {
   if (!id) return
   analyzing.value = true
   try {
-    const res = await fetch(`${API_BASE}/content-analysis/analyze/${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ use_llm: true })
-    })
-    const data = await res.json()
+    const data = await api.post(`/content-analysis/analyze/${id}`, { use_llm: true })
     if (data.success) {
       ElMessage.success('分析完成')
       // 刷新记录数据
@@ -832,8 +816,7 @@ function onOpenAnnotator(id) {
 
 async function onReanalyze(recordId) {
   try {
-    const resp = await fetch(`${API_BASE}/content-analysis/reanalyze-one/${recordId}`, { method: 'POST' })
-    const data = await resp.json()
+    const data = await api.post(`/content-analysis/reanalyze-one/${recordId}`)
     if (data.success) {
       if (data.llm_fixed) {
         ElMessage.success(`分析完成！DeepSeek修正: ${data.llm_detail}`)
