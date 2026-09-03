@@ -683,7 +683,7 @@
 
     <!-- 我的意见对话框 -->
     <el-dialog v-model="showSuggestDialog" :title="$t('suggest.title')" width="560px" destroy-on-close @closed="suggestDialogClosed">
-      <p style="margin-bottom:16px;color:var(--stone-gray)" v-html="$t('suggest.intro', { title: currentImage.title || $t('card.untitled') })">
+      <p style="margin-bottom:16px;color:var(--stone-gray)" v-html="$sanitize($t('suggest.intro', { title: currentImage.title || $t('card.untitled') }))">
       </p>
       <el-form :model="suggestForm" label-position="top">
         <el-form-item :label="$t('suggest.field')">
@@ -1357,7 +1357,7 @@ const textSentimentSummary = computed(() => {
   const s = contentAnalysis.value?.sentiment
   if (!s) return ''
   const themes = contentAnalysis.value?.themes
-  const themeNames = themes?.slice(0, 2).map(theme => t(theme.name)).join(locale === 'en' ? ', ' : '、') || ''
+  const themeNames = themes?.slice(0, 2).map(theme => t(theme.name)).join(locale.value === 'en' ? ', ' : '、') || ''
   const phase = contentAnalysis.value?.period_phase || ''
   const parts = []
   if (phase) parts.push(t(phase))

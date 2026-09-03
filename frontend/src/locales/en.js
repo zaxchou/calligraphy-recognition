@@ -1,4 +1,10 @@
 export default {
+  'underResearch': 'Under research',
+  'derivation.legendNorm': 'Normalized',
+  'derivation.legendSum': 'Sum',
+  'derivation.legendScore': 'Score',
+  'derivation.legendConf': 'Confidence',
+  'derivation.legendWeight': 'Weight',
   // Nav
   'nav.prev': 'Previous',
   'nav.next': 'Next',

@@ -134,7 +134,7 @@
 import { ref, computed, onMounted } from 'vue'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import enLocale from 'element-plus/dist/locale/en.mjs'
-const epLocale = computed(() => (locale.value === 'en' ? enLocale : zhCnLocale))
+const epLocale = computed(() => (locale.value === 'en' ? enLocale : zhCn))
 import { useRouter, useRoute } from 'vue-router'
 import { Menu, Close, ArrowDown, User, Setting, FolderOpened, DataAnalysis } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'

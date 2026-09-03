@@ -9,8 +9,11 @@ import {
   EffectScatterChart,
   RadarChart,
   GraphChart,
+  LinesChart,
 } from 'echarts/charts'
 import {
+  GeoComponent,
+  RadarComponent,
   GridComponent,
   TooltipComponent,
   LegendComponent,
@@ -30,6 +33,9 @@ echarts.use([
   EffectScatterChart,
   RadarChart,
   GraphChart,
+  LinesChart,
+  GeoComponent,
+  RadarComponent,
   GridComponent,
   TooltipComponent,
   LegendComponent,
