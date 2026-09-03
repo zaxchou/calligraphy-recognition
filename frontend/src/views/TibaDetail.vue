@@ -116,7 +116,7 @@
                   <div class="emotion-layout-v2">
                     <!-- 左：3D 情绪核心 -->
                     <div class="emotion-core-left">
-                      <EmotionCore3D :mood="coreMood" />
+                      <EmotionOrb :value="displayScore" />
                     </div>
                     <!-- 右：VADER bar + 文字 -->
                     <div class="emotion-core-right">
@@ -799,7 +799,7 @@ import { sealsApi } from '../api'
 import api from '../api'
 import TibaDeepZoomDialog from '../components/tiba/TibaDeepZoomDialog.vue'
 import SealLightbox from '../components/seal/SealLightbox.vue'
-import EmotionCore3D from '../components/tiba/EmotionCore3D.vue'
+import EmotionOrb from '../components/tiba/EmotionOrb.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
@@ -1137,12 +1137,6 @@ const verdictSnippet = computed(() => {
 })
 const dimensionPolarities = computed(() => combinedSentiment.value?.dimension_polarities || {})
 const conflictScore = computed(() => combinedSentiment.value?.conflict_score ?? null)
-// vader_normalized (-1~+1) → 3D core mood (0~1)
-const coreMood = computed(() => {
-  const vn = combinedSentiment.value?.vader_normalized
-  if (vn == null) return 0.5
-  return Math.max(0, Math.min(1, (vn + 1) / 2))
-})
 
 // 从各维度加权信号推算积极/消极百分比
 const sentimentSplit = computed(() => {
