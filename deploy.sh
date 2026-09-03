@@ -63,7 +63,7 @@ deploy_wiki_code() {
 
   # 2. SCP 后端代码（排除 data/，数据走 --full 单独同步）
   tar czf - -C "$WIKI_LOCAL/backend" \
-    --exclude='data' --exclude='__pycache__' --exclude='*.pyc' \
+    --exclude='data' --exclude='__pycache__' --exclude='*.pyc' --exclude='.venv' --exclude='.venv-ci' \
     --exclude='.git' --exclude='node_modules' . \
     | ssh "$SSH_HOST" "mkdir -p $WIKI_REMOTE/backend && tar xzf - -C $WIKI_REMOTE/backend" 2>/dev/null
   echo "    done"
