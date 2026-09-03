@@ -12,6 +12,24 @@ services:
       # 以下子路径覆盖上面的大挂载（Docker 优先用更具体的挂载）
       - ../backend/data:/app/data
       - ../backend/.env:/app/.env:ro
+    environment:
+      # v2.0 §2.3: web 进程不再内嵌 worker 线程，由独立 worker service 消费队列
+      TIBA_EMBEDDED_WORKER: "false"
+    depends_on:
+      qdrant:
+        condition: service_started
+
+  # v2.0 §2.3: 独立题跋分析 worker（CV/LLM 重任务与 web 进程隔离）
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: always
+    command: ["python", "-m", "app.worker_main"]
+    volumes:
+      - /opt/molin-wiki/backend:/app
+      - ../backend/data:/app/data
+      - ../backend/.env:/app/.env:ro
     depends_on:
       qdrant:
         condition: service_started

@@ -197,8 +197,13 @@ async def lifespan(app: FastAPI):
     _ensure_indexes()
     _init_knowledge_collections()
     _clear_results_cache_safe()
-    worker = threading.Thread(target=_embedded_worker_loop, daemon=True, name="tiba-worker")
-    worker.start()
+    # v2.0 §2.3: 生产用独立 worker 进程（app/worker_main.py + compose service）时，
+    # 设 TIBA_EMBEDDED_WORKER=false 关闭内嵌线程；本地开发默认 true 保持一键启动
+    if os.getenv("TIBA_EMBEDDED_WORKER", "true").lower() in ("1", "true", "yes", "y"):
+        worker = threading.Thread(target=_embedded_worker_loop, daemon=True, name="tiba-worker")
+        worker.start()
+    else:
+        logger.info("TIBA_EMBEDDED_WORKER=false，内嵌 Worker 未启动（由独立进程消费队列）")
     yield
     # ── shutdown ──
     _stop_event.set()
