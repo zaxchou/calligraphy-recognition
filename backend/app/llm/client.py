@@ -133,3 +133,39 @@ class _RetryableStatus(Exception):
     def __init__(self, status: int, text: str):
         self.status = status
         super().__init__(f"HTTP {status}: {text}")
+
+
+def chat_completion(
+    messages: List[Dict[str, str]],
+    *,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    max_tokens: int = 300,
+    temperature: float = 0.1,
+    extra_body: Optional[Dict[str, Any]] = None,
+    retries: int = 2,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Dict[str, Any]:
+    """同步 Chat Completions。失败抛 LLMError。"""
+    name, api_key, base_url, resolved_model, body_defaults = resolve_provider(provider, model)
+    return _chat_request(name, api_key, base_url, resolved_model, messages,
+                         max_tokens, temperature, body_defaults, extra_body,
+                         retries, timeout, is_async=False)
+
+
+async def chat_completion_async(
+    messages: List[Dict[str, str]],
+    *,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
+    max_tokens: int = 300,
+    temperature: float = 0.1,
+    extra_body: Optional[Dict[str, Any]] = None,
+    retries: int = 2,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Dict[str, Any]:
+    """异步 Chat Completions。失败抛 LLMError。"""
+    name, api_key, base_url, resolved_model, body_defaults = resolve_provider(provider, model)
+    return _chat_request(name, api_key, base_url, resolved_model, messages,
+                         max_tokens, temperature, body_defaults, extra_body,
+                         retries, timeout, is_async=True)
