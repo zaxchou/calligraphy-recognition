@@ -20,10 +20,9 @@ services:
         condition: service_started
 
   # v2.0 §2.3: 独立题跋分析 worker（CV/LLM 重任务与 web 进程隔离）
+  # 复用 backend 的现成镜像（代码经 volume 热挂载一致），避免重复构建 2GB+ 依赖
   worker:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+    image: deploy-backend
     restart: always
     command: ["python", "-m", "app.worker_main"]
     volumes:
@@ -48,8 +47,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    extra_hosts:
+      # beizitie/zi2anki 反代 host.docker.internal:3001 需要（宿主机网关）
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /opt/molin-wiki/ssl:/etc/nginx/ssl:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
       - /opt/molin-wiki/frontend/dist:/opt/molin-wiki/frontend/dist:ro
