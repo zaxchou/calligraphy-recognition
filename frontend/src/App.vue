@@ -1,4 +1,5 @@
 <template>
+  <el-config-provider :locale="zhCnLocale">
   <div class="app">
     <!-- 顶部导航（annotate 和全屏页面隐藏：分析/行旅 tab） -->
     <header v-if="!$route.path.startsWith('/annotate') && !($route.path.startsWith('/artist/') && ($route.name === 'ArtistAnalysis' || $route.name === 'ArtistAnalysisLegacy' || $route.name === 'ArtistMap' || $route.name === 'ArtistLiteratureReader'))" class="main-header">
@@ -128,10 +129,13 @@
       <div class="fa-text">墨林百科 · 周豪</div>
     </footer>
   </div>
+  </el-config-provider>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+const zhCnLocale = zhCn
 import { useRouter, useRoute } from 'vue-router'
 import { Menu, Close, ArrowDown, User, Setting, FolderOpened, DataAnalysis } from '@element-plus/icons-vue'
 import { useAuthStore } from './stores/authStore'

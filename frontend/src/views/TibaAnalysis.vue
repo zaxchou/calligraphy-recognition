@@ -107,7 +107,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 import { tibaApi } from '../api'
 import { getSharedAnalyticsData, setSharedAnalyticsData } from '../tiba/sharedCache'
 import { ARTISTS } from '../tiba/constants'

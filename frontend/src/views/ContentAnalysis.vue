@@ -398,7 +398,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 import { Download, MagicStick, Loading } from '@element-plus/icons-vue'
 import api from '@/api'
 

@@ -1,9 +1,11 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus, { ElMessage } from 'element-plus'
-import 'element-plus/dist/index.css'
+import { ElMessage, ElLoadingDirective } from 'element-plus'
+// Element Plus 按需导入（vite unplugin），仅手动补充"命令式调用"组件的样式
+import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
+import 'element-plus/es/components/loading/style/css'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-import enLocale from 'element-plus/dist/locale/en.mjs'
 import '@fontsource/noto-serif-sc/chinese-simplified-400.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-600.css'
 import '@fontsource/noto-serif-sc/chinese-simplified-700.css'
@@ -62,10 +64,7 @@ const _msgObserver = new MutationObserver((mutations) => {
 })
 _msgObserver.observe(document.body, { childList: true, subtree: true })
 
-// Element Plus locale 跟随 i18n 切换
-const epLocales = { zh: zhCn, en: enLocale }
-function getEpLocale() { return epLocales[i18n.global.locale.value] || zhCn }
-
+// Element Plus 组件经 unplugin 按需注入；locale 由 App.vue 的 el-config-provider 提供
 async function init() {
   await loadSiteConfig()
   document.title = siteConfig.htmlTitle
@@ -76,8 +75,8 @@ async function init() {
     app.component(key, component)
   }
 
+  app.directive('loading', ElLoadingDirective)
   app.use(createPinia())
-  app.use(ElementPlus, { locale: getEpLocale() })
   app.use(i18n)
   app.use(router)
   app.mount('#app')

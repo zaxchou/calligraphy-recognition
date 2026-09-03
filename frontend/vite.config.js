@@ -1,33 +1,22 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
-
-function http2Preload() {
-  return {
-    name: 'http2-preload',
-    transformIndexHtml(html, { bundle }) {
-      if (!bundle) return
-      const entryChunk = Object.values(bundle).find(c => c.isEntry)
-      if (!entryChunk) return
-      const links = []
-      if (entryChunk.fileName) {
-        links.push({ tag: 'link', attrs: { rel: 'modulepreload', href: '/' + entryChunk.fileName }, injectTo: 'head' })
-      }
-      const entryName = entryChunk.name
-      for (const [, chunk] of Object.entries(bundle)) {
-        if (chunk.type === 'asset' && chunk.fileName?.endsWith('.css') && chunk.name?.replace(/\.css$/, '') === entryName) {
-          links.push({ tag: 'link', attrs: { rel: 'preload', href: '/' + chunk.fileName, as: 'style' }, injectTo: 'head' })
-        }
-      }
-      return links
-    }
-  }
-}
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
   plugins: [
     vue(),
-    http2Preload(),
+    // Element Plus 按需导入（v2.0 构建瘦身）：组件与样式按使用注入
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+      dts: false,
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+      dts: false,
+    }),
   ],
   resolve: {
     alias: {
@@ -38,7 +27,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'echarts': ['echarts'],
+          // echarts 已按需注册（src/utils/echarts.js），随使用方分包，不再单独拆大包
           'element-plus': ['element-plus', '@element-plus/icons-vue'],
         }
       }

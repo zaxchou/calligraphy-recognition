@@ -159,7 +159,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 import { useMapData } from './MapMode/useMapData'
 import type { MapLocation as LocationWithPaintings, PeriodConfig } from './MapMode/locations'
 import { lookupCity, coordKey } from './MapMode/locations'

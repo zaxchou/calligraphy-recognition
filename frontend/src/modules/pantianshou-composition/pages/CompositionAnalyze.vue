@@ -301,7 +301,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Close } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import echarts from '../../../utils/echarts'
 import { compositionApi } from '../api/composition'
 import SvgOverlay from '../components/SvgOverlay.vue'
 

@@ -793,7 +793,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled, MagicStick
 } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 import { getDisplayAge } from '../tiba/utils'
 import { sealsApi } from '../api'
 import api from '../api'

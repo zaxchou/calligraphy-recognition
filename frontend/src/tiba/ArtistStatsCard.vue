@@ -99,7 +99,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { DataAnalysis } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 
 const emit = defineEmits(['artist-change'])
 

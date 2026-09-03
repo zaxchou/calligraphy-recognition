@@ -59,7 +59,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import * as echarts from 'echarts'
+import echarts from '../utils/echarts'
 import { ElMessage } from 'element-plus'
 import { getDisplayAge } from '../tiba/utils'
 import ArtistStatsCard from '../tiba/ArtistStatsCard.vue'
