@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>情绪光球替换 Demo — 玻璃光球 vs 旧水晶核心</title>
+    <style>
+      :root {
+        --paper-hi: #fdfcf8; --paper-lo: #f7f3ea; --paper-border: #e0d8c8;
+        --ink-title: #4d3e2c; --ink-body: #5a5347;
+        --pos: #3cb88b; --neg: #e07a5f; --neutral: #999;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        min-height: 100vh;
+        background: #efece3;
+        color: #2b2620;
+        font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        display: flex; flex-direction: column; align-items: center;
+        padding: 28px 16px 120px; gap: 20px;
+        transition: background 0.4s, color 0.4s;
+      }
+      body.dark { background: #141413; color: #e8e2d5; }
+
+      h1 { font-family: "Noto Serif SC", "Songti SC", SimSun, serif; font-size: 22px; margin: 0; letter-spacing: 1px; }
+      .page-desc { font-size: 12.5px; opacity: 0.6; text-align: center; max-width: 720px; line-height: 1.7; margin: 0; }
+
+      .stage { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+
+      /* ───────────── ① 1:1 生产场景：TibaDetail 情绪解读卡片 ───────────── */
+      .score-card {
+        width: 560px; max-width: 96vw;
+        background: linear-gradient(135deg, var(--paper-hi) 0%, var(--paper-lo) 100%);
+        border: 1px solid var(--paper-border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        transition: background 0.4s, border-color 0.4s;
+      }
+      body.dark .score-card {
+        background: linear-gradient(135deg, #201f1c 0%, #191817 100%);
+        border-color: #3a362e;
+      }
+      .section-title {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 14px; font-weight: 700; color: var(--ink-title);
+        margin-bottom: 8px;
+      }
+      body.dark .section-title { color: #d8cdb4; }
+      .section-title .icon { font-style: normal; }
+      .section-title-spacer { flex: 1; }
+      .score-method-badge {
+        font-size: 10px; padding: 2px 8px; border-radius: 999px;
+        border: 1px solid #cbb98f; color: #8a744a; letter-spacing: 0.5px;
+        cursor: default;
+      }
+      body.dark .score-method-badge { border-color: #6b5c38; color: #c9b183; }
+
+      .emotion-layout-v2 { display: flex; flex-direction: row; gap: 14px; align-items: stretch; }
+      .emotion-core-left {
+        flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        width: 180px; min-height: 180px;
+        background: radial-gradient(ellipse at 50% 50%, rgba(250,240,220,0.5) 0%, transparent 100%);
+        border-radius: 12px;
+      }
+      body.dark .emotion-core-left { background: radial-gradient(ellipse at 50% 50%, rgba(60,52,38,0.6) 0%, transparent 100%); }
+      .emotion-core-left canvas { display: block; width: 180px; height: 180px; }
+      .orb-dropshadow canvas { filter: drop-shadow(0 6px 16px rgba(40,40,80,0.20)); }
+
+      .emotion-core-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .vader-bar-header { display: flex; align-items: baseline; gap: 10px; position: relative; margin-bottom: 10px; padding-right: 52px; }
+      .vader-polarity { font-size: 13px; font-weight: 600; }
+      .vader-score-big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.3px; line-height: 1; }
+      .period-tag {
+        position: absolute; right: 0; top: 0;
+        font-size: 11px; color: #909399; background: #f4f4f5;
+        border: 1px solid #e9e9eb; border-radius: 3px; padding: 1px 6px;
+      }
+      body.dark .period-tag { background: #2a2823; border-color: #3c382f; color: #a89c82; }
+
+      .vader-track { position: relative; height: 16px; border-radius: 8px; margin-bottom: 18px; }
+      .vader-gradient {
+        position: absolute; inset: 0; border-radius: 8px;
+        background: linear-gradient(to right, #e07a5f 0%, #f2c4b3 25%, #faf8f3 50%, #b8dcc6 75%, #3cb88b 100%);
+      }
+      .vader-marker { position: absolute; top: -4px; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column; align-items: center; transition: left 0.15s ease-out; }
+      .vader-marker-pin { width: 10px; height: 10px; border-radius: 50%; background: #333; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.35); }
+      .vader-marker-line { width: 2px; height: 20px; background: #333; margin-top: -1px; box-shadow: 0 0 2px rgba(0,0,0,0.2); }
+      .vader-axis { position: absolute; bottom: -14px; font-size: 9px; color: #aaa; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+      .vader-axis-neg { left: 0%; } .vader-axis-zero { left: 50%; } .vader-axis-pos { left: 100%; }
+      .vader-reasoning { font-size: 12px; color: var(--ink-body); line-height: 1.5; margin-top: 4px; }
+      body.dark .vader-reasoning { color: #b0a68e; }
+
+      .polarity-strip-title { font-size: 10px; color: #a09880; margin: 10px 0 4px; }
+      .polarity-dots { display: flex; gap: 5px; }
+      .polarity-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+      .pol-pos { background: #3cb88b; } .pol-neg { background: #e07a5f; }
+      .pol-neutral { background: #cfc9bb; } .pol-ambiguous { background: #d9b26a; }
+
+      /* ───────────── ② 新旧对比 ───────────── */
+      .compare-card {
+        width: 560px; max-width: 96vw;
+        background: linear-gradient(135deg, var(--paper-hi) 0%, var(--paper-lo) 100%);
+        border: 1px solid var(--paper-border); border-radius: 10px; padding: 14px 16px;
+        transition: background 0.4s, border-color 0.4s;
+      }
+      body.dark .compare-card { background: linear-gradient(135deg, #201f1c 0%, #191817 100%); border-color: #3a362e; }
+      .compare-grid { display: flex; gap: 14px; }
+      .compare-cell { flex: 1; text-align: center; }
+      .compare-cell .orb-box {
+        width: 180px; height: 180px; margin: 0 auto; display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at 50% 50%, rgba(250,240,220,0.5) 0%, transparent 100%);
+        border-radius: 12px;
+      }
+      body.dark .compare-cell .orb-box { background: radial-gradient(ellipse at 50% 50%, rgba(60,52,38,0.6) 0%, transparent 100%); }
+      .compare-cell canvas { display: block; width: 180px; height: 180px; }
+      .compare-name { font-size: 12.5px; font-weight: 700; margin-top: 8px; color: var(--ink-title); }
+      body.dark .compare-name { color: #d8cdb4; }
+      .compare-sub { font-size: 11px; opacity: 0.55; margin-top: 2px; line-height: 1.5; }
+
+      /* ───────────── 控制区 ───────────── */
+      .controls {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+        background: rgba(250, 248, 242, 0.96); border-top: 1px solid #ddd5c2;
+        backdrop-filter: blur(6px);
+        padding: 12px 20px 14px;
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+        transition: background 0.4s, border-color 0.4s;
+      }
+      body.dark .controls { background: rgba(24, 23, 21, 0.96); border-top-color: #38342b; }
+      .ctl-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+      #slider { width: min(560px, 86vw); accent-color: #3884f6; }
+      .preset {
+        border: 1px solid #c9bfa8; background: transparent; color: inherit;
+        padding: 4px 12px; border-radius: 999px; cursor: pointer; font-size: 12.5px; opacity: 0.75;
+      }
+      .preset:hover { opacity: 1; border-color: #8a744a; }
+      .preset.active { opacity: 1; background: #8a744a; border-color: #8a744a; color: #fff; }
+      body.dark .preset { border-color: #5a5240; }
+      body.dark .preset.active { background: #c9b183; border-color: #c9b183; color: #201f1c; }
+      .readout { font-size: 13px; font-variant-numeric: tabular-nums; }
+      .readout b { font-size: 15px; }
+      .bg-toggle { display: flex; gap: 6px; margin-left: 12px; }
+      .bg-toggle button {
+        border: 1px solid #c9bfa8; background: transparent; color: inherit;
+        padding: 4px 12px; border-radius: 999px; cursor: pointer; font-size: 12px; opacity: 0.7;
+      }
+      .bg-toggle button.active { opacity: 1; background: #4d3e2c; border-color: #4d3e2c; color: #f5f0e2; }
+      body.dark .bg-toggle button.active { background: #d8cdb4; border-color: #d8cdb4; color: #201f1c; }
+      .hint { font-size: 11px; opacity: 0.45; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h1>情绪光球替换 Demo</h1>
+    <p class="page-desc">
+      上：1:1 复刻题跋详情页「情绪解读」卡片（TibaDetail.vue score-card），旧 3D 水晶核心已替换为新玻璃光球。<br/>
+      下：新旧光球同框对比（同一情绪值驱动）。拖动底部滑块或点击预设值查看不同情绪下的表现。
+    </p>
+
+    <div class="stage">
+      <!-- ① 生产场景还原 -->
+      <div class="score-card">
+        <h4 class="section-title">
+          <i class="icon">📊</i> 情绪解读
+          <span class="section-title-spacer"></span>
+          <span class="score-method-badge">Molin Emotion</span>
+        </h4>
+        <div class="emotion-layout-v2">
+          <div class="emotion-core-left"><div id="orbCard" class="orb-dropshadow" style="width:180px;height:180px;"></div></div>
+          <div class="emotion-core-right">
+            <div class="vader-bar-header">
+              <span class="vader-polarity" id="polarity">中性</span>
+              <span class="vader-score-big" id="bigScore">+0.0000</span>
+              <span class="period-tag">中期</span>
+            </div>
+            <div class="vader-track">
+              <div class="vader-gradient"></div>
+              <div class="vader-marker" id="marker" style="left:50%;">
+                <div class="vader-marker-pin"></div>
+                <div class="vader-marker-line"></div>
+              </div>
+              <span class="vader-axis vader-axis-neg">-1.0</span>
+              <span class="vader-axis vader-axis-zero">0</span>
+              <span class="vader-axis vader-axis-pos">+1.0</span>
+            </div>
+            <div class="vader-reasoning" id="reasoning">题跋语调平和，记述日常所见，无明显情感倾向。</div>
+            <div class="polarity-strip-title">维度极性</div>
+            <div class="polarity-dots" id="dots"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ② 新旧对比 -->
+      <div class="compare-card">
+        <h4 class="section-title"><i class="icon">⚖️</i> 新旧对比 <span class="section-title-spacer"></span></h4>
+        <div class="compare-grid">
+          <div class="compare-cell">
+            <div class="orb-box" id="orbOld"></div>
+            <div class="compare-name">旧 · EmotionCore3D（Three.js 水晶）</div>
+            <div class="compare-sub">负=深红 / 正=深绿，低饱和<br>可拖拽旋转</div>
+          </div>
+          <div class="compare-cell">
+            <div class="orb-box" id="orbNew"><div class="orb-dropshadow" style="width:180px;height:180px;"></div></div>
+            <div class="compare-name">新 · EmotionOrb（OGL 玻璃光球）</div>
+            <div class="compare-sub">负=红 / 0=蓝 / 正=金<br>大小·速度·辉光随 |v| 变化</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 控制区 -->
+    <div class="controls">
+      <input id="slider" type="range" min="-1" max="1" step="0.001" value="0.42" />
+      <div class="ctl-row">
+        <button class="preset" data-v="-0.87">愤怒 -0.87</button>
+        <button class="preset" data-v="-0.35">烦躁 -0.35</button>
+        <button class="preset" data-v="0.05">平静 +0.05</button>
+        <button class="preset active" data-v="0.42">愉悦 +0.42</button>
+        <button class="preset" data-v="0.87">快乐 +0.87</button>
+        <div class="bg-toggle">
+          <button id="btnLight" class="active">宣纸浅色（线上现状）</button>
+          <button id="btnDark">暗墨深色</button>
+        </div>
+      </div>
+      <div class="readout">vader_normalized = <b id="valOut">+0.4200</b> &nbsp;·&nbsp; <span id="labelOut">愉悦</span></div>
+      <div class="hint">需联网加载 CDN（jsdelivr / esm.sh）。正式替换为 Vue 组件时不依赖 CDN（ogl 进 npm 依赖）。</div>
+    </div>
+
+    <script type="module">
+      // ─────────── CDN 加载（jsdelivr 优先，esm.sh 兜底） ───────────
+      const loadScript = (src) =>
+        new Promise((ok, err) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = err; document.head.appendChild(s); });
+
+      let ogl;
+      try { ogl = await import("https://cdn.jsdelivr.net/npm/ogl@1.0.11/+esm"); }
+      catch { ogl = await import("https://esm.sh/ogl@1.0.11"); }
+      try { await loadScript("https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"); }
+      catch { await loadScript("https://unpkg.com/three@0.152.2/build/three.min.js"); }
+      const THREE = window.THREE;
+
+      // ─────────── 情绪映射（来自 emotion-utils.js，原样） ───────────
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      function emotionLabel(v) {
+        if (v <= -0.8) return "暴怒"; if (v <= -0.5) return "愤怒"; if (v <= -0.2) return "烦躁";
+        if (v < 0.2) return "平静"; if (v < 0.5) return "愉悦"; if (v < 0.8) return "开心"; return "快乐";
+      }
+      const lerpRgb = (a, b, t) => [Math.round(lerp(a[0], b[0], t)), Math.round(lerp(a[1], b[1], t)), Math.round(lerp(a[2], b[2], t))];
+      function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0; const l = (max + min) / 2; const d = max - min;
+        if (d !== 0) {
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+          else if (max === g) h = (b - r) / d + 2;
+          else h = (r - g) / d + 4;
+          h *= 60;
+        }
+        return [h, s, l];
+      }
+      function hslToHex(h, s, l) {
+        h = ((h % 360) + 360) % 360;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+        if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+        else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+        else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+        const to = (v) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
+        return "#" + to(r) + to(g) + to(b);
+      }
+      const ANGER = [255, 59, 48], NEUTRAL = [56, 132, 246], HAPPY = [255, 209, 64];
+      function emotionColors(v) {
+        const val = clamp(v, -1, 1);
+        const base = val < 0 ? lerpRgb(ANGER, NEUTRAL, val + 1) : lerpRgb(NEUTRAL, HAPPY, val);
+        const [h, s, l] = rgbToHsl(base[0], base[1], base[2]);
+        return [
+          hslToHex(h, Math.min(1, s * 1.1), Math.min(1, l * 1.15)),
+          hslToHex(h, s, l),
+          hslToHex((h + 18) % 360, s, Math.max(0, l * 0.82)),
+        ];
+      }
+      const emotionGlassSize = (v) => lerp(0.82, 1.22, Math.abs(clamp(v, -1, 1)));
+      const emotionEnergy = (v) => Math.abs(clamp(v, -1, 1));
+
+      // ─────────── 玻璃光球（移植自 standalone-themes.html / Strands.jsx，原样） ───────────
+      const MAX_STRANDS = 12, MAX_COLORS = 8;
+      const VERT = `#version 300 es
+      in vec2 position; void main(){ gl_Position = vec4(position,0.0,1.0); }`;
+      const FRAG = `#version 300 es
+      precision highp float;
+      uniform float uTime; uniform vec2 uResolution;
+      uniform vec3 uColors[${MAX_COLORS}]; uniform int uColorCount; uniform int uStrandCount;
+      uniform float uSpeed, uAmplitude, uWaviness, uThickness, uGlow, uTaper, uSpread, uHueShift, uIntensity, uOpacity, uScale, uSaturation;
+      out vec4 fragColor; const float PI = 3.14159265;
+      vec3 spectrum(float t){ return 0.5 + 0.5*cos(2.0*PI*(t+vec3(0.0,0.33,0.67))); }
+      vec3 samplePalette(float t){ t=fract(t); float sc=t*float(uColorCount); int idx=int(floor(sc)); float bl=fract(sc); int nx=idx+1; if(nx>=uColorCount) nx=0; return mix(uColors[idx],uColors[nx],bl); }
+      vec3 strandColor(float t){ if(uColorCount>0) return samplePalette(t); return spectrum(t); }
+      void main(){
+        vec2 uv=(gl_FragCoord.xy-0.5*uResolution)/min(uResolution.x,uResolution.y); uv/=max(uScale,0.0001);
+        float e=0.06+uIntensity*0.94; float env=pow(max(cos(uv.x*PI*1.3),0.0),uTaper);
+        vec3 col=vec3(0.0);
+        for(int i=0;i<${MAX_STRANDS};i++){ if(i>=uStrandCount) break;
+          float fi=float(i); float ph=fi*1.7*uSpread; float freq=(2.0+fi*0.35)*uWaviness; float spd=1.4+fi*1.2;
+          float tt=uTime*uSpeed;
+          float w=sin(uv.x*freq+tt*spd+ph)*0.60 + sin(uv.x*freq*1.1-tt*spd*0.7+ph*1.7)*0.40;
+          float amp=(0.1+0.02*e)*env*uAmplitude; float y=w*amp;
+          float d=abs(uv.y-y); float thick=(0.001+0.05*e)*(0.35+env)*uThickness;
+          float g=thick/(d+thick*0.45); g=g*g;
+          float h=fi/float(uStrandCount)+uv.x*0.30+uTime*0.04+uHueShift;
+          col+=strandColor(h)*g*env;
+        }
+        col*=0.45+0.7*e; col=1.0-exp(-col*uGlow);
+        float gray=dot(col,vec3(0.2126,0.7152,0.0722)); col=max(mix(vec3(gray),col,uSaturation),0.0);
+        float lum=max(max(col.r,col.g),col.b); float alpha=clamp(lum,0.0,1.0)*uOpacity;
+        fragColor=vec4(col*uOpacity,alpha);
+      }`;
+      const GLASS_FRAG = `#version 300 es
+      precision highp float;
+      uniform sampler2D uScene; uniform vec2 uResolution;
+      uniform float uRadius, uRefraction, uDispersion, uLight;
+      uniform vec3 uTint;
+      out vec4 fragColor;
+      vec2 toUv(vec2 p){ return p*(min(uResolution.x,uResolution.y)/uResolution)+0.5; }
+      void main(){
+        vec2 p=(gl_FragCoord.xy-0.5*uResolution)/min(uResolution.x,uResolution.y); float d=length(p); float r=uRadius;
+        float edge=fwidth(d)*1.5; float mask=1.0-smoothstep(r-edge,r+edge,d);
+        if(mask<=0.0){ fragColor=vec4(0.0); return; }
+        float z=sqrt(max(r*r-d*d,0.0))/r; float nd=d/r;
+        vec2 dir=d>0.0?p/d:vec2(0.0);
+        float lens=smoothstep(0.85,1.0,nd)*pow(nd,6.0);
+        vec2 offset=-dir*lens*uRefraction*0.15; vec2 disp=-dir*lens*uDispersion*0.012;
+        vec3 light;
+        light.r=texture(uScene,toUv(p+offset-disp)).r;
+        light.g=texture(uScene,toUv(p+offset)).g;
+        light.b=texture(uScene,toUv(p+offset+disp)).b;
+        float fres=pow(1.0-z,3.0);
+        vec3 rimCol = mix(vec3(1.0), uTint, uLight);
+        vec3 rim = rimCol * fres * mix(0.18, 0.55, uLight);
+        vec2 lightDir=normalize(vec2(-0.55,0.6));
+        float spec=pow(max(dot(p/max(r,1e-4),lightDir),0.0),6.0); spec*=smoothstep(r,r*0.55,d);
+        vec3 emissive=light+rim+vec3(spec)*0.4;
+        float emissiveA=clamp(max(max(emissive.r,emissive.g),emissive.b),0.0,1.0);
+        float bodyA = mix(0.05, 0.13, uLight) + fres * mix(0.05, 0.16, uLight);
+        float outA = emissiveA + bodyA * (1.0 - emissiveA);
+        fragColor=vec4(emissive*mask,outA*mask);
+      }`;
+
+      const { Renderer, Program, Mesh, Color, Triangle, RenderTarget } = ogl;
+      const hexToRgb01 = (hex) => { const c = new Color(hex); return [c.r, c.g, c.b]; };
+      const buildPalette = (colors) => {
+        const filled = colors && colors.length ? colors : ["#ffffff"];
+        const padded = [];
+        for (let i = 0; i < MAX_COLORS; i++) {
+          const hex = filled[i] ?? filled[filled.length - 1];
+          const c = new Color(hex); padded.push([c.r, c.g, c.b]);
+        }
+        return padded;
+      };
+
+      // 工厂：一个容器 = 一个独立光球实例
+      function createGlassOrb(container, { light = 1 } = {}) {
+        const renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true });
+        const gl = renderer.gl;
+        gl.clearColor(0, 0, 0, 0);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.canvas.style.backgroundColor = "transparent";
+
+        const geometry = new Triangle(gl);
+        if (geometry.attributes.uv) delete geometry.attributes.uv;
+
+        const program = new Program(gl, {
+          vertex: VERT, fragment: FRAG,
+          uniforms: {
+            uTime: { value: 0 },
+            uResolution: { value: [container.offsetWidth, container.offsetHeight] },
+            uColors: { value: buildPalette(emotionColors(0)) },
+            uColorCount: { value: 3 }, uStrandCount: { value: 4 },
+            uSpeed: { value: 0.4 }, uAmplitude: { value: 0.7 }, uWaviness: { value: 1 },
+            uThickness: { value: 0.85 }, uGlow: { value: 2.2 }, uTaper: { value: 3 },
+            uSpread: { value: 1 }, uHueShift: { value: 0 }, uIntensity: { value: 0.6 },
+            uOpacity: { value: 1 }, uScale: { value: 1.4 }, uSaturation: { value: 1.5 },
+          },
+        });
+        const mesh = new Mesh(gl, { geometry, program });
+
+        const renderTarget = new RenderTarget(gl, { width: container.offsetWidth, height: container.offsetHeight });
+        const glassProgram = new Program(gl, {
+          vertex: VERT, fragment: GLASS_FRAG,
+          uniforms: {
+            uScene: { value: renderTarget.texture },
+            uResolution: { value: [container.offsetWidth, container.offsetHeight] },
+            uRadius: { value: 0.375 }, uRefraction: { value: 1.1 }, uDispersion: { value: 1.25 },
+            uLight: { value: light }, uTint: { value: hexToRgb01("#3884f6") },
+          },
+        });
+        const glassMesh = new Mesh(gl, { geometry, program: glassProgram });
+        container.appendChild(gl.canvas);
+
+        const w = container.offsetWidth, h = container.offsetHeight;
+        renderer.setSize(w, h);
+        renderTarget.setSize(w, h);
+
+        let curValue = 0;
+        function frame(time) {
+          requestAnimationFrame(frame);
+          const v = clamp(curValue, -1, 1);
+          const e = emotionEnergy(v);
+          program.uniforms.uTime.value = time * 0.001;
+          program.uniforms.uColors.value = buildPalette(emotionColors(v));
+          program.uniforms.uSpeed.value = 0.4 + 0.6 * e;
+          program.uniforms.uAmplitude.value = 0.7 + 0.7 * e;
+          program.uniforms.uGlow.value = 1.9 + 1.2 * e;
+          program.uniforms.uIntensity.value = 0.5 + 0.35 * e;
+          renderer.render({ scene: mesh, target: renderTarget });
+          glassProgram.uniforms.uScene.value = renderTarget.texture;
+          glassProgram.uniforms.uRadius.value = 0.375 * emotionGlassSize(v);
+          glassProgram.uniforms.uLight.value = light;
+          glassProgram.uniforms.uTint.value = hexToRgb01(emotionColors(v)[1]);
+          renderer.render({ scene: glassMesh });
+        }
+        requestAnimationFrame(frame);
+        return { setValue: (v) => { curValue = v; } };
+      }
+
+      // ─────────── 旧水晶核心（移植自 EmotionCore3D.vue，原样） ───────────
+      function createCrystal(container) {
+        const w = container.clientWidth, h = container.clientHeight;
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 20);
+        camera.position.set(0, 0, 4.2);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setClearColor(0x000000, 0);
+        renderer.setSize(w, h);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xeeddcc, 2.5));
+        const k1 = new THREE.PointLight(0xbbccee, 50, 12); k1.position.set(3, 2, 4); scene.add(k1);
+        const k2 = new THREE.PointLight(0xeeccbb, 40, 10); k2.position.set(-3, -1, 2); scene.add(k2);
+
+        function moodColor(t) {
+          const c = new THREE.Color();
+          return c.setHSL(t * 0.38, 0.85 - t * 0.10, 0.14 + t * 0.03);
+        }
+        function noise3D(x, y, z) {
+          return Math.sin(x * 3.2 + y * 4.8 + z * 2.5) * Math.cos(y * 3.9 + z * 3.1 + x * 1.6);
+        }
+
+        const crystalGroup = new THREE.Group();
+        const crystalGeo = new THREE.IcosahedronGeometry(1.25, 2);
+        const posArr = crystalGeo.attributes.position;
+        const origins = new Float32Array(posArr.count * 3);
+        const nphases = new Float32Array(posArr.count);
+        for (let i = 0; i < posArr.count; i++) {
+          origins[i * 3] = posArr.getX(i); origins[i * 3 + 1] = posArr.getY(i); origins[i * 3 + 2] = posArr.getZ(i);
+          nphases[i] = Math.random() * Math.PI * 2;
+        }
+        crystalGeo.setAttribute("origin", new THREE.BufferAttribute(origins, 3));
+        crystalGeo.setAttribute("noisePhase", new THREE.BufferAttribute(nphases, 1));
+        const crystalMat = new THREE.MeshStandardMaterial({
+          color: 0x556688, emissive: 0x111122, emissiveIntensity: 0.4, metalness: 0.05,
+          roughness: 0.45, flatShading: true, transparent: true, opacity: 0.55,
+        });
+        const crystalMesh = new THREE.Mesh(crystalGeo, crystalMat);
+        crystalGroup.add(crystalMesh);
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0x446688, wireframe: true, transparent: true, opacity: 0.25 });
+        const wireMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.40, 2), wireMat);
+        crystalGroup.add(wireMesh);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0x6688aa, transparent: true, opacity: 0.2 });
+        const coreMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.38, 0), coreMat);
+        crystalGroup.add(coreMesh);
+        scene.add(crystalGroup);
+
+        // 拖拽旋转
+        let isDragging = false, dragRotY = 0, dragRotX = 0, prevMX = 0, prevMY = 0;
+        const el = renderer.domElement;
+        el.style.cursor = "grab";
+        el.addEventListener("mousedown", (e) => { isDragging = true; prevMX = e.clientX; prevMY = e.clientY; el.style.cursor = "grabbing"; });
+        window.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+          dragRotY += (e.clientX - prevMX) * 0.01; dragRotX += (e.clientY - prevMY) * 0.01;
+          prevMX = e.clientX; prevMY = e.clientY;
+        });
+        window.addEventListener("mouseup", () => { isDragging = false; el.style.cursor = "grab"; });
+
+        const clock = new THREE.Clock();
+        let mood = 0.5;
+        ;(function animate() {
+          requestAnimationFrame(animate);
+          const dt = Math.min(clock.getDelta(), 0.1);
+          const t = clock.elapsedTime;
+          const mc = moodColor(mood);
+          const twitchEnergy = (Math.sin(t * 2.8) * 0.5 + 0.5) * 0.3;
+          const twitch = Math.max(0, Math.sin(twitchEnergy * 2.2) * Math.exp(-twitchEnergy * 0.35)) * 0.4;
+          const twS = 1 + twitch * 0.08;
+          const twX = Math.sin(t * 13) * twitch * 0.03;
+          const twY = Math.cos(t * 14) * twitch * 0.03;
+          const breath = 1 + Math.sin(t * 1.1) * 0.04 + Math.sin(t * 2.3) * 0.02;
+          const intensity = Math.abs(mood - 0.5) * 2;
+          const sizeScale = 1.10 * Math.max(0.24, intensity);
+          const scale = breath * sizeScale * twS;
+          crystalGroup.scale.setScalar(scale);
+          crystalGroup.position.set(twX, twY, 0);
+          if (!isDragging) { dragRotY *= 0.94; dragRotX *= 0.94; }
+          crystalGroup.rotation.y = t * 0.3 + dragRotY;
+          crystalGroup.rotation.x = t * 0.12 + dragRotX;
+          wireMesh.rotation.y = -(t * 0.15) + dragRotY * 0.3;
+          wireMesh.rotation.x = -(t * 0.1) + dragRotX * 0.3;
+          const pos = crystalMesh.geometry.attributes.position;
+          const oData = crystalMesh.geometry.attributes.origin.array;
+          const pData = crystalMesh.geometry.attributes.noisePhase.array;
+          const arr = pos.array;
+          const ns = 0.02 + twitch * 0.08;
+          for (let i = 0; i < pos.count; i++) {
+            const ox = oData[i * 3], oy = oData[i * 3 + 1], oz = oData[i * 3 + 2];
+            const n = noise3D(ox + t * 0.45, oy + t * 0.35, oz + pData[i]);
+            arr[i * 3] = ox + n * ns; arr[i * 3 + 1] = oy + n * ns * 0.7; arr[i * 3 + 2] = oz + n * ns * 0.6;
+          }
+          pos.needsUpdate = true;
+          const fillOpa = 0.0 + intensity * 0.85;
+          crystalMat.opacity = fillOpa;
+          crystalMat.emissiveIntensity = 0.1 + intensity * 0.5;
+          wireMat.opacity = 0.25;
+          coreMesh.material.opacity = intensity * 0.3;
+          crystalMat.color.copy(mc);
+          crystalMat.emissive.copy(mc).multiplyScalar(0.25);
+          wireMat.color.copy(mc);
+          coreMesh.material.color.copy(mc).multiplyScalar(0.7);
+          k1.color.copy(mc).multiplyScalar(0.6);
+          renderer.render(scene, camera);
+        })();
+        // 旧组件约定：mood ∈ [0,1] = (vader_normalized + 1) / 2
+        return { setMood: (m) => { mood = m; } };
+      }
+
+      // ─────────── 实例化 + UI 联动 ───────────
+      const orbCard = createGlassOrb(document.getElementById("orbCard"), { light: 1 });
+      const orbNewCompare = createGlassOrb(document.getElementById("orbNew").firstElementChild, { light: 1 });
+      const orbOld = createCrystal(document.getElementById("orbOld"));
+
+      const REASONING = {
+        neg: "题跋自述身世漂泊，语调沉郁，多处用典寄托孤愤之情。",
+        mid: "题跋语调平和，记述日常所见，无明显情感倾向。",
+        pos: "题跋状写眼前繁盛景象，笔调轻快，尾句自得之意溢于言表。",
+      };
+      const DOTS = {
+        neg: ["neg", "neg", "neg", "neutral", "neg", "pos", "neutral", "neg"],
+        mid: ["neutral", "pos", "neutral", "neutral", "neg", "neutral", "pos", "neutral"],
+        pos: ["pos", "pos", "neutral", "pos", "pos", "neutral", "pos", "pos"],
+      };
+      const polarityEl = document.getElementById("polarity");
+      const bigScoreEl = document.getElementById("bigScore");
+      const markerEl = document.getElementById("marker");
+      const reasoningEl = document.getElementById("reasoning");
+      const dotsEl = document.getElementById("dots");
+      const valOut = document.getElementById("valOut");
+      const labelOut = document.getElementById("labelOut");
+
+      let light = 1;
+      function apply(v) {
+        v = clamp(v, -1, 1);
+        const mood = Math.max(0, Math.min(1, (v + 1) / 2)); // 旧组件换算
+        orbCard.setValue(v);
+        orbNewCompare.setValue(v);
+        orbOld.setMood(mood);
+
+        const pol = v > 0.2 ? "pos" : v < -0.2 ? "neg" : "mid";
+        polarityEl.textContent = pol === "pos" ? "积极" : pol === "neg" ? "消极" : "中性";
+        polarityEl.style.color = pol === "pos" ? "var(--pos)" : pol === "neg" ? "var(--neg)" : "var(--neutral)";
+        bigScoreEl.textContent = (v > 0 ? "+" : "") + v.toFixed(4);
+        bigScoreEl.style.color = v < 0 ? "var(--neg)" : v > 0 ? "var(--pos)" : "var(--neutral)";
+        markerEl.style.left = ((v + 1) / 2) * 100 + "%";
+        reasoningEl.textContent = REASONING[pol];
+        dotsEl.innerHTML = DOTS[pol].map((p) => `<span class="polarity-dot pol-${p}"></span>`).join("");
+        valOut.textContent = (v > 0 ? "+" : "") + v.toFixed(4);
+        labelOut.textContent = emotionLabel(v);
+      }
+
+      const slider = document.getElementById("slider");
+      slider.addEventListener("input", () => { setActivePreset(null); apply(parseFloat(slider.value)); });
+
+      const presets = [...document.querySelectorAll(".preset")];
+      function setActivePreset(btn) { presets.forEach((b) => b.classList.toggle("active", b === btn)); }
+      presets.forEach((b) => b.addEventListener("click", () => {
+        const v = parseFloat(b.dataset.v);
+        slider.value = v; setActivePreset(b); apply(v);
+      }));
+
+      const btnLight = document.getElementById("btnLight");
+      const btnDark = document.getElementById("btnDark");
+      function setBg(isLight) {
+        light = isLight ? 1 : 0;
+        document.body.classList.toggle("light", isLight);
+        document.body.classList.toggle("dark", !isLight);
+        btnLight.classList.toggle("active", isLight);
+        btnDark.classList.toggle("active", !isLight);
+      }
+      // 浅色/深色切换只改页面与卡片底色；光球浅色适配（描边/透明度/投影）已常开，
+      // 正式组件化时应做成 theme prop（见交接文档 §6）
+      btnLight.addEventListener("click", () => setBg(true));
+      btnDark.addEventListener("click", () => setBg(false));
+
+      // URL 参数：?v=-0.87&theme=dark（便于分享特定状态）
+      const qs = new URLSearchParams(location.search);
+      const v0 = parseFloat(qs.get("v"));
+      if (qs.get("theme") === "dark") setBg(false);
+      const init = Number.isFinite(v0) ? v0 : 0.42;
+      slider.value = init;
+      setActivePreset(presets.find((b) => parseFloat(b.dataset.v) === init) || null);
+      apply(init);
+    </script>
+  </body>
+</html>
