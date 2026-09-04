@@ -38,10 +38,10 @@
             @click="goToArtist(artist.name)">
             <div class="al-featured-avatar">
               <img v-if="artist.avatar_url" :src="artist.avatar_url" class="al-featured-avatar-img" referrerpolicy="no-referrer" />
-              <span v-else>{{ artist.name.charAt(0) }}</span>
+              <span v-else>{{ $t(artist.name).charAt(0) }}</span>
             </div>
-            <div class="al-featured-name">{{ artist.name }}</div>
-            <div class="al-featured-meta">{{ artist.dynasty }} · {{ artist.artwork_count || 0 }}件</div>
+            <div class="al-featured-name">{{ $t(artist.name) }}</div>
+            <div class="al-featured-meta">{{ $t(artist.dynasty) }} · {{ $t('unit.works_count', { n: artist.artwork_count || 0 }) }}</div>
           </div>
         </div>
       </section>

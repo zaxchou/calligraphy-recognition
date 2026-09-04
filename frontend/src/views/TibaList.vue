@@ -33,8 +33,8 @@
 
     <!-- 标签筛选指示条 -->
     <div v-if="filterTag" class="filter-indicator">
-      <span>{{ $t('tibalist.t2') }}<strong>{{ filterTag }}</strong></span>
-      <span class="filter-count">共 {{ total }} 幅</span>
+      <span>{{ $t('tibalist.t2') }}<strong>{{ $t(filterTag) }}</strong></span>
+      <span class="filter-count">{{ $t('tibalist.count', { n: total }) }}</span>
       <el-button size="small" text @click="clearTagFilter">
         <el-icon><Close /></el-icon>
         {{ $t('annotationverify.t4') }}
@@ -118,7 +118,7 @@
                 </div>
               </div>
               <div class="table-col col-info">
-                <div class="work-title" @click.stop="openDetailInNewWindow(item)">{{ item.title || '未命名' }}</div>
+                <div class="work-title" @click.stop="openDetailInNewWindow(item)">{{ item.title ? $t(item.title) : $t('card.untitled') }}</div>
                 <div v-if="isSearchMode && item.matched_fields?.length" class="match-tags">
                   <el-tag v-for="field in item.matched_fields" :key="field" size="small" :type="matchTagType(field)" class="match-tag">
                     {{ matchFieldLabel(field) }}
@@ -126,15 +126,15 @@
                 </div>
               </div>
               <div class="table-col col-author">
-                <span v-if="item.artist" class="author-name">{{ item.artist }}</span>
+                <span v-if="item.artist" class="author-name">{{ $t(item.artist) }}</span>
                 <span v-else class="author-name">-</span>
               </div>
               <div class="table-col col-age">
-                <span v-if="getDisplayAge(item) !== null" class="age-val">{{ getDisplayAge(item) }}岁</span>
+                <span v-if="getDisplayAge(item) !== null" class="age-val">{{ getDisplayAge(item) }}{{ $t('gallery.age_suffix') }}</span>
                 <span v-else class="age-val">-</span>
               </div>
               <div class="table-col col-year">
-                <span v-if="item.year">{{ item.year }}年</span>
+                <span v-if="item.year">{{ item.year }}{{ $t('gallery.year_suffix') }}</span>
                 <span v-else>-</span>
               </div>
               <div class="table-col col-inscription">
@@ -687,13 +687,13 @@ function sortBy(sortType) {
 function matchFieldLabel(field) {
   const labels = {
     title: t('tibalist.s2'),
-    artist: '作者',
-    inscription_content: '题跋',
-    inscription_modern: '题跋(白话)',
-    seal_content: '印章',
-    notes: '备注',
-    analysis_note: 'AI分析',
-    year: '年代',
+    artist: t('info.author'),
+    inscription_content: t('search.f_inscription'),
+    inscription_modern: t('search.f_inscription_modern'),
+    seal_content: t('search.f_seal'),
+    notes: t('search.f_notes'),
+    analysis_note: t('search.f_analysis'),
+    year: t('search.f_year'),
   }
   return labels[field] || field
 }

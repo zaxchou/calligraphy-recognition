@@ -3,13 +3,13 @@
     <div v-for="group in dynastyGroups" :key="group.key" class="dt-section">
       <div class="dt-era-header" @click="toggleExpanded(group.key)">
         <div class="dt-era-left">
-          <span class="dt-era-name">{{ group.label }}</span>
-          <span class="dt-era-range">{{ group.range }}</span>
+          <span class="dt-era-name">{{ $t(group.label) }}</span>
+          <span class="dt-era-range">{{ $t(group.range) }}</span>
         </div>
         <div class="dt-era-counts">
-          <span class="dt-era-count">{{ group.artworkCount }} 件</span>
+          <span class="dt-era-count">{{ $t('unit.works_count', { n: group.artworkCount }) }}</span>
           <span class="dt-era-divider">/</span>
-          <span class="dt-era-count">{{ group.count }} 位</span>
+          <span class="dt-era-count">{{ $t('unit.artists_count', { n: group.count }) }}</span>
         </div>
         <el-icon class="dt-expand-icon" :class="{ expanded: isExpanded(group.key, group.count) }">
           <ArrowDown />

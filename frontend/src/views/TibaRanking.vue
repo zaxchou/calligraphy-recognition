@@ -15,8 +15,8 @@
     <el-card shadow="hover" class="ranking-list-card">
       <!-- 标签筛选指示条 -->
       <div v-if="filterTag" class="filter-indicator">
-        <span>{{ $t('tibalist.t2') }}<strong>{{ filterTag }}</strong></span>
-        <span class="filter-count">共 {{ total }} 幅</span>
+        <span>{{ $t('tibalist.t2') }}<strong>{{ $t(filterTag) }}</strong></span>
+        <span class="filter-count">{{ $t('tibalist.count', { n: total }) }}</span>
         <el-button size="small" text @click="clearTagFilter">
           <el-icon><Close /></el-icon>
           {{ $t('annotationverify.t4') }}

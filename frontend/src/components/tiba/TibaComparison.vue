@@ -2,7 +2,7 @@
   <el-card shadow="hover" class="comparison-dashboard-card">
     <template #header>
       <div class="card-header">
-        <span class="card-title">名家对比</span>
+        <span class="card-title">{{ $t('compare.title') }}</span>
       </div>
     </template>
     <div class="comparison-bars-container">
@@ -13,24 +13,24 @@
             <el-option
               v-for="name in artistOptions"
               :key="name"
-              :label="name"
+              :label="$t(name)"
               :value="name"
             />
           </el-select>
           <div class="artist-avatar" :style="avatarStyle(leftArtist)">
-            {{ leftArtist ? leftArtist.charAt(0) : '?' }}
+            {{ leftArtist ? $t(leftArtist).charAt(0) : '?' }}
           </div>
         </div>
         <div class="vs-divider">VS</div>
         <div class="artist-select-wrap right">
           <div class="artist-avatar" :style="avatarStyle(rightArtist)">
-            {{ rightArtist ? rightArtist.charAt(0) : '?' }}
+            {{ rightArtist ? $t(rightArtist).charAt(0) : '?' }}
           </div>
           <el-select v-model="rightArtist" size="small" class="artist-select">
             <el-option
               v-for="name in artistOptions"
               :key="name"
-              :label="name"
+              :label="$t(name)"
               :value="name"
             />
           </el-select>
@@ -56,6 +56,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import TibaComparisonBar from './TibaComparisonBar.vue'
+import { translate as t } from '../../locales'
 
 const props = defineProps({
   historyList: {
@@ -172,10 +173,10 @@ const build = (arr) => {
     avgPainting: avg(arr, 'paintingPercent'),
     avgBlank: avg(arr, 'blankPercent'),
     formRichness,
-    formRichnessDisplay: `${formRichness} 种/幅`,
+    formRichnessDisplay: `${formRichness} ${t('compare.richness_unit')}`,
     dominantFormName: dominantForm.name,
     dominantFormPercent: dominantForm.percent,
-    dominantFormDisplay: `${dominantForm.name} ${dominantForm.percent}%`,
+    dominantFormDisplay: `${t(dominantForm.name)} ${dominantForm.percent}%`,
     invasionPercent,
     invasionDisplay: fmt(invasionPercent)
   }
@@ -193,7 +194,7 @@ const rightStats = computed(() => {
 
 const comparisonItems = computed(() => [
   {
-    label: '画作数量',
+    label: t('compare.count'),
     leftValue: leftStats.value.count,
     leftPercent: leftStats.value.countPercent,
     rightValue: rightStats.value.count,
@@ -201,7 +202,7 @@ const comparisonItems = computed(() => [
     visible: true
   },
   {
-    label: '平均题跋占比',
+    label: t('compare.avg_inscription'),
     leftValue: leftStats.value.avgInscription.toFixed(1) + '%',
     leftPercent: leftStats.value.avgInscription,
     rightValue: rightStats.value.avgInscription.toFixed(1) + '%',
@@ -209,7 +210,7 @@ const comparisonItems = computed(() => [
     visible: true
   },
   {
-    label: '平均绘画占比',
+    label: t('compare.avg_painting'),
     leftValue: leftStats.value.avgPainting.toFixed(1) + '%',
     leftPercent: leftStats.value.avgPainting,
     rightValue: rightStats.value.avgPainting.toFixed(1) + '%',
@@ -217,7 +218,7 @@ const comparisonItems = computed(() => [
     visible: leftStats.value.avgPainting > 0 || rightStats.value.avgPainting > 0
   },
   {
-    label: '平均留白占比',
+    label: t('compare.avg_blank'),
     leftValue: leftStats.value.avgBlank.toFixed(1) + '%',
     leftPercent: leftStats.value.avgBlank,
     rightValue: rightStats.value.avgBlank.toFixed(1) + '%',
@@ -225,7 +226,7 @@ const comparisonItems = computed(() => [
     visible: leftStats.value.avgBlank > 0 || rightStats.value.avgBlank > 0
   },
   {
-    label: '形式丰富度',
+    label: t('compare.richness'),
     leftValue: leftStats.value.formRichnessDisplay,
     leftPercent: leftStats.value.formRichness * 20,
     rightValue: rightStats.value.formRichnessDisplay,
@@ -233,7 +234,7 @@ const comparisonItems = computed(() => [
     visible: true
   },
   {
-    label: '主导形式占比',
+    label: t('compare.dominant_form'),
     leftValue: leftStats.value.dominantFormDisplay,
     leftPercent: leftStats.value.dominantFormPercent,
     rightValue: rightStats.value.dominantFormDisplay,
@@ -241,7 +242,7 @@ const comparisonItems = computed(() => [
     visible: true
   },
   {
-    label: '题跋侵入度',
+    label: t('compare.invasion'),
     leftValue: leftStats.value.invasionDisplay,
     leftPercent: leftStats.value.invasionPercent,
     rightValue: rightStats.value.invasionDisplay,

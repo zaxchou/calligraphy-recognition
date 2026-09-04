@@ -1,18 +1,18 @@
 <template>
   <div class="stats-module">
     <div class="stats-header">
-      <h3 class="stats-title">{{ displayArtistName }}题跋数据概览</h3>
+      <h3 class="stats-title">{{ $t('stats.overview_title', { name: $t(displayArtistName) }) }}</h3>
       <el-select v-model="currentArtist" size="default" @change="onArtistChange" style="width: 120px;">
-        <el-option value="all" label="全部作者" />
-        <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
+        <el-option value="all" :label="$t('stats.all_artists')" />
+        <el-option v-for="artist in artistList" :key="artist" :label="$t(artist)" :value="artist" />
       </el-select>
     </div>
 
     <div class="stats-content" v-loading="loading">
       <div v-if="!loading && totalCount === 0" class="stats-empty">
         <el-icon size="48" color="#dcdfe6"><DataAnalysis /></el-icon>
-        <p>暂无分析数据</p>
-        <p class="empty-tip">上传画作后将自动生成统计数据</p>
+        <p>{{ $t('stats.no_data') }}</p>
+        <p class="empty-tip">{{ $t('stats.upload_tip') }}</p>
       </div>
 
       <template v-else>
@@ -21,23 +21,23 @@
           <div class="stat-bar-left">
             <div class="stat-total-group">
               <span class="stat-total-num">{{ displayTotalCount }}</span>
-              <span class="stat-total-unit">幅</span>
+              <span class="stat-total-unit">{{ $t('unit.works') }}</span>
             </div>
             <div class="stat-period-group">
-              <span class="period-chip" v-if="periodStats.early">早 {{ periodStats.early }}</span>
-              <span class="period-chip" v-if="periodStats.mid">中 {{ periodStats.mid }}</span>
-              <span class="period-chip" v-if="periodStats.late">晚 {{ periodStats.late }}</span>
-              <span class="period-chip chip-unknown" v-if="periodStats.unknown">未分 {{ periodStats.unknown }}</span>
+              <span class="period-chip" v-if="periodStats.early">{{ $t('stats.early') }} {{ periodStats.early }}</span>
+              <span class="period-chip" v-if="periodStats.mid">{{ $t('stats.mid') }} {{ periodStats.mid }}</span>
+              <span class="period-chip" v-if="periodStats.late">{{ $t('stats.late') }} {{ periodStats.late }}</span>
+              <span class="period-chip chip-unknown" v-if="periodStats.unknown">{{ $t('stats.unknown') }} {{ periodStats.unknown }}</span>
             </div>
           </div>
           <div class="stat-bar-center">
             <div class="stat-words">
-              <span class="stat-words-label">字数</span>
-              <span class="stat-words-value">最低 {{ charStatsOverall.min }}</span>
+              <span class="stat-words-label">{{ $t('stats.char_count') }}</span>
+              <span class="stat-words-value">{{ $t('stats.min') }} {{ charStatsOverall.min }}</span>
               <span class="stat-words-sep">·</span>
-              <span class="stat-words-value">平均 {{ charStatsOverall.avg }}</span>
+              <span class="stat-words-value">{{ $t('stats.avg') }} {{ charStatsOverall.avg }}</span>
               <span class="stat-words-sep">·</span>
-              <span class="stat-words-value">最高 {{ charStatsOverall.max }}</span>
+              <span class="stat-words-value">{{ $t('stats.max') }} {{ charStatsOverall.max }}</span>
             </div>
           </div>
           <div class="stat-bar-right">
@@ -58,11 +58,11 @@
         <!-- 图表行 -->
         <div class="chart-row">
           <div class="chart-col">
-            <div class="chart-col-label">主题 × 题跋面积</div>
+            <div class="chart-col-label">{{ $t('stats.chart_theme') }}</div>
             <div ref="themeBarChartRef" class="chart-col-canvas"></div>
           </div>
           <div class="chart-col">
-            <div class="chart-col-label">分期 × 题跋面积</div>
+            <div class="chart-col-label">{{ $t('stats.chart_period') }}</div>
             <div ref="periodTrendChartRef" class="chart-col-canvas"></div>
           </div>
         </div>
@@ -70,10 +70,10 @@
         <!-- 主题占比 + 洞察 行 -->
         <div class="bottom-row">
           <div class="theme-bar-compact">
-            <div class="theme-bar-compact-label">主题占比</div>
+            <div class="theme-bar-compact-label">{{ $t('stats.theme_share') }}</div>
             <div class="theme-bar-compact-body">
               <div v-for="(item, i) in topThemes" :key="i" class="theme-bar-compact-row">
-                <span class="tbc-label theme-link" @click="navigateToTheme(item.name)">{{ item.name }}</span>
+                <span class="tbc-label theme-link" @click="navigateToTheme(item.name)">{{ $t(item.name) }}</span>
                 <div class="tbc-track">
                   <div
                     class="tbc-fill"
@@ -86,7 +86,7 @@
           </div>
           <div class="insight-compact" v-if="areaThemeData.insights.length">
             <div class="insight-headline" v-for="(insight, idx) in areaThemeData.insights" :key="idx">
-              <span class="headline-marker">{{ ['壹', '贰'][idx] }}</span>
+              <span class="headline-marker">{{ $t(idx === 0 ? 'stats.marker_1' : 'stats.marker_2') }}</span>
               <span v-html="$sanitize(boldNumbers(insight))"></span>
             </div>
           </div>
@@ -101,6 +101,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { DataAnalysis } from '@element-plus/icons-vue'
 import echarts from '../utils/echarts'
 import api from '../api'
+import { translate as t, locale } from '../locales'
 
 const emit = defineEmits(['artist-change'])
 
@@ -109,7 +110,7 @@ const artistList = ref([])
 const currentArtist = ref('李鱓')
 
 const displayArtistName = computed(() => {
-  return currentArtist.value === 'all' ? '全部' : currentArtist.value
+  return currentArtist.value === 'all' ? t('stats.all') : currentArtist.value
 })
 
 async function fetchArtistList() {
@@ -194,7 +195,7 @@ const sentimentItems = computed(() => {
 
 const sentimentBars = computed(() => {
   return sentimentItems.value.map(item => ({
-    label: sentimentLabels[item.key],
+    label: t(sentimentLabels[item.key]),
     percent: item.percent,
     color: sentimentColors[item.key]
   }))
@@ -301,12 +302,12 @@ function renderThemeBarChart() {
     animation: true, animationDuration: 600,
     grid: { left: '3%', right: '12%', bottom: '3%', top: '8%', containLabel: true },
     xAxis: {
-      type: 'category', data: items.map(i => i.theme),
+      type: 'category', data: items.map(i => t(i.theme)),
       axisLabel: { color: '#8a8070', fontSize: 10, interval: 0, rotate: items.length > 4 ? 20 : 0 },
       axisLine: { show: false }, axisTick: { show: false },
     },
     yAxis: {
-      type: 'value', name: '面积(%)', nameTextStyle: { color: '#8a8070', fontSize: 10 },
+      type: 'value', name: t('stats.area_pct'), nameTextStyle: { color: '#8a8070', fontSize: 10 },
       axisLabel: { color: '#8a8070', fontSize: 10, formatter: '{value}%' },
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: 'rgba(139,124,179,0.12)', type: 'dashed' } },
@@ -324,7 +325,7 @@ function renderThemeBarChart() {
       trigger: 'axis',
       formatter: (params) => {
         const d = params[0]; const item = items[d.dataIndex]
-        return `<b>${item.theme}</b><br/>平均面积: ${item.avg_area}%<br/>样本: ${item.n}幅<br/>平均词数: ${item.avg_words}`
+        return `<b>${t(item.theme)}</b><br/>${t('stats.avg_area')}: ${item.avg_area}%<br/>${t('stats.tooltip_sample', { n: item.n })}<br/>${t('stats.avg_words')}: ${item.avg_words}`
       },
     },
   }, true)
@@ -338,12 +339,12 @@ function renderPeriodTrendChart() {
     animation: true, animationDuration: 600,
     grid: { left: '3%', right: '8%', bottom: '3%', top: '12%', containLabel: true },
     xAxis: {
-      type: 'category', data: items.map(i => i.period),
+      type: 'category', data: items.map(i => t(i.period)),
       axisLabel: { color: '#8a8070', fontSize: 11 },
       axisLine: { lineStyle: { color: '#d1cfc5' } }, axisTick: { show: false },
     },
     yAxis: {
-      type: 'value', name: '面积(%)', nameTextStyle: { color: '#8a8070', fontSize: 10 },
+      type: 'value', name: t('stats.area_pct'), nameTextStyle: { color: '#8a8070', fontSize: 10 },
       axisLabel: { color: '#8a8070', fontSize: 10, formatter: '{value}%' },
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: 'rgba(139,124,179,0.12)', type: 'dashed' } },
@@ -362,7 +363,7 @@ function renderPeriodTrendChart() {
       trigger: 'axis',
       formatter: (params) => {
         const d = params[0]; const item = items[d.dataIndex]
-        return `<b>${item.period}</b><br/>平均面积: ${item.avg_area}%<br/>样本: ${item.n}幅`
+        return `<b>${t(item.period)}</b><br/>${t('stats.avg_area')}: ${item.avg_area}%<br/>${t('stats.tooltip_sample', { n: item.n })}`
       },
     },
   }, true)
@@ -384,6 +385,12 @@ onMounted(() => {
 watch(currentArtist, () => {
   fetchAreaThemeStats()
 })
+
+// 语言切换后重绘图表（轴标签/悬浮提示在 canvas 内，模板无法自动更新）
+watch(locale, () => nextTick(() => {
+  renderThemeBarChart()
+  renderPeriodTrendChart()
+}))
 
 defineExpose({
   refresh: fetchStats,

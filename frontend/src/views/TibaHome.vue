@@ -45,10 +45,10 @@
           <div class="trend-stats">
             <el-select v-model="trendArtistFilter" size="small" style="width: 120px; margin-right: 10px;">
               <el-option :label="$t('dimensioninput.a1')" value="all" />
-              <el-option v-for="artist in artistList" :key="artist" :label="artist" :value="artist" />
+              <el-option v-for="artist in artistList" :key="artist" :label="$t(artist)" :value="artist" />
             </el-select>
-            <el-tag type="info" size="small">共 {{ filteredTrendChartData.length }} 幅作品</el-tag>
-            <el-tag type="success" size="small" v-if="trendStats.avgPercent">平均占比 {{ trendStats.avgPercent }}%</el-tag>
+            <el-tag type="info" size="small">{{ $t('unit.works_count', { n: filteredTrendChartData.length }) }}</el-tag>
+            <el-tag type="success" size="small" v-if="trendStats.avgPercent">{{ $t('stats.avg_ratio') }} {{ trendStats.avgPercent }}%</el-tag>
           </div>
         </div>
       </template>
@@ -68,6 +68,7 @@ import TibaGallery from '../components/tiba/TibaGallery.vue'
 import TibaComparison from '../components/tiba/TibaComparison.vue'
 
 import api, { tibaApi } from '../api'
+import { translate as t } from '../locales'
 import { getSharedAnalyticsData, setSharedAnalyticsData, clearSharedAnalyticsData } from '../tiba/sharedCache'
 
 const props = defineProps({
@@ -340,19 +341,19 @@ function updateTrendChart() {
           const thumbUrl = item.thumbnailUrl || item.url
           const thumb = thumbUrl ? `<img src="${thumbUrl}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />` : ''
           const countTip = item.count > 1
-            ? `<div style="color:var(--cinnabar, #c96442);font-size:11px;margin-bottom:4px;">该年份共 ${item.count} 幅作品</div>`
+            ? `<div style="color:var(--cinnabar, #c96442);font-size:11px;margin-bottom:4px;">${t('stats.year_works', { n: item.count })}</div>`
             : ''
           const ageTip = item.age !== null && item.age !== undefined
-            ? ` · ${item.age}岁`
+            ? ` · ${item.age}${t('gallery.age_suffix')}`
             : ''
           return `
             <div style="padding:8px;cursor:pointer;">
               ${thumb}
               ${countTip}
-              <div style="font-weight:600;margin-bottom:4px;color:#6B5B95;">${item.title || '未命名'}</div>
-              <div style="color:#8B7CB3;font-size:12px;margin-bottom:4px;">${item.artist || '未知作者'} · ${item.year}年${ageTip}</div>
-              <div style="color:#9B7ED8;font-weight:600;margin-bottom:4px;">平均题跋占比: ${item.inscriptionPercent}%</div>
-              <div style="color:#9B7ED8;font-size:11px;border-top:1px solid #E8E3F0;padding-top:4px;margin-top:4px;">点击查看详情</div>
+              <div style="font-weight:600;margin-bottom:4px;color:#6B5B95;">${item.title ? t(item.title) : t('card.untitled')}</div>
+              <div style="color:#8B7CB3;font-size:12px;margin-bottom:4px;">${item.artist ? t(item.artist) : t('stats.unknown_artist')} · ${item.year}${t('gallery.year_suffix')}${ageTip}</div>
+              <div style="color:#9B7ED8;font-weight:600;margin-bottom:4px;">${t('compare.avg_inscription')}: ${item.inscriptionPercent}%</div>
+              <div style="color:#9B7ED8;font-size:11px;border-top:1px solid #E8E3F0;padding-top:4px;margin-top:4px;">${t('stats.click_detail')}</div>
             </div>
           `
         }

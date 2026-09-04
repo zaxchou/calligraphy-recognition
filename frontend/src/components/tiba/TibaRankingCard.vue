@@ -41,7 +41,7 @@
             </div>
           </div>
           <div class="ranking-row-info">
-            <div class="ranking-row-name">{{ item.title || $t('card.untitled') }}</div>
+            <div class="ranking-row-name">{{ item.title ? $t(item.title) : $t('card.untitled') }}</div>
             <div class="ranking-row-author">{{ $t(item.artist) || item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}${$t('info.age')}` : '' }}</div>
           </div>
           <div class="ranking-row-ratio">{{ item.tubiRatio.toFixed(2) }}%</div>
@@ -63,7 +63,7 @@
             </div>
           </div>
           <div class="ranking-row-info">
-            <div class="ranking-row-name">{{ item.title || $t('card.untitled') }}</div>
+            <div class="ranking-row-name">{{ item.title ? $t(item.title) : $t('card.untitled') }}</div>
             <div class="ranking-row-author">{{ $t(item.artist) || item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}${$t('info.age')}` : '' }}</div>
           </div>
           <div class="ranking-row-ratio">{{ item.tubiRatio.toFixed(2) }}%</div>

@@ -2,12 +2,12 @@
   <el-card shadow="hover" class="gallery-card" id="gallery-card">
     <template #header>
       <div class="card-header">
-        <span class="card-title">作品库</span>
+        <span class="card-title">{{ $t('gallery.title') }}</span>
         <div class="header-actions">
           <!-- 搜索框 -->
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索画作..."
+            :placeholder="$t('gallery.search_placeholder')"
             size="small"
             clearable
             @keyup.enter="handleSearch"
@@ -18,21 +18,21 @@
             </template>
           </el-input>
           <el-button type="primary" size="small" @click="handleSearch" :icon="Search">
-            搜索
+            {{ $t('gallery.search') }}
           </el-button>
           <el-button size="small" type="primary" @click="goToList" class="btn-more-works">
-            更多作品
+            {{ $t('gallery.more_works') }}
           </el-button>
         </div>
       </div>
     </template>
     <!-- 标签筛选指示条 -->
     <div v-if="filterTag" class="filter-indicator">
-      <span>当前筛选: <strong>{{ filterTag }}</strong></span>
-      <span class="filter-count">全部展开</span>
+      <span>{{ $t('gallery.filter_label') }} <strong>{{ $t(filterTag) }}</strong></span>
+      <span class="filter-count">{{ $t('gallery.expand_all') }}</span>
       <el-button size="small" @click="clearTagFilter">
         <el-icon><Close /></el-icon>
-        清除
+        {{ $t('gallery.clear') }}
       </el-button>
     </div>
     <!-- 骨架屏（数量与默认显示一致，避免加载完成后的高度抖动） -->
@@ -66,53 +66,53 @@
             <el-icon v-else-if="item.status === 'analyzing'" size="10" class="is-loading"><Loading /></el-icon>
             <el-icon v-else-if="item.status === 'error'" size="10"><Close /></el-icon>
             <el-icon v-else size="10"><Clock /></el-icon>
-            <span>{{ item.status === 'queued' ? '排队中' : item.status === 'analyzing' ? '分析中' : item.status === 'error' ? '失败' : item.status }}</span>
+            <span>{{ item.status === 'queued' ? $t('gallery.queued') : item.status === 'analyzing' ? $t('gallery.analyzing') : item.status === 'error' ? $t('gallery.failed') : item.status }}</span>
           </div>
 
           <div v-if="canEditItem(item)" class="gallery-actions">
             <div class="action-tl">
               <el-button plain size="small" class="btn-edit" @click.stop="handleEdit(item)">
                 <el-icon :size="14"><Edit /></el-icon>
-                <span>编辑</span>
+                <span>{{ $t('gallery.edit') }}</span>
               </el-button>
             </div>
             <div class="action-tr">
               <el-button type="danger" size="small" @click.stop="handleDelete(item)">
                 <el-icon :size="14"><Delete /></el-icon>
-                <span>删除</span>
+                <span>{{ $t('gallery.delete') }}</span>
               </el-button>
             </div>
           </div>
           <!-- 册页标识（左上角） -->
           <div v-if="item.album_name" class="gallery-label-tl">
-            <span class="gallery-label album-label">册页</span>
+            <span class="gallery-label album-label">{{ $t('gallery.album') }}</span>
           </div>
           <!-- 面积统计（右下角） -->
           <div v-if="item.inscriptionPercent !== undefined || item.paintingPercent > 0" class="gallery-labels">
-            <span v-if="item.inscriptionPercent !== undefined" class="gallery-label stat-label danger">{{ item.inscriptionPercent?.toFixed(1) }}%题跋</span>
-            <span v-if="item.paintingPercent > 0" class="gallery-label stat-label primary">{{ item.paintingPercent?.toFixed(1) }}%绘画</span>
+            <span v-if="item.inscriptionPercent !== undefined" class="gallery-label stat-label danger">{{ item.inscriptionPercent?.toFixed(1) }}%{{ $t('gallery.inscription') }}</span>
+            <span v-if="item.paintingPercent > 0" class="gallery-label stat-label primary">{{ item.paintingPercent?.toFixed(1) }}%{{ $t('gallery.painting') }}</span>
           </div>
         </div>
         <div class="gallery-info">
-          <div class="gallery-title">{{ item.title || '未命名' }}</div>
+          <div class="gallery-title">{{ item.title ? $t(item.title) : $t('card.untitled') }}</div>
           <div class="gallery-meta">
-            <span v-if="item.artist" class="meta-col">{{ item.artist }}</span>
-            <span v-if="getDisplayAge(item) !== null" class="meta-col">{{ getDisplayAge(item) }}岁</span>
-            <span v-if="item.year" class="meta-col">{{ item.year }}年</span>
+            <span v-if="item.artist" class="meta-col">{{ $t(item.artist) }}</span>
+            <span v-if="getDisplayAge(item) !== null" class="meta-col">{{ getDisplayAge(item) }}{{ $t('gallery.age_suffix') }}</span>
+            <span v-if="item.year" class="meta-col">{{ item.year }}{{ $t('gallery.year_suffix') }}</span>
           </div>
           <div class="gallery-tags" v-if="getItemAllTags(item).length > 0">
-            <span v-for="tag in getItemAllTags(item)" :key="tag" class="info-tag">{{ tag }}</span>
+            <span v-for="tag in getItemAllTags(item)" :key="tag" class="info-tag">{{ $t(tag) }}</span>
           </div>
         </div>
       </div>
     </div>
     <div v-if="!filterTag && hasMore" class="gallery-load-more">
       <el-button type="primary" link @click="handleLoadMore" :loading="fetchLoading">
-        加载更多
+        {{ $t('gallery.load_more') }}
       </el-button>
     </div>
     <div v-if="!loading && !filterTag && !hasMore" class="gallery-end">
-      <span class="gallery-end-text">已经到底</span>
+      <span class="gallery-end-text">{{ $t('gallery.end') }}</span>
     </div>
   </el-card>
 </template>
