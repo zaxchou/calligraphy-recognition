@@ -275,6 +275,7 @@ export function buildPeriodsFromChronology(
   const periodSpan = Math.max(5, Math.ceil(totalSpan / targetPeriods))
 
   const periods: PeriodConfig[] = []
+  const usedLabels = new Set<string>()
   for (let i = 0; i < targetPeriods; i++) {
     const start = minYear + i * periodSpan
     const end = i === targetPeriods - 1 ? maxYear : start + periodSpan - 1
@@ -286,7 +287,19 @@ export function buildPeriodsFromChronology(
       return y >= start && y <= end
     })
     const events = periodEntries.map(e => e.event || '').filter(Boolean)
-    const label = generatePeriodLabel(events, start, end, i, targetPeriods, chronology)
+    let label = generatePeriodLabel(periodEntries, start, end, i, targetPeriods)
+
+    // 相邻时期标签去重：次优语义标签 → 生命阶段序列 → 追加年份兜底
+    if (usedLabels.has(label)) {
+      const alt = scorePeriodLabels(events).find(r => !usedLabels.has(r.label))
+      if (alt) {
+        label = alt.label
+      } else {
+        const stage = lifeStageLabel(i, targetPeriods, periodEntries, start, end)
+        label = usedLabels.has(stage) ? `${stage}（${start}-${end}）` : stage
+      }
+    }
+    usedLabels.add(label)
 
     periods.push({ id: `p${i}`, label, yearRange: [start, end], color: PERIOD_COLORS[i % PERIOD_COLORS.length], order: i })
   }
@@ -295,54 +308,60 @@ export function buildPeriodsFromChronology(
 }
 
 // ── 生成语义时期标签 ──
-function generatePeriodLabel(events: string[], start: number, end: number, index: number, total: number, allEntries: ChronologyEntry[]): string {
-  // 检测关键人生阶段
-  const allEvents = events.join(' ')
-  const hasDeath = allEntries.some(e => {
-    const ev = (e.event || '') + (e.description || '')
-    return /[去世卒殁逝世]/.test(ev)
-  })
-  const hasBirth = allEntries.some(e => {
-    const ev = (e.event || '') + (e.description || '')
-    return /[出生诞]/.test(ev)
-  })
+// 词级匹配（单字类会把"学院/教师/问世"这类词误命中，是当代艺术家标签失真的根因）
+const PERIOD_PATTERNS: [string, RegExp][] = [
+  ['出生与早年', /(出生|诞生|出生于|幼年|童年|启蒙)/],
+  ['求学', /(考入|考取|保送|入学|入读|就读|求学|留学|进修|攻读|毕业)/],
+  ['执教治学', /(任教|执教|受聘|获聘|晋升教授|晋升副教授|教授|副教授|导师|教学|讲学|长江学者|学者|副主任|处长|秘书长|副院长|院长)/],
+  ['科举仕途', /(中举|进士|科举|及第|状元|举人|秀才|仕途|官宦|会试|乡试)/],
+  ['宫廷供奉', /(宫廷|内廷|供奉|南书房行走|待诏)/],
+  ['为官', /(知县|县令|知州|为官|赴任|上任|擢)/],
+  ['游历', /(游历|云游|壮游|漫游|旅居|游学|客居)/],
+  ['卖画', /(卖画|鬻画|鬻书|卖字|润格)/],
+  ['罢官归隐', /(罢官|归隐|隐居|退隐)/],
+  ['著述展览', /(出版|专著|作品集|个展|发表|获奖|论文|教材)/],
+  ['晚年', /(晚年|暮年|晚景|耄耋)/],
+]
+
+function scorePeriodLabels(events: string[]): { label: string; score: number }[] {
+  // 按事件计数：一条事件命中某标签只计 1 分，避免"出版首部专著"同时命中
+  // 出版+专著 被算成 2 分的重复计分
+  return PERIOD_PATTERNS
+    .map(([label, re]) => ({
+      label,
+      score: events.filter(ev => re.test(ev)).length,
+    }))
+    .filter(r => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+}
+
+function lifeStageLabel(index: number, total: number, periodEntries: ChronologyEntry[], start: number, end: number): string {
+  const hasBirth = periodEntries.some(e => /(出生|诞生)/.test((e.event || '') + (e.description || '')))
+  if (total >= 3) {
+    if (index === 0) return hasBirth ? '出生与早年' : '早年'
+    if (index === total - 1) return '晚年'
+    const middleLabels = ['青壮年', '壮年', '盛年', '中年', '暮年']
+    const labelIdx = index - 1 // 第一个中间时期 → 0
+    if (labelIdx >= middleLabels.length) return `盛年（${start}-${end}）`
+    return middleLabels[labelIdx]
+  }
+  return `${start}-${end}`
+}
+
+function generatePeriodLabel(periodEntries: ChronologyEntry[], start: number, end: number, index: number, total: number): string {
+  const events = periodEntries.map(e => e.event || '').filter(Boolean)
+
+  // 去世判定：词级匹配（裸字符类会把"问世/世纪"误判为去世），且只看当前时期的条目
+  // ——中期提到师长去世不再把最后一个时期误标为"晚年"
+  const hasDeath = periodEntries.some(e =>
+    /(逝世|去世|病故|谢世|驾崩|卒于|病卒|暴卒|殁)/.test((e.event || '') + (e.description || '')))
 
   // 最后一个时期如果包含去世事件，标记为"晚年"
   if (index === total - 1 && hasDeath) return '晚年'
 
-  // 关键词检测
-  const patternHits: [string, RegExp][] = [
-    ['出生与早年', /[出生诞幼少童年启蒙]/],
-    ['求学', /[学读书书院师习]/],
-    ['科举仕途', /[中举进士科举仕官宦第]/],
-    ['宫廷供奉', /[宫廷内廷供奉行走御]/],
-    ['游历', /[游历旅]/],
-    ['卖画', /[卖画鬻画]/],
-    ['为官', /[知县县令知州为官官]/],
-    ['罢官归隐', /[罢归隐退]/],
-    ['晚年', /[老晚]/],
-  ]
+  const ranked = scorePeriodLabels(events)
+  // 词级模式精确度高，单事件命中即可命名（古代画家一窗口常只有一两个关键事件）
+  if (ranked.length) return ranked[0].label
 
-  let bestLabel = ''
-  let bestScore = 0
-  for (const [label, re] of patternHits) {
-    const matches = (allEvents.match(new RegExp(re.source, 'g')) || []).length
-    if (matches > bestScore) { bestScore = matches; bestLabel = label }
-  }
-
-  if (bestLabel && bestScore >= 2) return bestLabel
-
-  // 回退：用生命周期位置（避免重复标签）
-  if (total >= 3) {
-    if (index === 0) return hasBirth ? '出生与早年' : '早年'
-    if (index === total - 1) return '晚年'
-    // 中间时期：按位置给不同标签
-    const middleLabels = ['青壮年', '壮年', '盛年', '中年', '暮年']
-    const labelIdx = index - 1 // 第一个中间时期 → 0
-    const label = middleLabels[Math.min(labelIdx, middleLabels.length - 1)]
-    // 如果中间时期数量超过 middleLabels，追加年份
-    if (labelIdx >= middleLabels.length) return `盛年（${start}-${end}）`
-    return label
-  }
-  return `${start}-${end}`
+  return lifeStageLabel(index, total, periodEntries, start, end)
 }

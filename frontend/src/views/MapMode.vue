@@ -72,7 +72,7 @@
           <div v-if="activePanel" class="info-panel">
             <!-- Period Overview Header -->
             <div v-if="activePanel === 'period'" class="panel-header">
-              <h2 class="panel-location">{{ currentPeriodLabel }}</h2>
+              <h2 class="panel-location">{{ $t(currentPeriodLabel) }}</h2>
               <span class="panel-year-range">{{ currentPeriodYearRange }}</span>
               <div class="panel-header-actions">
                 <button
@@ -138,7 +138,7 @@
           @click="selectPeriod(period.id)"
         >
           <span class="period-btn-dot" :style="{ background: period.color }"></span>
-          <span class="period-btn-label">{{ period.label }}</span>
+          <span class="period-btn-label">{{ $t(period.label) }}</span>
           <span v-if="emotionTimeline.hasEmotionData" class="period-btn-emoji">{{ periodEmoji(period.id) }}</span>
           <span class="period-btn-year">{{ formatYearRange(period.yearRange) }}</span>
         </button>
