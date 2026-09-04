@@ -1410,25 +1410,86 @@ p.welcome-subtitle {
 /* ═══════════════════════════════════════════════════════════════
    英文模式排版优化（html[lang=en] 由 i18n shim 同步）
    中文字距/行高体系对拉丁字符过松过紧，EN 下统一收敛：
-   - 字距 0.01em（原 0.02-0.08em 的中文体系对英文过空）
-   - 衬线标题换 Georgia 栈（Noto Serif SC 的拉丁字形偏宽）
-   - 标题行高放宽至 1.3，多行英文标题不再挤压
+   - 标题/正文衬线换 Georgia 栈；正文无衬线换 system-ui 栈
+   - 中文书法字体渲染拉丁字符细弱宽距，故覆盖范围不止 h1-h6
+   - 字距仅保留标题级 0.01em，小标签/按钮/数字恢复 0
    ═══════════════════════════════════════════════════════════════ */
-html[lang='en'] * {
-  letter-spacing: 0.01em !important;
-}
 html[lang='en'] {
-  --font-serif: Georgia, 'Noto Serif SC', Georgia, serif;
+  --font-serif: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  --font-sans-en: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, 'Noto Sans', 'Microsoft YaHei', sans-serif;
 }
+/* 正文无衬线栈：覆盖组件内 PingFang/雅黑 声明（拉丁字形在 Windows 上发灰） */
+html[lang='en'] body,
+html[lang='en'] input,
+html[lang='en'] button,
+html[lang='en'] .info-tag,
+html[lang='en'] .meta-col,
+html[lang='en'] .gallery-meta,
+html[lang='en'] .aw-meta,
+html[lang='en'] .aw-total,
+html[lang='en'] .aw-tcol,
+html[lang='en'] .dt-era-count,
+html[lang='en'] .dt-era-range,
+html[lang='en'] .stat-words,
+html[lang='en'] .period-chip,
+html[lang='en'] .sentiment-chip,
+html[lang='en'] .filter-indicator,
+html[lang='en'] .bar-label-center,
+html[lang='en'] .bar-value-text,
+html[lang='en'] .el-select__selected-item,
+html[lang='en'] .el-tag,
+html[lang='en'] .el-button {
+  font-family: var(--font-sans-en);
+}
+/* 衬线标题栈：中文标题容器多为 span/div，仅覆盖 h1-h6 不够 */
 html[lang='en'] h1,
 html[lang='en'] h2,
 html[lang='en'] h3,
 html[lang='en'] h4,
 html[lang='en'] h5,
-html[lang='en'] h6 {
-  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif !important;
+html[lang='en'] h6,
+html[lang='en'] .card-title,
+html[lang='en'] .gallery-title,
+html[lang='en'] .ranking-row-name,
+html[lang='en'] .work-title,
+html[lang='en'] .nav-title,
+html[lang='en'] .aw-title,
+html[lang='en'] .aw-table-title,
+html[lang='en'] .av-name,
+html[lang='en'] .al-featured-name,
+html[lang='en'] .dt-era-name,
+html[lang='en'] .ks-center-title,
+html[lang='en'] .ks-bar-title {
+  font-family: var(--font-serif) !important;
   line-height: 1.3 !important;
   font-weight: 600;
+  letter-spacing: 0.01em;
+}
+/* 散文段落行高放宽到英文阅读舒适的 1.6 */
+html[lang='en'] .llm-reasoning-text,
+html[lang='en'] .summary-reasoning,
+html[lang='en'] .spatial-desc,
+html[lang='en'] .insight-headline,
+html[lang='en'] .av-summary,
+html[lang='en'] .empty-tip {
+  line-height: 1.6;
+}
+/* 小标签/小字：EN 下恢复 0 字距，9px 拉丁再缩不易读 */
+html[lang='en'] .info-tag,
+html[lang='en'] .gallery-label,
+html[lang='en'] .aw-label,
+html[lang='en'] .period-chip,
+html[lang='en'] .sentiment-chip,
+html[lang='en'] .el-select__selected-item,
+html[lang='en'] .el-tag {
+  letter-spacing: 0;
+}
+html[lang='en'] .info-tag,
+html[lang='en'] .gallery-label,
+html[lang='en'] .aw-label,
+html[lang='en'] .period-chip,
+html[lang='en'] .sentiment-chip {
+  font-size: 9.5px;
 }
 /* 英文长词避免溢出卡片 */
 html[lang='en'] p,

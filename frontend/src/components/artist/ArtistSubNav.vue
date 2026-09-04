@@ -8,7 +8,7 @@
       :class="{ active: isTabActive(tab) }"
     >
       <span class="asn-icon" v-html="tab.icon"></span>
-      <span class="asn-label">{{ $t(tab.label) }}</span>
+      <span class="asn-label">{{ $t(tab.i18n) }}</span>
       <span v-if="isTabActive(tab)" class="asn-indicator"></span>
     </router-link>
   </nav>
@@ -34,11 +34,11 @@ const TAB_ICONS = {
 }
 
 const DEFAULT_TABS = [
-  { label: '概览', name: 'ArtistOverview', icon: TAB_ICONS['概览'] },
-  { label: '作品', name: 'ArtistWorks', icon: TAB_ICONS['作品'] },
-  { label: '印章', name: 'ArtistSeals', icon: TAB_ICONS['印章'] },
-  { label: '文献', name: 'ArtistLiterature', icon: TAB_ICONS['文献'] },
-  { label: '分析', name: 'ArtistAnalysis', icon: TAB_ICONS['分析'] },
+  { label: '概览', name: 'ArtistOverview', icon: TAB_ICONS['概览'], i18n: 'artist.overview' },
+  { label: '作品', name: 'ArtistWorks', icon: TAB_ICONS['作品'], i18n: 'artist.works' },
+  { label: '印章', name: 'ArtistSeals', icon: TAB_ICONS['印章'], i18n: 'artist.seals' },
+  { label: '文献', name: 'ArtistLiterature', icon: TAB_ICONS['文献'], i18n: 'artist.literature' },
+  { label: '分析', name: 'ArtistAnalysis', icon: TAB_ICONS['分析'], i18n: 'artist.analysis' },
 ]
 
 const hasMapTab = ref(false)
@@ -54,6 +54,7 @@ const tabs = computed(() => {
       label: '行旅',
       name: 'ArtistMap',
       icon: TAB_ICONS['行旅'],
+      i18n: 'artist.travels',
       to: { name: 'ArtistMap', params: { name: props.artistName } },
     })
   }
