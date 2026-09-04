@@ -161,6 +161,16 @@ def backfill(db: Session, batch_size: int = 20, limit_rows: Optional[int] = None
 
 # ── 读时替换 ─────────────────────────────────────────────────────────
 
+# 只翻译纯展示文本字段。枚举/逻辑字段（name/type/emotion/theme/tags/position/
+# size_category/layout_type 等）是前端做匹配计算的键，翻译会破坏渲染逻辑
+# （如 getInscriptionAreaClass 按 form_types[].name 匹配、'左上' 方位查表）。
+_DISPLAY_KEYS = {
+    "reasoning", "detail", "desc", "description", "note", "summary",
+    "analysis_note", "blank_analysis", "combined_spatial_sentiment",
+    "overall_reasoning", "themes_reasoning", "inscription_modern",
+}
+
+
 def _load_cache(db: Session) -> dict:
     return {row.zh: row.en for row in db.query(AiTextTranslation.zh, AiTextTranslation.en).all()}
 
@@ -183,26 +193,29 @@ def invalidate_cache() -> None:
         _cache_loaded_at = 0.0
 
 
-def _walk_replace(obj: Any, cache: dict) -> Any:
+def _walk_replace(obj: Any, cache: dict, in_display: bool = False) -> Any:
     if isinstance(obj, dict):
-        return {k: _walk_replace(v, cache) for k, v in obj.items()}
+        return {k: _walk_replace(v, cache, k in _DISPLAY_KEYS) for k, v in obj.items()}
     if isinstance(obj, list):
-        return [_walk_replace(v, cache) for v in obj]
+        return [_walk_replace(v, cache, in_display) for v in obj]
     if isinstance(obj, str):
-        if obj in cache:
+        if in_display and obj in cache:
             return cache[obj]
-        # 接口可能把整个分析 JSON 作为字符串返回：解析后替换再序列化
+        # 接口可能把整个分析 JSON 作为字符串返回：解析后按白名单替换再序列化；
+        # 无变化则原样返回（避免 float 格式/键序抖动）
         stripped = obj.lstrip()
         if len(stripped) > 1 and stripped[0] in "{[" and has_cjk(obj):
             try:
                 parsed = json.loads(obj)
-                return json.dumps(_walk_replace(parsed, cache), ensure_ascii=False)
+                replaced = _walk_replace(parsed, cache)
+                if replaced != parsed:
+                    return json.dumps(replaced, ensure_ascii=False)
             except (ValueError, TypeError):
-                return obj
+                pass
         return obj
     return obj
 
 
 def translate_json(data: Any, db: Session) -> Any:
-    """EN 请求的响应体替换：中文精确命中缓存则换英文，否则原样。"""
+    """EN 请求的响应体替换：仅展示字段、且精确命中缓存才换英文，否则原样。"""
     return _walk_replace(data, get_cache(db))
