@@ -29,11 +29,14 @@ for (const name of ['zh.js', 'en.js']) {
     }
     seen.set(r.key, r)
   }
-  // 英文值残留中文 = 漏译
+  // 英文值残留中文 = 漏译；HTML 实体经 {{ }} 文本插值会原样显示 = 禁用
   if (name === 'en.js') {
     for (const r of rows) {
       if (CJK.test(r.value)) report(name, `EN value still contains CJK for '${r.key}': ${r.value.slice(0, 40)}`)
     }
+  }
+  for (const r of rows) {
+    if (/&#|&lt;|&gt;|&quot;/.test(r.value)) report(name, `HTML entity in value of '${r.key}' renders literally via text interpolation: ${r.value.slice(0, 40)}`)
   }
   // zh 缺 namespace 键（en 有而 zh 没有的 'a.b' 键会让中文界面显示原文 key）
   if (name === 'en.js') {
