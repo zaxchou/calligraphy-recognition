@@ -34,8 +34,8 @@
       @clear-tag-filter="$emit('clear-tag-filter')"
     />
 
-    <!-- 名家对比区域（始终显示全部作者数据） -->
-    <TibaComparison :history-list="analyticsData" />
+    <!-- 名家对比区域（始终显示全部作者数据，左边跟随顶部筛选） -->
+    <TibaComparison :history-list="analyticsData" :current-artist="homeArtistFilter" />
 
     <!-- 趋势图卡片 -->
     <el-card shadow="hover" class="trend-card" v-if="filteredTrendChartData.length > 0">

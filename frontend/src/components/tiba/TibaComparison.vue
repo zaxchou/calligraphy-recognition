@@ -62,6 +62,11 @@ const props = defineProps({
   historyList: {
     type: Array,
     default: () => []
+  },
+  // 顶部统计卡选中的作者，左边跟随它
+  currentArtist: {
+    type: String,
+    default: ''
   }
 })
 
@@ -74,18 +79,32 @@ const artistOptions = computed(() => {
   return Array.from(set)
 })
 
-// 默认左=李鱓，右=郑燮；若数据中不存在则自动回退到可用选项
+// 左边跟随顶部筛选的作者，右边随机选一个不同的作者
 const leftArtist = ref('李鱓')
 const rightArtist = ref('郑燮')
+
+function pickRandomOther(exclude, options) {
+  const remaining = options.filter(o => o !== exclude)
+  if (remaining.length === 0) return options[0] || ''
+  return remaining[Math.floor(Math.random() * remaining.length)]
+}
+
+// 外部筛选变化 → 左边跟随，右边随机换一个不同的
+watch(() => props.currentArtist, (artist) => {
+  if (!artist || artist === 'all') return // "全部作者"不改变对比目标
+  leftArtist.value = artist
+  if (artistOptions.value.length > 0) {
+    rightArtist.value = pickRandomOther(artist, artistOptions.value)
+  }
+})
 
 watch(artistOptions, (options) => {
   if (options.length === 0) return
   if (!options.includes(leftArtist.value)) {
-    leftArtist.value = options[0]
+    leftArtist.value = props.currentArtist || options[0]
   }
   if (!options.includes(rightArtist.value) || leftArtist.value === rightArtist.value) {
-    const remaining = options.filter(o => o !== leftArtist.value)
-    rightArtist.value = remaining[0] || options[0]
+    rightArtist.value = pickRandomOther(leftArtist.value, options)
   }
 }, { immediate: true })
 
