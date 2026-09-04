@@ -239,6 +239,8 @@ export default {
   'stats.avg_ratio': 'Avg Ratio',
   'stats.year_works': '{n} works in this year',
 
+  'info.travel_label': 'Travel Map',
+  'info.travel_tip': "View {name}'s {period} period on the travel map",
   'info.travel': 'Travels',
   'info.travel_link': "View {name}'s travel map ",
   'gallery.search_placeholder': 'Search artworks...',

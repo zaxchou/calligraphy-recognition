@@ -73,7 +73,7 @@
         </div>
         <div class="info-card-row" v-if="currentImage.year">
           <span class="info-card-label">{{ $t("info.year") }}</span>
-          <span class="info-card-value">{{ currentImage.year }}{{ locale === 'en' ? '' : '年' }} {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}${$t('info.age')})` : '' }}<template v-if="artworkPeriod"> · <router-link class="period-chip" :to="{ name: 'ArtistMap', params: { name: currentImage.artist }, query: { period: artworkPeriod.id } }">{{ $t(artworkPeriod.label) }}</router-link></template></span>
+          <span class="info-card-value">{{ currentImage.year }}{{ locale === 'en' ? '' : '年' }} {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}${$t('info.age')})` : '' }}<template v-if="artworkPeriod"> · <router-link class="period-chip" target="_blank" :to="{ name: 'ArtistMap', params: { name: currentImage.artist }, query: { period: artworkPeriod.id } }" :title="$t('info.travel_tip', { name: $t(currentImage.artist), period: $t(artworkPeriod.label) })"><el-icon :size="12"><MapLocation /></el-icon>{{ $t('info.travel_label') }}·{{ $t(artworkPeriod.label) }}</router-link></template></span>
         </div>
         <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
           <span class="info-card-label">{{ $t("info.size") }}</span>
@@ -791,7 +791,7 @@ function translateContent(text) {
 }
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled, MagicStick
+  Picture, Edit, EditPen, HomeFilled, Clock, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, Collection, Check, DataAnalysis, PieChart, ZoomIn, CircleCheckFilled, MagicStick, MapLocation
 } from '@element-plus/icons-vue'
 import echarts from '../utils/echarts'
 import { getDisplayAge } from '../tiba/utils'
@@ -1952,17 +1952,26 @@ defineExpose({
   color: #333;
   font-weight: 500;
 }
-/* 年份行内嵌时期芯片：与年份同字号、同色系的弱化链接 */
+/* 年份行内嵌时期芯片：图标+行旅图标签+时期名，一眼可辨是地图入口 */
 .period-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: #8a7a5e;
   font-size: 12px;
   text-decoration: none;
-  border-bottom: 1px dashed #c4b8a0;
-  transition: color 0.15s;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(196, 184, 160, 0.12);
+  transition: all 0.15s;
+}
+.period-chip .el-icon {
+  color: #c96442;
+  flex-shrink: 0;
 }
 .period-chip:hover {
   color: #c96442;
-  border-bottom-color: #c96442;
+  background: rgba(201, 100, 66, 0.08);
 }
 .info-card-actions {
   display: flex;
