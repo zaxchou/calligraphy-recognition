@@ -1070,6 +1070,11 @@ onMounted(async () => {
   await fetchData(name)
   await nextTick()
   initChart()
+  // 支持 ?period=pX 直达选中某个时期（从详情页年份芯片跳入）
+  const periodParam = route.query.period as string | undefined
+  if (periodParam && periods.value.some(p => p.id === periodParam)) {
+    selectPeriod(periodParam)
+  }
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
 })

@@ -73,19 +73,11 @@
         </div>
         <div class="info-card-row" v-if="currentImage.year">
           <span class="info-card-label">{{ $t("info.year") }}</span>
-          <span class="info-card-value">{{ currentImage.year }}{{ locale === 'en' ? '' : '年' }} {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}${$t('info.age')})` : '' }}</span>
+          <span class="info-card-value">{{ currentImage.year }}{{ locale === 'en' ? '' : '年' }} {{ getDisplayAge(currentImage) !== null ? `(${getDisplayAge(currentImage)}${$t('info.age')})` : '' }}<template v-if="artworkPeriod"> · <router-link class="period-chip" :to="{ name: 'ArtistMap', params: { name: currentImage.artist }, query: { period: artworkPeriod.id } }">{{ $t(artworkPeriod.label) }}</router-link></template></span>
         </div>
         <div class="info-card-row" v-if="currentImage.artwork_width_cm && currentImage.artwork_height_cm">
           <span class="info-card-label">{{ $t("info.size") }}</span>
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
-        </div>
-        <div class="info-card-row" v-if="currentImage.artist && currentImage.year && hasArtistMap">
-          <span class="info-card-label">{{ $t('info.travel') }}</span>
-          <span class="info-card-value">
-            <router-link class="info-map-link" :to="{ name: 'ArtistMap', params: { name: currentImage.artist } }">
-              {{ $t('info.travel_link', { name: $t(currentImage.artist) }) }}<ArrowRight :size="12" />
-            </router-link>
-          </span>
         </div>
         <div class="info-card-actions">
           <el-button v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)" plain size="small" class="btn-action" @click="$emit('edit-current')">
@@ -805,6 +797,7 @@ import echarts from '../utils/echarts'
 import { getDisplayAge } from '../tiba/utils'
 import { sealsApi } from '../api'
 import { artistsApi } from '../api/artists'
+import { buildPeriodsFromChronology } from './MapMode/locations'
 import api from '../api'
 import TibaDeepZoomDialog from '../components/tiba/TibaDeepZoomDialog.vue'
 import SealLightbox from '../components/seal/SealLightbox.vue'
@@ -813,21 +806,51 @@ import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
 
-// 作者行旅地图可用性缓存（与 ArtistSubNav 同规则：年谱条目 ≥5）
-const _mapAvailableCache = new Map()
-const hasArtistMap = ref(false)
-async function checkArtistMap(artistName) {
-  if (!artistName) { hasArtistMap.value = false; return }
-  if (_mapAvailableCache.has(artistName)) { hasArtistMap.value = _mapAvailableCache.get(artistName); return }
+// 作品所属时期：从作者年谱/travel_notes 推导，供年份行内嵌芯片用
+const _artistDataCache = new Map() // artistName → { periods, travelNotesPeriods }
+const artworkPeriod = ref(null) // { id, label, labelEn }
+
+async function loadArtistPeriod(artistName, artworkYear) {
+  artworkPeriod.value = null
+  if (!artistName || !artworkYear) return
+  const year = parseInt(String(artworkYear))
+  if (isNaN(year)) return
+
   try {
-    const res = await artistsApi.getByName(artistName)
-    const chron = res?.artist?.art_chronology || res?.art_chronology
-    const list = Array.isArray(chron) ? chron : (typeof chron === 'string' ? JSON.parse(chron) : [])
-    const ok = Array.isArray(list) && list.length >= 5
-    _mapAvailableCache.set(artistName, ok)
-    if (props.currentImage?.artist === artistName) hasArtistMap.value = ok
-    console.error('[DBG-map]', artistName, 'ok=', ok, 'guardArtist=', props.currentImage?.artist)
-  } catch (e) { console.error('[DBG-map] fail', e); hasArtistMap.value = false }
+    let data = _artistDataCache.get(artistName)
+    if (!data) {
+      const res = await artistsApi.getByName(artistName)
+      const artist = res?.artist || res
+      const chron = parseJsonField(artist.art_chronology)
+      const travelNotes = parseJsonField(artist.travel_notes)
+      data = { chron, travelNotes, birthYear: artist.birth_year, deathYear: artist.death_year }
+      _artistDataCache.set(artistName, data)
+    }
+
+    // 优先用 travel_notes 的时期（与地图页一致），否则用年谱自动派生
+    let periods = []
+    if (data.travelNotes?.periods?.length) {
+      periods = data.travelNotes.periods.map((p, i) => ({
+        id: p.id || `p${i}`,
+        label: p.label || p.name || '',
+        yearRange: p.yearRange || [p.yearStart || 0, p.yearEnd || 9999],
+      }))
+    } else if (data.chron?.length >= 5) {
+      periods = buildPeriodsFromChronology(data.chron, data.birthYear, data.deathYear)
+    }
+
+    if (!periods.length) return
+    const hit = periods.find(p => year >= p.yearRange[0] && year <= p.yearRange[1])
+    if (hit) {
+      artworkPeriod.value = { id: hit.id, label: hit.label }
+    }
+  } catch { /* 静默失败，不显示芯片 */ }
+}
+
+function parseJsonField(raw) {
+  if (!raw) return null
+  if (Array.isArray(raw) || typeof raw === 'object') return raw
+  try { return JSON.parse(raw) } catch { return null }
 }
 
 const authStore = useAuthStore()
@@ -1073,10 +1096,10 @@ watch(() => props.currentImage, (img) => {
   if (img && img.sealContent && !sealLibraryCache.value.length) {
     loadSealLibraryForDetail()
   }
-  checkArtistMap(img?.artist)
+  loadArtistPeriod(img?.artist, img?.year)
 }, { immediate: true })
 
-onMounted(() => { checkArtistMap(props.currentImage?.artist) })
+onMounted(() => { loadArtistPeriod(props.currentImage?.artist, props.currentImage?.year) })
 
 // 兼容旧的 prop 访问方式（向后兼容）
 const analyzeStatus = computed(() => props.analysis?.status || 'pending')
@@ -1929,15 +1952,17 @@ defineExpose({
   color: #333;
   font-weight: 500;
 }
-.info-map-link {
-  color: #c96442;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
+/* 年份行内嵌时期芯片：与年份同字号、同色系的弱化链接 */
+.period-chip {
+  color: #8a7a5e;
+  font-size: 12px;
   text-decoration: none;
+  border-bottom: 1px dashed #c4b8a0;
+  transition: color 0.15s;
 }
-.info-map-link:hover {
-  text-decoration: underline;
+.period-chip:hover {
+  color: #c96442;
+  border-bottom-color: #c96442;
 }
 .info-card-actions {
   display: flex;
