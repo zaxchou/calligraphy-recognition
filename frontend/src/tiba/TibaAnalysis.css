@@ -785,7 +785,9 @@
 /* 作品库网格样式 */
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  /* minmax(0,1fr)：允许轨道缩到内容最小宽度以下，
+     否则长英文标题的 nowrap 会把所在轨道撑大、把缩略图一起放大 */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   padding: 4px 0;
 }
@@ -4039,13 +4041,13 @@ gallery-album-tag {
 
 /* 相关作品网格：响应式列数 */
 @media (max-width: 1024px) {
-  .history-grid { grid-template-columns: repeat(4, 1fr); }
+  .history-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 768px) {
-  .history-grid { grid-template-columns: repeat(3, 1fr); }
+  .history-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 480px) {
-  .history-grid { grid-template-columns: repeat(2, 1fr); }
+  .history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* 分析结果区域间距紧凑化 */
