@@ -79,6 +79,14 @@
           <span class="info-card-label">{{ $t("info.size") }}</span>
           <span class="info-card-value">{{ currentImage.artwork_height_cm }}cm × {{ currentImage.artwork_width_cm }}cm</span>
         </div>
+        <div class="info-card-row" v-if="currentImage.artist && currentImage.year && hasArtistMap">
+          <span class="info-card-label">{{ $t('info.travel') }}</span>
+          <span class="info-card-value">
+            <router-link class="info-map-link" :to="{ name: 'ArtistMap', params: { name: currentImage.artist } }">
+              {{ $t('info.travel_link', { name: $t(currentImage.artist) }) }}<ArrowRight :size="12" />
+            </router-link>
+          </span>
+        </div>
         <div class="info-card-actions">
           <el-button v-if="authStore.isAdmin || (authStore.isEditor && currentImage.owner_id === authStore.userId)" plain size="small" class="btn-action" @click="$emit('edit-current')">
             <el-icon><Edit /></el-icon><span class="btn-label">{{ $t("btn.edit") }}</span>
@@ -796,6 +804,7 @@ import {
 import echarts from '../utils/echarts'
 import { getDisplayAge } from '../tiba/utils'
 import { sealsApi } from '../api'
+import { artistsApi } from '../api/artists'
 import api from '../api'
 import TibaDeepZoomDialog from '../components/tiba/TibaDeepZoomDialog.vue'
 import SealLightbox from '../components/seal/SealLightbox.vue'
@@ -803,6 +812,23 @@ import EmotionOrb from '../components/tiba/EmotionOrb.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
+// 作者行旅地图可用性缓存（与 ArtistSubNav 同规则：年谱条目 ≥5）
+const _mapAvailableCache = new Map()
+const hasArtistMap = ref(false)
+async function checkArtistMap(artistName) {
+  if (!artistName) { hasArtistMap.value = false; return }
+  if (_mapAvailableCache.has(artistName)) { hasArtistMap.value = _mapAvailableCache.get(artistName); return }
+  try {
+    const res = await artistsApi.getByName(artistName)
+    const chron = res?.artist?.art_chronology || res?.art_chronology
+    const list = Array.isArray(chron) ? chron : (typeof chron === 'string' ? JSON.parse(chron) : [])
+    const ok = Array.isArray(list) && list.length >= 5
+    _mapAvailableCache.set(artistName, ok)
+    if (props.currentImage?.artist === artistName) hasArtistMap.value = ok
+    console.error('[DBG-map]', artistName, 'ok=', ok, 'guardArtist=', props.currentImage?.artist)
+  } catch (e) { console.error('[DBG-map] fail', e); hasArtistMap.value = false }
+}
 
 const authStore = useAuthStore()
 
@@ -1047,7 +1073,10 @@ watch(() => props.currentImage, (img) => {
   if (img && img.sealContent && !sealLibraryCache.value.length) {
     loadSealLibraryForDetail()
   }
-})
+  checkArtistMap(img?.artist)
+}, { immediate: true })
+
+onMounted(() => { checkArtistMap(props.currentImage?.artist) })
 
 // 兼容旧的 prop 访问方式（向后兼容）
 const analyzeStatus = computed(() => props.analysis?.status || 'pending')
@@ -1899,6 +1928,16 @@ defineExpose({
   font-size: 13px;
   color: #333;
   font-weight: 500;
+}
+.info-map-link {
+  color: #c96442;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  text-decoration: none;
+}
+.info-map-link:hover {
+  text-decoration: underline;
 }
 .info-card-actions {
   display: flex;

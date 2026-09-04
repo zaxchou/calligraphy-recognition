@@ -237,6 +237,8 @@ export default {
   'stats.avg_ratio': '平均占比',
   'stats.year_works': '该年份共 {n} 幅作品',
 
+  'info.travel': '行旅',
+  'info.travel_link': '查看{name}行旅地图 ',
   'gallery.search_placeholder': '搜索画作...',
   'gallery.search': '搜索',
   'gallery.more_works': '更多作品',
