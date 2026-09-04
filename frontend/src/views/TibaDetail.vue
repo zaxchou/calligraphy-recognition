@@ -1952,24 +1952,20 @@ defineExpose({
   color: #333;
   font-weight: 500;
 }
-/* 年份行内嵌时期芯片：图标+行旅图标签+时期名，一眼可辨是地图入口 */
+/* 年份行内嵌时期芯片：纯 inline 参与文本基线对齐 */
 .period-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
   color: #8a7a5e;
   font-size: 12px;
   text-decoration: none;
-  padding: 0 6px;
+  padding: 1px 5px;
   border-radius: 3px;
   background: rgba(196, 184, 160, 0.12);
   transition: all 0.15s;
-  vertical-align: baseline;
-  line-height: 1.6;
 }
 .period-chip .el-icon {
   color: #c96442;
-  flex-shrink: 0;
+  vertical-align: -1px;
+  margin-right: 2px;
 }
 .period-chip:hover {
   color: #c96442;
