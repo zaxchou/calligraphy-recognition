@@ -159,6 +159,36 @@ def backfill(db: Session, batch_size: int = 20, limit_rows: Optional[int] = None
     return stats
 
 
+_auto_lock = threading.Lock()
+
+
+def incremental_backfill(db: Session, max_new: int = 200, batch_size: int = 20) -> int:
+    """增量自动回填：只翻「尚未在缓存表」的串，单轮最多 max_new 条，避免后台长时间占用 LLM。
+
+    幂等（按 zh 原文 upsert）；跑完清读缓存，让 EN 请求立刻能拿到新译文。
+    有锁保护，防止与手动 backfill 或另一个 worker 实例并发重复翻译。
+    """
+    if max_new <= 0:
+        return 0
+    with _auto_lock:
+        existing = {row.zh for row in db.query(AiTextTranslation.zh).all()}
+        pending = [s for s in collect_cjk_strings(db) if s not in existing][:max_new]
+        if not pending:
+            return 0
+        translated_n = 0
+        for start in range(0, len(pending), batch_size):
+            batch = pending[start:start + batch_size]
+            translated = translate_strings(batch, batch_size=batch_size)
+            for zh in batch:
+                en = translated.get(zh)
+                if en:
+                    db.merge(AiTextTranslation(zh=zh, en=en, source="llm"))
+                    translated_n += 1
+            db.commit()
+        invalidate_cache()
+        return translated_n
+
+
 # ── 读时替换 ─────────────────────────────────────────────────────────
 
 # 只翻译纯展示文本字段。枚举/逻辑字段（name/type/emotion/theme/tags/position/

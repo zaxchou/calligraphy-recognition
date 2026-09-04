@@ -113,7 +113,6 @@ export default {
 
   // Analysis
   'analysis.empty': 'No content analysis data',
-  'analysis.running': 'Run "Reanalyze All" for interpretation',
   'analysis.text': 'Text Analysis',
   'analysis.all': 'Reanalyze All',
   'analysis.no_data': 'No analysis data',
@@ -152,12 +151,8 @@ export default {
   '侵入画位/喧宾夺主式': 'Dominating Inscription',
   '长篇排布/画材填空式': 'Dense Long-Form',
   '从左起笔式': 'Left-Origin',
-  '早期': 'Early Period',
-  '中期': 'Middle Period',
-  '晚期': 'Late Period',
   '早期（供奉内廷）': 'Early (Court Service)',
   '中期（扬州卖画）': 'Middle (Yangzhou Career)',
-  '晚期（彻底归隐）': 'Late (Seclusion)',
   '中期（转变期，开始写意）': 'Middle (Transition to Xieyi)',
   '表明身份': 'Identity',
   '人生经历': 'Life Experience',
@@ -174,7 +169,6 @@ export default {
   '时期基线': 'Period Baseline',
   '画材情感': 'Subject Emotion',
   '文本情感': 'Text Sentiment',
-  '画家底色': 'Artist Baseline',
   '特殊规则': 'Special Rules',
   '最终判定': 'Final Verdict',
   '人工智能复核': 'AI Review',
@@ -443,9 +437,7 @@ export default {
   '杂画十二开之十一': 'Miscellaneous Paintings, Album of Twelve Leaves No. 11',
   '概览': 'Overview',
   '作品': 'Works',
-  '印章': 'Seals',
   '文献': 'Literature',
-  '分析': 'Analysis',
   '行旅': 'Travels',
   '字宗扬，号复堂，别号懊道人、墨磨人': 'Courtesy name Zongyang; sobriquets Futang, Aodaoren, Momoren',
   '字克柔，号板桥、板桥道人': 'Courtesy name Kerou; sobriquets Banqiao, Banqiao Daoren',
@@ -601,7 +593,6 @@ export default {
 
   // Visual element associations
   '傲骨/坚韧': 'Resilience / Tenacity',
-  '灵动/自在': 'Agility / Freedom',
   '富贵/长寿': 'Wealth / Longevity',
   '高远/清幽': 'Nobility / Serenity',
   '繁茂/珠玉': 'Abundance / Preciousness',

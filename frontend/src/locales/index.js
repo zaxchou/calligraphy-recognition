@@ -5,11 +5,26 @@ import zh from './zh'
 import en from './en'
 
 const DICTS = { zh, en }
-// URL 参数优先（?lang=en 可直接分享英文版链接），其次 localStorage
-try {
-  const urlLang = new URLSearchParams(location.search).get('lang')
-  if (urlLang === 'zh' || urlLang === 'en') localStorage.setItem('lang', urlLang)
-} catch { /* non-browser env */ }
+
+// URL 里的语言参数：search 里的 ?lang= 优先；hash 路由下书签常见 #/path?lang=en，
+// 也兜底读取（仅在没有已存偏好时生效，避免切换后被旧链接的 hash 参数覆盖回来）。
+function readUrlLang() {
+  try {
+    const sp = new URLSearchParams(location.search)
+    const searchLang = sp.get('lang')
+    if (searchLang === 'zh' || searchLang === 'en') return searchLang
+    if (!localStorage.getItem('lang')) {
+      const qi = location.hash.indexOf('?')
+      if (qi >= 0) {
+        const hashLang = new URLSearchParams(location.hash.slice(qi + 1)).get('lang')
+        if (hashLang === 'zh' || hashLang === 'en') return hashLang
+      }
+    }
+  } catch { /* non-browser env */ }
+  return null
+}
+const urlLang = typeof location !== 'undefined' ? readUrlLang() : null
+if (urlLang) localStorage.setItem('lang', urlLang)
 export const locale = ref(localStorage.getItem('lang') || 'zh')
 
 function format(template, params) {
@@ -38,6 +53,23 @@ export function switchLang(lang) {
   locale.value = lang || (locale.value === 'zh' ? 'en' : 'zh')
   localStorage.setItem('lang', locale.value)
   syncHtmlLang()
+  // 整页刷新保证全站语言一致：原生 fetch 的 Accept-Language 头（模块初始化时读取）、
+  // echarts 一次性构建的轴标签等不会因热切换残留旧语言。
+  // 同时清掉 URL 里的 ?lang= 种子（search 与 hash 内），避免刷新后参数把切换结果覆盖回去。
+  if (typeof location !== 'undefined' && typeof history !== 'undefined') {
+    try {
+      const url = new URL(location.href)
+      url.searchParams.delete('lang')
+      if (url.hash.includes('?')) {
+        const [pathPart, queryPart] = url.hash.split('?')
+        const q = new URLSearchParams(queryPart)
+        q.delete('lang')
+        url.hash = pathPart + (q.toString() ? '?' + q.toString() : '')
+      }
+      history.replaceState(null, '', url.pathname + url.search + url.hash)
+    } catch { /* 忽略 URL 清理失败 */ }
+    location.reload()
+  }
 }
 
 function syncHtmlLang() {

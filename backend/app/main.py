@@ -127,6 +127,35 @@ def _clear_results_cache_safe():
 _stop_event = threading.Event()
 
 
+def _ai_translation_worker_loop():
+    """周期增量翻译新产生的分析内容。失败仅记日志，不中断循环。"""
+    import time as _time
+    from app.core.database import SessionLocal
+    from app.services.ai_translation import incremental_backfill
+
+    log = logging.getLogger("ai-translation")
+    interval = float(os.getenv("AI_TRANSLATE_INTERVAL_HOURS", "6")) * 3600
+    max_new = int(os.getenv("AI_TRANSLATE_MAX_NEW", "200"))
+    # 启动先等 2 分钟，避开容器启动/迁移抖动
+    if _stop_event.wait(120):
+        return
+    while not _stop_event.is_set():
+        try:
+            db = SessionLocal()
+            try:
+                n = incremental_backfill(db, max_new=max_new)
+                if n:
+                    log.info("AI 译文增量回填完成: %d 条", n)
+            finally:
+                db.close()
+        except Exception:
+            log.exception("AI 译文增量回填失败，下轮重试")
+        # 分段睡眠，便于 _stop_event 快速退出
+        deadline = _time.time() + interval
+        while not _stop_event.is_set() and _time.time() < deadline:
+            _stop_event.wait(10)
+
+
 def _recover_stale_jobs(log):
     """启动时恢复：把卡在 processing 超过 2 分钟的任务重置为 queued"""
     from app.core.database import SessionLocal
@@ -207,6 +236,14 @@ async def lifespan(app: FastAPI):
         worker.start()
     else:
         logger.info("TIBA_EMBEDDED_WORKER=false，内嵌 Worker 未启动（由独立进程消费队列）")
+    # AI 译文自动增量回填：新产生的分析内容会在后台被翻译，EN 覆盖不随时间退化。
+    # AI_TRANSLATE_INTERVAL_HOURS<=0 关闭（默认 6 小时一轮，单轮有界）
+    _ai_translate_interval = float(os.getenv("AI_TRANSLATE_INTERVAL_HOURS", "6"))
+    if _ai_translate_interval > 0:
+        threading.Thread(target=_ai_translation_worker_loop,
+                         daemon=True, name="ai-translation").start()
+        logger.info("AI 译文自动回填已启用（间隔 %.1fh，AI_TRANSLATE_INTERVAL_HOURS 可调）",
+                    _ai_translate_interval)
     yield
     # ── shutdown ──
     _stop_event.set()
