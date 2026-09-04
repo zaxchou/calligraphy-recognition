@@ -1960,10 +1960,12 @@ defineExpose({
   color: #8a7a5e;
   font-size: 12px;
   text-decoration: none;
-  padding: 1px 6px;
+  padding: 0 6px;
   border-radius: 3px;
   background: rgba(196, 184, 160, 0.12);
   transition: all 0.15s;
+  vertical-align: baseline;
+  line-height: 1.6;
 }
 .period-chip .el-icon {
   color: #c96442;
