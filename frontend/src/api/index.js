@@ -50,13 +50,11 @@ api.interceptors.response.use(
       return api(config)
     }
 
-    // 401 自动清除 token 并跳转登录页
+    // 401 只静默清除失效登录态，回到匿名浏览；不强制跳登录页——
+    // 公开页面（详情/列表/首页）无需登录，需要登录的路由由 router 守卫跳转
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
-      if (!window.location.hash.includes('#/login')) {
-        window.location.hash = '#/login'
-      }
     }
 
     console.error('API Error:', error)
