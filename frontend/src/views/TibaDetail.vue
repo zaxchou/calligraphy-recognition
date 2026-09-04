@@ -2549,7 +2549,7 @@ defineExpose({
   white-space: nowrap;
 }
 /* 英文主题名较长：允许换行，不做单行截断 */
-:global(html[lang='en']) .theme-name {
+:global(html[lang='en'] .theme-name) {
   max-width: 13em;
   white-space: normal;
   line-height: 1.3;

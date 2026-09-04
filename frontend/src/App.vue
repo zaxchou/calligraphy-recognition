@@ -480,17 +480,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* === 英文模式排版微调（拉丁字符与中文的呼吸感不同） === */
-:global(html[lang='en']) .main-nav {
+:global(html[lang='en'] .main-nav) {
   gap: var(--space-lg);
 }
-:global(html[lang='en']) .nav-text {
+:global(html[lang='en'] .nav-text) {
   font-size: 13px;
   letter-spacing: 0.01em;
 }
-:global(html[lang='en']) .logo-sub {
+:global(html[lang='en'] .logo-sub) {
   letter-spacing: 0.01em;
 }
-:global(html[lang='en']) .lang-switch {
+:global(html[lang='en'] .lang-switch) {
   font-size: 12px;
   padding: 2px 10px;
 }
