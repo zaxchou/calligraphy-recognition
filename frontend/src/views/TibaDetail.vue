@@ -14,7 +14,7 @@
             >
               {{ $t('nav.prev') }}
             </el-button>
-            <span class="nav-title">{{ currentImage.title || $t('card.untitled') }}</span>
+            <span class="nav-title">{{ currentImage.title ? $t(currentImage.title) : $t('card.untitled') }}</span>
             <el-button
               size="small"
               :disabled="!nextImage"
@@ -656,7 +656,7 @@
             <div v-if="item.id === currentImage.id" class="history-grid-thumb-overlay">
               <el-icon><Check /></el-icon>
             </div>
-            <div class="history-grid-title">{{ item.title || $t('card.untitled') }}</div>
+            <div class="history-grid-title">{{ item.title ? $t(item.title) : $t('card.untitled') }}</div>
           </div>
         </div>
         <div class="history-summary empty" v-else>

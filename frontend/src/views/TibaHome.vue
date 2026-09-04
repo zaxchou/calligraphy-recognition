@@ -43,8 +43,9 @@
         <div class="card-header">
           <span class="card-title">{{ $t('tibahome.t1') }}</span>
           <div class="trend-stats">
-            <el-select v-model="trendArtistFilter" size="small" style="width: 120px; margin-right: 10px;">
+            <el-select v-model="trendArtistFilter" size="small" style="width: 120px; margin-right: 10px;" :key="trendSelKey">
               <el-option :label="$t('dimensioninput.a1')" value="all" />
+              <el-option v-if="!artistList.length && trendArtistFilter !== 'all'" :value="trendArtistFilter" :label="$t(trendArtistFilter)" />
               <el-option v-for="artist in artistList" :key="artist" :label="$t(artist)" :value="artist" />
             </el-select>
             <el-tag type="info" size="small">{{ $t('unit.works_count', { n: filteredTrendChartData.length }) }}</el-tag>
@@ -68,7 +69,7 @@ import TibaGallery from '../components/tiba/TibaGallery.vue'
 import TibaComparison from '../components/tiba/TibaComparison.vue'
 
 import api, { tibaApi } from '../api'
-import { translate as t } from '../locales'
+import { translate as t, locale } from '../locales'
 import { getSharedAnalyticsData, setSharedAnalyticsData, clearSharedAnalyticsData } from '../tiba/sharedCache'
 
 const props = defineProps({
@@ -203,6 +204,8 @@ watch(() => props.artistFilter, (newVal) => {
 }, { immediate: true })
 
 const artistList = ref([])
+// EP el-select 对异步选项不刷新选中标签：列表/语言变化时重挂载
+const trendSelKey = computed(() => locale.value + '-' + artistList.value.length)
 async function fetchArtistList() {
   try {
     const data = await api.get('/content-analysis/artists')

@@ -145,7 +145,7 @@
                 </div>
               </div>
               <div class="table-col col-info">
-                <div class="work-title" @click.stop="openDetailInNewWindow(item)">{{ item.title || '未命名' }}</div>
+                <div class="work-title" @click.stop="openDetailInNewWindow(item)">{{ item.title ? $t(item.title) : $t('card.untitled') }}</div>
               </div>
               <div class="table-col col-author">
                 <span v-if="item.artist">{{ item.artist }}{{ getDisplayAge(item) !== null ? ` ${getDisplayAge(item)}岁` : '' }}</span>

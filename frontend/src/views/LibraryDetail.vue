@@ -129,9 +129,9 @@
               </div>
             </div>
             <div class="artwork-info" @click="openArtworkDetail(artwork)">
-              <h4 class="artwork-title">{{ artwork.title || artwork.filename || '未命名' }}</h4>
+              <h4 class="artwork-title">{{ (artwork.title || artwork.filename) ? t(artwork.title || artwork.filename) : t('card.untitled') }}</h4>
               <p class="artwork-meta">
-                <span v-if="artwork.artist">{{ artwork.artist }}</span>
+                <span v-if="artwork.artist">{{ t(artwork.artist) }}</span>
                 <span v-if="artwork.year">({{ artwork.year }})</span>
               </p>
             </div>

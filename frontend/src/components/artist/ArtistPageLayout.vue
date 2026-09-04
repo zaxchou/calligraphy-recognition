@@ -14,7 +14,7 @@
               <div class="av-header-avatar-section">
                 <div class="av-avatar-wrap" :class="{ 'av-avatar-compact': !isOverview }">
                   <img v-if="artistData.avatar_url && !avatarError" :src="artistData.avatar_url" class="av-avatar-img" :class="{ 'av-avatar-img-compact': !isOverview }" alt="" @error="avatarError = true" />
-                  <span v-else class="av-avatar-text" :class="{ 'av-avatar-text-compact': !isOverview }">{{ artistData.name?.charAt(0) || '?' }}</span>
+                  <span v-else class="av-avatar-text" :class="{ 'av-avatar-text-compact': !isOverview }">{{ $t(artistData.name).charAt(0) || '?' }}</span>
                 </div>
                 <div v-if="isOverview && artistPhotos.length > 0" class="av-photo-strip">
                   <button v-if="photoScroll > 0" class="av-photo-arrow av-photo-arrow-left" @click.stop="photoScroll = Math.max(0, photoScroll - 1)">&#8249;</button>
@@ -26,20 +26,20 @@
               </div>
 
               <div class="av-header-center">
-                <h1 class="av-name" :class="{ 'av-name-compact': !isOverview }">{{ artistData.name }}</h1>
-                <p v-if="artistData.alias" class="av-alias" :class="{ 'av-alias-compact': !isOverview }">{{ artistData.alias }}</p>
+                <h1 class="av-name" :class="{ 'av-name-compact': !isOverview }">{{ $t(artistData.name) }}</h1>
+                <p v-if="artistData.alias" class="av-alias" :class="{ 'av-alias-compact': !isOverview }">{{ $t(artistData.alias) }}</p>
                 <div class="av-meta" :class="{ 'av-meta-compact': !isOverview }">
-                  <span v-if="artistData.dynasty" class="av-meta-item">{{ artistData.dynasty }}</span>
-                  <span class="av-meta-item">{{ formatYears(artistData.birth_year, artistData.death_year) || '生卒年不详' }}</span>
-                  <span v-if="artistData.art_school" class="av-meta-item av-meta-school">{{ artistData.art_school }}</span>
-                  <span v-if="artistData.hometown" class="av-meta-item">{{ artistData.hometown }}</span>
-                  <span v-if="artistData.occupation" class="av-meta-item">{{ artistData.occupation }}</span>
+                  <span v-if="artistData.dynasty" class="av-meta-item">{{ $t(artistData.dynasty) }}</span>
+                  <span class="av-meta-item">{{ formatYears(artistData.birth_year, artistData.death_year) || $t('artist.unknown_years') }}</span>
+                  <span v-if="artistData.art_school" class="av-meta-item av-meta-school">{{ $t(artistData.art_school) }}</span>
+                  <span v-if="artistData.hometown" class="av-meta-item">{{ $t(artistData.hometown) }}</span>
+                  <span v-if="artistData.occupation" class="av-meta-item">{{ $t(artistData.occupation) }}</span>
                 </div>
-                <p v-if="isOverview && artistData.summary" class="av-summary">{{ artistData.summary }}</p>
+                <p v-if="isOverview && artistData.summary" class="av-summary">{{ $t(artistData.summary) }}</p>
               </div>
 
               <div class="av-header-actions">
-                <el-button size="small" plain @click="$router.push({ name: 'ArtistList' })">返回列表</el-button>
+                <el-button size="small" plain @click="$router.push({ name: 'ArtistList' })">{{ $t('artist.back_to_list') }}</el-button>
               </div>
             </div>
           </header>

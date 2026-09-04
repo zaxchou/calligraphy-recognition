@@ -8,7 +8,7 @@
       :class="{ active: isTabActive(tab) }"
     >
       <span class="asn-icon" v-html="tab.icon"></span>
-      <span class="asn-label">{{ tab.label }}</span>
+      <span class="asn-label">{{ $t(tab.label) }}</span>
       <span v-if="isTabActive(tab)" class="asn-indicator"></span>
     </router-link>
   </nav>

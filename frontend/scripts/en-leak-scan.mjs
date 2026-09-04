@@ -9,6 +9,7 @@ const pages = [
   ['tiba-list', 'https://molin.wiki/?lang=en#/tiba/list'],
   ['tiba-detail', 'https://molin.wiki/?lang=en#/tiba/ba88ab6a-4f31-4a72-a26a-2b9b6d098654'],
   ['knowledge', 'https://molin.wiki/?lang=en#/knowledge'],
+  ['artist-overview', 'https://molin.wiki/?lang=en#/artist/%E6%9D%8E%E9%B1%93'],
 ];
 
 const browser = await chromium.launch({ channel: 'msedge', headless: true });

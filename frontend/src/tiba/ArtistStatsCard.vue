@@ -2,8 +2,9 @@
   <div class="stats-module">
     <div class="stats-header">
       <h3 class="stats-title">{{ $t('stats.overview_title', { name: $t(displayArtistName) }) }}</h3>
-      <el-select v-model="currentArtist" size="default" @change="onArtistChange" style="width: 120px;">
+      <el-select v-model="currentArtist" size="default" @change="onArtistChange" style="width: 120px;" :key="selKey">
         <el-option value="all" :label="$t('stats.all_artists')" />
+        <el-option v-if="!artistList.length && currentArtist !== 'all'" :value="currentArtist" :label="$t(currentArtist)" />
         <el-option v-for="artist in artistList" :key="artist" :label="$t(artist)" :value="artist" />
       </el-select>
     </div>
@@ -108,6 +109,8 @@ const emit = defineEmits(['artist-change'])
 // ── 作者列表 ──
 const artistList = ref([])
 const currentArtist = ref('李鱓')
+// EP el-select 对异步选项不刷新选中标签：列表/语言变化时重挂载以取最新 label
+const selKey = computed(() => locale.value + '-' + artistList.value.length)
 
 const displayArtistName = computed(() => {
   return currentArtist.value === 'all' ? t('stats.all') : currentArtist.value

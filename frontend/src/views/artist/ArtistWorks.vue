@@ -16,7 +16,7 @@
         <el-button size="small" @click="clearSearch" v-if="searchQuery" text>{{ $t('annotationverify.t4') }}</el-button>
       </div>
       <div class="aw-toolbar-right">
-        <span class="aw-total">共 {{ totalCount }} 件</span>
+        <span class="aw-total">{{ $t('unit.works_count', { n: totalCount }) }}</span>
         <div class="aw-view-toggle">
           <el-tooltip :content="$t('artist.artistworks.a2')" placement="top">
             <el-button size="small" :type="viewMode === 'grid' ? 'primary' : 'default'" @click="viewMode = 'grid'" text>
@@ -57,7 +57,7 @@
               <el-icon v-else-if="w.status === 'analyzing'" size="10" class="is-loading"><Loading /></el-icon>
               <el-icon v-else-if="w.status === 'error'" size="10"><Close /></el-icon>
               <el-icon v-else size="10"><Clock /></el-icon>
-              <span>{{ w.status === 'queued' ? '排队中' : w.status === 'analyzing' ? '分析中' : w.status === 'error' ? '失败' : w.status }}</span>
+              <span>{{ w.status === 'queued' ? t('gallery.queued') : w.status === 'analyzing' ? t('gallery.analyzing') : w.status === 'error' ? t('gallery.failed') : w.status }}</span>
             </div>
             <!-- 类型标识 -->
             <div v-if="w.work_type === '书法'" class="aw-type-badge">
@@ -72,18 +72,18 @@
             </div>
             <!-- 面积统计（右下角） -->
             <div v-if="w.inscription_percent !== undefined || w.painting_percent > 0" class="aw-labels">
-              <span v-if="w.inscription_percent !== undefined" class="aw-label stat-danger">{{ w.inscription_percent?.toFixed(1) }}%题跋</span>
-              <span v-if="w.painting_percent > 0" class="aw-label stat-primary">{{ w.painting_percent?.toFixed(1) }}%绘画</span>
+              <span v-if="w.inscription_percent !== undefined" class="aw-label stat-danger">{{ w.inscription_percent?.toFixed(1) }}%{{ t('gallery.inscription') }}</span>
+              <span v-if="w.painting_percent > 0" class="aw-label stat-primary">{{ w.painting_percent?.toFixed(1) }}%{{ t('gallery.painting') }}</span>
             </div>
           </div>
           <div class="aw-info">
-            <div class="aw-title">{{ w.title || '未命名' }}</div>
+            <div class="aw-title">{{ w.title ? t(w.title) : t('card.untitled') }}</div>
             <div class="aw-meta">
-              <span v-if="w.year" class="meta-col">{{ w.year }}年</span>
-              <span v-if="w.artist" class="meta-col">{{ w.artist }}</span>
+              <span v-if="w.year" class="meta-col">{{ w.year }}{{ t('gallery.year_suffix') }}</span>
+              <span v-if="w.artist" class="meta-col">{{ t(w.artist) }}</span>
             </div>
             <div class="aw-tags" v-if="getTags(w).length > 0">
-              <span v-for="tag in getTags(w).slice(0, 3)" :key="tag" class="info-tag">{{ tag }}</span>
+              <span v-for="tag in getTags(w).slice(0, 3)" :key="tag" class="info-tag">{{ t(tag) }}</span>
             </div>
           </div>
         </div>
@@ -122,10 +122,10 @@
                 </div>
               </div>
               <div class="aw-tcol aw-tcol-info">
-                <div class="aw-table-title">{{ w.title || w.work_name || '未命名' }}</div>
+                <div class="aw-table-title">{{ (w.title || w.work_name) ? t(w.title || w.work_name) : t('card.untitled') }}</div>
               </div>
-              <div class="aw-tcol aw-tcol-author">{{ w.artist || '-' }}</div>
-              <div class="aw-tcol aw-tcol-year">{{ w.year ? w.year + '年' : '-' }}</div>
+              <div class="aw-tcol aw-tcol-author">{{ w.artist ? t(w.artist) : '-' }}</div>
+              <div class="aw-tcol aw-tcol-year">{{ w.year ? w.year + t('gallery.year_suffix') : '-' }}</div>
               <div class="aw-tcol aw-tcol-inscription">
                 <span class="aw-stat-val">{{ w.inscription_percent?.toFixed(1) }}%</span>
               </div>
