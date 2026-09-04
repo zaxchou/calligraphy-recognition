@@ -1485,4 +1485,8 @@ export default {
   'artist.artistliteraturereader.a1': '关闭搜索',
   'artist.artistliteraturereader.a2': '展开目录',
   'artist.artistliteraturereader.a3': '折叠目录',
+  // === dim detail labels ===
+'词典': '词典',
+  '规则': '规则',
+  '无覆盖规则': '无覆盖规则',
 }

@@ -1587,4 +1587,8 @@ export default {
   '倾向': 'leaning',
   '情绪': 'mood',
   '愁苦': 'sorrowful',
+  // === dim detail labels ===
+'词典': 'Lexicon',
+  '规则': 'Rule',
+  '无覆盖规则': 'No override rule',
 }

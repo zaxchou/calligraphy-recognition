@@ -283,17 +283,17 @@
                             <div class="dim-detail-content" v-else>
                               <template v-for="(item, i) in getDimDetail(dim.nameKey)" :key="i">
                                 <div class="detail-item">
-                                  <span class="detail-label">{{ item.label }}</span>
+                                  <span class="detail-label">{{ t(item.label) }}</span>
                                   <span class="detail-value" :class="{ 'score-pos': item.score > 0, 'score-neg': item.score < 0 }">
                                     {{ item.score > 0 ? '+' : ''}}{{ item.score }}
                                   </span>
-                                  <span class="detail-desc" v-if="item.desc">{{ item.desc }}</span>
+                                  <span class="detail-desc" v-if="item.desc">{{ t(item.desc) }}</span>
                                 </div>
                               </template>
                               <!-- LLM reasoning -->
                               <div v-if="getLlmReasoning(dim.nameKey)" class="detail-item llm-reasoning-row">
                                 <span class="detail-label">🤖 LLM</span>
-                                <span class="detail-desc llm-reasoning-text">{{ getLlmReasoning(dim.nameKey) }}</span>
+                                <span class="detail-desc llm-reasoning-text">{{ translateContent(getLlmReasoning(dim.nameKey)) }}</span>
                               </div>
                             </div>
                           </td>
@@ -1292,7 +1292,7 @@ function getDimDetail(dimKey) {
   // 时期维度
   if (key === 'period') {
     return [{
-      label: `${detail.year || '?'}年`,
+      label: `${detail.year || '?'}${locale.value === 'en' ? '' : '年'}`,
       score: cs.time_score || 0,
       desc: detail.period_phase || '',
     }]
