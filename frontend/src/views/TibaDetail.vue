@@ -1128,7 +1128,9 @@ const verdictSnippet = computed(() => {
   const cs = combinedSentiment.value
   if (!cs) return ''
   const r = cs.reasoning
-  if (r) { const translated = translateContent(r); return translated.length > 50 ? translated.slice(0, 50) + '…' : translated }
+  // 英文单词长，截断上限放宽到 160 字符（中文 50 字符即整句）
+  const cap = locale.value === 'en' ? 160 : 50
+  if (r) { const translated = translateContent(r); return translated.length > cap ? translated.slice(0, cap) + '…' : translated }
   const s = cs.summary || ''
   const m = s.match(/综合判断[：:]\s*([\s\S]*?)(?=积极面|消极面|$)/)
   const text = m ? m[1].trim() : s
@@ -2545,6 +2547,12 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 英文主题名较长：允许换行，不做单行截断 */
+:global(html[lang='en']) .theme-name {
+  max-width: 13em;
+  white-space: normal;
+  line-height: 1.3;
 }
 .theme-bar-track {
   flex: 1;

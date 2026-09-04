@@ -1406,3 +1406,33 @@ p.welcome-subtitle {
 @media (prefers-reduced-motion: reduce) {
   .t-morph, .t-morph-plus, .t-morph-menu { transition: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   英文模式排版优化（html[lang=en] 由 i18n shim 同步）
+   中文字距/行高体系对拉丁字符过松过紧，EN 下统一收敛：
+   - 字距 0.01em（原 0.02-0.08em 的中文体系对英文过空）
+   - 衬线标题换 Georgia 栈（Noto Serif SC 的拉丁字形偏宽）
+   - 标题行高放宽至 1.3，多行英文标题不再挤压
+   ═══════════════════════════════════════════════════════════════ */
+html[lang='en'] * {
+  letter-spacing: 0.01em !important;
+}
+html[lang='en'] {
+  --font-serif: Georgia, 'Noto Serif SC', Georgia, serif;
+}
+html[lang='en'] h1,
+html[lang='en'] h2,
+html[lang='en'] h3,
+html[lang='en'] h4,
+html[lang='en'] h5,
+html[lang='en'] h6 {
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif !important;
+  line-height: 1.3 !important;
+  font-weight: 600;
+}
+/* 英文长词避免溢出卡片 */
+html[lang='en'] p,
+html[lang='en'] li,
+html[lang='en'] span {
+  overflow-wrap: break-word;
+}
