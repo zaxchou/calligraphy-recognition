@@ -733,7 +733,8 @@
 /* 响应式布局容器 */
 .analysis-container {
   display: grid;
-  grid-template-columns: 30% 1fr;
+  /* 左栏给最小宽度防挤压；右栏 minmax(0,1fr) 允许收缩，防止宽表格把左栏顶扁 */
+  grid-template-columns: minmax(240px, 30%) minmax(0, 1fr);
   gap: 14px;
 }
 

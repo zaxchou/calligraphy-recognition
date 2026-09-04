@@ -254,20 +254,24 @@ async def ai_content_i18n(request: Request, call_next):
             body = b""
             async for chunk in response.body_iterator:
                 body += chunk
-            data = json.loads(body)
-            from app.core.database import SessionLocal
-            db = SessionLocal()
+            new_body = body  # 兜底：任何异常都返回原始内容，绝不返回空体
             try:
-                data = translate_json(data, db)
-            finally:
-                db.close()
-            new_body = json.dumps(data, ensure_ascii=False).encode()
-            headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+                data = json.loads(body)
+                from app.core.database import SessionLocal
+                db = SessionLocal()
+                try:
+                    data = translate_json(data, db)
+                finally:
+                    db.close()
+                new_body = json.dumps(data, ensure_ascii=False).encode()
+            except Exception:  # noqa: BLE001
+                logger.exception("ai_content_i18n translate failed; serving untranslated body")
             from starlette.responses import Response as StarletteResponse
+            headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
             return StarletteResponse(content=new_body, status_code=response.status_code,
                                      headers=headers, media_type="application/json")
-    except Exception:  # noqa: BLE001 — 翻译层故障必须降级为原响应
-        logger.exception("ai_content_i18n failed; serving original response")
+    except Exception:  # noqa: BLE001 — 中间件自身故障也不能破坏响应
+        logger.exception("ai_content_i18n outer failure")
     return response
 
 

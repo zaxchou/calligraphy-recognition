@@ -189,7 +189,17 @@ def _walk_replace(obj: Any, cache: dict) -> Any:
     if isinstance(obj, list):
         return [_walk_replace(v, cache) for v in obj]
     if isinstance(obj, str):
-        return cache.get(obj, obj)
+        if obj in cache:
+            return cache[obj]
+        # 接口可能把整个分析 JSON 作为字符串返回：解析后替换再序列化
+        stripped = obj.lstrip()
+        if len(stripped) > 1 and stripped[0] in "{[" and has_cjk(obj):
+            try:
+                parsed = json.loads(obj)
+                return json.dumps(_walk_replace(parsed, cache), ensure_ascii=False)
+            except (ValueError, TypeError):
+                return obj
+        return obj
     return obj
 
 
