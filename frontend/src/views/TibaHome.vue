@@ -45,7 +45,7 @@
           <div class="trend-stats">
             <el-select v-model="trendArtistFilter" size="small" style="width: 120px; margin-right: 10px;" :key="trendSelKey">
               <el-option :label="$t('dimensioninput.a1')" value="all" />
-              <!-- 选项列表需登录才加载；匿名时塞入当前值避免 EP 回显中文原文，登录后列表到达即被移除 -->
+              <!-- 列表加载期间/接口失败时塞入当前值避免 EP 回显中文原文，列表到达即被移除 -->
               <el-option v-if="!artistList.length && trendArtistFilter !== 'all'" :value="trendArtistFilter" :label="$t(trendArtistFilter)" />
               <el-option v-for="artist in artistList" :key="artist" :label="$t(artist)" :value="artist" />
             </el-select>

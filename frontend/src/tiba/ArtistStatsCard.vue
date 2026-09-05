@@ -4,7 +4,7 @@
       <h3 class="stats-title">{{ $t('stats.overview_title', { name: $t(displayArtistName) }) }}</h3>
       <el-select v-model="currentArtist" size="default" @change="onArtistChange" style="width: 120px;" :key="selKey">
         <el-option value="all" :label="$t('stats.all_artists')" />
-        <!-- 选项列表需登录才加载；匿名时塞入当前值避免 EP 回显中文原文，登录后列表到达即被移除 -->
+        <!-- 列表加载期间/接口失败时塞入当前值避免 EP 回显中文原文，列表到达即被移除 -->
         <el-option v-if="!artistList.length && currentArtist !== 'all'" :value="currentArtist" :label="$t(currentArtist)" />
         <el-option v-for="artist in artistList" :key="artist" :label="$t(artist)" :value="artist" />
       </el-select>
