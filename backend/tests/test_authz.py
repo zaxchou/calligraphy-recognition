@@ -1,4 +1,4 @@
-"""鉴权收口契约测试：seals 写操作与 content_analysis 匿名访问。"""
+"""鉴权收口契约测试：seals 写操作与 content_analysis 读写策略。"""
 
 
 
@@ -46,9 +46,16 @@ def test_seal_delete_admin_ok(client, admin_token):
     assert resp2.status_code in (200, 204)
 
 
-def test_content_analysis_anonymous_rejected(client):
-    assert client.get("/api/v1/content-analysis/stats").status_code in (401, 403)
-    assert client.get("/api/v1/content-analysis/artists").status_code in (401, 403)
+def test_content_analysis_reads_public(client):
+    """2026-09-06 S6 取消：统计为公开站点数据，匿名可读。"""
+    assert client.get("/api/v1/content-analysis/stats").status_code == 200
+    assert client.get("/api/v1/content-analysis/artists").status_code == 200
+
+
+def test_content_analysis_write_anonymous_rejected(client):
+    """写操作（AI 解读/翻译/校对）仍需登录。"""
+    resp = client.post("/api/v1/content-analysis/summary", json={})
+    assert resp.status_code in (401, 403)
 
 
 def test_content_analysis_with_token(client, reader_token):
