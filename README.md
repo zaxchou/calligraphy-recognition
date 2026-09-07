@@ -10,6 +10,8 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-latest-009688?logo=fastapi&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+![cover](docs/cover.jpg)
+
 🌐 **在线访问 / Live**: [molin.wiki](https://molin.wiki)
 
 ---
